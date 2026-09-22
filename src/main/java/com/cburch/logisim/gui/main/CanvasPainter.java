@@ -100,7 +100,7 @@ class CanvasPainter implements PropertyChangeListener {
                 : Value.widthErrorCaptionBgcolor);
       }
     }
-    g.setColor(Color.BLACK);
+    g.setColor(componentColor());
     GraphicsUtil.switchToWidth(g, 1);
   }
 
@@ -132,7 +132,7 @@ class CanvasPainter implements PropertyChangeListener {
           (int) Math.round(a),
           (int) Math.round(b));
       GraphicsUtil.switchToWidth(g, 1);
-      g.setColor(Color.BLACK);
+      g.setColor(componentColor());
     }
 
     // draw circuit and selection
@@ -180,6 +180,16 @@ class CanvasPainter implements PropertyChangeListener {
     return haloedComponent;
   }
 
+  /**
+   * Returns the colour components are drawn in.
+   *
+   * <p>Used where the painter restores a default after drawing something in its own colour. Black
+   * was hardcoded here, which left stray black strokes on a dark canvas.
+   */
+  private static Color componentColor() {
+    return new Color(AppPreferences.COMPONENT_COLOR.get());
+  }
+
   //
   // painting methods
   //
@@ -188,7 +198,7 @@ class CanvasPainter implements PropertyChangeListener {
     final double zoomFactor = canvas.getZoomFactor();
 
     grid.paintGrid(g);
-    g.setColor(Color.black);
+    g.setColor(componentColor());
 
     final var gfxScaled = g.create();
     if (zoomFactor != 1.0 && gfxScaled instanceof Graphics2D g2d) {

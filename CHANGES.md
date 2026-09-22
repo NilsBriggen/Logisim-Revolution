@@ -3,6 +3,11 @@
 # Changes #
 
 * @dev (????-??-??)
+  * Improved canvas zooming and scrolling with a trackpad, which now follows the gesture
+    smoothly instead of jumping a fixed step, and stopped the scroll position snapping
+    back to the start at the end of its range [#1262] (@YOUR_GITHUB_HANDLE).
+  * Fixed stray black strokes left on a dark canvas where the painter reset its colour
+    to black rather than to the themed component colour (@YOUR_GITHUB_HANDLE).
   * Polished the main window chrome: the split pane divider is now visible at rest and its
     grab area follows the interface scale, and the docked tab strips use the shared
     typographic scale instead of a fixed nine point font (@YOUR_GITHUB_HANDLE).

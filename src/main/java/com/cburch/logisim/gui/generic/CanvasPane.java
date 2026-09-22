@@ -132,40 +132,42 @@ public class CanvasPane extends JScrollPane {
   }
 
   private class ZoomListener implements MouseWheelListener {
+
+    /** Zoom change applied for one notch of a classic mouse wheel. */
+    private static final double ZOOM_STEP = 0.1;
+
     @Override
     public void mouseWheelMoved(MouseWheelEvent mwe) {
+      // A trackpad reports fractional rotations, which getWheelRotation() truncates, so small
+      // gestures were either ignored or applied as a full notch. Use the precise value and fall
+      // back to the integer one for devices that do not provide it.
+      var rotation = mwe.getPreciseWheelRotation();
+      if (rotation == 0.0) rotation = mwe.getWheelRotation();
+      if (rotation == 0.0) return;
+
       if (mwe.isControlDown()) {
-        var zoom = zoomModel.getZoomFactor();
         final var opts = zoomModel.getZoomOptions();
-        if (mwe.getWheelRotation() < 0) { // ZOOM IN
-          zoom += 0.1;
-          final var max = opts.get(opts.size() - 1) / 100.0;
-          zoomModel.setZoomFactor(Math.min(zoom, max), mwe);
-        } else { // ZOOM OUT
-          zoom -= 0.1;
-          final var min = opts.get(0) / 100.0;
-          zoomModel.setZoomFactor(Math.max(zoom, min), mwe);
-        }
+        final var min = opts.get(0) / 100.0;
+        final var max = opts.get(opts.size() - 1) / 100.0;
+        // Scrolling away from the user reports a negative rotation and zooms in.
+        final var zoom = zoomModel.getZoomFactor() - ZOOM_STEP * rotation;
+        zoomModel.setZoomFactor(Math.clamp(zoom, min, max), mwe);
       } else if (mwe.isShiftDown()) {
-        getHorizontalScrollBar()
-            .setValue(scrollValue(getHorizontalScrollBar(), mwe.getWheelRotation()));
+        scrollBy(getHorizontalScrollBar(), rotation);
       } else {
-        getVerticalScrollBar()
-            .setValue(scrollValue(getVerticalScrollBar(), mwe.getWheelRotation()));
+        scrollBy(getVerticalScrollBar(), rotation);
       }
     }
 
-    private int scrollValue(JScrollBar bar, int val) {
-      if (val > 0) {
-        if (bar.getValue() < bar.getMaximum() + val * 2 * bar.getBlockIncrement()) {
-          return bar.getValue() + val * 2 * bar.getBlockIncrement();
-        }
-      } else {
-        if (bar.getValue() > bar.getMinimum() + val * 2 * bar.getBlockIncrement()) {
-          return bar.getValue() + val * 2 * bar.getBlockIncrement();
-        }
-      }
-      return 0;
+    /** Scrolls a bar by the given number of wheel notches, clamped to its range. */
+    private void scrollBy(JScrollBar bar, double rotation) {
+      final var distance = (int) Math.round(rotation * 2 * bar.getBlockIncrement());
+      if (distance == 0) return;
+      final var highest = bar.getMaximum() - bar.getVisibleAmount();
+      // setValue() clamps as well, but clamping here keeps the arithmetic from overflowing and
+      // makes the intent explicit: running off either end stops, it does not wrap to the start.
+      final var lowest = bar.getMinimum();
+      bar.setValue(Math.clamp(bar.getValue() + distance, lowest, Math.max(lowest, highest)));
     }
   }
 }
