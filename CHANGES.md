@@ -3,6 +3,10 @@
 # Changes #
 
 * @dev (????-??-??)
+  * The Find Action search now also lists the circuits and VHDL entities of the project,
+    the tabs of the preferences window and the recently opened files, so a circuit can
+    be shown, a preference page opened or a recent project reopened by typing its name
+    (@YOUR_GITHUB_HANDLE).
   * Logging to a file now reports when the file cannot be written instead of silently
     switching itself off. Failed attribute edits, an unreadable log file and a crashed
     simulator are reported with a title and the reason, a crash while opening a window

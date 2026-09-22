@@ -17,7 +17,10 @@ import com.cburch.logisim.gui.generic.LFrame;
 import com.cburch.logisim.util.LocaleListener;
 import com.cburch.logisim.util.LocaleManager;
 import com.cburch.logisim.util.WindowMenuItemManager;
+import com.cburch.logisim.util.StringGetter;
 import java.awt.BorderLayout;
+import java.util.List;
+import java.util.function.Function;
 import javax.swing.JFrame;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
@@ -25,6 +28,30 @@ import javax.swing.JTabbedPane;
 public class PreferencesFrame extends LFrame.Dialog {
 
   private static final long serialVersionUID = 1L;
+
+  /**
+   * One tab of the preferences window: its title, and how to build its panel.
+   *
+   * <p>Described statically so that the tabs can be listed, by the search dialog for one, without
+   * building the window, which needs a display. The title must agree with the panel's own {@code
+   * getTitle()}.
+   */
+  record Tab(StringGetter title, Function<PreferencesFrame, OptionsPanel> factory) {}
+
+  /** The tabs, in display order. */
+  static final List<Tab> TABS =
+      List.of(
+          new Tab(S.getter("templateTitle"), TemplateOptions::new),
+          new Tab(S.getter("intlTitle"), IntlOptions::new),
+          new Tab(S.getter("windowTitle"), WindowOptions::new),
+          new Tab(S.getter("layoutTitle"), LayoutOptions::new),
+          new Tab(S.getter("simTitle"), SimOptions::new),
+          new Tab(S.getter("experimentTitle"), ExperimentalOptions::new),
+          new Tab(com.cburch.logisim.fpga.Strings.S.getter("softwaresTitle"), SoftwaresOptions::new),
+          new Tab(com.cburch.logisim.fpga.Strings.S.getter("FPGATitle"), FpgaOptions::new),
+          new Tab(S.getter("hotkeyOptTitle"), HotkeyOptions::new),
+          new Tab(S.getter("autosaveTitle"), AutosaveOptions::new));
+
   private static WindowMenuManager MENU_MANAGER = null;
   private final MyListener myListener = new MyListener();
   private final OptionsPanel[] panels;
@@ -34,19 +61,7 @@ public class PreferencesFrame extends LFrame.Dialog {
   private PreferencesFrame() {
     super(null);
 
-    panels =
-        new OptionsPanel[] {
-          new TemplateOptions(this),
-          new IntlOptions(this),
-          new WindowOptions(this),
-          new LayoutOptions(this),
-          new SimOptions(this),
-          new ExperimentalOptions(this),
-          new SoftwaresOptions(this),
-          new FpgaOptions(this),
-          new HotkeyOptions(this),
-          new AutosaveOptions(this),
-        };
+    panels = TABS.stream().map(tab -> tab.factory().apply(this)).toArray(OptionsPanel[]::new);
     tabbedPane = new JTabbedPane();
     int intlIndex = -1;
     for (var index = 0; index < panels.length; index++) {
@@ -72,6 +87,20 @@ public class PreferencesFrame extends LFrame.Dialog {
 
   public static void showPreferences() {
     final var frame = MENU_MANAGER.getJFrame(true, null);
+    frame.setVisible(true);
+  }
+
+  /** The localized title of every tab, in display order, without building the window. */
+  public static List<String> getTabTitles() {
+    return TABS.stream().map(tab -> tab.title().toString()).toList();
+  }
+
+  /** Shows the preferences window open at the tab at {@code index} in {@link #getTabTitles()}. */
+  public static void showPreferences(int index) {
+    final var frame = (PreferencesFrame) MENU_MANAGER.getJFrame(true, null);
+    if (index >= 0 && index < frame.tabbedPane.getTabCount()) {
+      frame.tabbedPane.setSelectedIndex(index);
+    }
     frame.setVisible(true);
   }
 

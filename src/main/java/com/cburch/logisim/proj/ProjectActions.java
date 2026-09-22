@@ -395,6 +395,29 @@ public final class ProjectActions {
     return doOpen(parent, baseProject, selected);
   }
 
+  /**
+   * Opens {@code file} the way the recent-files menu does: in a new window, closing {@code
+   * current} afterwards if it is an untouched, unsaved blank project, so that opening a file from
+   * the empty window Logisim starts with does not leave that empty window behind.
+   *
+   * @param parent component the open dialogs belong to, or {@code null}
+   * @param baseProject project whose libraries seed the loader, or {@code null}
+   * @param current project whose window is closed if it is blank, or {@code null}
+   * @return the opened project, or {@code null} if it could not be opened
+   */
+  public static Project doOpenReplacingBlank(
+      Component parent, Project baseProject, Project current, File file) {
+    final var opened = doOpen(parent, baseProject, file);
+    if (opened != null
+        && current != null
+        && opened != current
+        && !current.isFileDirty()
+        && current.getLogisimFile().getLoader().getMainFile() == null) {
+      current.getFrame().dispose();
+    }
+    return opened;
+  }
+
   public static Project doOpen(Component parent, Project baseProject, File f) {
     var proj = Projects.findProjectFor(f);
     Loader loader = null;

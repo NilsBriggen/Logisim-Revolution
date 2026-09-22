@@ -10,7 +10,10 @@
 package com.cburch.logisim.gui.search;
 
 import com.cburch.logisim.gui.search.providers.AddToolSearchProvider;
+import com.cburch.logisim.gui.search.providers.CircuitSearchProvider;
 import com.cburch.logisim.gui.search.providers.MenuSearchProvider;
+import com.cburch.logisim.gui.search.providers.PreferenceSearchProvider;
+import com.cburch.logisim.gui.search.providers.RecentFileSearchProvider;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -28,7 +31,10 @@ public final class SearchProviders {
 
   static {
     register(new MenuSearchProvider());
+    register(new CircuitSearchProvider());
     register(new AddToolSearchProvider());
+    register(new PreferenceSearchProvider());
+    register(new RecentFileSearchProvider());
   }
 
   private SearchProviders() {
