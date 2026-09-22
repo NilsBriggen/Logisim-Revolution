@@ -287,7 +287,7 @@ public class ProjectExplorer extends JTree implements LocaleListener {
         boolean hasFocus) {
       java.awt.Component ret = super.getTreeCellRendererComponent(tree, value, selected, expanded, leaf, row, hasFocus);
       final var plainFont = AppPreferences.getScaledFont(ret.getFont());
-      final var boldFont = new Font(plainFont.getFontName(), Font.BOLD, plainFont.getSize());
+      final var boldFont = plainFont.deriveFont(Font.BOLD);
       ret.setFont(plainFont);
       if (ret instanceof JComponent comp) {
         comp.setToolTipText(null);
@@ -543,8 +543,6 @@ public class ProjectExplorer extends JTree implements LocaleListener {
             y,
             AppPreferences.getScaled(AppPreferences.BOX_SIZE),
             AppPreferences.getScaled(AppPreferences.BOX_SIZE));
-        g.setColor(Canvas.HALO_COLOR);
-        g.setColor(Color.BLACK);
         g.setClip(s);
       }
 

@@ -333,7 +333,7 @@ public class SelectionList extends JTable {
     addOrMove(items, logModel.getSignalCount());
   }
 
-  private static final Font MSG_FONT = new Font("Sans Serif", Font.ITALIC, 12);
+  private static final Font MSG_FONT = new Font(Font.SANS_SERIF, Font.ITALIC, 12);
 
   @Override
   public void paintComponent(Graphics g) {

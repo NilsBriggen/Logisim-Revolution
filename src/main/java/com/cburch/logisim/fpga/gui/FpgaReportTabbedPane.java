@@ -14,11 +14,11 @@ import com.cburch.contracts.BaseWindowListenerContract;
 import com.cburch.logisim.fpga.data.FpgaCommanderListModel;
 import com.cburch.logisim.fpga.designrulecheck.SimpleDrcContainer;
 import com.cburch.logisim.proj.Project;
+import com.cburch.logisim.util.UiFonts;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.EventQueue;
-import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowEvent;
@@ -81,7 +81,7 @@ public class FpgaReportTabbedPane extends JTabbedPane
     textAreaInfo = new JTextArea(10, 50);
     textAreaInfo.setForeground(UIManager.getColor("TextArea.foreground"));
     textAreaInfo.setBackground(UIManager.getColor("TextArea.background"));
-    textAreaInfo.setFont(new Font("monospaced", Font.PLAIN, fontSize));
+    textAreaInfo.setFont(UiFonts.mono().deriveFont((float) fontSize));
     textAreaInfo.setEditable(false);
     textAreaInfo.setText(null);
     var caret = (DefaultCaret) textAreaInfo.getCaret();
@@ -102,7 +102,7 @@ public class FpgaReportTabbedPane extends JTabbedPane
     warnings.setForeground(Color.ORANGE);
     warnings.setSelectionBackground(Color.ORANGE);
     warnings.setSelectionForeground(UIManager.getColor("List.background"));
-    warnings.setFont(new Font("monospaced", Font.PLAIN, fontSize));
+    warnings.setFont(UiFonts.mono().deriveFont((float) fontSize));
     warnings.setModel(warningsList);
     warnings.setCellRenderer(warningsList.getMyRenderer());
     warnings.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
@@ -128,7 +128,7 @@ public class FpgaReportTabbedPane extends JTabbedPane
     errors.setForeground(Color.RED);
     errors.setSelectionBackground(Color.RED);
     errors.setSelectionForeground(UIManager.getColor("List.background"));
-    errors.setFont(new Font("monospaced", Font.PLAIN, fontSize));
+    errors.setFont(UiFonts.mono().deriveFont((float) fontSize));
     errors.setModel(errorsList);
     errors.setCellRenderer(errorsList.getMyRenderer());
     errors.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
@@ -152,7 +152,7 @@ public class FpgaReportTabbedPane extends JTabbedPane
     textAreaConsole = new JTextArea(10, 50);
     textAreaConsole.setForeground(UIManager.getColor("TextArea.foreground"));
     textAreaConsole.setBackground(UIManager.getColor("TextArea.background"));
-    textAreaConsole.setFont(new Font("monospaced", Font.PLAIN, fontSize));
+    textAreaConsole.setFont(UiFonts.mono().deriveFont((float) fontSize));
     textAreaConsole.setEditable(false);
     textAreaConsole.setText(null);
     caret = (DefaultCaret) textAreaConsole.getCaret();

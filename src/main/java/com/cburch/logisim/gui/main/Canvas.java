@@ -77,13 +77,18 @@ import javax.swing.JPopupMenu;
 import javax.swing.JScrollBar;
 import javax.swing.JViewport;
 import javax.swing.Timer;
+import javax.swing.UIManager;
 import javax.swing.event.PopupMenuEvent;
 import javax.swing.event.PopupMenuListener;
 
 public class Canvas extends JPanel implements LocaleListener, CanvasPaneContents, AdjustmentListener {
 
+  /** Unscaled diameter of the floating auto-zoom button. */
   public static final byte ZOOM_BUTTON_SIZE = 52;
+  /** Unscaled distance from the button's edge to the canvas corner. */
   public static final byte ZOOM_BUTTON_MARGIN = 30;
+  /** Unscaled width of the translucent ring around the button. */
+  private static final int ZOOM_BUTTON_HALO = 3;
   public static final Color HALO_COLOR = new Color(255, 0, 255);
   // don't bother to update the size if it hasn't changed more than this
   static final double SQRT_2 = Math.sqrt(2.0);
@@ -99,12 +104,14 @@ public class Canvas extends JPanel implements LocaleListener, CanvasPaneContents
   private static final Color DEFAULT_ERROR_COLOR = new Color(192, 0, 0);
   private static final Color OSC_ERR_COLOR = DEFAULT_ERROR_COLOR;
   private static final Color SIM_EXCEPTION_COLOR = DEFAULT_ERROR_COLOR;
-  private static final Font ERR_MSG_FONT = new Font("Sans Serif", Font.BOLD, 18);
+  private static final Font ERR_MSG_FONT =
+      AppPreferences.getScaledFont(new Font(Font.SANS_SERIF, Font.BOLD, 18));
   private static final Color TICK_RATE_COLOR = new Color(0, 0, 92, 92);
-  private static final Font TICK_RATE_FONT = new Font("Monospaced", Font.PLAIN, 28);
+  private static final Font TICK_RATE_FONT =
+      AppPreferences.getScaledFont(new Font(Font.MONOSPACED, Font.PLAIN, 28));
   private static final Color SINGLE_STEP_MSG_COLOR = Color.BLUE;
-  private static final Font SINGLE_STEP_MSG_FONT = new Font("Sans Serif", Font.BOLD, 12);
-  public static final Color DEFAULT_ZOOM_BUTTON_COLOR = Color.WHITE;
+  private static final Font SINGLE_STEP_MSG_FONT =
+      AppPreferences.getScaledFont(new Font(Font.SANS_SERIF, Font.BOLD, 12));
   // public static BufferedImage image;
   private final Project proj;
   private final Selection selection;
@@ -159,50 +166,64 @@ public class Canvas extends JPanel implements LocaleListener, CanvasPaneContents
     loadOptions(options);
   }
 
+  /** The auto-zoom button's diameter in device pixels. */
+  static int zoomButtonSize() {
+    return AppPreferences.getScaled(ZOOM_BUTTON_SIZE);
+  }
+
+  /** The auto-zoom button's distance from the canvas corner in device pixels. */
+  static int zoomButtonMargin() {
+    return AppPreferences.getScaled(ZOOM_BUTTON_MARGIN);
+  }
+
+  /**
+   * The auto-zoom button's face colour, taken from the look and feel so the button suits a dark
+   * theme instead of always being a white disc.
+   */
+  static Color zoomButtonColor() {
+    final var color = UIManager.getColor("Button.background");
+    return color == null ? Color.WHITE : color;
+  }
+
   public static boolean autoZoomButtonClicked(final Dimension sz,
                                               final double x, final double y) {
+    final var size = zoomButtonSize();
+    final var margin = zoomButtonMargin();
     return Point2D.distance(
-            x,
-            y,
-            sz.width - ZOOM_BUTTON_SIZE / 2 - ZOOM_BUTTON_MARGIN,
-            sz.height - ZOOM_BUTTON_MARGIN - ZOOM_BUTTON_SIZE / 2)
-        <= ZOOM_BUTTON_SIZE / 2;
+            x, y, sz.width - size / 2 - margin, sz.height - margin - size / 2)
+        <= size / 2;
   }
 
   public static void paintAutoZoomButton(final Graphics g,
                                          final Dimension sz, final Color zoomButtonColor) {
+    final var size = zoomButtonSize();
+    final var margin = zoomButtonMargin();
+    final var halo = AppPreferences.getScaled(ZOOM_BUTTON_HALO);
     final var oldColor = g.getColor();
     g.setColor(TICK_RATE_COLOR);
     g.fillOval(
-            sz.width - ZOOM_BUTTON_SIZE - 33,
-            sz.height - ZOOM_BUTTON_SIZE - 33,
-            ZOOM_BUTTON_SIZE + 6,
-            ZOOM_BUTTON_SIZE + 6);
+        sz.width - size - margin - halo,
+        sz.height - size - margin - halo,
+        size + 2 * halo,
+        size + 2 * halo);
     g.setColor(zoomButtonColor);
-    g.fillOval(
-        sz.width - ZOOM_BUTTON_SIZE - 30,
-        sz.height - ZOOM_BUTTON_SIZE - 30,
-        ZOOM_BUTTON_SIZE,
-        ZOOM_BUTTON_SIZE);
+    g.fillOval(sz.width - size - margin, sz.height - size - margin, size, size);
     g.setColor(Value.unknownColor);
-    GraphicsUtil.switchToWidth(g, 3);
-    int width = sz.width - ZOOM_BUTTON_MARGIN;
-    int height = sz.height - ZOOM_BUTTON_MARGIN;
-    g.drawOval(
-            width - ZOOM_BUTTON_SIZE * 3 / 4,
-            height - ZOOM_BUTTON_SIZE * 3 / 4,
-            ZOOM_BUTTON_SIZE / 2,
-            ZOOM_BUTTON_SIZE / 2);
+    GraphicsUtil.switchToWidth(g, AppPreferences.getScaled(3));
+    final var width = sz.width - margin;
+    final var height = sz.height - margin;
+    final var handleGap = AppPreferences.getScaled(4);
+    g.drawOval(width - size * 3 / 4, height - size * 3 / 4, size / 2, size / 2);
     g.drawLine(
-        width - ZOOM_BUTTON_SIZE / 4 + 4,
-        height - ZOOM_BUTTON_SIZE / 2,
-        width - ZOOM_BUTTON_SIZE * 3 / 4 - 4,
-        height - ZOOM_BUTTON_SIZE / 2);
+        width - size / 4 + handleGap,
+        height - size / 2,
+        width - size * 3 / 4 - handleGap,
+        height - size / 2);
     g.drawLine(
-        width - ZOOM_BUTTON_SIZE / 2,
-        height - ZOOM_BUTTON_SIZE / 4 + 4,
-        width - ZOOM_BUTTON_SIZE / 2,
-        height - ZOOM_BUTTON_SIZE * 3 / 4 - 4);
+        width - size / 2,
+        height - size / 4 + handleGap,
+        width - size / 2,
+        height - size * 3 / 4 - handleGap);
     g.setColor(oldColor);
   }
 
@@ -968,7 +989,7 @@ public class Canvas extends JPanel implements LocaleListener, CanvasPaneContents
               viewport.getSize(),
               e.getX() * getZoomFactor() - getHorizontalScrollBar(),
               e.getY() * getZoomFactor() - getVerticalScrollBar())) {
-        viewport.zoomButtonColor = DEFAULT_ZOOM_BUTTON_COLOR.darker();
+        viewport.zoomButtonPressed = true;
         viewport.repaint();
       } else {
         Canvas.this.requestFocus();
@@ -992,7 +1013,7 @@ public class Canvas extends JPanel implements LocaleListener, CanvasPaneContents
                   viewport.getSize(),
                   e.getX() * getZoomFactor() - getHorizontalScrollBar(),
                   e.getY() * getZoomFactor() - getVerticalScrollBar())
-              && viewport.zoomButtonColor != DEFAULT_ZOOM_BUTTON_COLOR)
+              && viewport.zoomButtonPressed)
           || e.getButton() == MouseEvent.BUTTON2 && e.getClickCount() == 2) {
         center();
         setCursor(proj.getTool().getCursor());
@@ -1011,7 +1032,7 @@ public class Canvas extends JPanel implements LocaleListener, CanvasPaneContents
         setCursor(tool.getCursor());
       }
       completeAction();
-      viewport.zoomButtonColor = DEFAULT_ZOOM_BUTTON_COLOR;
+      viewport.zoomButtonPressed = false;
     }
 
     @Override
@@ -1258,7 +1279,7 @@ public class Canvas extends JPanel implements LocaleListener, CanvasPaneContents
     boolean isSoutheast = false;
     boolean isSouthwest = false;
     boolean zoomButtonVisible = false;
-    Color zoomButtonColor = DEFAULT_ZOOM_BUTTON_COLOR;
+    boolean zoomButtonPressed = false;
 
     MyViewport() {
       // dummy
@@ -1346,7 +1367,8 @@ public class Canvas extends JPanel implements LocaleListener, CanvasPaneContents
           || isSoutheast
           || isSouthwest) {
         zoomButtonVisible = true;
-        paintAutoZoomButton(g, getSize(), zoomButtonColor);
+        paintAutoZoomButton(
+            g, getSize(), zoomButtonPressed ? zoomButtonColor().darker() : zoomButtonColor());
         if (isNorth)
           GraphicsUtil.drawArrow2(g, sz.width / 2 - 20, 15, sz.width / 2, 5, sz.width / 2 + 20, 15);
         if (isSouth)

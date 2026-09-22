@@ -38,7 +38,8 @@ public class RightPanel extends JPanel {
 
   private static final Font MSG_FONT =
       AppPreferences.getScaledFont(new Font("Serif", Font.ITALIC, 12));
-  private static final Font TIME_FONT = new Font("Serif", Font.ITALIC, 9);
+  private static final Font TIME_FONT =
+      AppPreferences.getScaledFont(new Font("Serif", Font.ITALIC, 9));
   private static final long serialVersionUID = 1L;
   private static final int WAVE_HEIGHT = ChronoPanel.SIGNAL_HEIGHT;
   private static final int EXTRA_SPACE = 40;
@@ -346,8 +347,8 @@ public class RightPanel extends JPanel {
     if (width > 32000) {
       gfx.setColor(labelColor());
       gfx.setFont(MSG_FONT);
-      gfx.drawString("Oops! Chronogram is too large to display.", 15, 15);
-      gfx.drawString("Try zooming out, or reset the simulation.", 15, 29);
+      gfx.drawString(S.get("chronoTooLargeMessage"), 15, 15);
+      gfx.drawString(S.get("chronoTooLargeHint"), 15, 29);
     } else {
       for (final var w : rows) {
         if (export) w.paintWaveformDirect(gfx);

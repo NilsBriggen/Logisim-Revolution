@@ -57,6 +57,22 @@ public class DialogConventionsTest extends TestBase {
   }
 
   /**
+   * {@code "Sans Serif"} is not a Java logical font name ({@code SansSerif} is), so a font built
+   * from it silently falls back to the default and nobody notices the size or style is wrong.
+   */
+  @Test
+  public void noFontIsBuiltFromTheMisspelledLogicalName() throws IOException {
+    final var offenders = new ArrayList<String>();
+    for (final var file : javaSources()) {
+      if (Files.readString(file).contains("\"Sans Serif\"")) {
+        offenders.add(SOURCE_ROOT.relativize(file).toString());
+      }
+    }
+
+    assertTrue(offenders.isEmpty(), "use Font.SANS_SERIF instead of \"Sans Serif\": " + offenders);
+  }
+
+  /**
    * A call site that passes no parent must still get an attached dialog.
    *
    * <p>Twenty call sites pass null. Rather than editing each one, the wrapper resolves the parent,

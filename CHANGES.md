@@ -3,6 +3,10 @@
 # Changes #
 
 * @dev (????-??-??)
+  * The canvas auto-zoom button, the grid toggle icon, the hex editor selection, the FPGA
+    settings borders and the FPGA report font now follow the look and feel and the interface
+    scale. Several fonts requested the non-existent "Sans Serif" family and silently fell
+    back to the default (@YOUR_GITHUB_HANDLE).
   * Dialogs now close on Escape and accept Enter for their OK button, the menu bar can be
     opened from the keyboard through Alt with a letter of each menu title in any language,
     toolbar buttons announce their name to screen readers, and an attribute value that is

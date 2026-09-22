@@ -161,7 +161,7 @@ class AboutCredits extends JComponent {
     public Lines title(String text) {
       add(
           new TextLine(
-              new Font("Sans Serif", Font.ITALIC | Font.BOLD, 30),
+              new Font(Font.SANS_SERIF, Font.ITALIC | Font.BOLD, 30),
               new Color(0x00, 0x80, 0x00),
               text));
       return this;
@@ -170,29 +170,29 @@ class AboutCredits extends JComponent {
     public Lines h1(String text) {
       add(
           new TextLine(
-              new Font("Sans Serif", Font.ITALIC | Font.BOLD, 24),
+              new Font(Font.SANS_SERIF, Font.ITALIC | Font.BOLD, 24),
               new Color(0x8F, 0x00, 0x00),
               text));
       return this;
     }
 
     public Lines h2(String text) {
-      add(new TextLine(new Font("Sans Serif", Font.BOLD, 20), new Color(0x69, 0x00, 0x00), text));
+      add(new TextLine(new Font(Font.SANS_SERIF, Font.BOLD, 20), new Color(0x69, 0x00, 0x00), text));
       return this;
     }
 
     public Lines url(String text) {
-      add(new TextLine(new Font("Sans Serif", Font.BOLD, 18), new Color(0xCC, 0x80, 0x00), text));
+      add(new TextLine(new Font(Font.SANS_SERIF, Font.BOLD, 18), new Color(0xCC, 0x80, 0x00), text));
       return this;
     }
 
     public Lines text(String text) {
-      add(new TextLine(new Font("Sans Serif", Font.BOLD, 20), new Color(0x30, 0x00, 0x60), text));
+      add(new TextLine(new Font(Font.SANS_SERIF, Font.BOLD, 20), new Color(0x30, 0x00, 0x60), text));
       return this;
     }
 
     public Lines tiny(String text) {
-      add(new TextLine(new Font("Sans Serif", Font.PLAIN, 16), new Color(0x30, 0x00, 0x60), text));
+      add(new TextLine(new Font(Font.SANS_SERIF, Font.PLAIN, 16), new Color(0x30, 0x00, 0x60), text));
       return this;
     }
 

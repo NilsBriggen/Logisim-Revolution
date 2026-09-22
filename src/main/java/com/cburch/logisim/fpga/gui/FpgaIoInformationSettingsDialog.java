@@ -28,7 +28,6 @@ import com.cburch.logisim.std.io.LedArrayGenericHdlGeneratorFactory;
 import com.cburch.logisim.std.io.SevenSegment;
 
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Frame;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -253,8 +252,7 @@ public class FpgaIoInformationSettingsDialog {
   private static JPanel getRectPanel(ArrayList<JTextField> rectLocations) {
     final var rectPanel = new JPanel();
     rectPanel.setLayout(new GridBagLayout());
-    rectPanel.setBorder(BorderFactory.createTitledBorder(
-        BorderFactory.createLineBorder(Color.BLACK, 2, true), S.get("FpgaIoRecProp")));
+    rectPanel.setBorder(BorderFactory.createTitledBorder(S.get("FpgaIoRecProp")));
     var gbc = new GridBagConstraints();
     gbc.fill = GridBagConstraints.HORIZONTAL;
     gbc.gridy = 0;
@@ -418,8 +416,7 @@ public class FpgaIoInformationSettingsDialog {
     if (IoComponentTypes.hasRotationAttribute(myType)) {
       final var panel = new JPanel();
       panel.setLayout(new BorderLayout());
-      panel.setBorder(BorderFactory.createTitledBorder(
-          BorderFactory.createLineBorder(Color.BLACK, 2, true), S.get("FpgaRotationDefinition")));
+      panel.setBorder(BorderFactory.createTitledBorder(S.get("FpgaRotationDefinition")));
       mapRotation.addItem(S.get(IoComponentTypes.getRotationString(myType, IoComponentTypes.ROTATION_ZERO)));
       mapRotation.addItem(S.get(IoComponentTypes.getRotationString(myType, IoComponentTypes.ROTATION_CW_90)));
       mapRotation.addItem(S.get(IoComponentTypes.getRotationString(myType, IoComponentTypes.ROTATION_CCW_90)));
@@ -439,8 +436,7 @@ public class FpgaIoInformationSettingsDialog {
     if (myType.equals(IoComponentTypes.LedArray)) {
       final var panel = new JPanel();
       panel.setLayout(new GridBagLayout());
-      panel.setBorder(BorderFactory.createTitledBorder(
-              BorderFactory.createLineBorder(Color.BLACK, 2, true), S.get("FpgaArrayDefinition")));
+      panel.setBorder(BorderFactory.createTitledBorder(S.get("FpgaArrayDefinition")));
       arrayPanel.setLayout(new GridBagLayout());
       rowSize.removeAll();
       colSize.removeAll();
@@ -484,8 +480,7 @@ public class FpgaIoInformationSettingsDialog {
     if (myType.equals(IoComponentTypes.SevenSegmentScanning)) {
       final var panel = new JPanel();
       panel.setLayout(new GridBagLayout());
-      panel.setBorder(BorderFactory.createTitledBorder(
-              BorderFactory.createLineBorder(Color.BLACK, 2, true), S.get("FpgaScanningDefinition")));
+      panel.setBorder(BorderFactory.createTitledBorder(S.get("FpgaScanningDefinition")));
       scanningPanel.setLayout(new GridBagLayout());
       rowSize.removeAll();
       for (var nrOfSegments = 2; nrOfSegments < 16; nrOfSegments++)
@@ -534,8 +529,7 @@ public class FpgaIoInformationSettingsDialog {
     if (nrOfPins.get(INPUT_ID) > 0) {
       final var panel = new JPanel();
       panel.setLayout(new BorderLayout());
-      panel.setBorder(BorderFactory.createTitledBorder(
-              BorderFactory.createLineBorder(Color.BLACK, 2, true), S.get("FpgaIoInpPins")));
+      panel.setBorder(BorderFactory.createTitledBorder(S.get("FpgaIoInpPins")));
       inputsPanel.setLayout(new GridBagLayout());
       if (IoComponentTypes.nrOfInputPinsConfigurable(myType)) {
         inputSize.removeAllItems();
@@ -558,8 +552,7 @@ public class FpgaIoInformationSettingsDialog {
     if (nrOfPins.get(OUTPUT_ID) > 0) {
       final var panel = new JPanel();
       panel.setLayout(new BorderLayout());
-      panel.setBorder(BorderFactory.createTitledBorder(
-              BorderFactory.createLineBorder(Color.BLACK, 2, true), S.get("FpgaIoOutpPins")));
+      panel.setBorder(BorderFactory.createTitledBorder(S.get("FpgaIoOutpPins")));
       outputsPanel.setLayout(new GridBagLayout());
       if (IoComponentTypes.nrOfOutputPinsConfigurable(myType)) {
         outputSize.removeAllItems();
@@ -603,7 +596,7 @@ public class FpgaIoInformationSettingsDialog {
     if (nrOfPins.get(IO_ID) > 0) {
       final var panel = new JPanel();
       panel.setLayout(new BorderLayout());
-      panel.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLACK, 2, true), S.get("FpgaIoIOPins")));
+      panel.setBorder(BorderFactory.createTitledBorder(S.get("FpgaIoIOPins")));
       ioPanel.setLayout(new GridBagLayout());
       if (IoComponentTypes.nrOfIoPinsConfigurable(myType)) {
         ioSize.removeAllItems();
@@ -865,8 +858,7 @@ public class FpgaIoInformationSettingsDialog {
     final var ClockPanel = new JPanel();
     ClockPanel.setLayout(new GridBagLayout());
     ClockPanel.setBorder(
-        BorderFactory.createTitledBorder(
-            BorderFactory.createLineBorder(Color.BLACK, 2, true), S.get("FpgaBoardClkProp")));
+        BorderFactory.createTitledBorder(S.get("FpgaBoardClkProp")));
 
     final var FreqText = new JLabel(S.get("FpgaBoardClkFreq"));
     gbc.gridx = 0;
@@ -934,8 +926,7 @@ public class FpgaIoInformationSettingsDialog {
     final var fpgaPanel = new JPanel();
     fpgaPanel.setLayout(new GridBagLayout());
     fpgaPanel.setBorder(
-        BorderFactory.createTitledBorder(
-            BorderFactory.createLineBorder(Color.BLACK, 2, true), S.get("FpgaBoardFpgaProp")));
+        BorderFactory.createTitledBorder(S.get("FpgaBoardFpgaProp")));
 
     final var VendorText = new JLabel(S.get("FpgaBoardFpgaVend"));
     gbc.gridx = 0;
@@ -1006,8 +997,7 @@ public class FpgaIoInformationSettingsDialog {
     final var jtagPanel = new JPanel();
     jtagPanel.setLayout(new GridBagLayout());
     jtagPanel.setBorder(
-        BorderFactory.createTitledBorder(
-            BorderFactory.createLineBorder(Color.BLACK, 2, true), S.get("FpgaBoardJtagProp")));
+        BorderFactory.createTitledBorder(S.get("FpgaBoardJtagProp")));
 
     final var posText = new JLabel(S.get("FpgaBoardJtagLoc"));
     gbc.gridy = 0;
@@ -1039,8 +1029,7 @@ public class FpgaIoInformationSettingsDialog {
     final var miscPanel = new JPanel();
     miscPanel.setLayout(new GridBagLayout());
     miscPanel.setBorder(
-        BorderFactory.createTitledBorder(
-            BorderFactory.createLineBorder(Color.BLACK, 2, true), S.get("FpgaBoardMiscProp")));
+        BorderFactory.createTitledBorder(S.get("FpgaBoardMiscProp")));
 
     final var flashName = new JLabel(S.get("FpgaBoardFlashType"));
     gbc.gridx = 0;

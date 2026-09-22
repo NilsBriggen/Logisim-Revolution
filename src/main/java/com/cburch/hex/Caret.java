@@ -28,11 +28,19 @@ import java.util.ArrayList;
 import java.util.List;
 import javax.swing.AbstractAction;
 import javax.swing.KeyStroke;
+import javax.swing.UIManager;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
 public class Caret {
-  private static final Color SELECT_COLOR = new Color(192, 192, 255);
+  /** The selection colour of the active look and feel, so a dark theme is not left pale blue. */
+  private static Color selectionColor() {
+    final var color = UIManager.getColor("TextArea.selectionBackground");
+    return color == null ? DEFAULT_SELECT_COLOR : color;
+  }
+
+  /** Fallback when the look and feel supplies no text selection colour. */
+  private static final Color DEFAULT_SELECT_COLOR = new Color(192, 192, 255);
   private static final Stroke CURSOR_STROKE = new BasicStroke(2.0F);
   private final HexEditor hex;
   private final List<ChangeListener> listeners;
@@ -133,7 +141,7 @@ public class Caret {
       if (!keepMark) {
         mark = value;
       } else if (mark != value) {
-        highlight = hex.getHighlighter().add(mark, value, SELECT_COLOR);
+        highlight = hex.getHighlighter().add(mark, value, selectionColor());
       }
       cursor = value;
       expose(oldValue, false);
