@@ -20,6 +20,7 @@ import com.cburch.logisim.file.LogisimFileActions;
 import com.cburch.logisim.file.ProjectBundlePaths;
 import com.cburch.logisim.generated.BuildInfo;
 import com.cburch.logisim.gui.generic.OptionPane;
+import com.cburch.logisim.gui.generic.WaitCursor;
 import com.cburch.logisim.gui.main.Frame;
 import com.cburch.logisim.gui.start.SplashScreen;
 import com.cburch.logisim.prefs.AppPreferences;
@@ -35,8 +36,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -93,10 +92,9 @@ public final class ProjectActions {
           proj.setStartupScreen(true);
         }
       } catch (Exception e) {
-        final var result = new StringWriter();
-        final var printWriter = new PrintWriter(result);
-        e.printStackTrace(printWriter);
-        OptionPane.showMessageDialog(null, result.toString());
+        // The stack trace belongs behind the Details button, not in front of the user as the
+        // entire message.
+        OptionPane.showError(null, S.get("windowCreateFailedTitle"), S.get("windowCreateFailed"), e);
         System.exit(-1);
       }
     }
@@ -508,16 +506,22 @@ public final class ProjectActions {
   }
 
   public static boolean doSave(Project proj, File f) {
-    final var loader = proj.getLogisimFile().getLoader();
-    final var oldTool = proj.getTool();
-    proj.setTool(null);
-    final var ret = loader.save(proj.getLogisimFile(), f);
-    if (ret) {
-      AppPreferences.updateRecentFile(f);
-      proj.setFileAsClean();
-    }
-    proj.setTool(oldTool);
-    return ret;
+    // Saving runs on the event thread, so the window stops repainting until it finishes. Show a
+    // busy pointer rather than letting a large project look like a freeze.
+    return WaitCursor.get(
+        proj.getFrame(),
+        () -> {
+          final var loader = proj.getLogisimFile().getLoader();
+          final var oldTool = proj.getTool();
+          proj.setTool(null);
+          final var ret = loader.save(proj.getLogisimFile(), f);
+          if (ret) {
+            AppPreferences.updateRecentFile(f);
+            proj.setFileAsClean();
+          }
+          proj.setTool(oldTool);
+          return ret;
+        });
   }
 
   /**

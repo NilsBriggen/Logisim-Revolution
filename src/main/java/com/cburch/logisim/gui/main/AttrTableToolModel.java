@@ -9,6 +9,8 @@
 
 package com.cburch.logisim.gui.main;
 
+import static com.cburch.logisim.gui.Strings.S;
+
 import com.cburch.logisim.circuit.CircuitAttributes;
 import com.cburch.logisim.circuit.CircuitException;
 import com.cburch.logisim.circuit.CircuitMutation;
@@ -55,7 +57,8 @@ public class AttrTableToolModel extends AttributeSetTableModel {
             final var action = mutation.toAction(null);
             proj.doAction(action);
           } catch (CircuitException ex) {
-            OptionPane.showMessageDialog(proj.getFrame(), ex.getMessage());
+            OptionPane.showError(
+                proj.getFrame(), S.get("attributeChangeFailedTitle"), ex.getMessage(), ex);
           }
           return;
         }

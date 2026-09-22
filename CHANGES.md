@@ -3,6 +3,12 @@
 # Changes #
 
 * @dev (????-??-??)
+  * Logging to a file now reports when the file cannot be written instead of silently
+    switching itself off. Failed attribute edits, an unreadable log file and a crashed
+    simulator are reported with a title and the reason, a crash while opening a window
+    shows a short message with the stack trace behind Details instead of the trace
+    itself, and the pointer shows busy while a project is loaded or saved
+    (@YOUR_GITHUB_HANDLE).
   * Errors are now reported with a title, an error icon and, where there is one, the
     underlying exception behind a Details button, instead of a bare message with no
     indication of what failed. A dialog with no parent window no longer opens behind the

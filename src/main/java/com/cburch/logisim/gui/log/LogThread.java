@@ -9,11 +9,17 @@
 
 package com.cburch.logisim.gui.log;
 
+import static com.cburch.logisim.gui.Strings.S;
+
+import com.cburch.logisim.gui.generic.OptionPane;
 import com.cburch.logisim.util.UniquelyNamedThread;
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.HashMap;
+import java.util.function.BiConsumer;
+import javax.swing.SwingUtilities;
 
 class LogThread extends UniquelyNamedThread implements Model.Listener {
   // file will be flushed with at least this frequency (ms)
@@ -32,6 +38,40 @@ class LogThread extends UniquelyNamedThread implements Model.Listener {
   private long timeNextWrite = 0; // done writing up to this time, exclusive
   private final HashMap<Signal, Signal.Iterator> cursors = new HashMap<>();
 
+  /**
+   * How a file failure reaches the user.
+   *
+   * <p>Indirected through a field so that a headless test can observe the failure without a
+   * display. Not intended to be replaced outside tests.
+   */
+  private static BiConsumer<File, IOException> failureReporter = LogThread::showFileFailure;
+
+  /** Replaces the failure reporter, returning the previous one so a test can restore it. */
+  static BiConsumer<File, IOException> setFailureReporter(
+      BiConsumer<File, IOException> reporter) {
+    final var previous = failureReporter;
+    failureReporter = reporter;
+    return previous;
+  }
+
+  /** Reports that file logging has been switched off because the file could not be written. */
+  static void reportFileFailure(File file, IOException cause) {
+    failureReporter.accept(file, cause);
+  }
+
+  /** Builds the message shown when the log file cannot be opened for writing. */
+  static String fileFailureMessage(File file) {
+    return S.get("logFileWriteError", (file == null) ? "" : file.getPath());
+  }
+
+  /** The default reporter: a dialog, posted to the event thread since this is not it. */
+  private static void showFileFailure(File file, IOException cause) {
+    SwingUtilities.invokeLater(
+        () ->
+            OptionPane.showError(
+                null, S.get("logFileWriteErrorTitle"), fileFailureMessage(file), cause));
+  }
+
   public LogThread(Model model) {
     super("LogThread");
     this.model = model;
@@ -44,7 +84,11 @@ class LogThread extends UniquelyNamedThread implements Model.Listener {
       try {
         writer = new PrintWriter(new FileWriter(model.getFile(), true));
       } catch (IOException e) {
+        // Logging to file is switched off here, so it must be reported: otherwise the user ticks
+        // "log to file", nothing is ever written, and nothing says why.
+        final var file = model.getFile();
         model.setFile(null);
+        reportFileFailure(file, e);
         return;
       }
     }

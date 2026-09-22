@@ -11,6 +11,7 @@ package com.cburch.logisim.std.base;
 
 import static com.cburch.logisim.std.Strings.S;
 
+import com.cburch.logisim.gui.generic.OptionPane;
 import com.cburch.logisim.data.Attribute;
 import com.cburch.logisim.data.AttributeOption;
 import com.cburch.logisim.data.AttributeSet;
@@ -29,7 +30,6 @@ import com.cburch.logisim.tools.MenuExtender;
 import com.cburch.logisim.util.ImageUtil;
 import com.cburch.logisim.util.StringUtil;
 import javax.swing.JMenuItem;
-import javax.swing.JOptionPane;
 
 public class Image extends InstanceFactory {
   public static final String _ID = "Image";
@@ -126,20 +126,20 @@ public class Image extends InstanceFactory {
             final var origH = img.getHeight();
 
             if (origW == targetW && origH == targetH) {
-              JOptionPane.showMessageDialog(
+              OptionPane.showMessageDialog(
                   null,
                   String.format(S.get("imageAlreadyOptimizedMessage"), origW, origH),
                   S.get("imageOptimizeConfirmTitle"),
-                  JOptionPane.INFORMATION_MESSAGE);
+                  OptionPane.INFORMATION_MESSAGE);
               return;
             }
-            final var choice = JOptionPane.showConfirmDialog(
+            final var choice = OptionPane.showConfirmDialog(
                 null,
                 String.format(S.get("imageOptimizeConfirmMessage"), origW, origH, targetW, targetH),
                 S.get("imageOptimizeConfirmTitle"),
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.QUESTION_MESSAGE);
-            if (choice == JOptionPane.YES_OPTION) {
+                OptionPane.YES_NO_OPTION,
+                OptionPane.QUESTION_MESSAGE);
+            if (choice == OptionPane.YES_OPTION) {
               final var scaled = ImageUtil.optimizeImage(img, frameW, frameH, scaleOpt);
               final var base64 = ImageUtil.bufferedImageToBase64(scaled);
               final var circuit = proj.getCurrentCircuit();

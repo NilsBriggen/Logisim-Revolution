@@ -9,6 +9,7 @@
 
 package com.cburch.logisim.gui.appear;
 
+import com.cburch.logisim.gui.generic.OptionPane;
 import com.cburch.draw.actions.ModelChangeAttributeAction;
 import com.cburch.draw.model.AttributeMapKey;
 import com.cburch.draw.shapes.ImageShape;
@@ -21,7 +22,6 @@ import com.cburch.logisim.util.ImageUtil;
 import java.util.HashMap;
 import java.util.Map;
 import javax.swing.JMenuItem;
-import javax.swing.JOptionPane;
 
 public class AppearanceEditPopup extends EditPopup implements EditHandler.Listener {
   private static final long serialVersionUID = 1L;
@@ -80,17 +80,17 @@ public class AppearanceEditPopup extends EditPopup implements EditHandler.Listen
               final var origH = cachedImg.getHeight();
 
               if (origW == targetW && origH == targetH) {
-                JOptionPane.showMessageDialog(null,
+                OptionPane.showMessageDialog(null,
                     String.format(Strings.S.get("imageAlreadyOptimizedMessage"), origW, origH),
                     Strings.S.get("imageOptimizeConfirmTitle"),
-                    JOptionPane.INFORMATION_MESSAGE);
+                    OptionPane.INFORMATION_MESSAGE);
                 return;
               }
-              final var choice = JOptionPane.showConfirmDialog(null,
+              final var choice = OptionPane.showConfirmDialog(null,
                   String.format(Strings.S.get("imageOptimizeConfirmMessage"), origW, origH, targetW, targetH),
                   Strings.S.get("imageOptimizeConfirmTitle"),
-                  JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
-              if (choice == JOptionPane.YES_OPTION) {
+                  OptionPane.YES_NO_OPTION, OptionPane.QUESTION_MESSAGE);
+              if (choice == OptionPane.YES_OPTION) {
                 final var scaled = ImageUtil.optimizeImage(cachedImg, frameW, frameH, scaleOpt);
                 final var base64 = ImageUtil.bufferedImageToBase64(scaled);
                 if (!base64.isBlank()) {

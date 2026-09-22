@@ -179,7 +179,8 @@ class AttrTableSelectionModel extends AttributeSetTableModel implements Selectio
                 final var action = mutation.toAction(null);
                 project.doAction(action);
               } catch (CircuitException ex) {
-                OptionPane.showMessageDialog(project.getFrame(), ex.getMessage());
+                OptionPane.showError(
+                    project.getFrame(), S.get("attributeChangeFailedTitle"), ex.getMessage(), ex);
               }
               return;
             }

@@ -11,6 +11,7 @@ package com.cburch.logisim.gui.menu;
 
 import static com.cburch.logisim.gui.Strings.S;
 
+import com.cburch.logisim.gui.generic.OptionPane;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.prefs.PrefMonitorKeyStroke;
 import com.cburch.logisim.proj.Action;
@@ -25,7 +26,6 @@ import java.awt.event.KeyEvent;
 import javax.swing.JMenuItem;
 import javax.swing.JMenu;
 import javax.swing.KeyStroke;
-import javax.swing.JOptionPane;
 import javax.swing.event.MenuEvent;
 import javax.swing.event.MenuListener;
 
@@ -279,14 +279,14 @@ class MenuEdit extends Menu {
         }
         proj.redoAction();
       } else if (src == clearHistory && proj != null) {
-        final var result = JOptionPane.showConfirmDialog(
+        final var result = OptionPane.showConfirmDialog(
             proj.getFrame(),
             S.get("clearHistoryWarningMessage"),
             S.get("clearHistoryWarningTitle"),
-            JOptionPane.OK_CANCEL_OPTION,
-            JOptionPane.WARNING_MESSAGE
+            OptionPane.OK_CANCEL_OPTION,
+            OptionPane.WARNING_MESSAGE
         );
-        if (result == JOptionPane.OK_OPTION) {
+        if (result == OptionPane.OK_OPTION) {
           proj.discardAllEdits();
         }
       }

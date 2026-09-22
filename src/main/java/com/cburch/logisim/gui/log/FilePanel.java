@@ -164,10 +164,18 @@ class FilePanel extends LogPanel {
                   options,
                   options[0]);
           if (option == 0) {
-            try {
-              FileWriter delete = new FileWriter(file);
-              delete.close();
-            } catch (IOException ignored) {
+            try (final var truncate = new FileWriter(file)) {
+              // Opening for writing without appending truncates the file.
+              truncate.flush();
+            } catch (IOException e) {
+              // The user asked to overwrite; if the old contents survive, say so rather than
+              // silently appending to them.
+              OptionPane.showError(
+                  getLogFrame(),
+                  S.get("fileCannotWriteTitle"),
+                  S.get("fileCannotClearMessage", file.getName()),
+                  e);
+              return;
             }
           } else if (option == 1) {
             // do nothing

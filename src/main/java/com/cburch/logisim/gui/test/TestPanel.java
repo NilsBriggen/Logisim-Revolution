@@ -11,6 +11,7 @@ package com.cburch.logisim.gui.test;
 
 import static com.cburch.logisim.gui.Strings.S;
 
+import com.cburch.logisim.gui.generic.OptionPane;
 import com.cburch.logisim.circuit.CircuitState;
 import com.cburch.logisim.circuit.Simulator;
 import com.cburch.logisim.circuit.TestVectorEvaluator;
@@ -34,7 +35,6 @@ import java.util.ArrayList;
 import java.util.Set;
 import java.util.HashSet;
 import javax.swing.JPanel;
-import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -285,9 +285,9 @@ public class TestPanel extends JPanel implements ValueTable.Model, Simulator.Lis
     Model model = getModel();
     if (model == null) return;
     if (model.getProject().getSimulator().isAutoTicking()) {
-      JOptionPane.showMessageDialog(this,
+      OptionPane.showMessageDialog(this,
           S.get("testButtonWhileTickingMessage"), S.get("testButtonWhileTickingTitle"),
-          JOptionPane.ERROR_MESSAGE);
+          OptionPane.ERROR_MESSAGE);
       return;
     }
     TestVector vec = model.getVector();
@@ -314,10 +314,10 @@ public class TestPanel extends JPanel implements ValueTable.Model, Simulator.Lis
       }
     } catch (TestException e) {
       // Show error dialog
-      JOptionPane.showMessageDialog(
+      OptionPane.showMessageDialog(
           this,
           e.getMessage(), S.get("testExecutionErrorTitle"),
-          JOptionPane.ERROR_MESSAGE);
+          OptionPane.ERROR_MESSAGE);
     }
   }
 

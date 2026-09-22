@@ -2,6 +2,7 @@ package com.cburch.logisim.util;
 
 import static com.cburch.logisim.gui.Strings.S;
 
+import com.cburch.logisim.gui.generic.OptionPane;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.prefs.PrefMonitorKeyStroke;
 import java.awt.Color;
@@ -21,7 +22,6 @@ import javax.swing.BorderFactory;
 import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JFrame;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
@@ -312,20 +312,20 @@ public class JHotkeyInput extends JPanel {
         hotkeyString = InputEvent.getModifiersExText(modifier) + "+" + KeyEvent.getKeyText(code);
       }
       if (!(hotkeyInput.getBoundKeyStroke().metaCheckPass(modifier))) {
-        JOptionPane.showMessageDialog(null, S.get("hotkeyErrMeta",
+        OptionPane.showMessageDialog(null, S.get("hotkeyErrMeta",
                 InputEvent.getModifiersExText(AppPreferences.hotkeyMenuMask)),
             S.get("hotkeyOptTitle"),
-            JOptionPane.ERROR_MESSAGE);
+            OptionPane.ERROR_MESSAGE);
         clearStatus();
         return;
       }
       String checkPass = AppPreferences.hotkeyCheckConflict(hotkeyInput.boundKeyStroke.getName(),
           code, modifier);
       if (!checkPass.isEmpty()) {
-        JOptionPane.showMessageDialog(null,
+        OptionPane.showMessageDialog(null,
             checkPass,
             S.get("hotkeyOptTitle"),
-            JOptionPane.ERROR_MESSAGE);
+            OptionPane.ERROR_MESSAGE);
         clearStatus();
         return;
       }

@@ -22,14 +22,14 @@ import java.awt.Frame;
 import java.awt.KeyboardFocusManager;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
-import javax.swing.Icon;
-import javax.swing.JOptionPane;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -159,6 +159,9 @@ public class OptionPane {
   /**
    * Chooses the window a dialog should be attached to.
    *
+   * <p>Applied by every method here, so a call site that passes {@code null} still gets a dialog
+   * attached to the focused window rather than one that can hide behind the application.
+   *
    * <p>A dialog with no parent can open behind the main window, where the user never sees it while
    * the application appears frozen. Fall back to whichever window currently has focus.
    */
@@ -195,7 +198,7 @@ public class OptionPane {
    */
   public static void showMessageDialog(Component parentComponent, Object message) {
     if (Main.hasGui()) {
-      JOptionPane.showMessageDialog(parentComponent, message);
+      JOptionPane.showMessageDialog(resolveParent(parentComponent), message);
     } else if (message instanceof String msg) {
       logger.info(msg);
     }
@@ -212,7 +215,7 @@ public class OptionPane {
   public static void showMessageDialog(
       Component parentComponent, Object message, String title, int messageType) {
     if (Main.hasGui()) {
-      JOptionPane.showMessageDialog(parentComponent, message, title, messageType);
+      JOptionPane.showMessageDialog(resolveParent(parentComponent), message, title, messageType);
     } else if (message instanceof String) {
       final var logMessage = title + ":" + message;
       switch (messageType) {
@@ -235,7 +238,7 @@ public class OptionPane {
    */
   public static int showConfirmDialog(Component parentComponent, Object message, String title, int optionType) {
     return Main.hasGui()
-        ? JOptionPane.showConfirmDialog(parentComponent, message, title, optionType)
+        ? JOptionPane.showConfirmDialog(resolveParent(parentComponent), message, title, optionType)
         : CANCEL_OPTION;
   }
 
@@ -253,7 +256,7 @@ public class OptionPane {
   public static int showConfirmDialog(Component parentComponent, Object message, String title,
                                       int optionType, int messageType) {
     return Main.hasGui()
-        ? JOptionPane.showConfirmDialog(parentComponent, message, title, optionType, messageType)
+        ? JOptionPane.showConfirmDialog(resolveParent(parentComponent), message, title, optionType, messageType)
         : CANCEL_OPTION;
   }
 
@@ -267,7 +270,7 @@ public class OptionPane {
    */
   public static String showInputDialog(Component parentComponent, Object message) {
     return Main.hasGui()
-            ? JOptionPane.showInputDialog(parentComponent, message)
+            ? JOptionPane.showInputDialog(resolveParent(parentComponent), message)
             : null;
   }
 
@@ -283,7 +286,7 @@ public class OptionPane {
    */
   public static String showInputDialog(Component parentComponent, Object message, String title, int messageType) {
     return Main.hasGui()
-        ? JOptionPane.showInputDialog(parentComponent, message, title, messageType)
+        ? JOptionPane.showInputDialog(resolveParent(parentComponent), message, title, messageType)
         : null;
   }
 
@@ -309,7 +312,7 @@ public class OptionPane {
                                        Object[] selectionValues,
                                        Object initialSelectionValue) {
     return Main.hasGui()
-        ? JOptionPane.showInputDialog(parentComponent, message, title, messageType,
+        ? JOptionPane.showInputDialog(resolveParent(parentComponent), message, title, messageType,
             icon, selectionValues, initialSelectionValue)
         : null;
   }
@@ -338,7 +341,7 @@ public class OptionPane {
                                      Object[] options,
                                      Object initialValue) {
     return Main.hasGui()
-        ? JOptionPane.showOptionDialog(parentComponent, message, title, optionType,
+        ? JOptionPane.showOptionDialog(resolveParent(parentComponent), message, title, optionType,
             messageType, icon, options, initialValue)
         : CLOSED_OPTION;
   }

@@ -9,8 +9,11 @@
 
 package com.cburch.logisim.circuit;
 
+import static com.cburch.logisim.circuit.Strings.S;
+
 import com.cburch.logisim.comp.Component;
 import com.cburch.logisim.comp.ComponentDrawContext;
+import com.cburch.logisim.gui.generic.OptionPane;
 import com.cburch.logisim.gui.log.ClockSource;
 import com.cburch.logisim.gui.log.ComponentSelector;
 import com.cburch.logisim.prefs.AppPreferences;
@@ -20,7 +23,6 @@ import java.util.ArrayList;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
-import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
 public class Simulator {
@@ -633,12 +635,10 @@ public class Simulator {
           } finally {
             simStateLock.unlock();
           }
-          SwingUtilities.invokeLater(new Runnable() {
-              public void run() {
-                JOptionPane.showMessageDialog(null, "The simulator crashed. Save your work and restart Logisim.");
-              }
-              // TODO: Hardcoded String
-            });
+          SwingUtilities.invokeLater(
+              () ->
+                  OptionPane.showError(
+                      null, S.get("simulatorCrashTitle"), S.get("simulatorCrash"), e));
         }
       }
     }
