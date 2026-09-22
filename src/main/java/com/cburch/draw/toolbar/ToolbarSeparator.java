@@ -14,6 +14,7 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Graphics;
+import javax.swing.UIManager;
 
 public class ToolbarSeparator implements ToolbarItem {
   private final int size;
@@ -52,7 +53,8 @@ public class ToolbarSeparator implements ToolbarItem {
       y = (h - width - 2) / 2;
       h = width;
     }
-    gfx.setColor(Color.GRAY);
+    final var separatorColor = UIManager.getColor("Separator.foreground");
+    gfx.setColor((separatorColor == null) ? Color.GRAY : separatorColor);
     gfx.fillRect(x, y, w, h);
   }
 }

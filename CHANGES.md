@@ -3,6 +3,9 @@
 # Changes #
 
 * @dev (????-??-??)
+  * Toolbar items now respond to the pointer, with hover, pressed and selected states drawn
+    from the active theme instead of a hardcoded grey rectangle, and separators follow the
+    theme's separator colour (@YOUR_GITHUB_HANDLE).
   * Replaced the fixed size Serif and monospaced fonts in the log tables, truth table,
     assembler and FPGA windows with a shared typographic scale that follows the look and
     feel and the interface scale preference (@YOUR_GITHUB_HANDLE).

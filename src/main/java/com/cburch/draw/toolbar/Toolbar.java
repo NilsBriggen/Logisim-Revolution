@@ -9,6 +9,7 @@
 
 package com.cburch.draw.toolbar;
 
+import com.cburch.logisim.util.Spacing;
 import java.awt.BorderLayout;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -33,6 +34,8 @@ public class Toolbar extends JPanel {
     this.curPressed = null;
 
     this.add(new JPanel(), BorderLayout.CENTER);
+    // A little breathing room so the items do not sit flush against the window edge.
+    this.subpanel.setBorder(Spacing.border(Spacing.XS));
     setOrientation(HORIZONTAL);
 
     computeContents();
