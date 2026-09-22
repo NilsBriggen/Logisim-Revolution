@@ -14,6 +14,7 @@ import static com.cburch.logisim.gui.Strings.S;
 import com.cburch.logisim.gui.log.Model;
 import com.cburch.logisim.gui.log.Signal;
 import com.cburch.logisim.gui.log.SignalInfo;
+import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.gui.menu.LogisimMenuBar;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -77,7 +78,21 @@ public class LeftPanel extends JTable {
     }
   }
 
-  private static final Border rowInsets = BorderFactory.createMatteBorder(ChronoPanel.GAP, 0, ChronoPanel.GAP, 0, Color.WHITE);
+  /**
+   * Returns the padding drawn above and below a signal name.
+   *
+   * <p>Built per call because its colour must match the diagram background, which changes with the
+   * theme.
+   */
+  private static Border rowInsets() {
+    return BorderFactory.createMatteBorder(
+        ChronoPanel.GAP, 0, ChronoPanel.GAP, 0, chronoBackground());
+  }
+
+  /** Returns the chronogram background for the active theme. */
+  private static Color chronoBackground() {
+    return new Color(AppPreferences.CHRONO_BG_COLOR.get());
+  }
 
   private class SignalRenderer extends DefaultTableCellRenderer {
     private static final long serialVersionUID = 1L;
@@ -87,7 +102,7 @@ public class LeftPanel extends JTable {
       if (!(value instanceof SignalInfo)) return null;
       final var ret = super.getTableCellRendererComponent(table, value, false, false, row, col);
       if (ret instanceof final JLabel label && value instanceof final SignalInfo item) {
-        label.setBorder(rowInsets);
+        label.setBorder(rowInsets());
         label.setBackground(chronoPanel.rowColors(item, isSelected)[0]);
         label.setIcon(item.icon);
       }
@@ -104,7 +119,7 @@ public class LeftPanel extends JTable {
       final var txt = s.getFormattedValue(chronoPanel.getRightPanel().getCurrentTime());
       final var ret = super.getTableCellRendererComponent(table, txt, false, false, row, col);
       if (ret instanceof JLabel label) {
-        label.setBorder(rowInsets);
+        label.setBorder(rowInsets());
         label.setIcon(null);
         label.setBackground(chronoPanel.rowColors(s.info, isSelected)[0]);
         label.setHorizontalAlignment(JLabel.CENTER);
@@ -122,7 +137,7 @@ public class LeftPanel extends JTable {
     model = chronoPanel.getModel();
 
     setLayout(new BorderLayout());
-    setBackground(Color.WHITE);
+    setBackground(chronoBackground());
 
     tableModel = new SignalTableModel();
     setModel(tableModel);

@@ -13,6 +13,7 @@ import static com.cburch.logisim.gui.Strings.S;
 
 import com.cburch.draw.toolbar.Toolbar;
 import com.cburch.logisim.gui.log.LogFrame;
+import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.gui.log.LogPanel;
 import com.cburch.logisim.gui.log.Model;
 import com.cburch.logisim.gui.log.Signal;
@@ -72,10 +73,6 @@ public class ChronoPanel extends LogPanel implements Model.Listener {
     super(logFrame);
     selectBg = UIManager.getDefaults().getColor("List.selectionBackground");
     selectHi = darker(selectBg);
-    selectColors =
-        new Color[] {
-          selectBg, selectHi, SELECT_LINE, SELECT_ERR, SELECT_ERRLINE, SELECT_UNK, SELECT_UNKLINE
-        };
     setModel(logFrame.getModel());
     configure();
     resplit();
@@ -283,39 +280,36 @@ public class ChronoPanel extends LogPanel implements Model.Listener {
     model.addModelListener(this);
   }
 
-  private static final Color PLAIN_BG = new Color(0xbb, 0xbb, 0xbb);
-  private static final Color PLAIN_HI = darker(PLAIN_BG);
-  private static final Color PLAIN_LINE = Color.BLACK;
   private static final Color PLAIN_ERR = new Color(0xdb, 0x9d, 0x9d);
-  private static final Color PLAIN_ERRLINE = Color.BLACK;
   private static final Color PLAIN_UNK = new Color(0xea, 0xaa, 0x6c);
-  private static final Color PLAIN_UNKLINE = Color.BLACK;
-  private static final Color SPOT_BG = new Color(0xaa, 0xff, 0xaa);
-  private static final Color SPOT_HI = darker(SPOT_BG);
-  private static final Color SPOT_LINE = Color.BLACK;
   private static final Color SPOT_ERR = new Color(0xf9, 0x76, 0x76);
-  private static final Color SPOT_ERRLINE = Color.BLACK;
   private static final Color SPOT_UNK = new Color(0xea, 0x98, 0x49);
-  private static final Color SPOT_UNKLINE = Color.BLACK;
+  private static final Color SELECT_ERR = new Color(0xe5, 0x80, 0x80);
+  private static final Color SELECT_UNK = new Color(0xee, 0x99, 0x44);
   private final Color selectBg; // set in constructor
   private final Color selectHi; // set in constructor
-  private static final Color SELECT_LINE = Color.BLACK;
-  private static final Color SELECT_ERR = new Color(0xe5, 0x80, 0x80);
-  private static final Color SELECT_ERRLINE = Color.BLACK;
-  private static final Color SELECT_UNK = new Color(0xee, 0x99, 0x44);
-  private static final Color SELECT_UNKLINE = Color.BLACK;
-  private static final Color[] SPOT = {
-    SPOT_BG, SPOT_HI, SPOT_LINE, SPOT_ERR, SPOT_ERRLINE, SPOT_UNK, SPOT_UNKLINE
-  };
-  private static final Color[] PLAIN = {
-    PLAIN_BG, PLAIN_HI, PLAIN_LINE, PLAIN_ERR, PLAIN_ERRLINE, PLAIN_UNK, PLAIN_UNKLINE
-  };
-  private final Color[] selectColors; // set in constructor
 
+  /**
+   * Returns the row palette for one signal.
+   *
+   * <p>Built on each call rather than cached in static arrays, so that switching between a light
+   * and a dark theme is picked up without restarting. The entries are, in order: background,
+   * highlight, line, error background, error line, unknown background and unknown line.
+   */
   public Color[] rowColors(SignalInfo item, boolean isSelected) {
-    if (isSelected) return selectColors;
+    final var line = new Color(AppPreferences.CHRONO_SIGNAL_COLOR.get());
+    if (isSelected) {
+      return new Color[] {
+        selectBg, selectHi, line, SELECT_ERR, line, SELECT_UNK, line
+      };
+    }
     final var spotlight = model.getSpotlight();
-    return (spotlight != null && spotlight.info == item) ? SPOT : PLAIN;
+    if (spotlight != null && spotlight.info == item) {
+      final var spotBg = new Color(AppPreferences.CHRONO_SPOT_BG_COLOR.get());
+      return new Color[] {spotBg, darker(spotBg), line, SPOT_ERR, line, SPOT_UNK, line};
+    }
+    final var plainBg = new Color(AppPreferences.CHRONO_ROW_BG_COLOR.get());
+    return new Color[] {plainBg, darker(plainBg), line, PLAIN_ERR, line, PLAIN_UNK, line};
   }
 
   private static Color darker(Color c) {

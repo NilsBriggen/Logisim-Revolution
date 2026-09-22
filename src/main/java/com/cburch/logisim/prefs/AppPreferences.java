@@ -653,6 +653,18 @@ public class AppPreferences {
   public static final int DARK_TABLE_HIGHLIGHT_COLOR = 0xFF7A6A00;
   public static final int DEFAULT_TABLE_SELECTION_COLOR = 0xFFC0C0FF;
   public static final int DARK_TABLE_SELECTION_COLOR = 0xFF323C78;
+  // default chronogram (timing diagram) colors
+  public static final int DEFAULT_CHRONO_BG_COLOR = 0xFFFFFFFF;
+  public static final int DEFAULT_CHRONO_SIGNAL_COLOR = 0xFF000000;
+  public static final int DEFAULT_CHRONO_LABEL_COLOR = 0xFF000000;
+  public static final int DEFAULT_CHRONO_ROW_BG_COLOR = 0xFFBBBBBB;
+  public static final int DEFAULT_CHRONO_SPOT_BG_COLOR = 0xFFAAFFAA;
+  // dark mode chronogram colors
+  public static final int DARK_CHRONO_BG_COLOR = 0xFF2B2B2B;
+  public static final int DARK_CHRONO_SIGNAL_COLOR = 0xFFFFFFFF;
+  public static final int DARK_CHRONO_LABEL_COLOR = 0xFFFFFFFF;
+  public static final int DARK_CHRONO_ROW_BG_COLOR = 0xFF4A4A4A;
+  public static final int DARK_CHRONO_SPOT_BG_COLOR = 0xFF2F5D2F;
   // default fpga board colors
   public static final int DEFAULT_FPGA_BOARD_OUTLINE_COLOR = 0xFF000000;
   public static final int DEFAULT_FPGA_BOARD_TEXT_COLOR = 0xFF0000FF;
@@ -713,6 +725,11 @@ public class AppPreferences {
       NIL_COLOR.set(DARK_NIL_COLOR);
       BUS_COLOR.set(DARK_BUS_COLOR);
       STROKE_COLOR.set(DARK_STROKE_COLOR);
+      CHRONO_BG_COLOR.set(DARK_CHRONO_BG_COLOR);
+      CHRONO_SIGNAL_COLOR.set(DARK_CHRONO_SIGNAL_COLOR);
+      CHRONO_LABEL_COLOR.set(DARK_CHRONO_LABEL_COLOR);
+      CHRONO_ROW_BG_COLOR.set(DARK_CHRONO_ROW_BG_COLOR);
+      CHRONO_SPOT_BG_COLOR.set(DARK_CHRONO_SPOT_BG_COLOR);
     } else {
       CANVAS_BG_COLOR.set(DEFAULT_CANVAS_BG_COLOR);
       GRID_BG_COLOR.set(DEFAULT_GRID_BG_COLOR);
@@ -733,6 +750,11 @@ public class AppPreferences {
       NIL_COLOR.set(DEFAULT_NIL_COLOR);
       BUS_COLOR.set(DEFAULT_BUS_COLOR);
       STROKE_COLOR.set(DEFAULT_STROKE_COLOR);
+      CHRONO_BG_COLOR.set(DEFAULT_CHRONO_BG_COLOR);
+      CHRONO_SIGNAL_COLOR.set(DEFAULT_CHRONO_SIGNAL_COLOR);
+      CHRONO_LABEL_COLOR.set(DEFAULT_CHRONO_LABEL_COLOR);
+      CHRONO_ROW_BG_COLOR.set(DEFAULT_CHRONO_ROW_BG_COLOR);
+      CHRONO_SPOT_BG_COLOR.set(DEFAULT_CHRONO_SPOT_BG_COLOR);
     }
     Value.trueColor = new Color(TRUE_COLOR.get());
     Value.falseColor = new Color(FALSE_COLOR.get());
@@ -773,6 +795,16 @@ public class AppPreferences {
       create(new PrintViewColorPreference("componentIconColor", DEFAULT_COMPONENT_ICON_COLOR));
   public static final PrefMonitor<Integer> TEXT_TOOL_COLOR =
       create(new PrefMonitorInt("textToolColor", DEFAULT_TEXT_TOOL_COLOR));
+  public static final PrefMonitor<Integer> CHRONO_BG_COLOR =
+      create(new PrefMonitorInt("chronoBgColor", DEFAULT_CHRONO_BG_COLOR));
+  public static final PrefMonitor<Integer> CHRONO_SIGNAL_COLOR =
+      create(new PrefMonitorInt("chronoSignalColor", DEFAULT_CHRONO_SIGNAL_COLOR));
+  public static final PrefMonitor<Integer> CHRONO_LABEL_COLOR =
+      create(new PrefMonitorInt("chronoLabelColor", DEFAULT_CHRONO_LABEL_COLOR));
+  public static final PrefMonitor<Integer> CHRONO_ROW_BG_COLOR =
+      create(new PrefMonitorInt("chronoRowBgColor", DEFAULT_CHRONO_ROW_BG_COLOR));
+  public static final PrefMonitor<Integer> CHRONO_SPOT_BG_COLOR =
+      create(new PrefMonitorInt("chronoSpotBgColor", DEFAULT_CHRONO_SPOT_BG_COLOR));
 
 
   // Layout preferences

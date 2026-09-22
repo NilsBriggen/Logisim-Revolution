@@ -24,6 +24,7 @@ import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.beans.PropertyChangeListener;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import javax.swing.DefaultListSelectionModel;
@@ -65,12 +66,33 @@ public class RightPanel extends JPanel {
     model = p.getModel();
     slope = (tickWidth < 12) ? (int) (tickWidth / 3) : 4;
     configure();
+    installThemeListener();
+  }
+
+  /**
+   * Repaints the diagram when the theme changes.
+   *
+   * <p>Each waveform is cached in an offscreen image, so the cache has to be dropped as well or the
+   * diagram would keep the colours of the previous theme until it was next invalidated.
+   */
+  private void installThemeListener() {
+    final PropertyChangeListener listener =
+        event -> {
+          flushWaveforms();
+          setBackground(backgroundColor());
+          repaint();
+        };
+    AppPreferences.CHRONO_BG_COLOR.addPropertyChangeListener(listener);
+    AppPreferences.CHRONO_SIGNAL_COLOR.addPropertyChangeListener(listener);
+    AppPreferences.CHRONO_LABEL_COLOR.addPropertyChangeListener(listener);
+    AppPreferences.CHRONO_ROW_BG_COLOR.addPropertyChangeListener(listener);
+    AppPreferences.CHRONO_SPOT_BG_COLOR.addPropertyChangeListener(listener);
   }
 
   private void configure() {
     final var n = model.getSignalCount();
     height = n * ChronoPanel.SIGNAL_HEIGHT;
-    setBackground(Color.WHITE);
+    setBackground(backgroundColor());
     final var timeScale = model.getTimeScale();
     final var numTicks = ((model.getEndTime() - model.getStartTime()) + timeScale - 1) / timeScale;
     width = (int) (tickWidth * numTicks + EXTRA_SPACE + 0.5);
@@ -257,6 +279,9 @@ public class RightPanel extends JPanel {
     }
   }
 
+  /** True while painting for export, when the diagram must stay light whatever the theme is. */
+  private boolean exporting = false;
+
   private void flushWaveforms() {
     for (final var w : rows) w.flush();
   }
@@ -268,7 +293,33 @@ public class RightPanel extends JPanel {
   }
 
   public void paintExportImage(Graphics2D gfx) {
-    paintPanel(gfx, width, height, true);
+    exporting = true;
+    try {
+      paintPanel(gfx, width, height, true);
+    } finally {
+      exporting = false;
+    }
+  }
+
+  /**
+   * Returns the diagram background.
+   *
+   * <p>An exported image keeps the light palette whatever the current theme is, because it is meant
+   * to be dropped into a document rather than viewed inside the application.
+   */
+  private Color backgroundColor() {
+    return new Color(
+        exporting
+            ? AppPreferences.DEFAULT_CHRONO_BG_COLOR
+            : AppPreferences.CHRONO_BG_COLOR.get());
+  }
+
+  /** Returns the colour of text drawn over the diagram, such as bus values and messages. */
+  private Color labelColor() {
+    return new Color(
+        exporting
+            ? AppPreferences.DEFAULT_CHRONO_LABEL_COLOR
+            : AppPreferences.CHRONO_LABEL_COLOR.get());
   }
 
   private void paintPanel(Graphics2D gfx, int paintWidth, int paintHeight, boolean export) {
@@ -276,9 +327,9 @@ public class RightPanel extends JPanel {
     gfx.setRenderingHint(
         RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
     gfx.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-    gfx.setColor(Color.WHITE);
+    gfx.setColor(backgroundColor());
     gfx.fillRect(0, 0, paintWidth, paintHeight); // entire viewport, not just (width, height)
-    gfx.setColor(Color.BLACK);
+    gfx.setColor(labelColor());
     if (rows.isEmpty()) {
       final var f = gfx.getFont();
       gfx.setFont(MSG_FONT);
@@ -293,7 +344,7 @@ public class RightPanel extends JPanel {
       return;
     }
     if (width > 32000) {
-      gfx.setColor(Color.BLACK);
+      gfx.setColor(labelColor());
       gfx.setFont(MSG_FONT);
       gfx.drawString("Oops! Chronogram is too large to display.", 15, 15);
       gfx.drawString("Try zooming out, or reset the simulation.", 15, 29);
@@ -575,7 +626,7 @@ public class RightPanel extends JPanel {
           }
         }
         if (x1 - x0 > labelWidth) {
-          g.setColor(Color.BLACK);
+          g.setColor(labelColor());
           g.drawString(v, x0 + 6, MID + 5);
         }
 
@@ -593,12 +644,12 @@ public class RightPanel extends JPanel {
       g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
       final var isBold = (model.getSpotlight() == signal);
       final var colors = chronoPanel.rowColors(signal.info, selected);
-      g.setColor(Color.WHITE);
+      g.setColor(backgroundColor());
       g.fillRect(0, 0, width, ChronoPanel.GAP - 1);
       g.fillRect(0, LOW, width, ChronoPanel.GAP - 1);
       g.setColor(colors[0]);
       g.fillRect(0, HIGH, width, LOW - HIGH);
-      g.setColor(Color.BLACK);
+      g.setColor(labelColor());
       drawSignal(g, isBold, colors);
     }
 

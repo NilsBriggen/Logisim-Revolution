@@ -3,6 +3,10 @@
 # Changes #
 
 * @dev (????-??-??)
+  * The timing diagram now follows the active theme. Waveforms, bus value labels, row
+    backgrounds and the signal name column were drawn in hardcoded black on white, which
+    left the chronogram unreadable in a dark look and feel. Exported images keep the
+    light palette so they still suit a printed document (@YOUR_GITHUB_HANDLE).
   * Improved canvas zooming and scrolling with a trackpad, which now follows the gesture
     smoothly instead of jumping a fixed step, and stopped the scroll position snapping
     back to the start at the end of its range [#1262] (@YOUR_GITHUB_HANDLE).
