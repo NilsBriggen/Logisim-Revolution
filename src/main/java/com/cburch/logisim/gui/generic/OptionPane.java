@@ -9,9 +9,25 @@
 
 package com.cburch.logisim.gui.generic;
 
+import static com.cburch.logisim.gui.Strings.S;
+
 import com.cburch.logisim.Main;
+import com.cburch.logisim.util.Spacing;
+import com.cburch.logisim.util.UiFonts;
+import com.cburch.logisim.util.UiScale;
+import java.awt.BorderLayout;
 import java.awt.Component;
+import java.awt.Dimension;
 import java.awt.Frame;
+import java.awt.KeyboardFocusManager;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import javax.swing.JButton;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.swing.SwingUtilities;
 import javax.swing.Icon;
 import javax.swing.JOptionPane;
 import org.slf4j.Logger;
@@ -41,6 +57,135 @@ public class OptionPane {
   public static final int CLOSED_OPTION = JOptionPane.CLOSED_OPTION;
 
   static final Logger logger = LoggerFactory.getLogger(OptionPane.class);
+
+  /** Width, in unscaled pixels, at which a long error message is wrapped. */
+  private static final int ERROR_MESSAGE_WIDTH = 380;
+
+  /** Size, in unscaled pixels, of the collapsible technical detail area. */
+  private static final int DETAILS_WIDTH = 460;
+
+  private static final int DETAILS_HEIGHT = 200;
+
+  /**
+   * Reports an error to the user.
+   *
+   * <p>Prefer this over {@link #showMessageDialog(Component, Object)} for failures: that overload
+   * produces a dialog with no title and no icon, so a bare exception message arrives with no
+   * indication of what failed.
+   *
+   * @param parentComponent The component the dialog belongs to; may be null.
+   * @param title           A short description of what failed.
+   * @param message         What went wrong, in terms the user can act on.
+   */
+  public static void showError(Component parentComponent, String title, String message) {
+    showError(parentComponent, title, message, null);
+  }
+
+  /**
+   * Reports an error to the user, with the underlying exception available on request.
+   *
+   * <p>The stack trace is hidden behind a "Details" button rather than shown inline: it is useful
+   * in a bug report but is noise to someone building a circuit.
+   *
+   * @param parentComponent The component the dialog belongs to; may be null.
+   * @param title           A short description of what failed.
+   * @param message         What went wrong, in terms the user can act on.
+   * @param cause           The underlying failure, or null if there is none to show.
+   */
+  public static void showError(
+      Component parentComponent, String title, String message, Throwable cause) {
+    if (!Main.hasGui()) {
+      if (cause == null) {
+        logger.error("{}: {}", title, message);
+      } else {
+        logger.error("{}: {}", title, message, cause);
+      }
+      return;
+    }
+
+    final var parent = resolveParent(parentComponent);
+    final var body = (cause == null) ? messageLabel(message) : detailPanel(message, cause);
+    JOptionPane.showMessageDialog(parent, body, title, ERROR_MESSAGE);
+  }
+
+  /** Wraps a message so a long line does not stretch the dialog across the screen. */
+  private static JLabel messageLabel(String message) {
+    final var label =
+        new JLabel(
+            "<html><body style='width:"
+                + UiScale.scaled(ERROR_MESSAGE_WIDTH)
+                + "px'>"
+                + escapeHtml(message)
+                + "</body></html>");
+    label.setBorder(Spacing.border(Spacing.XS));
+    return label;
+  }
+
+  /** Builds the message with a "Details" button revealing the stack trace. */
+  private static JPanel detailPanel(String message, Throwable cause) {
+    final var panel = new JPanel(new BorderLayout(0, Spacing.sm()));
+    panel.add(messageLabel(message), BorderLayout.NORTH);
+
+    final var trace = new JTextArea(stackTraceOf(cause));
+    trace.setEditable(false);
+    trace.setFont(UiFonts.mono());
+    trace.setCaretPosition(0);
+
+    final var scroller = new JScrollPane(trace);
+    scroller.setPreferredSize(
+        new Dimension(UiScale.scaled(DETAILS_WIDTH), UiScale.scaled(DETAILS_HEIGHT)));
+    scroller.setVisible(false);
+
+    final var toggle = new JButton(S.get("errorDetailsShow"));
+    toggle.addActionListener(
+        event -> {
+          final var showing = !scroller.isVisible();
+          scroller.setVisible(showing);
+          toggle.setText(S.get(showing ? "errorDetailsHide" : "errorDetailsShow"));
+          final var window = SwingUtilities.getWindowAncestor(panel);
+          if (window != null) window.pack();
+        });
+
+    final var toggleRow = new JPanel(new BorderLayout());
+    toggleRow.add(toggle, BorderLayout.WEST);
+
+    final var south = new JPanel(new BorderLayout(0, Spacing.xs()));
+    south.add(toggleRow, BorderLayout.NORTH);
+    south.add(scroller, BorderLayout.CENTER);
+    panel.add(south, BorderLayout.CENTER);
+    return panel;
+  }
+
+  /**
+   * Chooses the window a dialog should be attached to.
+   *
+   * <p>A dialog with no parent can open behind the main window, where the user never sees it while
+   * the application appears frozen. Fall back to whichever window currently has focus.
+   */
+  static Component resolveParent(Component parentComponent) {
+    if (parentComponent != null) {
+      final var ancestor = SwingUtilities.getWindowAncestor(parentComponent);
+      if (ancestor != null) return ancestor;
+      return parentComponent;
+    }
+    return KeyboardFocusManager.getCurrentKeyboardFocusManager().getActiveWindow();
+  }
+
+  /** Renders a throwable and its causes as text, for the detail area. */
+  static String stackTraceOf(Throwable cause) {
+    if (cause == null) return "";
+    final var writer = new StringWriter();
+    try (final var printer = new PrintWriter(writer)) {
+      cause.printStackTrace(printer);
+    }
+    return writer.toString();
+  }
+
+  /** Escapes the few characters that would otherwise be read as markup by the HTML label. */
+  static String escapeHtml(String text) {
+    if (text == null) return "";
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+  }
 
   /**
    * Displays a message dialog with the specified message.

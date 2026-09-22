@@ -3,6 +3,10 @@
 # Changes #
 
 * @dev (????-??-??)
+  * Errors are now reported with a title, an error icon and, where there is one, the
+    underlying exception behind a Details button, instead of a bare message with no
+    indication of what failed. A dialog with no parent window no longer opens behind the
+    application (@YOUR_GITHUB_HANDLE).
   * Fixed the interface being scaled twice on high-DPI displays. The default scale was the
     screen height divided by a thousand, applied on top of the scaling the operating
     system already performs. It now defers to the platform, and a stored scale that the
