@@ -23,6 +23,7 @@ import java.awt.RenderingHints;
 import java.awt.event.MouseEvent;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
+import javax.swing.UIManager;
 
 public class HorizontalSplitPane extends JPanel {
   abstract static class Dragbar extends JComponent
@@ -74,7 +75,7 @@ public class HorizontalSplitPane extends JPanel {
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
       }
       if (dragging) {
-        g.setColor(DRAG_COLOR);
+        g.setColor(getDragColor());
         g.fillRect(0, 0, getWidth(), getHeight());
       }
     }
@@ -161,7 +162,22 @@ public class HorizontalSplitPane extends JPanel {
 
   static final int DRAG_TOLERANCE = 3;
 
-  private static final Color DRAG_COLOR = new Color(0, 0, 0, 128);
+  /** Fallback used when the look and feel provides no accent color. */
+  private static final Color DEFAULT_DRAG_COLOR = new Color(0, 0, 0, 128);
+
+  /**
+   * Returns the translucent overlay painted over the divider while it is being dragged. Derived from
+   * the active look and feel so the indicator stays visible in both light and dark themes.
+   */
+  private static Color getDragColor() {
+    for (final var key : new String[] {"Component.focusColor", "Separator.foreground"}) {
+      final var color = UIManager.getColor(key);
+      if (color != null) {
+        return new Color(color.getRed(), color.getGreen(), color.getBlue(), 128);
+      }
+    }
+    return DEFAULT_DRAG_COLOR;
+  }
 
   private final JComponent comp0;
   private final JComponent comp1;

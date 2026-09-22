@@ -213,7 +213,7 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     simPanel.add(simExplorer, BorderLayout.CENTER);
 
     topTab = new JTabbedPane();
-    topTab.setFont(new Font(fontName, fontStyle, 9));
+    topTab.setFont(AppPreferences.getScaledFont(new Font(fontName, fontStyle, 9)));
     topTab.add(explPanel);
     topTab.add(simPanel);
 

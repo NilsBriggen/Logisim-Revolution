@@ -3,6 +3,10 @@
 # Changes #
 
 * @dev (????-??-??)
+  * Fixed the Design/Simulate tab labels ignoring the UI scale preference, which left them
+    unreadably small on high-DPI displays (@YOUR_GITHUB_HANDLE).
+  * Made the split pane drag indicator follow the active theme so it stays visible in dark
+    look and feels (@YOUR_GITHUB_HANDLE).
   * Fixed loss of custom appearance when merging circuits into a project (@V-Zemlyakov).
 
 * v5.0.0 (2026-09-12)
