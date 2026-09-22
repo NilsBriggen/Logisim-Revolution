@@ -3,6 +3,11 @@
 # Changes #
 
 * @dev (????-??-??)
+  * Fixed the interface being scaled twice on high-DPI displays. The default scale was the
+    screen height divided by a thousand, applied on top of the scaling the operating
+    system already performs. It now defers to the platform, and a stored scale that the
+    old formula chose is corrected once, leaving a scale you picked yourself alone
+    (@YOUR_GITHUB_HANDLE).
   * Gave the preferences and project options panels consistent padding, so their contents no
     longer sit flush against the dialog edge (@YOUR_GITHUB_HANDLE).
   * The timing diagram now follows the active theme. Waveforms, bus value labels, row

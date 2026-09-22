@@ -854,11 +854,60 @@ public class AppPreferences {
   public static final PrefMonitor<Boolean> NEW_INPUT_OUTPUT_SHAPES =
       create(new PrefMonitorBooleanConvert("oldIO", true));
 
+  /** Screen height, in pixels, above which an unscaled display is treated as high resolution. */
+  private static final double TALL_SCREEN_THRESHOLD = 1600.0;
+
+  /**
+   * Returns the scale the platform already applies to the interface.
+   *
+   * <p>On a display the operating system scales, Java2D scales the whole interface itself, so this
+   * is greater than one and the application must not scale a second time.
+   */
+  public static double getPlatformScaleFactor() {
+    if (GraphicsEnvironment.isHeadless()) return 1.0;
+    try {
+      final var transform =
+          GraphicsEnvironment.getLocalGraphicsEnvironment()
+              .getDefaultScreenDevice()
+              .getDefaultConfiguration()
+              .getDefaultTransform();
+      final var scale = transform.getScaleX();
+      return (scale > 0.0) ? scale : 1.0;
+    } catch (Exception ignored) {
+      // Some headless-like environments expose no usable screen device.
+      return 1.0;
+    }
+  }
+
+  /**
+   * Returns the interface scale to use when the user has not chosen one.
+   *
+   * <p>This used to be the screen height divided by a thousand, which double-scaled on any display
+   * the operating system already scales: the interface was enlarged once by Java2D and again by the
+   * application. Defer to the platform where it scales, and only fall back to a size-based guess on
+   * a high resolution display that is not being scaled at all, where the interface would otherwise
+   * be uncomfortably small.
+   */
   public static double getAutoScaleFactor() {
-    return (((!GraphicsEnvironment.isHeadless())
-        ? Toolkit.getDefaultToolkit().getScreenSize().getHeight()
-        : 0)
-        / 1000);
+    if (GraphicsEnvironment.isHeadless()) return 1.0;
+    if (getPlatformScaleFactor() > 1.0) return 1.0;
+
+    final var height = Toolkit.getDefaultToolkit().getScreenSize().getHeight();
+    return (height >= TALL_SCREEN_THRESHOLD) ? height / 1000.0 : 1.0;
+  }
+
+  /** Returns the scale the old screen-height heuristic would have produced, for migration. */
+  static double getLegacyAutoScaleFactor() {
+    return (GraphicsEnvironment.isHeadless()
+            ? 0.0
+            : Toolkit.getDefaultToolkit().getScreenSize().getHeight())
+        / 1000.0;
+  }
+
+  static {
+    // Must run before SCALE_FACTOR is created below: the monitor caches the stored value as it is
+    // constructed, and static initialisers run in source order.
+    migrateScaleFactor();
   }
 
   public static final PrefMonitor<Double> SCALE_FACTOR =
@@ -868,6 +917,35 @@ public class AppPreferences {
               Math.max(
                   getAutoScaleFactor(),
                   1.0)));
+  /** Preference recording that the stored interface scale has been checked for double-scaling. */
+  private static final String SCALE_FACTOR_MIGRATED = "scaleFactorHiDpiMigrated";
+
+  /** Tolerance when recognising a stored scale as one the old heuristic produced. */
+  private static final double SCALE_MATCH_EPSILON = 1.0e-6;
+
+  /**
+   * Clears an interface scale that the old screen-height heuristic chose on a display the platform
+   * already scales.
+   *
+   * <p>Such a scale was never a deliberate choice by the user, and leaving it in place would keep
+   * double-scaling the interface. A scale the user picked themselves is left alone, as is one that
+   * is still the right answer for this display.
+   */
+  private static void migrateScaleFactor() {
+    final var prefs = getPrefs();
+    if (prefs.getBoolean(SCALE_FACTOR_MIGRATED, false)) return;
+    prefs.putBoolean(SCALE_FACTOR_MIGRATED, true);
+
+    if (GraphicsEnvironment.isHeadless()) return;
+    if (getPlatformScaleFactor() <= 1.0) return;
+
+    final var stored = prefs.getDouble("Scale", 1.0);
+    final var legacy = Math.max(getLegacyAutoScaleFactor(), 1.0);
+    if (Math.abs(stored - legacy) < SCALE_MATCH_EPSILON && stored > 1.0) {
+      prefs.putDouble("Scale", getAutoScaleFactor());
+    }
+  }
+
   public static final PrefMonitor<String> ADD_AFTER =
       create(
           new PrefMonitorStringOpts(
