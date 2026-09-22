@@ -13,6 +13,7 @@ import static com.cburch.logisim.analyze.Strings.S;
 
 import com.cburch.logisim.analyze.data.CsvInterpretor;
 import com.cburch.logisim.analyze.data.CsvParameter;
+import com.cburch.logisim.gui.generic.Dialogs;
 import com.cburch.logisim.gui.generic.OptionPane;
 import com.cburch.logisim.prefs.AppPreferences;
 import java.awt.Color;
@@ -56,6 +57,8 @@ public class CsvReadParameterDialog extends JDialog implements ActionListener {
     final String[] possibleQuotes = {"\"", "'"};
     okButton = new JButton(S.get("ConfirmCsvParameters"));
     okButton.addActionListener(this);
+    getRootPane().setDefaultButton(okButton);
+    Dialogs.installEscapeToClose(this);
     quotes = new JComboBox<>(possibleQuotes);
     quotes.addActionListener(this);
     seperators = new JComboBox<>(possibleSeperators);

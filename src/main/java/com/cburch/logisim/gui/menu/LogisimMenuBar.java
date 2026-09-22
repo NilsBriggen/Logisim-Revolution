@@ -216,6 +216,7 @@ public class LogisimMenuBar extends JMenuBar {
       fpga.localeChanged();
       simulate.localeChanged();
       help.localeChanged();
+      MenuMnemonics.assign(LogisimMenuBar.this);
     }
   }
 }

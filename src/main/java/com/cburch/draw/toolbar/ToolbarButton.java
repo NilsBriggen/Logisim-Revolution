@@ -64,6 +64,8 @@ class ToolbarButton extends JButton {
 
     setIcon(new ItemIcon());
     setToolTipText("");
+    // Icon-only, so a screen reader would otherwise have nothing to announce.
+    getAccessibleContext().setAccessibleName(item == null ? null : item.getToolTip());
     // Deliberately left enabled: disabling would make Swing substitute an automatically derived
     // disabled icon, which would change how decorations such as separators are drawn.
     setFocusable(interactive);

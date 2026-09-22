@@ -11,6 +11,7 @@ package com.cburch.logisim.proj;
 
 import static com.cburch.logisim.proj.Strings.S;
 
+import com.cburch.logisim.gui.generic.Dialogs;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDateTime;
@@ -72,6 +73,7 @@ public class ProjectBundleReadme extends JDialog implements ActionListener {
     super(project.getFrame(), S.get("projBundleReadmeWindow"));
     setModal(true);
     setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+    Dialogs.installEscapeToClose(this);
     setAlwaysOnTop(true);
     setVisible(false);
     closeButton.addActionListener(this);

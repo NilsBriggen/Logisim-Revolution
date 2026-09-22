@@ -21,6 +21,7 @@ import com.cburch.logisim.circuit.appear.DynamicElement;
 import com.cburch.logisim.circuit.appear.DynamicElementProvider;
 import com.cburch.logisim.data.Bounds;
 import com.cburch.logisim.data.Location;
+import com.cburch.logisim.gui.generic.Dialogs;
 import com.cburch.logisim.instance.InstanceComponent;
 import com.cburch.logisim.instance.StdAttr;
 import java.awt.BorderLayout;
@@ -67,6 +68,8 @@ public class ShowStateDialog extends JDialog implements ActionListener {
     cancel = new JButton(S.get("showStateDialogCancelButton"));
     ok.addActionListener(this);
     cancel.addActionListener(this);
+    getRootPane().setDefaultButton(ok);
+    Dialogs.installEscapeToClose(this);
     final var buttonPanel = new JPanel();
     buttonPanel.add(ok);
     buttonPanel.add(cancel);

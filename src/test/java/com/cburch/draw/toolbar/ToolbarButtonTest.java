@@ -101,6 +101,16 @@ public class ToolbarButtonTest extends TestBase {
   }
 
   @Test
+  public void announcesItsToolTipAsAccessibleName() {
+    final var model = new RecordingModel();
+    final var item = new FakeItem(true, 16, 16);
+    model.items.add(item);
+    final var button = new ToolbarButton(new Toolbar(model), item);
+
+    assertEquals("tip", button.getAccessibleContext().getAccessibleName());
+  }
+
+  @Test
   public void minimumAndMaximumSizeMatchPreferredSize() {
     final var model = new RecordingModel();
     final var item = new FakeItem(true, 20, 12);

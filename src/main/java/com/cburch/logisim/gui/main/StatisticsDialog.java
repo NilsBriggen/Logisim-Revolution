@@ -14,6 +14,7 @@ import static com.cburch.logisim.gui.Strings.S;
 import com.cburch.logisim.circuit.Circuit;
 import com.cburch.logisim.file.FileStatistics;
 import com.cburch.logisim.file.LogisimFile;
+import com.cburch.logisim.gui.generic.Dialogs;
 import com.cburch.logisim.tools.Library;
 import com.cburch.logisim.util.TableSorter;
 import java.awt.BorderLayout;
@@ -46,6 +47,8 @@ public class StatisticsDialog extends JDialog implements ActionListener {
 
     var button = new JButton(S.get("statsCloseButton"));
     button.addActionListener(this);
+    getRootPane().setDefaultButton(button);
+    Dialogs.installEscapeToClose(this);
     var buttonPanel = new JPanel();
     buttonPanel.add(button);
 

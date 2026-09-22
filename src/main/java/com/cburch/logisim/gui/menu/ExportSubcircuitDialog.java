@@ -12,6 +12,7 @@ package com.cburch.logisim.gui.menu;
 import static com.cburch.logisim.gui.Strings.S;
 
 import com.cburch.logisim.circuit.Circuit;
+import com.cburch.logisim.gui.generic.Dialogs;
 import com.cburch.logisim.gui.generic.OptionPane;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
@@ -101,6 +102,8 @@ public class ExportSubcircuitDialog extends JDialog implements ActionListener {
     okButton.setActionCommand("OK");
     okButton.addActionListener(this);
     okButton.setMargin(new java.awt.Insets(4, 16, 4, 16));
+    getRootPane().setDefaultButton(okButton);
+    Dialogs.installEscapeToClose(this);
 
     final var cancelButton = new JButton(S.get("showStateDialogCancelButton"));
     cancelButton.setActionCommand("CANCEL");

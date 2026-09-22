@@ -3,6 +3,10 @@
 # Changes #
 
 * @dev (????-??-??)
+  * Dialogs now close on Escape and accept Enter for their OK button, the menu bar can be
+    opened from the keyboard through Alt with a letter of each menu title in any language,
+    toolbar buttons announce their name to screen readers, and an attribute value that is
+    too long for its column is shown in full as a tooltip (@YOUR_GITHUB_HANDLE).
   * Every menu shortcut can now be changed in the hotkey settings, including New, Open,
     Save, Cut, Copy, Paste and the others that used to be fixed. Preferences, Add Circuit,
     Analyze Circuit, Circuit Statistics and Project Options gained shortcuts. Reset to

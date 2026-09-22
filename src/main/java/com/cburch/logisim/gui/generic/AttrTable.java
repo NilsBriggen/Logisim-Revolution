@@ -22,6 +22,7 @@ import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.Point;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -76,7 +77,15 @@ public class AttrTable extends JPanel implements LocaleListener {
     title.setHorizontalAlignment(SwingConstants.CENTER);
     title.setVerticalAlignment(SwingConstants.CENTER);
     tableModel = new TableModelAdapter(parent, NULL_ATTR_MODEL);
-    table = new JTable(tableModel);
+    table =
+        new JTable(tableModel) {
+          private static final long serialVersionUID = 1L;
+
+          @Override
+          public String getToolTipText(MouseEvent event) {
+            return elidedCellText(this, event.getPoint());
+          }
+        };
     table.setDefaultEditor(Object.class, editor);
     table.setTableHeader(null);
     table.setRowHeight(AppPreferences.getScaled(AppPreferences.BOX_SIZE));
@@ -279,6 +288,23 @@ public class AttrTable extends JPanel implements LocaleListener {
     public void okClicked() {
       value = input.getValue();
     }
+  }
+
+  /**
+   * Returns the full text of the cell at {@code point} when the column is too narrow to show all
+   * of it, so it can serve as a tooltip; {@code null} when the cell is fully visible or absent.
+   */
+  static String elidedCellText(JTable table, Point point) {
+    final var row = table.rowAtPoint(point);
+    final var column = table.columnAtPoint(point);
+    if (row < 0 || column < 0) return null;
+    final var value = table.getValueAt(row, column);
+    if (value == null) return null;
+    final var text = value.toString();
+    if (text.isEmpty()) return null;
+    final var renderer = table.prepareRenderer(table.getCellRenderer(row, column), row, column);
+    final var available = table.getCellRect(row, column, false).width;
+    return renderer.getPreferredSize().width > available ? text : null;
   }
 
   private static class NullAttrModel implements AttrTableModel {

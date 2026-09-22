@@ -14,6 +14,7 @@ import static com.cburch.logisim.fpga.Strings.S;
 import com.cburch.logisim.fpga.data.FpgaIoInformationContainer;
 import com.cburch.logisim.fpga.data.MapComponent;
 import com.cburch.logisim.fpga.data.MapListModel;
+import com.cburch.logisim.gui.generic.Dialogs;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.util.LocaleListener;
 
@@ -87,6 +88,8 @@ public class PartialMapDialog extends JDialog implements LocaleListener, ActionL
     OkButton = new JButton();
     OkButton.setActionCommand(actionOk);
     OkButton.addActionListener(this);
+    getRootPane().setDefaultButton(OkButton);
+    Dialogs.installEscapeToClose(this);
     buttonBar.add(OkButton, BorderLayout.CENTER);
     CancelButton = new JButton();
     CancelButton.setActionCommand(actionCancel);

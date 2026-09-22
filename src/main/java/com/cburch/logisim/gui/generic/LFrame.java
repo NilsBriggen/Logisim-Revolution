@@ -82,6 +82,7 @@ public class LFrame extends JFrame implements WindowClosable {
 
     public Dialog(Project p) { // may be null
       super(TYPE_DIALOG, p, false);
+      Dialogs.installEscapeToClose(this);
     }
   }
 
