@@ -3,6 +3,8 @@
 # Changes #
 
 * @dev (????-??-??)
+  * Gave the preferences and project options panels consistent padding, so their contents no
+    longer sit flush against the dialog edge (@YOUR_GITHUB_HANDLE).
   * The timing diagram now follows the active theme. Waveforms, bus value labels, row
     backgrounds and the signal name column were drawn in hardcoded black on white, which
     left the chronogram unreadable in a dark look and feel. Exported images keep the

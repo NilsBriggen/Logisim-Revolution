@@ -11,6 +11,7 @@ package com.cburch.logisim.gui.opts;
 
 import com.cburch.logisim.file.Options;
 import com.cburch.logisim.proj.Project;
+import com.cburch.logisim.util.Spacing;
 import java.awt.LayoutManager;
 import javax.swing.JPanel;
 
@@ -21,11 +22,13 @@ abstract class OptionsPanel extends JPanel {
   public OptionsPanel(OptionsFrame frame) {
     super();
     this.optionsFrame = frame;
+    setBorder(Spacing.panelBorder());
   }
 
   public OptionsPanel(OptionsFrame frame, LayoutManager manager) {
     super(manager);
     this.optionsFrame = frame;
+    setBorder(Spacing.panelBorder());
   }
 
   public abstract String getHelpText();
