@@ -64,9 +64,9 @@ public class VerticalSplitPane extends JPanel {
       compLeft.setBounds(in.left, in.top, split, maxHeight);
       compRight.setBounds(in.left + split, in.top, maxWidth - split, maxHeight);
       dragbar.setBounds(
-          in.left + split - HorizontalSplitPane.DRAG_TOLERANCE,
+          in.left + split - HorizontalSplitPane.dragTolerance(),
           in.top,
-          2 * HorizontalSplitPane.DRAG_TOLERANCE,
+          2 * HorizontalSplitPane.dragTolerance(),
           maxHeight);
     }
 

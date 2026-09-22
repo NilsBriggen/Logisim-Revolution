@@ -11,6 +11,7 @@ package com.cburch.logisim.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import javax.swing.JPanel;
 import org.junit.jupiter.api.Test;
@@ -58,6 +59,21 @@ class HorizontalSplitPaneTest {
 
     pane.setFraction(1.0);
     assertEquals(1.0, pane.getFraction(), FRACTION_DELTA);
+  }
+
+  /** A fixed six pixel target is hard to hit once the interface is scaled up. */
+  @Test
+  void dragToleranceFollowsTheScaleFactor() {
+    try {
+      UiScaleTestSupport.setScaleFactor(1.0);
+      final var base = HorizontalSplitPane.dragTolerance();
+      assertTrue(base > 0);
+
+      UiScaleTestSupport.setScaleFactor(2.0);
+      assertEquals(2 * base, HorizontalSplitPane.dragTolerance());
+    } finally {
+      UiScaleTestSupport.setScaleFactor(1.0);
+    }
   }
 
   @Test

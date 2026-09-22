@@ -39,6 +39,9 @@ import com.cburch.logisim.gui.generic.ZoomControl;
 import com.cburch.logisim.gui.generic.ZoomModel;
 import com.cburch.logisim.gui.menu.MainMenuListener;
 import com.cburch.logisim.prefs.AppPreferences;
+import com.formdev.flatlaf.FlatClientProperties;
+import com.cburch.logisim.util.UiFonts;
+import com.cburch.logisim.util.Spacing;
 import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.proj.ProjectActions;
 import com.cburch.logisim.proj.ProjectEvent;
@@ -59,7 +62,6 @@ import com.cburch.logisim.vhdl.gui.VhdlSimulatorConsole;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Container;
-import java.awt.Font;
 import java.awt.GraphicsEnvironment;
 import java.awt.IllegalComponentStateException;
 import java.awt.Point;
@@ -181,14 +183,7 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     toolbox = new Toolbox(project, this, menuListener);
     simExplorer = new SimulationExplorer(project, menuListener);
     bottomTab = new JTabbedPane();
-    var fontName = "Dialog";
-    final var appFont = AppPreferences.APP_FONT.get();
-    if (appFont != null && !appFont.isBlank()) {
-      fontName = appFont;
-    }
-
-    var fontStyle = AppPreferences.getPreferredFontStyle(fontName);
-    bottomTab.setFont(AppPreferences.getScaledFont(new Font(fontName, fontStyle, 9)));
+    styleDockTabs(bottomTab);
     bottomTab.add(attrTable = new AttrTable(this));
     regTabContent = new RegTabContent(this);
     bottomTab.add(regTabContent);
@@ -213,11 +208,12 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     simPanel.add(simExplorer, BorderLayout.CENTER);
 
     topTab = new JTabbedPane();
-    topTab.setFont(AppPreferences.getScaledFont(new Font(fontName, fontStyle, 9)));
+    styleDockTabs(topTab);
     topTab.add(explPanel);
     topTab.add(simPanel);
 
     final var attrFooter = new JPanel(new BorderLayout());
+    attrFooter.setBorder(Spacing.border(Spacing.XS));
     attrFooter.add(zoom);
 
     final var bottomTabAndZoom = new JPanel(new BorderLayout());
@@ -309,6 +305,19 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
       }
       event.dropComplete(success);
     }
+  }
+
+  /**
+   * Applies the shared appearance to one of the docked tab strips.
+   *
+   * <p>The font comes from {@link UiFonts} so the tabs follow the look and feel and the interface
+   * scale, which the previous fixed nine point font did not. The card styling is a hint that FlatLaf
+   * themes honour and other look and feels ignore.
+   */
+  private static void styleDockTabs(JTabbedPane tabs) {
+    tabs.setFont(UiFonts.body());
+    tabs.putClientProperty(FlatClientProperties.TABBED_PANE_TAB_TYPE,
+        FlatClientProperties.TABBED_PANE_TAB_TYPE_CARD);
   }
 
   private void installFileDropTargets() {

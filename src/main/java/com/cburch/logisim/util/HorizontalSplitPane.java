@@ -77,6 +77,29 @@ public class HorizontalSplitPane extends JPanel {
       if (dragging) {
         g.setColor(getDragColor());
         g.fillRect(0, 0, getWidth(), getHeight());
+      } else {
+        paintRestingDivider(g);
+      }
+    }
+
+    /**
+     * Draws a hairline where the divider sits.
+     *
+     * <p>Without it the two panes run together, because the drag bar is otherwise invisible until
+     * it is grabbed.
+     */
+    private void paintRestingDivider(Graphics g) {
+      final var color = UIManager.getColor("Separator.foreground");
+      if (color == null) return;
+      g.setColor(color);
+      final var width = getWidth();
+      final var height = getHeight();
+      if (height <= width) {
+        final var y = height / 2;
+        g.drawLine(0, y, width, y);
+      } else {
+        final var x = width / 2;
+        g.drawLine(x, 0, x, height);
       }
     }
 
@@ -130,7 +153,7 @@ public class HorizontalSplitPane extends JPanel {
 
       comp0.setBounds(in.left, in.top, maxWidth, split);
       comp1.setBounds(in.left, in.top + split, maxWidth, maxHeight - split);
-      dragbar.setBounds(in.left, in.top + split - DRAG_TOLERANCE, maxWidth, 2 * DRAG_TOLERANCE);
+      dragbar.setBounds(in.left, in.top + split - dragTolerance(), maxWidth, 2 * dragTolerance());
     }
 
     @Override
@@ -160,7 +183,17 @@ public class HorizontalSplitPane extends JPanel {
 
   private static final long serialVersionUID = 1L;
 
-  static final int DRAG_TOLERANCE = 3;
+  /** Unscaled half-height of the region that accepts a drag on the divider. */
+  private static final int DRAG_TOLERANCE_BASE = 3;
+
+  /**
+   * Returns half the thickness of the divider's grab region, in device pixels.
+   *
+   * <p>Scaled, because a fixed six pixel target is hard to hit on a high-DPI display.
+   */
+  static int dragTolerance() {
+    return UiScale.scaled(DRAG_TOLERANCE_BASE);
+  }
 
   /** Fallback used when the look and feel provides no accent color. */
   private static final Color DEFAULT_DRAG_COLOR = new Color(0, 0, 0, 128);

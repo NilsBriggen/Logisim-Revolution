@@ -3,6 +3,9 @@
 # Changes #
 
 * @dev (????-??-??)
+  * Polished the main window chrome: the split pane divider is now visible at rest and its
+    grab area follows the interface scale, and the docked tab strips use the shared
+    typographic scale instead of a fixed nine point font (@YOUR_GITHUB_HANDLE).
   * Toolbar items now respond to the pointer, with hover, pressed and selected states drawn
     from the active theme instead of a hardcoded grey rectangle, and separators follow the
     theme's separator colour (@YOUR_GITHUB_HANDLE).
