@@ -12,6 +12,7 @@ package com.cburch.logisim.gui.log;
 import static com.cburch.logisim.gui.Strings.S;
 
 import com.cburch.logisim.util.GraphicsUtil;
+import com.cburch.logisim.util.UiFonts;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -27,8 +28,21 @@ import javax.swing.event.ChangeListener;
 
 class TablePanel extends LogPanel {
   private static final long serialVersionUID = 1L;
-  private static final Font HEAD_FONT = new Font("Serif", Font.BOLD, 14);
-  private static final Font BODY_FONT = new Font("Serif", Font.PLAIN, 14);
+  /**
+   * Returns the font for column headers.
+   *
+   * <p>Derived per call rather than cached in a constant so that a look and feel change or a new
+   * interface scale is picked up without restarting.
+   */
+  private static Font headFont() {
+    return UiFonts.bodyBold();
+  }
+
+  /** Returns the font for cell values, monospaced so that columns of values line up. */
+  private static Font bodyFont() {
+    return UiFonts.mono();
+  }
+
   private static final int COLUMN_SEP = 8;
   private static final int HEADER_SEP = 4;
   private final MyListener myListener = new MyListener();
@@ -110,7 +124,7 @@ class TablePanel extends LogPanel {
         cellHeight = 16;
         cellWidth = 24;
       } else {
-        final var fm = g.getFontMetrics(HEAD_FONT);
+        final var fm = g.getFontMetrics(headFont());
         cellHeight = fm.getHeight();
         cellWidth = 24;
         for (int i = 0; i < columns; i++) {
@@ -137,7 +151,7 @@ class TablePanel extends LogPanel {
       if (model == null) return;
       final var columns = model.getSignalCount();
       if (columns == 0) {
-        g.setFont(BODY_FONT);
+        g.setFont(bodyFont());
         GraphicsUtil.drawCenteredText(g, S.get("tableEmptyMessage"), sz.width / 2, sz.height / 2);
         return;
       }
@@ -147,14 +161,14 @@ class TablePanel extends LogPanel {
       g.drawLine(left, lineY, left + tableWidth, lineY);
 
       g.setColor(Color.BLACK);
-      g.setFont(HEAD_FONT);
+      g.setFont(headFont());
       final var headerMetric = g.getFontMetrics();
       var x = left;
       final var y = top + headerMetric.getAscent() + 1;
       for (var i = 0; i < columns; i++) {
         x = paintHeader(model.getItem(i).getShortName(), x, y, g, headerMetric);
       }
-      g.setFont(BODY_FONT);
+      g.setFont(bodyFont());
       // FIXME: commented out code - can we remove it?
       // final var bodyMetric = g.getFontMetrics();
       // final var clip = g.getClipBounds();

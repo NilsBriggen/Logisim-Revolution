@@ -3,6 +3,9 @@
 # Changes #
 
 * @dev (????-??-??)
+  * Replaced the fixed size Serif and monospaced fonts in the log tables, truth table,
+    assembler and FPGA windows with a shared typographic scale that follows the look and
+    feel and the interface scale preference (@YOUR_GITHUB_HANDLE).
   * Fixed the Design/Simulate tab labels ignoring the UI scale preference, which left them
     unreadably small on high-DPI displays (@YOUR_GITHUB_HANDLE).
   * Made the split pane drag indicator follow the active theme so it stays visible in dark

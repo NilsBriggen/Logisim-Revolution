@@ -23,6 +23,7 @@ import com.cburch.logisim.gui.menu.LogisimMenuBar;
 import com.cburch.logisim.gui.menu.PrintHandler;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.util.GraphicsUtil;
+import com.cburch.logisim.util.UiFonts;
 import com.cburch.logisim.util.LocaleListener;
 import com.cburch.logisim.util.LocaleManager;
 import java.awt.Canvas;
@@ -489,7 +490,9 @@ class TableTab extends AnalyzerTab implements Entry.EntryChangedListener {
   private void updateScale() {
     final var baseSize = 18.0f;
     final var scaledSize = (float) (AppPreferences.getScaled(baseSize) * zoomFactor);
-    final var myFont = new Font("Serif", Font.PLAIN, (int) scaledSize);
+    // Size is computed above from the zoom factor, so derive it explicitly rather than letting
+    // UiFonts apply the interface scale a second time.
+    final var myFont = UiFonts.body().deriveFont(Font.PLAIN, scaledSize);
     headFont = myFont.deriveFont(Font.BOLD);
     bodyFont = myFont;
     headerPadding = (int) (AppPreferences.getScaled(10) * zoomFactor);

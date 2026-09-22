@@ -11,8 +11,8 @@ package com.cburch.logisim.analyze.gui;
 
 import static com.cburch.logisim.analyze.Strings.S;
 
+import com.cburch.logisim.util.UiFonts;
 import java.awt.BorderLayout;
-import java.awt.Font;
 import java.awt.Color;
 
 import javax.swing.JButton;
@@ -47,7 +47,7 @@ public class MinimizeButton  extends JButton {
     if (choice != OptionPane.YES_OPTION) return;
     final var info = new JTextArea(20, 80);
     info.setEditable(false);
-    info.setFont(new Font("monospaced", Font.PLAIN, 12));
+    info.setFont(UiFonts.mono());
     info.setForeground(Color.WHITE);
     info.setBackground(Color.BLACK);
     final var caret = (DefaultCaret) info.getCaret();

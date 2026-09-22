@@ -14,6 +14,7 @@ import static com.cburch.logisim.gui.Strings.S;
 import com.cburch.logisim.data.BitWidth;
 import com.cburch.logisim.data.Value;
 import com.cburch.logisim.util.GraphicsUtil;
+import com.cburch.logisim.util.UiFonts;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -33,8 +34,21 @@ import javax.swing.event.ChangeListener;
 public class ValueTable extends JPanel {
 
   private static final long serialVersionUID = 1L;
-  private static final Font HEAD_FONT = new Font("Serif", Font.BOLD, 14);
-  private static final Font BODY_FONT = new Font("Monospaced", Font.PLAIN, 14);
+  /**
+   * Returns the font for column headers.
+   *
+   * <p>Derived per call rather than cached in a constant so that a look and feel change or a new
+   * interface scale is picked up without restarting.
+   */
+  private static Font headFont() {
+    return UiFonts.bodyBold();
+  }
+
+  /** Returns the font for cell values, monospaced so that columns of values line up. */
+  private static Font bodyFont() {
+    return UiFonts.mono();
+  }
+
   private static final int COLUMN_SEP = 8;
   private static final int HEADER_SEP = 4;
   private final TableHeader header;
@@ -100,8 +114,8 @@ public class ValueTable extends JPanel {
         }
         cellsWidth = default_width * columns;
       } else {
-        final var headerMetric = g.getFontMetrics(HEAD_FONT);
-        final var bodyMetric = g.getFontMetrics(BODY_FONT);
+        final var headerMetric = g.getFontMetrics(headFont());
+        final var bodyMetric = g.getFontMetrics(bodyFont());
         cellHeight = Math.max(headerMetric.getHeight(), bodyMetric.getHeight());
         for (var i = 0; i < columns; i++) {
           final var radix = model.getColumnValueRadix(i);
@@ -372,7 +386,7 @@ public class ValueTable extends JPanel {
       final var sz = getSize();
 
       g.setColor(Color.BLACK);
-      g.setFont(BODY_FONT);
+      g.setFont(bodyFont());
 
       final var columns = model == null ? 0 : model.getColumnCount();
       if (columns == 0) {
@@ -469,7 +483,7 @@ public class ValueTable extends JPanel {
         return;
       }
 
-      g.setFont(HEAD_FONT);
+      g.setFont(headFont());
       final var headerMetric = g.getFontMetrics();
       final var top = 0;
       final var left = Math.max(0, (sz.width - tableWidth) / 2);
