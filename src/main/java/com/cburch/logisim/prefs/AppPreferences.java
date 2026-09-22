@@ -1253,6 +1253,33 @@ public class AppPreferences {
           KeyEvent.VK_Z, InputEvent.SHIFT_DOWN_MASK | hotkeyMenuMask,
           true, true));
 
+  public static final PrefMonitor<KeyStroke> HOTKEY_EDIT_CUT =
+      create(new PrefMonitorKeyStroke("hotkeyEditCut", KeyEvent.VK_X, hotkeyMenuMask, true, true));
+
+  public static final PrefMonitor<KeyStroke> HOTKEY_EDIT_COPY =
+      create(new PrefMonitorKeyStroke("hotkeyEditCopy", KeyEvent.VK_C, hotkeyMenuMask, true, true));
+
+  public static final PrefMonitor<KeyStroke> HOTKEY_EDIT_PASTE =
+      create(new PrefMonitorKeyStroke("hotkeyEditPaste", KeyEvent.VK_V, hotkeyMenuMask, true, true));
+
+  public static final PrefMonitor<KeyStroke> HOTKEY_EDIT_DELETE =
+      create(new PrefMonitorKeyStroke("hotkeyEditDelete", KeyEvent.VK_DELETE, 0, false, true));
+
+  public static final PrefMonitor<KeyStroke> HOTKEY_EDIT_SELECT_ALL =
+      create(new PrefMonitorKeyStroke("hotkeyEditSelectAll", KeyEvent.VK_A, hotkeyMenuMask, true, true));
+
+  public static final PrefMonitor<KeyStroke> HOTKEY_EDIT_RAISE =
+      create(new PrefMonitorKeyStroke("hotkeyEditRaise", KeyEvent.VK_UP, hotkeyMenuMask, true, true));
+
+  public static final PrefMonitor<KeyStroke> HOTKEY_EDIT_LOWER =
+      create(new PrefMonitorKeyStroke("hotkeyEditLower", KeyEvent.VK_DOWN, hotkeyMenuMask, true, true));
+
+  public static final PrefMonitor<KeyStroke> HOTKEY_EDIT_RAISE_TOP =
+      create(new PrefMonitorKeyStroke("hotkeyEditRaiseTop", KeyEvent.VK_UP, InputEvent.SHIFT_DOWN_MASK | hotkeyMenuMask, true, true));
+
+  public static final PrefMonitor<KeyStroke> HOTKEY_EDIT_LOWER_BOTTOM =
+      create(new PrefMonitorKeyStroke("hotkeyEditLowerBottom", KeyEvent.VK_DOWN, InputEvent.SHIFT_DOWN_MASK | hotkeyMenuMask, true, true));
+
   public static final PrefMonitor<KeyStroke> HOTKEY_WINDOW_CLOSE =
       create(new PrefMonitorKeyStroke("hotkeyWindowClose",
           KeyEvent.VK_W, hotkeyMenuMask | InputEvent.SHIFT_DOWN_MASK,
@@ -1271,6 +1298,27 @@ public class AppPreferences {
   public static final PrefMonitor<KeyStroke> HOTKEY_FILE_PRINT =
       create(new PrefMonitorKeyStroke("hotkeyFilePrint", KeyEvent.VK_P, hotkeyMenuMask,
           true, true));
+
+  public static final PrefMonitor<KeyStroke> HOTKEY_FILE_NEW =
+      create(new PrefMonitorKeyStroke("hotkeyFileNew", KeyEvent.VK_N, hotkeyMenuMask, true, true));
+
+  public static final PrefMonitor<KeyStroke> HOTKEY_FILE_MERGE =
+      create(new PrefMonitorKeyStroke("hotkeyFileMerge", KeyEvent.VK_M, hotkeyMenuMask, true, true));
+
+  public static final PrefMonitor<KeyStroke> HOTKEY_FILE_OPEN =
+      create(new PrefMonitorKeyStroke("hotkeyFileOpen", KeyEvent.VK_O, hotkeyMenuMask, true, true));
+
+  public static final PrefMonitor<KeyStroke> HOTKEY_FILE_SAVE =
+      create(new PrefMonitorKeyStroke("hotkeyFileSave", KeyEvent.VK_S, hotkeyMenuMask, true, true));
+
+  public static final PrefMonitor<KeyStroke> HOTKEY_FILE_SAVE_AS =
+      create(new PrefMonitorKeyStroke("hotkeyFileSaveAs", KeyEvent.VK_S, InputEvent.SHIFT_DOWN_MASK | hotkeyMenuMask, true, true));
+
+  public static final PrefMonitor<KeyStroke> HOTKEY_FILE_PREFERENCES =
+      create(new PrefMonitorKeyStroke("hotkeyFilePreferences", KeyEvent.VK_COMMA, hotkeyMenuMask, true, true));
+
+  public static final PrefMonitor<KeyStroke> HOTKEY_FILE_QUIT =
+      create(new PrefMonitorKeyStroke("hotkeyFileQuit", KeyEvent.VK_Q, hotkeyMenuMask, true, true));
 
   public static final PrefMonitor<KeyStroke> HOTKEY_SEARCH =
       create(new PrefMonitorKeyStroke("hotkeySearch",
@@ -1358,6 +1406,18 @@ public class AppPreferences {
           KeyEvent.VK_D, InputEvent.SHIFT_DOWN_MASK | hotkeyMenuMask,
           true, true));
 
+  public static final PrefMonitor<KeyStroke> HOTKEY_PROJ_ADD_CIRCUIT =
+      create(new PrefMonitorKeyStroke("hotkeyProjAddCircuit", KeyEvent.VK_N, InputEvent.SHIFT_DOWN_MASK | hotkeyMenuMask, true, true));
+
+  public static final PrefMonitor<KeyStroke> HOTKEY_PROJ_ANALYZE =
+      create(new PrefMonitorKeyStroke("hotkeyProjAnalyze", KeyEvent.VK_T, InputEvent.SHIFT_DOWN_MASK | hotkeyMenuMask, true, true));
+
+  public static final PrefMonitor<KeyStroke> HOTKEY_PROJ_STATS =
+      create(new PrefMonitorKeyStroke("hotkeyProjStats", KeyEvent.VK_I, InputEvent.SHIFT_DOWN_MASK | hotkeyMenuMask, true, true));
+
+  public static final PrefMonitor<KeyStroke> HOTKEY_PROJ_OPTIONS =
+      create(new PrefMonitorKeyStroke("hotkeyProjOptions", KeyEvent.VK_O, InputEvent.SHIFT_DOWN_MASK | hotkeyMenuMask, true, true));
+
   public static final PrefMonitor<KeyStroke> HOTKEY_AUTO_LABEL_OPEN =
       create(new PrefMonitorKeyStroke("hotkeyAutoLabelOpen", KeyEvent.VK_L, 0));
 
@@ -1413,8 +1473,37 @@ public class AppPreferences {
       HOTKEY_EDIT_UNDO.set(KeyStroke.getKeyStroke(KeyEvent.VK_Z, menuMask));
       HOTKEY_EDIT_REDO.set(KeyStroke.getKeyStroke(KeyEvent.VK_Z,
           InputEvent.SHIFT_DOWN_MASK | menuMask));
-      HOTKEY_WINDOW_CLOSE.set(KeyStroke.getKeyStroke(KeyEvent.VK_W, menuMask));
-      HOTKEY_WINDOW_MINIMIZE.set(KeyStroke.getKeyStroke(KeyEvent.VK_M, menuMask));
+      HOTKEY_WINDOW_CLOSE.set(KeyStroke.getKeyStroke(KeyEvent.VK_W,
+          InputEvent.SHIFT_DOWN_MASK | menuMask));
+      HOTKEY_WINDOW_MINIMIZE.set(KeyStroke.getKeyStroke(KeyEvent.VK_M,
+          InputEvent.SHIFT_DOWN_MASK | menuMask));
+      HOTKEY_EDIT_CUT.set(KeyStroke.getKeyStroke(KeyEvent.VK_X, menuMask));
+      HOTKEY_EDIT_COPY.set(KeyStroke.getKeyStroke(KeyEvent.VK_C, menuMask));
+      HOTKEY_EDIT_PASTE.set(KeyStroke.getKeyStroke(KeyEvent.VK_V, menuMask));
+      HOTKEY_EDIT_DELETE.set(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0));
+      HOTKEY_EDIT_SELECT_ALL.set(KeyStroke.getKeyStroke(KeyEvent.VK_A, menuMask));
+      HOTKEY_EDIT_RAISE.set(KeyStroke.getKeyStroke(KeyEvent.VK_UP, menuMask));
+      HOTKEY_EDIT_LOWER.set(KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, menuMask));
+      HOTKEY_EDIT_RAISE_TOP.set(KeyStroke.getKeyStroke(KeyEvent.VK_UP,
+          InputEvent.SHIFT_DOWN_MASK | menuMask));
+      HOTKEY_EDIT_LOWER_BOTTOM.set(KeyStroke.getKeyStroke(KeyEvent.VK_DOWN,
+          InputEvent.SHIFT_DOWN_MASK | menuMask));
+      HOTKEY_FILE_NEW.set(KeyStroke.getKeyStroke(KeyEvent.VK_N, menuMask));
+      HOTKEY_FILE_MERGE.set(KeyStroke.getKeyStroke(KeyEvent.VK_M, menuMask));
+      HOTKEY_FILE_OPEN.set(KeyStroke.getKeyStroke(KeyEvent.VK_O, menuMask));
+      HOTKEY_FILE_SAVE.set(KeyStroke.getKeyStroke(KeyEvent.VK_S, menuMask));
+      HOTKEY_FILE_SAVE_AS.set(KeyStroke.getKeyStroke(KeyEvent.VK_S,
+          InputEvent.SHIFT_DOWN_MASK | menuMask));
+      HOTKEY_FILE_PREFERENCES.set(KeyStroke.getKeyStroke(KeyEvent.VK_COMMA, menuMask));
+      HOTKEY_FILE_QUIT.set(KeyStroke.getKeyStroke(KeyEvent.VK_Q, menuMask));
+      HOTKEY_PROJ_ADD_CIRCUIT.set(KeyStroke.getKeyStroke(KeyEvent.VK_N,
+          InputEvent.SHIFT_DOWN_MASK | menuMask));
+      HOTKEY_PROJ_ANALYZE.set(KeyStroke.getKeyStroke(KeyEvent.VK_T,
+          InputEvent.SHIFT_DOWN_MASK | menuMask));
+      HOTKEY_PROJ_STATS.set(KeyStroke.getKeyStroke(KeyEvent.VK_I,
+          InputEvent.SHIFT_DOWN_MASK | menuMask));
+      HOTKEY_PROJ_OPTIONS.set(KeyStroke.getKeyStroke(KeyEvent.VK_O,
+          InputEvent.SHIFT_DOWN_MASK | menuMask));
       HOTKEY_FILE_EXPORT.set(KeyStroke.getKeyStroke(KeyEvent.VK_E,
           InputEvent.SHIFT_DOWN_MASK | menuMask));
       HOTKEY_FILE_PRINT.set(KeyStroke.getKeyStroke(KeyEvent.VK_P, menuMask));

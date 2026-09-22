@@ -46,10 +46,8 @@ class HotkeyOptions extends OptionsPanel {
    * Do not forget to sync with the user's settings.
    * You should go modifying hotkeySync in AppPreferences, adding your codes there.
    *
-   * Now the hotkey options don't involve all the bindings in logisim.
-   * The hotkeys chosen by the user might have conflict with
-   * some build-in key bindings until all key bindings can be set in this tab.
-   * TODO: If you are available, you can bind them in order to make logisim feel better
+   * Every accelerator on the menu bar is a preference listed here, and a new binding is refused
+   * when it collides with one of them; see AppPreferences.hotkeyCheckConflict.
    *
    * */
   protected static List<PrefMonitor<KeyStroke>> hotkeys = new ArrayList<>();

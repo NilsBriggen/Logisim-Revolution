@@ -13,6 +13,7 @@ import static com.cburch.logisim.gui.Strings.S;
 
 import com.cburch.logisim.gui.generic.OptionPane;
 import com.cburch.logisim.prefs.AppPreferences;
+import com.cburch.logisim.prefs.PrefMonitor;
 import com.cburch.logisim.prefs.PrefMonitorKeyStroke;
 import com.cburch.logisim.proj.Action;
 import com.cburch.logisim.proj.ProjectEvent;
@@ -21,8 +22,6 @@ import com.cburch.logisim.tools.TextEditActions;
 import com.cburch.logisim.tools.TextTool;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.InputEvent;
-import java.awt.event.KeyEvent;
 import javax.swing.JMenuItem;
 import javax.swing.JMenu;
 import javax.swing.KeyStroke;
@@ -54,23 +53,7 @@ class MenuEdit extends Menu {
   public MenuEdit(LogisimMenuBar menubar) {
     this.menubar = menubar;
 
-    final var menuMask = getToolkit().getMenuShortcutKeyMaskEx();
-
-    undo.setAccelerator(((PrefMonitorKeyStroke) AppPreferences.HOTKEY_EDIT_UNDO).getWithMask(0));
-    redo.setAccelerator(((PrefMonitorKeyStroke) AppPreferences.HOTKEY_EDIT_REDO).getWithMask(0));
-    cut.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_X, menuMask));
-    copy.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_C, menuMask));
-    paste.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_V, menuMask));
-    delete.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0));
-    dup.setAccelerator(((PrefMonitorKeyStroke) AppPreferences.HOTKEY_EDIT_MENU_DUPLICATE)
-        .getWithMask(0));
-    selall.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_A, menuMask));
-    raise.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_UP, menuMask));
-    lower.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, menuMask));
-    raiseTop.setAccelerator(
-        KeyStroke.getKeyStroke(KeyEvent.VK_UP, menuMask | InputEvent.SHIFT_DOWN_MASK));
-    lowerBottom.setAccelerator(
-        KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, menuMask | InputEvent.SHIFT_DOWN_MASK));
+    hotkeyUpdate();
 
     /* add myself to hotkey sync */
     AppPreferences.gui_sync_objects.add(this);
@@ -155,10 +138,22 @@ class MenuEdit extends Menu {
   }
 
   public void hotkeyUpdate() {
-    undo.setAccelerator(((PrefMonitorKeyStroke) AppPreferences.HOTKEY_EDIT_UNDO).getWithMask(0));
-    redo.setAccelerator(((PrefMonitorKeyStroke) AppPreferences.HOTKEY_EDIT_REDO).getWithMask(0));
-    dup.setAccelerator(((PrefMonitorKeyStroke) AppPreferences.HOTKEY_EDIT_MENU_DUPLICATE)
-        .getWithMask(0));
+    undo.setAccelerator(accelerator(AppPreferences.HOTKEY_EDIT_UNDO));
+    redo.setAccelerator(accelerator(AppPreferences.HOTKEY_EDIT_REDO));
+    cut.setAccelerator(accelerator(AppPreferences.HOTKEY_EDIT_CUT));
+    copy.setAccelerator(accelerator(AppPreferences.HOTKEY_EDIT_COPY));
+    paste.setAccelerator(accelerator(AppPreferences.HOTKEY_EDIT_PASTE));
+    delete.setAccelerator(accelerator(AppPreferences.HOTKEY_EDIT_DELETE));
+    dup.setAccelerator(accelerator(AppPreferences.HOTKEY_EDIT_MENU_DUPLICATE));
+    selall.setAccelerator(accelerator(AppPreferences.HOTKEY_EDIT_SELECT_ALL));
+    raise.setAccelerator(accelerator(AppPreferences.HOTKEY_EDIT_RAISE));
+    lower.setAccelerator(accelerator(AppPreferences.HOTKEY_EDIT_LOWER));
+    raiseTop.setAccelerator(accelerator(AppPreferences.HOTKEY_EDIT_RAISE_TOP));
+    lowerBottom.setAccelerator(accelerator(AppPreferences.HOTKEY_EDIT_LOWER_BOTTOM));
+  }
+
+  private static KeyStroke accelerator(PrefMonitor<KeyStroke> hotkey) {
+    return ((PrefMonitorKeyStroke) hotkey).getWithMask(0);
   }
 
   @Override

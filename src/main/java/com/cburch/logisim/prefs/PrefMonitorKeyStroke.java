@@ -203,6 +203,15 @@ public class PrefMonitorKeyStroke extends AbstractPrefMonitor<KeyStroke> {
   }
 
   /**
+   * The keystrokes this preference was declared with, which "Reset to defaults" restores.
+   *
+   * @return the default keystrokes; empty for a shortcut that is unassigned by default
+   */
+  public List<KeyStroke> getDefaultList() {
+    return byteArrayToKeyStroke(defaultData);
+  }
+
+  /**
    * Retrieves the KeyStroke with the provided mask.
    *
    * @param mask Modifier mask.

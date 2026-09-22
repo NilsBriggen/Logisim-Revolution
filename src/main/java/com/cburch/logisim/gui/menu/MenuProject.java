@@ -12,11 +12,13 @@ package com.cburch.logisim.gui.menu;
 import static com.cburch.logisim.gui.Strings.S;
 
 import com.cburch.logisim.prefs.AppPreferences;
+import com.cburch.logisim.prefs.PrefMonitor;
 import com.cburch.logisim.prefs.PrefMonitorKeyStroke;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
+import javax.swing.KeyStroke;
 import javax.swing.event.MenuEvent;
 import javax.swing.event.MenuListener;
 
@@ -50,11 +52,7 @@ class MenuProject extends Menu {
   MenuProject(LogisimMenuBar menubar) {
     this.menubar = menubar;
 
-    /* Hotkey Bindings */
-    moveUp.setAccelerator(
-        ((PrefMonitorKeyStroke) AppPreferences.HOTKEY_PROJ_MOVE_UP).getWithMask(0));
-    moveDown.setAccelerator(
-        ((PrefMonitorKeyStroke) AppPreferences.HOTKEY_PROJ_MOVE_DOWN).getWithMask(0));
+    hotkeyUpdate();
 
     menubar.registerItem(LogisimMenuBar.ADD_CIRCUIT, addCircuit);
     menubar.registerItem(LogisimMenuBar.ADD_VHDL, addVhdl);
@@ -113,10 +111,16 @@ class MenuProject extends Menu {
   }
 
   public void hotkeyUpdate() {
-    moveUp.setAccelerator(
-        ((PrefMonitorKeyStroke) AppPreferences.HOTKEY_PROJ_MOVE_UP).getWithMask(0));
-    moveDown.setAccelerator(
-        ((PrefMonitorKeyStroke) AppPreferences.HOTKEY_PROJ_MOVE_DOWN).getWithMask(0));
+    addCircuit.setAccelerator(accelerator(AppPreferences.HOTKEY_PROJ_ADD_CIRCUIT));
+    moveUp.setAccelerator(accelerator(AppPreferences.HOTKEY_PROJ_MOVE_UP));
+    moveDown.setAccelerator(accelerator(AppPreferences.HOTKEY_PROJ_MOVE_DOWN));
+    analyze.setAccelerator(accelerator(AppPreferences.HOTKEY_PROJ_ANALYZE));
+    stats.setAccelerator(accelerator(AppPreferences.HOTKEY_PROJ_STATS));
+    options.setAccelerator(accelerator(AppPreferences.HOTKEY_PROJ_OPTIONS));
+  }
+
+  private static KeyStroke accelerator(PrefMonitor<KeyStroke> hotkey) {
+    return ((PrefMonitorKeyStroke) hotkey).getWithMask(0);
   }
 
   @Override

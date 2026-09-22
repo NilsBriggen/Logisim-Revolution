@@ -3,6 +3,11 @@
 # Changes #
 
 * @dev (????-??-??)
+  * Every menu shortcut can now be changed in the hotkey settings, including New, Open,
+    Save, Cut, Copy, Paste and the others that used to be fixed. Preferences, Add Circuit,
+    Analyze Circuit, Circuit Statistics and Project Options gained shortcuts. Reset to
+    defaults also no longer changes Close Window from Shift+Ctrl+W to Ctrl+W
+    (@YOUR_GITHUB_HANDLE).
   * The Find Action search now also lists the circuits and VHDL entities of the project,
     the tabs of the preferences window and the recently opened files, so a circuit can
     be shown, a preference page opened or a recent project reopened by typing its name

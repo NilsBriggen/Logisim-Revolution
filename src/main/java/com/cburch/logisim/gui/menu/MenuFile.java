@@ -14,14 +14,13 @@ import static com.cburch.logisim.gui.Strings.S;
 import com.cburch.logisim.gui.generic.OptionPane;
 import com.cburch.logisim.gui.prefs.PreferencesFrame;
 import com.cburch.logisim.prefs.AppPreferences;
+import com.cburch.logisim.prefs.PrefMonitor;
 import com.cburch.logisim.prefs.PrefMonitorKeyStroke;
 import com.cburch.logisim.proj.ProjectActions;
 import com.cburch.logisim.proj.Projects;
 import com.cburch.logisim.util.MacCompatibility;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.InputEvent;
-import java.awt.event.KeyEvent;
 import javax.swing.JMenuItem;
 import javax.swing.KeyStroke;
 
@@ -46,22 +45,7 @@ class MenuFile extends Menu implements ActionListener {
     this.menubar = menubar;
     openRecent = new OpenRecent(menubar);
 
-    final var menuMask = getToolkit().getMenuShortcutKeyMaskEx();
-
-    newi.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_N, menuMask));
-    merge.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_M, menuMask));
-    open.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, menuMask));
-    close.setAccelerator(
-        KeyStroke.getKeyStroke(KeyEvent.VK_W, menuMask | InputEvent.SHIFT_DOWN_MASK));
-    save.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, menuMask));
-    saveAs.setAccelerator(
-        KeyStroke.getKeyStroke(KeyEvent.VK_S, menuMask | InputEvent.SHIFT_DOWN_MASK));
-    quit.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q, menuMask));
-
-    exportProj.setAccelerator(((PrefMonitorKeyStroke)
-        AppPreferences.HOTKEY_FILE_EXPORT).getWithMask(0));
-    print.setAccelerator(((PrefMonitorKeyStroke)
-        AppPreferences.HOTKEY_FILE_PRINT).getWithMask(0));
+    hotkeyUpdate();
 
     /* add myself to hotkey sync */
     AppPreferences.gui_sync_objects.add(this);
@@ -114,10 +98,21 @@ class MenuFile extends Menu implements ActionListener {
   }
 
   public void hotkeyUpdate() {
-    exportProj.setAccelerator(((PrefMonitorKeyStroke)
-        AppPreferences.HOTKEY_FILE_EXPORT).getWithMask(0));
-    print.setAccelerator(((PrefMonitorKeyStroke)
-        AppPreferences.HOTKEY_FILE_PRINT).getWithMask(0));
+    newi.setAccelerator(accelerator(AppPreferences.HOTKEY_FILE_NEW));
+    merge.setAccelerator(accelerator(AppPreferences.HOTKEY_FILE_MERGE));
+    open.setAccelerator(accelerator(AppPreferences.HOTKEY_FILE_OPEN));
+    // Closing the project closes its window, so it shares the window-close shortcut.
+    close.setAccelerator(accelerator(AppPreferences.HOTKEY_WINDOW_CLOSE));
+    save.setAccelerator(accelerator(AppPreferences.HOTKEY_FILE_SAVE));
+    saveAs.setAccelerator(accelerator(AppPreferences.HOTKEY_FILE_SAVE_AS));
+    exportProj.setAccelerator(accelerator(AppPreferences.HOTKEY_FILE_EXPORT));
+    print.setAccelerator(accelerator(AppPreferences.HOTKEY_FILE_PRINT));
+    prefs.setAccelerator(accelerator(AppPreferences.HOTKEY_FILE_PREFERENCES));
+    quit.setAccelerator(accelerator(AppPreferences.HOTKEY_FILE_QUIT));
+  }
+
+  private static KeyStroke accelerator(PrefMonitor<KeyStroke> hotkey) {
+    return ((PrefMonitorKeyStroke) hotkey).getWithMask(0);
   }
 
   @Override
