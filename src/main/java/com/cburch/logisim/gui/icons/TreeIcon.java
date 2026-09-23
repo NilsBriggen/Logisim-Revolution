@@ -9,74 +9,48 @@
 
 package com.cburch.logisim.gui.icons;
 
-import com.cburch.logisim.prefs.AppPreferences;
-import java.awt.Color;
-import java.awt.Graphics2D;
-import java.awt.Rectangle;
-import java.awt.geom.GeneralPath;
+import com.cburch.logisim.gui.theme.AppIcons;
+import com.cburch.logisim.gui.theme.Tokens;
+import java.awt.Component;
+import java.awt.Graphics;
+import javax.swing.Icon;
 
-public class TreeIcon extends BaseIcon {
+/**
+ * The folder shown beside a library in the project tree.
+ *
+ * <p>It used to be a drawing of a manila folder with a sheet of paper and a shadow, in yellow and
+ * grey whatever the theme. A dozen of them down the side of the window were the loudest thing on
+ * screen while saying the least; it is now a quiet outline in the interface colour.
+ */
+public class TreeIcon implements Icon {
 
-  private final Rectangle paper =
-      new Rectangle(
-          AppPreferences.ICON_BORDER,
-          AppPreferences.ICON_BORDER,
-          AppPreferences.IconSize - 3 * AppPreferences.ICON_BORDER,
-          AppPreferences.IconSize - 2 * AppPreferences.ICON_BORDER);
-  private final int[] backsheet = new int[] {0, 0, 4, 0, 7, 3, 13, 3, 13, 15, 0, 15};
-  private final int[] frontsheetClosed = new int[] {0, 3, 13, 3, 13, 15, 0, 15};
-  private final int[] frontsheetOpen = new int[] {2, 11, 15, 11, 13, 15, 0, 15};
-  private final int[] shape =
-      new int[] {7, 3, 4, 3, 4, 4, 2, 4, 4, 4, 4, 8, 2, 8, 4, 8, 4, 9, 7, 9};
-  private boolean closed = true;
+  private final boolean closed;
 
   public TreeIcon(boolean closed) {
     this.closed = closed;
   }
 
+  private Icon icon() {
+    return AppIcons.colored(AppIcons.Id.FOLDER, AppIcons.SIZE, Tokens.mutedForeground());
+  }
+
   @Override
-  protected void paintIcon(Graphics2D g2) {
-    g2.setColor(Color.yellow.darker().darker());
-    var path = new GeneralPath();
-    path.moveTo(AppPreferences.getScaled(backsheet[0]), AppPreferences.getScaled(backsheet[1]));
-    for (var i = 2; i < backsheet.length; i += 2)
-      path.lineTo(
-          AppPreferences.getScaled(backsheet[i]), AppPreferences.getScaled(backsheet[i + 1]));
-    path.closePath();
-    g2.fill(path);
-    g2.setColor(Color.LIGHT_GRAY.brighter());
-    g2.fill3DRect(
-        AppPreferences.getScaled(paper.x),
-        AppPreferences.getScaled(paper.y),
-        AppPreferences.getScaled(paper.width),
-        AppPreferences.getScaled(paper.height),
-        true);
-    g2.setColor(Color.BLACK);
-    path = new GeneralPath();
-    path.moveTo(AppPreferences.getScaled(shape[0]), AppPreferences.getScaled(shape[1]));
-    for (int i = 2; i < shape.length; i += 2)
-      path.lineTo(AppPreferences.getScaled(shape[i]), AppPreferences.getScaled(shape[i + 1]));
-    g2.draw(path);
-    g2.drawArc(
-        AppPreferences.getScaled(4),
-        AppPreferences.getScaled(3),
-        AppPreferences.getScaled(6),
-        AppPreferences.getScaled(6),
-        -90,
-        180);
-    g2.drawLine(
-        AppPreferences.getScaled(10),
-        AppPreferences.getScaled(6),
-        AppPreferences.getScaled(11),
-        AppPreferences.getScaled(6));
-    path = new GeneralPath();
-    final var frontSheet = closed ? frontsheetClosed : frontsheetOpen;
-    path.moveTo(AppPreferences.getScaled(frontSheet[0]), AppPreferences.getScaled(frontSheet[1]));
-    for (var i = 2; i < frontSheet.length; i += 2)
-      path.lineTo(
-          AppPreferences.getScaled(frontSheet[i]), AppPreferences.getScaled(frontSheet[i + 1]));
-    path.closePath();
-    g2.setColor(Color.yellow.darker());
-    g2.fill(path);
+  public void paintIcon(Component comp, Graphics gfx, int x, int y) {
+    icon().paintIcon(comp, gfx, x, y);
+  }
+
+  @Override
+  public int getIconWidth() {
+    return icon().getIconWidth();
+  }
+
+  @Override
+  public int getIconHeight() {
+    return icon().getIconHeight();
+  }
+
+  /** Whether this is the closed-folder variant. Kept so both states can be told apart. */
+  public boolean isClosed() {
+    return closed;
   }
 }

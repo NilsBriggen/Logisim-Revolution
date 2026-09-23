@@ -41,6 +41,7 @@ import com.cburch.logisim.gui.menu.MainMenuListener;
 import com.cburch.logisim.gui.search.OmniSearchDialog;
 import com.cburch.logisim.gui.shell.ActivityBar;
 import com.cburch.logisim.gui.shell.BottomPanel;
+import com.cburch.logisim.gui.shell.CircuitListView;
 import com.cburch.logisim.gui.shell.EditorArea;
 import com.cburch.logisim.gui.shell.EditorTabModel;
 import com.cburch.logisim.gui.shell.EditorTabs;
@@ -117,6 +118,8 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
   public static final String EDIT_HDL = "hdl";
   /** Identifier of the side view listing the project's circuits and libraries. */
   public static final String EXPLORER_SIDE_VIEW = "explorer";
+  /** Identifier of the side view holding the component libraries. */
+  public static final String LIBRARY_SIDE_VIEW = "library";
   /** Identifier of the side view showing the running simulation. */
   public static final String SIMULATION_SIDE_VIEW = "simulation";
   /** Identifier of the VHDL console in the drawer below the canvas. */
@@ -141,6 +144,7 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
   private final CardPanel mainPanel;
   // left-side elements
   private final Toolbox toolbox;
+  private final CircuitListView circuitList;
   private final SimulationExplorer simExplorer;
   private final AttrTable attrTable;
   private final ZoomControl zoom;
@@ -240,6 +244,9 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
 
     // set up the editor area: one canvas, with tabs above it choosing what it shows
     mainPanelSuper = new JPanel(new BorderLayout());
+    // The canvas fills the editor area, so a focus ring around it marks nothing useful and only
+    // draws a blue rectangle across the middle of the window.
+    layoutCanvasPane.setBorder(null);
     layoutCanvasPane.setZoomModel(layoutZoomModel);
     mainPanel = new CardPanel();
     mainPanel.addView(EDIT_LAYOUT, layoutCanvasPane);
@@ -258,9 +265,12 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     editorTabs = new EditorTabs(editorTabModel, this::editorTabTitle);
     final var editorArea = new EditorArea(editorTabs, mainPanelSuper);
 
+    circuitList = new CircuitListView(project);
     sidePanel = new SidePanel();
     sidePanel.addView(
-        new SimpleSideView(EXPLORER_SIDE_VIEW, "designTab", AppIcons.Id.EXPLORER, toolbox));
+        new SimpleSideView(EXPLORER_SIDE_VIEW, "explorerTab", AppIcons.Id.EXPLORER, circuitList));
+    sidePanel.addView(
+        new SimpleSideView(LIBRARY_SIDE_VIEW, "libraryTab", AppIcons.Id.LIBRARY, toolbox));
     sidePanel.addView(
         new SimpleSideView(SIMULATION_SIDE_VIEW, "simulateTab", AppIcons.Id.SIMULATION,
             simExplorer));
@@ -820,6 +830,7 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
   public void localeChanged() {
     buildTitleString();
     sidePanel.localeChanged();
+    circuitList.localeChanged();
     for (final var view : sidePanel.views()) {
       shell.getActivityBar().setTooltip(view.id(), view.title());
     }

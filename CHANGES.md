@@ -3,6 +3,12 @@
 # Changes #
 
 * @dev (????-??-??)
+  * The side panel now has a Circuits view listing only what you have made, with a filter, so
+    moving between circuits no longer means finding one in a tree that also holds every
+    component library. Libraries and the running simulation are separate views
+    (@YOUR_GITHUB_HANDLE).
+  * Library folders are drawn as a plain outline in the interface colour instead of a yellow
+    manila folder with a shadow (@YOUR_GITHUB_HANDLE).
   * The main window has been rebuilt. An activity bar chooses what the side panel shows, the
     circuits you open get tabs above the canvas, properties have their own panel on the right
     instead of sharing the left column, and a status bar reports the circuit, the zoom and what
