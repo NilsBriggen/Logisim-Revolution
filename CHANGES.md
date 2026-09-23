@@ -3,6 +3,31 @@
 # Changes #
 
 * @dev (????-??-??)
+  * The circuit canvas has been redrawn. Lines end and meet in rounded joins, component bodies
+    have rounded corners, selection handles are filled discs in the accent colour instead of
+    white squares with a black outline that were invisible on a dark canvas, the magenta
+    rotated ellipse marking the component whose properties are shown is now a soft accent glow,
+    and the grid has two levels so distance across the sheet can be judged at a glance
+    (@YOUR_GITHUB_HANDLE).
+  * Highlighting a wire no longer redraws it thicker and dashed, which made it look like a
+    different kind of wire; a halo is drawn around it instead, so its apparent weight keeps
+    meaning what it means. A bus is now clearly heavier than a wire rather than one pixel
+    heavier (@YOUR_GITHUB_HANDLE).
+  * The canvas palette has been retuned for both themes, replacing the pure-green, pure-magenta
+    and pure-black values (@YOUR_GITHUB_HANDLE).
+  * Fixed: printing and image export used the theme's colours for signal values, so a circuit
+    exported while the dark theme was showing was drawn in near-white ink on a white page.
+    Printing now uses its own palette, every colour of which is tested for contrast against
+    white (@YOUR_GITHUB_HANDLE).
+  * Fixed: a change announced by the preference store was recorded as a colour the user had
+    chosen. Since such a notification carries no value, the colour recorded was the default the
+    monitor was built with, which for the drawing colours is the light one: the dark theme
+    ended up storing the light theme's ink and kept it through every later release
+    (@YOUR_GITHUB_HANDLE).
+  * Fixed: a junction dot shrank while a wire was being dragged, because the size factor was
+    applied twice in one of the two places that draw it (@YOUR_GITHUB_HANDLE).
+  * The floating auto-zoom button painted into the canvas corner has been removed; the zoom
+    controls already float over the canvas (@YOUR_GITHUB_HANDLE).
   * The splash and about windows follow the theme instead of being white with a two-pixel
     black frame, and the about panel uses a real layout rather than fixed positions
     (@YOUR_GITHUB_HANDLE).

@@ -30,6 +30,7 @@ import com.cburch.logisim.gui.main.Canvas;
 import com.cburch.logisim.gui.main.SelectionActions;
 import com.cburch.logisim.gui.main.ToolAttributeAction;
 import com.cburch.logisim.instance.StdAttr;
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.prefs.PrefMonitorKeyStroke;
 import com.cburch.logisim.proj.Action;
@@ -200,8 +201,12 @@ public class AddTool extends Tool implements Transferable, PropertyChangeListene
     Color drawColor;
     /* take care of coloring the components differently that require a label */
     if (state == SHOW_GHOST) {
-      drawColor = autoLabeler.isActive(canvas.getCircuit())
-          ? Color.MAGENTA : new Color(AppPreferences.COMPONENT_GHOST_COLOR.get());
+      // A component being positioned: the ghost colour, or the marker colour while a label is
+      // being generated for it. Magenta and blue were arbitrary.
+      drawColor =
+          autoLabeler.isActive(canvas.getCircuit())
+              ? CanvasStyle.marker(false)
+              : CanvasStyle.ghost();
       source.drawGhost(context, drawColor, x, y, getBaseAttributes());
       if (matrixPlace) {
         source.drawGhost(context, drawColor, x + bds.getWidth() + 3, y, getBaseAttributes());
@@ -214,7 +219,10 @@ public class AddTool extends Tool implements Transferable, PropertyChangeListene
             getBaseAttributes());
       }
     } else if (state == SHOW_ADD) {
-      drawColor = autoLabeler.isActive(canvas.getCircuit()) ? Color.BLUE : Color.BLACK;
+      drawColor =
+          autoLabeler.isActive(canvas.getCircuit())
+              ? CanvasStyle.marker(false)
+              : CanvasStyle.componentColor();
       source.drawGhost(context, drawColor, x, y, getBaseAttributes());
       if (matrixPlace) {
         source.drawGhost(context, drawColor, x + bds.getWidth() + 3, y, getBaseAttributes());

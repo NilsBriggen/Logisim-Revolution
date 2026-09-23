@@ -101,7 +101,7 @@ public class Register extends InstanceFactory implements DynamicElementProvider 
         g.drawLine(x + 60, y + 30, x + 60, y + 90);
         g.drawLine(x + 55, y + 30, x + 60, y + 30);
       }
-      g.setColor(Value.multiColor);
+      g.setColor(Value.multiColor());
     }
     GraphicsUtil.switchToWidth(g, dq_widtdqWidth);
     g.drawLine(x, y + 30, x + 8, y + 30);

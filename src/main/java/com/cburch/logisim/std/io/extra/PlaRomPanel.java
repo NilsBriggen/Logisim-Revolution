@@ -290,7 +290,7 @@ public class PlaRomPanel extends JPanel
       }
     }
     if (hover) {
-      g.setColor(Value.trueColor);
+      g.setColor(Value.trueColor());
       if (data.columnHovered < inputs * 2)
         g.drawOval(
             IMAGE_BORDER + 4 + 20 * data.columnHovered,

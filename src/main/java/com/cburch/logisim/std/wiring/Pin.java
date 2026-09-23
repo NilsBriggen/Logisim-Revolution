@@ -735,7 +735,7 @@ public class Pin extends InstanceFactory {
   public static final Pin FACTORY = new Pin();
   private static final Font ICON_WIDTH_FONT = new Font("SansSerif", Font.BOLD, 9);
   public static final Font DEFAULT_FONT = new Font("monospaced", Font.PLAIN, 12);
-  private static final Color ICON_WIDTH_COLOR = Value.widthErrorColor.darker();
+  private static final Color ICON_WIDTH_COLOR = Value.widthErrorColor().darker();
   public static final int DIGIT_WIDTH = 8;
 
   public Pin() {
@@ -981,7 +981,7 @@ public class Pin extends InstanceFactory {
       g2.rotate(rotation);
       Color col = g.getColor();
       if (isBus) {
-        g.setColor(Value.multiColor);
+        g.setColor(Value.multiColor());
         GraphicsUtil.switchToWidth(g, Wire.WIDTH_BUS);
         g.drawLine(Wire.WIDTH_BUS / 2 - 5, 0, 0, 0);
         GraphicsUtil.switchToWidth(g, 2);
@@ -1045,7 +1045,7 @@ public class Pin extends InstanceFactory {
       g2.rotate(rotation);
       final var col = g.getColor();
       if (isBus) {
-        g.setColor(Value.multiColor);
+        g.setColor(Value.multiColor());
         GraphicsUtil.switchToWidth(g, Wire.WIDTH_BUS);
         g.drawLine(-3, 0, -Wire.WIDTH_BUS / 2, 0);
         GraphicsUtil.switchToWidth(g, 2);

@@ -67,7 +67,7 @@ public class AppPreferences {
 
     @Override
     public Integer get() {
-      return Boolean.TRUE.equals(PRINT_VIEW_COLORS.get()) ? printValue : super.get();
+      return inPrintView() ? printValue : super.get();
     }
   }
 
@@ -187,6 +187,11 @@ public class AppPreferences {
     return monitor;
   }
 
+  /** Whether this thread is drawing for paper or for an exported image rather than for a screen. */
+  public static boolean inPrintView() {
+    return Boolean.TRUE.equals(PRINT_VIEW_COLORS.get());
+  }
+
   public static void runWithPrintViewColors(Runnable action) {
     final var previous = PRINT_VIEW_COLORS.get();
     PRINT_VIEW_COLORS.set(true);
@@ -208,6 +213,20 @@ public class AppPreferences {
   static void firePropertyChange(String property, Object oldVal, Object newVal) {
     // A colour the user has just picked belongs to the theme it was picked for, not to both.
     ThemeColorPrefs.mirrorChange(property);
+    propertySupport.firePropertyChange(property, oldVal, newVal);
+  }
+
+  /**
+   * Announces a preference that the store says has changed, rather than one this program set.
+   *
+   * <p>The distinction matters for the colours kept per theme. A store notification arrives on
+   * another thread after the fact, and carries no value of its own: a monitor answering one falls
+   * back to the default it was constructed with, which for the drawing colours is the light one.
+   * Treating that as a colour the user had chosen would file the light colour under whichever
+   * theme happened to be showing, and the choice would then outlive every later change to the
+   * shipped palette.
+   */
+  static void firePropertyChangeFromStore(String property, Object oldVal, Object newVal) {
     propertySupport.firePropertyChange(property, oldVal, newVal);
   }
 
@@ -648,17 +667,21 @@ public class AppPreferences {
   public static final PrefMonitor<String> APP_FONT =
       create(new PrefMonitorString("AppFont", ""));
 
-  // default grid colors
-  public static final int DEFAULT_CANVAS_BG_COLOR = 0xFFFFFFFF;
-  public static final int DEFAULT_GRID_BG_COLOR = 0xFFFFFFFF;
-  public static final int DEFAULT_GRID_DOT_COLOR = 0xFF777777;
-  public static final int DEFAULT_ZOOMED_DOT_COLOR = 0xFFCCCCCC;
+  // The canvas palette. Signal colours keep their meanings — a high signal still reads as
+  // "on", an error still reads as wrong — but the saturated green-on-black of the original is
+  // replaced by colours chosen to sit beside the rest of the interface.
+  // Note the grid now has two levels: DOT is the stronger line every fifth step, ZOOMED_DOT the
+  // faint one in between.
+  public static final int DEFAULT_CANVAS_BG_COLOR = 0xFFFDFDFE;
+  public static final int DEFAULT_GRID_BG_COLOR = 0xFFFDFDFE;
+  public static final int DEFAULT_GRID_DOT_COLOR = 0xFFA9B3C4;
+  public static final int DEFAULT_ZOOMED_DOT_COLOR = 0xFFDCE2EC;
   // dark mode default grid colors
-  public static final int DARK_CANVAS_BG_COLOR = 0xFF2B2B2B;
-  public static final int DARK_GRID_BG_COLOR = 0xFF2B2B2B;
-  public static final int DARK_GRID_DOT_COLOR = 0xFFAAAAAA;
-  public static final int DARK_ZOOMED_DOT_COLOR = 0xFF666666;
-  public static final int DEFAULT_COMPONENT_COLOR = 0x00000000;
+  public static final int DARK_CANVAS_BG_COLOR = 0xFF1A1C20;
+  public static final int DARK_GRID_BG_COLOR = 0xFF1A1C20;
+  public static final int DARK_GRID_DOT_COLOR = 0xFF525C6D;
+  public static final int DARK_ZOOMED_DOT_COLOR = 0xFF31373F;
+  public static final int DEFAULT_COMPONENT_COLOR = 0x00222831;
   public static final int DEFAULT_COMPONENT_SECONDARY_COLOR = 0x99999999;
   public static final int DEFAULT_COMPONENT_GHOST_COLOR = 0x99999999;
   public static final int DEFAULT_COMPONENT_ICON_COLOR = 0x00000000;
@@ -671,7 +694,7 @@ public class AppPreferences {
   // default clock frequency color
   public static final int DEFAULT_CLOCK_FREQUENCY_COLOR = 0xFF00B4;
   // dark mode default component colors
-  public static final int DARK_COMPONENT_COLOR = 0xFFFFFFFF;
+  public static final int DARK_COMPONENT_COLOR = 0xFFE2E6ED;
   public static final int DARK_COMPONENT_SECONDARY_COLOR = 0xFFAAAAAA;
   public static final int DARK_COMPONENT_GHOST_COLOR = 0xFF777777;
   public static final int DARK_COMPONENT_ICON_COLOR = 0xFFFFFFFF;
@@ -716,21 +739,37 @@ public class AppPreferences {
   public static final int DEFAULT_FPGA_SELECTABLE_MAPPED_COLOR = 0x00A000;
   public static final int DEFAULT_FPGA_SELECT_COLOR = 0x0000FF;
   // dark mode default signal colors
-  public static final int DARK_TRUE_COLOR = 0xFF00FF00;
-  public static final int DARK_FALSE_COLOR = 0xFF339933;
-  public static final int DARK_UNKNOWN_COLOR = 0xFF3399FF;
-  public static final int DARK_ERROR_COLOR = 0xFFFF4444;
-  public static final int DARK_NIL_COLOR = 0xFFBBBBBB;
-  public static final int DARK_BUS_COLOR = 0xFFFFFFFF;
-  public static final int DARK_STROKE_COLOR = 0xFFFF88FF;
+  public static final int DARK_TRUE_COLOR = 0xFF3FD68C;
+  public static final int DARK_FALSE_COLOR = 0xFF33705A;
+  public static final int DARK_UNKNOWN_COLOR = 0xFF9B8CFF;
+  public static final int DARK_ERROR_COLOR = 0xFFF2555A;
+  public static final int DARK_NIL_COLOR = 0xFF6B7280;
+  public static final int DARK_BUS_COLOR = 0xFFD7DCE5;
+  public static final int DARK_STROKE_COLOR = 0xFFE6E9F0;
   // default light signal colors
-  public static final int DEFAULT_TRUE_COLOR = 0x0000D200;
-  public static final int DEFAULT_FALSE_COLOR = 0x00006400;
-  public static final int DEFAULT_UNKNOWN_COLOR = 0x002828FF;
-  public static final int DEFAULT_ERROR_COLOR = 0x00C00000;
-  public static final int DEFAULT_NIL_COLOR = 0x00808080;
-  public static final int DEFAULT_BUS_COLOR = 0x00000000;
-  public static final int DEFAULT_STROKE_COLOR = 0x00FF00FF;
+  /**
+   * The palette a circuit is drawn in for paper or for an exported image.
+   *
+   * <p>Its own set rather than the light theme's: a screen is backlit and a sheet is not, and a
+   * figure may well be printed or photocopied in grey. Every colour here clears a contrast ratio
+   * of three to one against white, which {@code PrintViewColorsTest} holds it to.
+   */
+  public static final int PRINT_TRUE_COLOR = 0x000A5C34;
+
+  public static final int PRINT_FALSE_COLOR = 0x003E4F48;
+  public static final int PRINT_UNKNOWN_COLOR = 0x004A3FB5;
+  public static final int PRINT_ERROR_COLOR = 0x00B3272C;
+  public static final int PRINT_NIL_COLOR = 0x00424851;
+  public static final int PRINT_BUS_COLOR = 0x0021456E;
+  public static final int PRINT_STROKE_COLOR = 0x001F2430;
+
+  public static final int DEFAULT_TRUE_COLOR = 0x0018A05B;
+  public static final int DEFAULT_FALSE_COLOR = 0x001F5F43;
+  public static final int DEFAULT_UNKNOWN_COLOR = 0x006C5CE7;
+  public static final int DEFAULT_ERROR_COLOR = 0x00D1373C;
+  public static final int DEFAULT_NIL_COLOR = 0x009AA0A6;
+  public static final int DEFAULT_BUS_COLOR = 0x002F3542;
+  public static final int DEFAULT_STROKE_COLOR = 0x001F2430;
 
   /**
    * Whether a dark theme is showing.
@@ -780,24 +819,14 @@ public class AppPreferences {
       ThemeColorPrefs.register(CHRONO_ROW_BG_COLOR, DEFAULT_CHRONO_ROW_BG_COLOR, DARK_CHRONO_ROW_BG_COLOR);
       ThemeColorPrefs.register(CHRONO_SPOT_BG_COLOR, DEFAULT_CHRONO_SPOT_BG_COLOR, DARK_CHRONO_SPOT_BG_COLOR);
     }
+    ThemeColorPrefs.migrateShippedPalette();
     ThemeColorPrefs.applyTheme(isDarkTheme());
     reloadValueColors();
   }
 
-  /** Copies the colour preferences into the static fields {@link Value} paints with. */
+  /** Copies the colour preferences into the colours {@link Value} paints with. */
   static void reloadValueColors() {
-    Value.trueColor = new Color(TRUE_COLOR.get());
-    Value.falseColor = new Color(FALSE_COLOR.get());
-    Value.unknownColor = new Color(UNKNOWN_COLOR.get());
-    Value.errorColor = new Color(ERROR_COLOR.get());
-    Value.nilColor = new Color(NIL_COLOR.get());
-    Value.multiColor = new Color(BUS_COLOR.get());
-    Value.strokeColor = new Color(STROKE_COLOR.get());
-    Value.widthErrorColor = new Color(WIDTH_ERROR_COLOR.get());
-    Value.widthErrorCaptionColor = new Color(WIDTH_ERROR_CAPTION_COLOR.get());
-    Value.widthErrorHighlightColor = new Color(WIDTH_ERROR_HIGHLIGHT_COLOR.get());
-    Value.widthErrorCaptionBgcolor = new Color(WIDTH_ERROR_BACKGROUND_COLOR.get());
-    Value.clockFrequencyColor = new Color(CLOCK_FREQUENCY_COLOR.get());
+    Value.reloadColors();
   }
 
   /** Puts the shipped colours back, for the theme showing now only. */

@@ -168,7 +168,7 @@ public class Switch extends InstanceFactory {
         int px = p.getX();
         int py = p.getY();
         GraphicsUtil.switchToWidth(g, Wire.WIDTH);
-        g.setColor(Value.trueColor);
+        g.setColor(Value.trueColor());
         if (facing == Direction.NORTH) g.drawLine(px, py, px, py + 10);
         else g.drawLine(px, py, px + 10, py);
         GraphicsUtil.switchToWidth(g, 1);

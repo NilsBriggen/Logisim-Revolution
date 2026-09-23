@@ -17,6 +17,7 @@ import com.cburch.logisim.comp.Component;
 import com.cburch.logisim.comp.ComponentDrawContext;
 import com.cburch.logisim.data.Location;
 import com.cburch.logisim.data.Value;
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.gui.main.Canvas;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.proj.Action;
@@ -125,7 +126,7 @@ public class WiringTool extends Tool {
       final var x1 = e1.getX();
       final var y1 = e1.getY();
 
-      g.setColor(Color.BLACK);
+      g.setColor(CanvasStyle.componentColor());
       GraphicsUtil.switchToWidth(g, 3);
       if (direction == HORIZONTAL) {
         if (x0 != x1) g.drawLine(x0, y0, x1, y0);
@@ -135,7 +136,7 @@ public class WiringTool extends Tool {
         if (x0 != x1) g.drawLine(x0, y1, x1, y1);
       }
     } else if (AppPreferences.ADD_SHOW_GHOSTS.getBoolean() && inCanvas) {
-      g.setColor(Color.GRAY);
+      g.setColor(CanvasStyle.marker(false));
       g.fillOval(cur.getX() - 2, cur.getY() - 2, 5, 5);
     }
   }
@@ -347,10 +348,10 @@ public class WiringTool extends Tool {
           AppPreferences.getScaled(points[i + 1]),
           AppPreferences.getScaled(points[i + 2]),
           AppPreferences.getScaled(points[i + 3]));
-    g2.setColor(Value.trueColor);
+    g2.setColor(Value.trueColor());
     final var wh = AppPreferences.getScaled(5);
     g2.fillOval(AppPreferences.getScaled(1), AppPreferences.getScaled(11), wh, wh);
-    g2.setColor(Value.unknownColor);
+    g2.setColor(Value.unknownColor());
     g2.fillOval(AppPreferences.getScaled(11), AppPreferences.getScaled(1), wh, wh);
     g2.dispose();
   }

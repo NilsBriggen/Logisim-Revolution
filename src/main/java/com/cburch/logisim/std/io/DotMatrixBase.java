@@ -408,7 +408,7 @@ public abstract class DotMatrixBase extends InstanceFactory implements DynamicEl
         } else if (val == Value.FALSE) {
           c = offColor;
         } else {
-          c = Value.errorColor;
+          c = Value.errorColor();
         }
         g.setColor(c);
         if (SHAPE_SQUARE.equals(shape)) {

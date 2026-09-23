@@ -23,6 +23,7 @@ import com.cburch.logisim.data.AttributeSet;
 import com.cburch.logisim.data.Direction;
 import com.cburch.logisim.data.Location;
 import com.cburch.logisim.data.Value;
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.gui.main.Canvas;
 import com.cburch.logisim.gui.main.Selection;
 import com.cburch.logisim.gui.main.Selection.Event;
@@ -165,10 +166,12 @@ public class EditTool extends Tool {
       final var x = loc.getX();
       final var y = loc.getY();
       final var g = context.getGraphics();
-      g.setColor(Value.trueColor);
+      // The point under the pointer that a wire would attach to. Marked in the colour that means
+      // "this is what you are about to act on", rather than in the colour of a true signal.
+      g.setColor(CanvasStyle.marker(false));
       GraphicsUtil.switchToWidth(g, 2);
       g.drawOval(x - 5, y - 5, 10, 10);
-      g.setColor(Color.BLACK);
+      g.setColor(CanvasStyle.componentColor());
       GraphicsUtil.switchToWidth(g, 1);
     }
     current.draw(canvas, context);

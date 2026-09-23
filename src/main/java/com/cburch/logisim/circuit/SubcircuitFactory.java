@@ -444,10 +444,10 @@ public class SubcircuitFactory extends InstanceFactory {
         AppPreferences.getScaled(14));
     final var wh = AppPreferences.getScaled(3);
     for (var y = 0; y < 3; y++) {
-      g2.setColor(y == 1 ? Value.trueColor : Value.falseColor);
+      g2.setColor(y == 1 ? Value.trueColor() : Value.falseColor());
       g2.fillOval(AppPreferences.getScaled(1), AppPreferences.getScaled(y * 4 + 3), wh, wh);
       if (y < 2) {
-        g2.setColor(Value.unknownColor);
+        g2.setColor(Value.unknownColor());
         g2.fillOval(AppPreferences.getScaled(12), AppPreferences.getScaled(y * 4 + 3), wh, wh);
       }
     }
@@ -469,10 +469,10 @@ public class SubcircuitFactory extends InstanceFactory {
         (float) (AppPreferences.getIconSize() / 4 - l.getBounds().getCenterY()));
     final var wh = AppPreferences.getScaled(3);
     for (int y = 1; y < 3; y++) {
-      g2.setColor(y == 1 ? Value.trueColor : Value.falseColor);
+      g2.setColor(y == 1 ? Value.trueColor() : Value.falseColor());
       g2.fillOval(AppPreferences.getScaled(0), AppPreferences.getScaled(y * 4 + 3), wh, wh);
       if (y < 2) {
-        g2.setColor(Value.unknownColor);
+        g2.setColor(Value.unknownColor());
         g2.fillOval(AppPreferences.getScaled(13), AppPreferences.getScaled(y * 4 + 3), wh, wh);
       }
     }

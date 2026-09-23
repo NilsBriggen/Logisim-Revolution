@@ -113,18 +113,44 @@ public class GridPainter implements PropertyChangeListener {
   }
 
   private void createGridImage(int size, double f) {
+    final var w = tileWidth(size, f);
+    gridImage = destination.createImage(new MemoryImageSource(w, w, gridPixels(size, f, w), 0, w));
+    gridImageWidth = w;
+  }
+
+  /**
+   * The edge length of the repeating tile the grid is drawn from.
+   *
+   * <p>Five grid steps, doubled until the tile is large enough that blitting it across the canvas
+   * is not dominated by the per-tile cost.
+   */
+  static int tileWidth(int size, double f) {
     var ww = f * size * 5;
     while (2 * ww < 150) ww *= 2;
-    final var w = (int) Math.round(ww);
+    return (int) Math.round(ww);
+  }
+
+  /** The pixels of that tile. Separated from the image so it can be examined without a screen. */
+  static int[] gridPixels(int size, double f, int w) {
     final var pix = new int[w * w];
     Arrays.fill(pix, AppPreferences.GRID_BG_COLOR.get());
 
     if (f == 1.0) {
+      // Two levels: a faint dot on every grid step and a stronger one every fifth, so the eye can
+      // judge distance across the sheet instead of counting an even field of identical dots.
+      final var minorColor = AppPreferences.GRID_ZOOMED_DOT_COLOR.get();
+      final var majorColor = AppPreferences.GRID_DOT_COLOR.get();
       final var lineStep = size * w;
+      var row = 0;
       for (var j = 0; j < pix.length; j += lineStep) {
+        final var majorRow = (row % 5) == 0;
+        var column = 0;
         for (var i = 0; i < w; i += size) {
-          pix[i + j] = AppPreferences.GRID_DOT_COLOR.get();
+          final var major = majorRow && (column % 5) == 0;
+          pix[i + j] = major ? majorColor : minorColor;
+          column++;
         }
+        row++;
       }
     } else {
       int off0 = 0;
@@ -173,8 +199,7 @@ public class GridPainter implements PropertyChangeListener {
         }
       }
     }
-    gridImage = destination.createImage(new MemoryImageSource(w, w, pix, 0, w));
-    gridImageWidth = w;
+    return pix;
   }
 
   @Override

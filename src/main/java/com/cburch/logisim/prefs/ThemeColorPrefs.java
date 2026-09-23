@@ -10,7 +10,9 @@
 package com.cburch.logisim.prefs;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Keeps one set of drawing colours per theme.
@@ -53,8 +55,49 @@ public final class ThemeColorPrefs {
   /** Suppresses the mirroring listener while this class is the one doing the writing. */
   private static boolean loading;
 
+  /**
+   * What {@link #load} last put into each colour.
+   *
+   * <p>The {@code loading} flag alone is not enough to tell a value this class installed from one
+   * the user chose, because a preference change can be announced after the call that caused it has
+   * returned. Comparing against the loaded value does not depend on when the announcement arrives.
+   */
+  private static final Map<String, Integer> loadedValues = new HashMap<>();
+
   private ThemeColorPrefs() {
     throw new UnsupportedOperationException("Utility class, do not instantiate.");
+  }
+
+  /**
+   * Which generation of the shipped palette the stored colours belong to.
+   *
+   * <p>A colour preference is written to disk the first time it is read, so a new shipped default
+   * would never reach anyone who had already run the program. Raising this number retires the
+   * stored colours once so that the new ones are seen.
+   */
+  private static final int PALETTE_VERSION = 5;
+
+  private static final String PALETTE_VERSION_KEY = "canvasPaletteVersion";
+
+  /**
+   * Drops stored colours belonging to an older palette.
+   *
+   * <p>Both the plain key and the two per-theme copies go: until the fix that goes with this
+   * version, a preference change announced after {@link #load} had finished was mistaken for a
+   * choice the user had made, so the per-theme copies cannot be trusted to hold anything but the
+   * defaults that shipped at the time.
+   */
+  static synchronized void migrateShippedPalette() {
+    final var prefs = getPrefs();
+    if (prefs.getInt(PALETTE_VERSION_KEY, 0) >= PALETTE_VERSION) return;
+    for (final var entry : entries) {
+      // Only the per-theme copies: removing the plain key would have the monitor answer the
+      // store's notification with the default it was constructed with, undoing the load.
+      for (final var prefix : storagePrefixes()) prefs.remove(prefix + entry.monitor().getIdentifier());
+    }
+    prefs.putInt(PALETTE_VERSION_KEY, PALETTE_VERSION);
+    loadedDark = null;
+    loadedValues.clear();
   }
 
   /** Declares a colour that differs between the themes. Called from {@link AppPreferences}. */
@@ -83,6 +126,7 @@ public final class ThemeColorPrefs {
     try {
       for (final var entry : entries) {
         getPrefs().remove(entry.storageKey(dark));
+        loadedValues.put(entry.monitor().getIdentifier(), entry.defaultFor(dark));
         entry.monitor().set(entry.defaultFor(dark));
       }
     } finally {
@@ -99,10 +143,13 @@ public final class ThemeColorPrefs {
   static synchronized void mirrorChange(String changedIdentifier) {
     if (loading || loadedDark == null || changedIdentifier == null) return;
     for (final var entry : entries) {
-      if (entry.monitor().getIdentifier().equals(changedIdentifier)) {
-        getPrefs().putInt(entry.storageKey(loadedDark), entry.monitor().get());
-        return;
-      }
+      if (!entry.monitor().getIdentifier().equals(changedIdentifier)) continue;
+      final var value = entry.monitor().get();
+      // A late echo of this class's own write is not a choice the user made.
+      if (value.equals(loadedValues.get(changedIdentifier))) return;
+      loadedValues.put(changedIdentifier, value);
+      getPrefs().putInt(entry.storageKey(loadedDark), value);
+      return;
     }
   }
 
@@ -111,6 +158,7 @@ public final class ThemeColorPrefs {
     try {
       for (final var entry : entries) {
         final var stored = getPrefs().getInt(entry.storageKey(dark), entry.defaultFor(dark));
+        loadedValues.put(entry.monitor().getIdentifier(), stored);
         entry.monitor().set(stored);
       }
     } finally {
@@ -135,5 +183,6 @@ public final class ThemeColorPrefs {
   /** Forgets which theme is loaded, so the next {@link #applyTheme} reloads. For tests. */
   static synchronized void forgetLoadedTheme() {
     loadedDark = null;
+    loadedValues.clear();
   }
 }

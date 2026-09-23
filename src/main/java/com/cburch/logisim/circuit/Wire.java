@@ -55,10 +55,7 @@ public final class Wire implements Component, AttributeSet, CustomHandles, Itera
   /** Stroke width when drawing wires. */
   public static final int WIDTH = 3;
 
-  public static final int WIDTH_BUS = 4;
-  public static final int HIGHLIGHTED_WIDTH = 4;
-  public static final int HIGHLIGHTED_WIDTH_BUS = 5;
-  public static final Stroke HIGHLIGHTED_STROKE = new BasicStroke(3, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 0, new float[] {7}, 0);
+  public static final int WIDTH_BUS = 5;
   public static final double DOT_MULTIPLY_FACTOR = 1.35; // multiply factor for the intersection points
   public static final AttributeOption VALUE_HORZ = new AttributeOption("horz", S.getter("wireDirectionHorzOption"));
   public static final AttributeOption VALUE_VERT = new AttributeOption("vert", S.getter("wireDirectionVertOption"));

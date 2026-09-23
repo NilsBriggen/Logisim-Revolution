@@ -73,6 +73,49 @@ public final class UiSnapshot {
             Locale.ROOT, "wrote %s (%dx%d, %s theme)", output, size.width, size.height, mode.key()));
   }
 
+  /**
+   * Renders a circuit the way exporting an image does, in the print palette.
+   *
+   * <p>This is the check that matters most for a canvas change: the theme's colours are chosen
+   * against the window's background, and a dark one leaking into an exported figure makes it
+   * unreadable on a white page.
+   */
+  private static void capturePrintView(
+      com.cburch.logisim.proj.Project project, File output) throws Exception {
+    final var canvas = project.getFrame().getCanvas();
+    final var circuit = project.getCurrentCircuit();
+    final var bounds = circuit.getBounds(canvas.getGraphics()).expand(10);
+    final var image =
+        new BufferedImage(bounds.getWidth(), bounds.getHeight(), BufferedImage.TYPE_INT_RGB);
+    final var graphics = image.createGraphics();
+    try {
+      graphics.setColor(java.awt.Color.WHITE);
+      graphics.fillRect(0, 0, bounds.getWidth(), bounds.getHeight());
+      graphics.translate(-bounds.getX(), -bounds.getY());
+      final var context =
+          new com.cburch.logisim.comp.ComponentDrawContext(
+              canvas,
+              circuit,
+              project.getCircuitState(circuit),
+              graphics,
+              graphics,
+              true);
+      circuit.draw(context, null);
+    } finally {
+      graphics.dispose();
+    }
+    final var parent = output.getAbsoluteFile().getParentFile();
+    if (parent != null) parent.mkdirs();
+    ImageIO.write(image, "png", output);
+    System.out.println(
+        String.format(
+            Locale.ROOT,
+            "wrote %s (%dx%d, print view)",
+            output,
+            bounds.getWidth(),
+            bounds.getHeight()));
+  }
+
   public static void main(String[] args) throws Exception {
     final var mode = Theme.Mode.fromKey(System.getProperty("snapshot.theme", "dark"));
     final var output = new File(System.getProperty("snapshot.out", "build/ui-snapshot.png"));
@@ -93,16 +136,25 @@ public final class UiSnapshot {
     Theme.install();
     AppPreferences.applyThemeColors();
 
+    // A named file lets a real circuit be reviewed, which is the only way to judge canvas work.
+    final var circuitFile = System.getProperty("snapshot.file", "");
     final var project =
-        ProjectActions.doNew(
-            (com.cburch.logisim.gui.start.SplashScreen) null,
-            Boolean.getBoolean("snapshot.welcome"));
+        circuitFile.isEmpty()
+            ? ProjectActions.doNew(
+                (com.cburch.logisim.gui.start.SplashScreen) null,
+                Boolean.getBoolean("snapshot.welcome"))
+            : ProjectActions.doOpen(null, null, new File(circuitFile));
     final var deadline = System.currentTimeMillis() + FRAME_TIMEOUT_MS;
     while (project.getFrame() == null && System.currentTimeMillis() < deadline) {
       Thread.sleep(50);
     }
     final var frame = project.getFrame();
     if (frame == null) throw new IllegalStateException("the project window was never created");
+
+    if (Boolean.getBoolean("snapshot.print")) {
+      capturePrintView(project, output);
+      System.exit(0);
+    }
 
     if (Boolean.getBoolean("snapshot.preferences")) {
       captureWindow(

@@ -302,9 +302,16 @@ public final class GraphicsUtil {
     };
   }
 
+  /**
+   * Sets the line weight for everything drawn next.
+   *
+   * <p>The one place in the program where a stroke is set, so it is also the one place where the
+   * shape of a line end can be decided. Rounded ends and joins come from
+   * {@link com.cburch.logisim.gui.canvas.CanvasStyle}.
+   */
   public static void switchToWidth(Graphics gfx, int width) {
     if (gfx instanceof Graphics2D g2d) {
-      g2d.setStroke(new BasicStroke(width));
+      g2d.setStroke(com.cburch.logisim.gui.canvas.CanvasStyle.stroke(width));
     }
   }
 

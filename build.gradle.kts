@@ -1096,6 +1096,8 @@ tasks.register<JavaExec>("uiSnapshot") {
   systemProperty("snapshot.scale", project.findProperty("scale") ?: "1.0")
   systemProperty("snapshot.welcome", project.findProperty("welcome") ?: "false")
   systemProperty("snapshot.preferences", project.findProperty("preferences") ?: "false")
+  systemProperty("snapshot.file", project.findProperty("file") ?: "")
+  systemProperty("snapshot.print", project.findProperty("print") ?: "false")
 }
 
 tasks.register<JavaExec>("themeProbe") {

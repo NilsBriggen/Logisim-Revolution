@@ -15,6 +15,7 @@ import com.cburch.logisim.circuit.WireSet;
 import com.cburch.logisim.data.AttributeSet;
 import com.cburch.logisim.data.Bounds;
 import com.cburch.logisim.data.Direction;
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.data.Location;
 import com.cburch.logisim.instance.InstancePainter;
 import com.cburch.logisim.prefs.AppPreferences;
@@ -71,7 +72,10 @@ public class ComponentDrawContext {
   public void drawBounds(Component comp) {
     GraphicsUtil.switchToWidth(g, 2);
     final var bds = comp.getBounds();
-    g.drawRect(bds.getX(), bds.getY(), bds.getWidth(), bds.getHeight());
+    // Softened corners: a component still reads as a rectangle, but the drawing stops looking
+    // like a grid of hard boxes.
+    final var radius = CanvasStyle.bodyRadius();
+    g.drawRoundRect(bds.getX(), bds.getY(), bds.getWidth(), bds.getHeight(), radius, radius);
     GraphicsUtil.switchToWidth(g, 1);
   }
 
@@ -112,13 +116,25 @@ public class ComponentDrawContext {
   public void drawDongle(int x, int y) {
     GraphicsUtil.switchToWidth(g, 2);
     g.drawOval(x - 4, y - 4, 9, 9);
+    // Restored, unlike before: a negation bubble used to leave the stroke at 2 for whatever the
+    // component drew next.
+    GraphicsUtil.switchToWidth(g, 1);
   }
 
+  /**
+   * Draws one corner handle of a selected component.
+   *
+   * <p>It used to be a white square with a black outline whatever the theme, so on a dark canvas
+   * the selection was marked by four bright specks that matched nothing else on screen. It is now
+   * a round handle in the marker colour.
+   */
   public void drawHandle(int x, int y) {
-    g.setColor(Color.white);
-    g.fillRect(x - 3, y - 3, 7, 7);
-    g.setColor(Color.black);
-    g.drawRect(x - 3, y - 3, 7, 7);
+    final var size = CanvasStyle.handleSize();
+    final var half = size / 2;
+    final var previous = g.getColor();
+    g.setColor(CanvasStyle.marker(printView));
+    g.fillOval(x - half, y - half, size, size);
+    g.setColor(previous);
   }
 
   public void drawHandle(Location loc) {
@@ -180,7 +196,7 @@ public class ComponentDrawContext {
     if (getShowState()) {
       g.setColor(getCircuitState().getValue(pt).getColor());
     } else {
-      g.setColor(Color.BLACK);
+      g.setColor(CanvasStyle.componentColor());
     }
     drawPinMarker(x, y);
     g.setColor(curColor);
@@ -202,7 +218,7 @@ public class ComponentDrawContext {
       if (getShowState()) {
         g.setColor(getCircuitState().getValue(pt).getColor());
       } else {
-        g.setColor(Color.BLACK);
+        g.setColor(CanvasStyle.componentColor());
       }
       drawPinMarker(pt.getX(), pt.getY());
     }

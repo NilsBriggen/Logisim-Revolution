@@ -293,18 +293,115 @@ public final class Value {
   public static final Value NIL = new Value(0, 0, 0, 0);
   public static final int MAX_WIDTH = 64;
 
-  public static Color falseColor = new Color(AppPreferences.FALSE_COLOR.get());
-  public static Color trueColor = new Color(AppPreferences.TRUE_COLOR.get());
-  public static Color unknownColor = new Color(AppPreferences.UNKNOWN_COLOR.get());
-  public static Color errorColor = new Color(AppPreferences.ERROR_COLOR.get());
-  public static Color nilColor = new Color(AppPreferences.NIL_COLOR.get());
-  public static Color strokeColor = new Color(AppPreferences.STROKE_COLOR.get());
-  public static Color multiColor = new Color(AppPreferences.BUS_COLOR.get());
-  public static Color widthErrorColor = new Color(AppPreferences.WIDTH_ERROR_COLOR.get());
-  public static Color widthErrorCaptionColor = new Color(AppPreferences.WIDTH_ERROR_CAPTION_COLOR.get());
-  public static Color widthErrorHighlightColor = new Color(AppPreferences.WIDTH_ERROR_HIGHLIGHT_COLOR.get());
-  public static Color widthErrorCaptionBgcolor = new Color(AppPreferences.WIDTH_ERROR_BACKGROUND_COLOR.get());
-  public static Color clockFrequencyColor = new Color(AppPreferences.CLOCK_FREQUENCY_COLOR.get());
+  /**
+   * The colours a value is drawn in, kept twice.
+   *
+   * <p>The screen set follows the theme and whatever the user chose. The print set is the shipped
+   * light one and is used while drawing for paper or for an exported image, where the theme's
+   * colours would be wrong: a dark theme's near-white stroke is invisible on a white sheet.
+   */
+  private static Color screenFalseColor = new Color(AppPreferences.DEFAULT_FALSE_COLOR);
+
+  private static Color screenTrueColor = new Color(AppPreferences.DEFAULT_TRUE_COLOR);
+  private static Color screenUnknownColor = new Color(AppPreferences.DEFAULT_UNKNOWN_COLOR);
+  private static Color screenErrorColor = new Color(AppPreferences.DEFAULT_ERROR_COLOR);
+  private static Color screenNilColor = new Color(AppPreferences.DEFAULT_NIL_COLOR);
+  private static Color screenStrokeColor = new Color(AppPreferences.DEFAULT_STROKE_COLOR);
+  private static Color screenMultiColor = new Color(AppPreferences.DEFAULT_BUS_COLOR);
+
+  private static final Color PRINT_FALSE_COLOR = new Color(AppPreferences.PRINT_FALSE_COLOR);
+  private static final Color PRINT_TRUE_COLOR = new Color(AppPreferences.PRINT_TRUE_COLOR);
+  private static final Color PRINT_UNKNOWN_COLOR = new Color(AppPreferences.PRINT_UNKNOWN_COLOR);
+  private static final Color PRINT_ERROR_COLOR = new Color(AppPreferences.PRINT_ERROR_COLOR);
+  private static final Color PRINT_NIL_COLOR = new Color(AppPreferences.PRINT_NIL_COLOR);
+  private static final Color PRINT_STROKE_COLOR = new Color(AppPreferences.PRINT_STROKE_COLOR);
+  private static final Color PRINT_MULTI_COLOR = new Color(AppPreferences.PRINT_BUS_COLOR);
+
+  // These do not change with the theme: an error is drawn in the same warning colours either way.
+  private static Color widthError = new Color(AppPreferences.DEFAULT_WIDTH_ERROR_COLOR);
+  private static Color widthErrorCaption =
+      new Color(AppPreferences.DEFAULT_WIDTH_ERROR_CAPTION_COLOR);
+  private static Color widthErrorHighlight =
+      new Color(AppPreferences.DEFAULT_WIDTH_ERROR_HIGHLIGHT_COLOR);
+  private static Color widthErrorCaptionBg =
+      new Color(AppPreferences.DEFAULT_WIDTH_ERROR_BACKGROUND_COLOR);
+  private static Color clockFrequency = new Color(AppPreferences.DEFAULT_CLOCK_FREQUENCY_COLOR);
+
+  /** The colour of a low signal. */
+  public static Color falseColor() {
+    return AppPreferences.inPrintView() ? PRINT_FALSE_COLOR : screenFalseColor;
+  }
+
+  /** The colour of a high signal. */
+  public static Color trueColor() {
+    return AppPreferences.inPrintView() ? PRINT_TRUE_COLOR : screenTrueColor;
+  }
+
+  /** The colour of a signal nothing is driving. */
+  public static Color unknownColor() {
+    return AppPreferences.inPrintView() ? PRINT_UNKNOWN_COLOR : screenUnknownColor;
+  }
+
+  /** The colour of a signal more than one thing is driving. */
+  public static Color errorColor() {
+    return AppPreferences.inPrintView() ? PRINT_ERROR_COLOR : screenErrorColor;
+  }
+
+  /** The colour of a connection carrying no bits at all. */
+  public static Color nilColor() {
+    return AppPreferences.inPrintView() ? PRINT_NIL_COLOR : screenNilColor;
+  }
+
+  /** The colour used to outline a value rather than to fill it. */
+  public static Color strokeColor() {
+    return AppPreferences.inPrintView() ? PRINT_STROKE_COLOR : screenStrokeColor;
+  }
+
+  /** The colour of a bus, whose individual bits are not shown. */
+  public static Color multiColor() {
+    return AppPreferences.inPrintView() ? PRINT_MULTI_COLOR : screenMultiColor;
+  }
+
+  /** The colour marking a connection between two different bit widths. */
+  public static Color widthErrorColor() {
+    return widthError;
+  }
+
+  /** The colour of the text explaining such a connection. */
+  public static Color widthErrorCaptionColor() {
+    return widthErrorCaption;
+  }
+
+  /** The colour drawing attention to such a connection. */
+  public static Color widthErrorHighlightColor() {
+    return widthErrorHighlight;
+  }
+
+  /** The background behind the text explaining such a connection. */
+  public static Color widthErrorCaptionBgcolor() {
+    return widthErrorCaptionBg;
+  }
+
+  /** The colour a clock's measured frequency is written in. */
+  public static Color clockFrequencyColor() {
+    return clockFrequency;
+  }
+
+  /** Copies the colour preferences into the cached colours. Called when the theme changes. */
+  public static void reloadColors() {
+    screenFalseColor = new Color(AppPreferences.FALSE_COLOR.get());
+    screenTrueColor = new Color(AppPreferences.TRUE_COLOR.get());
+    screenUnknownColor = new Color(AppPreferences.UNKNOWN_COLOR.get());
+    screenErrorColor = new Color(AppPreferences.ERROR_COLOR.get());
+    screenNilColor = new Color(AppPreferences.NIL_COLOR.get());
+    screenStrokeColor = new Color(AppPreferences.STROKE_COLOR.get());
+    screenMultiColor = new Color(AppPreferences.BUS_COLOR.get());
+    widthError = new Color(AppPreferences.WIDTH_ERROR_COLOR.get());
+    widthErrorCaption = new Color(AppPreferences.WIDTH_ERROR_CAPTION_COLOR.get());
+    widthErrorHighlight = new Color(AppPreferences.WIDTH_ERROR_HIGHLIGHT_COLOR.get());
+    widthErrorCaptionBg = new Color(AppPreferences.WIDTH_ERROR_BACKGROUND_COLOR.get());
+    clockFrequency = new Color(AppPreferences.CLOCK_FREQUENCY_COLOR.get());
+  }
 
   private static final Cache cache = new Cache();
 
@@ -476,15 +573,15 @@ public final class Value {
 
   public Color getColor() {
     if (error != 0) {
-      return errorColor;
+      return errorColor();
     } else if (width == 0) {
-      return nilColor;
+      return nilColor();
     } else if (width == 1) {
-      if (this == UNKNOWN) return unknownColor;
-      else if (this == TRUE) return trueColor;
-      else return falseColor;
+      if (this == UNKNOWN) return unknownColor();
+      else if (this == TRUE) return trueColor();
+      else return falseColor();
     } else {
-      return multiColor;
+      return multiColor();
     }
   }
 

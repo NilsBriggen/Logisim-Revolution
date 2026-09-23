@@ -17,6 +17,8 @@ import com.cburch.logisim.data.AttributeSet;
 import com.cburch.logisim.data.Bounds;
 import com.cburch.logisim.data.Location;
 import com.cburch.logisim.prefs.AppPreferences;
+import com.cburch.logisim.util.GraphicsUtil;
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.proj.Action;
 import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.proj.ProjectEvent;
@@ -75,6 +77,7 @@ public class Selection extends SelectionBase {
         context.setGraphics(gfxNew);
         CustomHandles handler = (CustomHandles) comp.getFeature(CustomHandles.class);
         if (handler == null) {
+          drawSelectionOutline(context, comp);
           context.drawHandles(comp);
         } else {
           handler.drawHandles(context);
@@ -84,6 +87,41 @@ public class Selection extends SelectionBase {
     }
 
     context.setGraphics(g);
+  }
+
+  /**
+   * Rings a selected component.
+   *
+   * <p>Selection used to be shown only by four small corner handles, which on a busy drawing is
+   * easy to miss and says nothing about which parts of a group are in the selection. The outline
+   * follows the component's bounds a little way outside it, so it reads at a glance without
+   * covering the symbol.
+   */
+  private static void drawSelectionOutline(ComponentDrawContext context, Component comp) {
+    final var gfx = context.getGraphics();
+    final var bounds = comp.getBounds(gfx);
+    if (bounds == null || bounds.getWidth() <= 0 || bounds.getHeight() <= 0) return;
+    final var inset = CanvasStyle.selectionInset();
+    final var radius = CanvasStyle.bodyRadius() + inset;
+    final var previous = gfx.getColor();
+    GraphicsUtil.switchToWidth(gfx, 1);
+    gfx.setColor(CanvasStyle.markerWash(context.isPrintView()));
+    gfx.fillRoundRect(
+        bounds.getX() - inset,
+        bounds.getY() - inset,
+        bounds.getWidth() + 2 * inset,
+        bounds.getHeight() + 2 * inset,
+        radius,
+        radius);
+    gfx.setColor(CanvasStyle.marker(context.isPrintView()));
+    gfx.drawRoundRect(
+        bounds.getX() - inset,
+        bounds.getY() - inset,
+        bounds.getWidth() + 2 * inset,
+        bounds.getHeight() + 2 * inset,
+        radius,
+        radius);
+    gfx.setColor(previous);
   }
 
   public void drawGhostsShifted(ComponentDrawContext context, int dx, int dy) {

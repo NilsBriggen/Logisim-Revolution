@@ -19,6 +19,7 @@ import com.cburch.logisim.data.AttributeSet;
 import com.cburch.logisim.data.Bounds;
 import com.cburch.logisim.data.Location;
 import com.cburch.logisim.gui.icons.SelectIcon;
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.gui.main.Canvas;
 import com.cburch.logisim.gui.main.Selection;
 import com.cburch.logisim.gui.main.Selection.Event;
@@ -65,12 +66,22 @@ public class SelectTool extends Tool {
   private static final int MOVING = 1;
   private static final int RECT_SELECT = 2;
 
+  /** An endpoint a move would leave unconnected. */
   private static final Color COLOR_UNMATCHED = new Color(192, 0, 0);
+
   private static final Color COLOR_COMPUTING = new Color(96, 192, 96);
-  private static final Color COLOR_RECT_SELECT = new Color(0, 64, 128, 255);
-  private static final Color BACKGROUND_RECT_SELECT = new Color(192, 192, 255, 192);
 
   private static final SelectIcon ICON = new SelectIcon();
+
+  /** The outline of the rubber-band rectangle, in the colour that marks a choice. */
+  private static Color rectSelectColor() {
+    return CanvasStyle.marker(false);
+  }
+
+  /** The wash inside the rubber-band rectangle. */
+  private static Color rectSelectWash() {
+    return CanvasStyle.markerWash(false);
+  }
 
   private Location start;
   private int state;
@@ -217,7 +228,7 @@ public class SelectTool extends Tool {
       int w = right - left - 1;
       int h = bot - top - 1;
       if (w > 2 && h > 2) {
-        gBase.setColor(BACKGROUND_RECT_SELECT);
+        gBase.setColor(rectSelectWash());
         gBase.fillRect(left + 1, top + 1, w - 1, h - 1);
       }
 
@@ -228,11 +239,11 @@ public class SelectTool extends Tool {
         final var gDup = gBase.create();
         context.setGraphics(gDup);
         c.getFactory()
-            .drawGhost(context, COLOR_RECT_SELECT, cloc.getX(), cloc.getY(), c.getAttributeSet());
+            .drawGhost(context, rectSelectColor(), cloc.getX(), cloc.getY(), c.getAttributeSet());
         gDup.dispose();
       }
 
-      gBase.setColor(COLOR_RECT_SELECT);
+      gBase.setColor(rectSelectColor());
       GraphicsUtil.switchToWidth(gBase, 2);
       if (w < 0) {
         w = 0;

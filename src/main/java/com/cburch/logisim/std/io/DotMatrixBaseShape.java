@@ -128,7 +128,7 @@ public abstract class DotMatrixBaseShape extends DynamicElement {
         int y = bounds.getY() + j * scale * scaleY;
 
         if (state == null || data == null) {
-          g.setColor(Value.errorColor);
+          g.setColor(Value.errorColor());
           this.drawShape(g, x, y, shape, scaleX, scaleY);
           continue;
         }
@@ -140,7 +140,7 @@ public abstract class DotMatrixBaseShape extends DynamicElement {
         } else if (val == Value.FALSE) {
           c = offColor;
         } else {
-          c = Value.errorColor;
+          c = Value.errorColor();
         }
         g.setColor(c);
         this.drawShape(g, x, y, shape, scaleX, scaleY);

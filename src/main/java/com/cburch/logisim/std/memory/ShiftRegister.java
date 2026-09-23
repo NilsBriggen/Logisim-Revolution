@@ -242,7 +242,7 @@ public class ShiftRegister extends InstanceFactory {
     final var dataWidth = (nrOfBits == 1) ? 2 : 5;
     final var lineFix = (nrOfBits == 1) ? 1 : 2;
     final var componentColor = new Color(AppPreferences.COMPONENT_COLOR.get());
-    final var inOutputConectionColor = (nrOfBits == 1) ? componentColor : Value.multiColor;
+    final var inOutputConectionColor = (nrOfBits == 1) ? componentColor : Value.multiColor();
     int height = (currentStage == 0) ? 30 : 20;
     final var lastBlock = (currentStage == (nrOfStages - 1));
     final var blockWidth = symbolWidth;

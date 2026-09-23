@@ -784,7 +784,7 @@ public class DualRamAppearance {
               ypos[1] += 20;
               ypos[2] += 20;
             }
-            g.setColor(Value.multiColor);
+            g.setColor(Value.multiColor());
             g.setStroke(new BasicStroke(4));
             xpos[0] = x;
             xpos[1] = xpos[2] = x + 5;
@@ -857,7 +857,7 @@ public class DualRamAppearance {
               ypos[2] += 20;
             }
             g.setStroke(new BasicStroke(4));
-            g.setColor(Value.multiColor);
+            g.setColor(Value.multiColor());
             xpos[0] = x;
             xpos[1] = xpos[2] = x - 5;
             ypos[0] = y;
@@ -896,7 +896,7 @@ public class DualRamAppearance {
             g.drawLine(x + 15, y + 13 + j * 6, x + 15, y + 15 + j * 6);
         }
         g.drawPolyline(xpos, ypos, 3);
-        g.setColor(Value.multiColor);
+        g.setColor(Value.multiColor());
         g.setStroke(new BasicStroke(4));
         xpos[0] = x;
         xpos[1] = xpos[2] = x + 5;

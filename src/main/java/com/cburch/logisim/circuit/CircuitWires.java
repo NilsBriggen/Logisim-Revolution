@@ -20,6 +20,7 @@ import com.cburch.logisim.data.BitWidth;
 import com.cburch.logisim.data.Bounds;
 import com.cburch.logisim.data.Location;
 import com.cburch.logisim.data.Value;
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.instance.Instance;
 import com.cburch.logisim.instance.InstanceComponent;
 import com.cburch.logisim.instance.StdAttr;
@@ -935,7 +936,7 @@ public class CircuitWires {
     final var showState = context.getShowState();
     final var state = context.getCircuitState();
     final var g = (Graphics2D) context.getGraphics();
-    g.setColor(Color.BLACK);
+    g.setColor(CanvasStyle.componentColor());
     GraphicsUtil.switchToWidth(g, Wire.WIDTH);
     final var highlighted = context.getHighlightedWires();
 
@@ -948,29 +949,24 @@ public class CircuitWires {
         final var wb = cmap.getBundleAt(s);
         var width = 5;
         if (!wb.isValid()) {
-          g.setColor(Value.widthErrorColor);
+          g.setColor(Value.widthErrorColor());
         } else if (!showState) {
-          g.setColor(Color.BLACK);
+          g.setColor(CanvasStyle.componentColor());
         } else if (!isValid) {
-          g.setColor(Value.nilColor);
+          g.setColor(Value.nilColor());
         } else {
           g.setColor(getBusValue(state, s).getColor());
         }
+        width = wb.isBus() ? Wire.WIDTH_BUS : Wire.WIDTH;
         if (highlighted.containsWire(wire)) {
-          width = wb.isBus() ? Wire.HIGHLIGHTED_WIDTH_BUS : Wire.HIGHLIGHTED_WIDTH;
-          GraphicsUtil.switchToWidth(g, width);
+          final var wireColor = g.getColor();
+          g.setColor(CanvasStyle.wireHighlight(context.isPrintView()));
+          GraphicsUtil.switchToWidth(g, CanvasStyle.highlightWidth(width));
           g.drawLine(s.getX(), s.getY(), t.getX(), t.getY());
-
-          final var oldStroke = g.getStroke();
-          g.setStroke(Wire.HIGHLIGHTED_STROKE);
-          g.setColor(Value.strokeColor);
-          g.drawLine(s.getX(), s.getY(), t.getX(), t.getY());
-          g.setStroke(oldStroke);
-        } else {
-          width = wb.isBus() ? Wire.WIDTH_BUS : Wire.WIDTH;
-          GraphicsUtil.switchToWidth(g, width);
-          g.drawLine(s.getX(), s.getY(), t.getX(), t.getY());
+          g.setColor(wireColor);
         }
+        GraphicsUtil.switchToWidth(g, width);
+        g.drawLine(s.getX(), s.getY(), t.getX(), t.getY());
         /* The following part is used by the FPGA Commander's DRC to highlight a wire with DRC
          * problems (KTT1)
          */
@@ -994,23 +990,25 @@ public class CircuitWires {
         if (points.getComponentCount(loc) > 2) {
           final var wb = cmap.getBundleAt(loc);
           if (wb != null) {
-            var color = Color.BLACK;
+            var color = CanvasStyle.componentColor();
             if (!wb.isValid()) {
-              color = Value.widthErrorColor;
+              color = Value.widthErrorColor();
             } else if (showState) {
-              color = !isValid ? Value.nilColor : state.getValue(loc).getColor();
+              color = !isValid ? Value.nilColor() : state.getValue(loc).getColor();
             }
             g.setColor(color);
 
-            int radius =
-                highlighted.containsLocation(loc)
-                    ? wb.isBus()
-                        ? (int) (Wire.HIGHLIGHTED_WIDTH_BUS * Wire.DOT_MULTIPLY_FACTOR)
-                        : (int) (Wire.HIGHLIGHTED_WIDTH * Wire.DOT_MULTIPLY_FACTOR)
-                    : wb.isBus()
-                        ? (int) (Wire.WIDTH_BUS * Wire.DOT_MULTIPLY_FACTOR)
-                        : (int) (Wire.WIDTH * Wire.DOT_MULTIPLY_FACTOR);
-            radius = (int) (radius * Wire.DOT_MULTIPLY_FACTOR);
+            // The factor is applied once, as it is in the branch below. It used to be applied
+            // twice here, so a junction dot visibly shrank while a wire was being dragged.
+            final var radius =
+                (int) ((wb.isBus() ? Wire.WIDTH_BUS : Wire.WIDTH) * Wire.DOT_MULTIPLY_FACTOR);
+            if (highlighted.containsLocation(loc)) {
+              final var dotColor = g.getColor();
+              final var halo = CanvasStyle.highlightWidth(radius);
+              g.setColor(CanvasStyle.wireHighlight(context.isPrintView()));
+              g.fillOval(loc.getX() - halo, loc.getY() - halo, halo * 2, halo * 2);
+              g.setColor(dotColor);
+            }
             g.fillOval(loc.getX() - radius, loc.getY() - radius, radius * 2, radius * 2);
           }
         }
@@ -1022,20 +1020,22 @@ public class CircuitWires {
           final var t = wire.e1;
           final var wb = cmap.getBundleAt(s);
           if (!wb.isValid()) {
-            g.setColor(Value.widthErrorColor);
+            g.setColor(Value.widthErrorColor());
           } else if (showState) {
-            g.setColor(!isValid ? Value.nilColor : getBusValue(state, s).getColor());
+            g.setColor(!isValid ? Value.nilColor() : getBusValue(state, s).getColor());
           } else {
-            g.setColor(Color.BLACK);
+            g.setColor(CanvasStyle.componentColor());
           }
+          final var width = wb.isBus() ? Wire.WIDTH_BUS : Wire.WIDTH;
           if (highlighted.containsWire(wire)) {
-            GraphicsUtil.switchToWidth(g, Wire.WIDTH + 2);
+            final var wireColor = g.getColor();
+            g.setColor(CanvasStyle.wireHighlight(context.isPrintView()));
+            GraphicsUtil.switchToWidth(g, CanvasStyle.highlightWidth(width));
             g.drawLine(s.getX(), s.getY(), t.getX(), t.getY());
-            GraphicsUtil.switchToWidth(g, Wire.WIDTH);
-          } else {
-            GraphicsUtil.switchToWidth(g, wb.isBus() ? Wire.WIDTH_BUS : Wire.WIDTH);
-            g.drawLine(s.getX(), s.getY(), t.getX(), t.getY());
+            g.setColor(wireColor);
           }
+          GraphicsUtil.switchToWidth(g, width);
+          g.drawLine(s.getX(), s.getY(), t.getX(), t.getY());
 
           drawBusWidthLabel(g, wire, wb, s, t);
         }
@@ -1054,16 +1054,23 @@ public class CircuitWires {
             final var wireBundle = cmap.getBundleAt(loc);
             if (wireBundle != null) {
               if (!wireBundle.isValid()) {
-                g.setColor(Value.widthErrorColor);
+                g.setColor(Value.widthErrorColor());
               } else if (showState) {
-                g.setColor(!isValid ? Value.nilColor : getBusValue(state, loc).getColor());
+                g.setColor(!isValid ? Value.nilColor() : getBusValue(state, loc).getColor());
               } else {
-                g.setColor(Color.BLACK);
+                g.setColor(CanvasStyle.componentColor());
               }
-              var radius = highlighted.containsLocation(loc)
-                      ? (wireBundle.isBus() ? Wire.HIGHLIGHTED_WIDTH_BUS : Wire.HIGHLIGHTED_WIDTH)
-                      : (wireBundle.isBus() ? Wire.WIDTH_BUS : Wire.WIDTH);
-              radius = (int) (radius * Wire.DOT_MULTIPLY_FACTOR);
+              final var radius =
+                  (int)
+                      ((wireBundle.isBus() ? Wire.WIDTH_BUS : Wire.WIDTH)
+                          * Wire.DOT_MULTIPLY_FACTOR);
+              if (highlighted.containsLocation(loc)) {
+                final var dotColor = g.getColor();
+                final var halo = CanvasStyle.highlightWidth(radius);
+                g.setColor(CanvasStyle.wireHighlight(context.isPrintView()));
+                g.fillOval(loc.getX() - halo, loc.getY() - halo, halo * 2, halo * 2);
+                g.setColor(dotColor);
+              }
               g.fillOval(loc.getX() - radius, loc.getY() - radius, radius * 2, radius * 2);
             }
           }

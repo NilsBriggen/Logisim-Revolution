@@ -11,6 +11,7 @@ package com.cburch.logisim.prefs;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.HashMap;
@@ -130,13 +131,60 @@ class ThemeColorPrefsTest {
   @Test
   void theValueColoursFollowTheThemeThatIsShowing() {
     useTheme(AppPreferences.THEME_LIGHT);
-    final var light = com.cburch.logisim.data.Value.trueColor;
+    final var light = com.cburch.logisim.data.Value.trueColor();
 
     useTheme(AppPreferences.THEME_DARK);
-    final var dark = com.cburch.logisim.data.Value.trueColor;
+    final var dark = com.cburch.logisim.data.Value.trueColor();
 
     assertEquals(new java.awt.Color(AppPreferences.DEFAULT_TRUE_COLOR), light);
     assertEquals(new java.awt.Color(AppPreferences.DARK_TRUE_COLOR), dark);
+  }
+
+  /**
+   * A change announced by the preference store is not a choice the user made.
+   *
+   * <p>Such a notification arrives on another thread after the fact and carries no value, so a
+   * monitor answering it falls back to the default it was constructed with — for the drawing
+   * colours, the light one. Recording that as a choice used to file the light colour under
+   * whichever theme was showing, which then outlived every later change to the shipped palette:
+   * the dark canvas kept drawing components in the light theme's ink.
+   */
+  @Test
+  void changeAnnouncedByStoreIsNotRecordedAsChoice() {
+    useTheme(AppPreferences.THEME_DARK);
+
+    AppPreferences.firePropertyChangeFromStore(
+        KEY, AppPreferences.DARK_CANVAS_BG_COLOR, AppPreferences.DEFAULT_CANVAS_BG_COLOR);
+
+    assertNull(
+        AppPreferences.getPrefs().get(DARK_KEY, null),
+        "an echo from the store was filed as a colour chosen for the dark theme");
+  }
+
+  /** The same, for the theme that is not showing. */
+  @Test
+  void changeAnnouncedByStoreLeavesOtherThemeAlone() {
+    useTheme(AppPreferences.THEME_LIGHT);
+
+    AppPreferences.firePropertyChangeFromStore(KEY, 0, CHOSEN);
+
+    assertNull(AppPreferences.getPrefs().get(LIGHT_KEY, null));
+    assertNull(AppPreferences.getPrefs().get(DARK_KEY, null));
+  }
+
+  /**
+   * A colour preference is written to the store the first time it is read, so without this a new
+   * shipped default would only ever be seen by someone who had never run the program before.
+   */
+  @Test
+  void newShippedColourReachesInstallationHoldingTheOldOne() {
+    final var retired = 0xFF2B2B2B;
+    AppPreferences.getPrefs().putInt(KEY, retired);
+    ThemeColorPrefs.forgetLoadedTheme();
+
+    useTheme(AppPreferences.THEME_DARK);
+
+    assertEquals(AppPreferences.DARK_CANVAS_BG_COLOR, AppPreferences.CANVAS_BG_COLOR.get());
   }
 
   @Test

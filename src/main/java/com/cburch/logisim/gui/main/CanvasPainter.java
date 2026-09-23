@@ -15,6 +15,7 @@ import com.cburch.logisim.comp.Component;
 import com.cburch.logisim.comp.ComponentDrawContext;
 import com.cburch.logisim.data.Value;
 import com.cburch.logisim.gui.generic.GridPainter;
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.tools.PokeTool;
@@ -83,10 +84,10 @@ class CanvasPainter implements PropertyChangeListener {
         }
         GraphicsUtil.switchToWidth(g, 2);
         if (common != null && !w.equals(common)) {
-          g.setColor(Value.widthErrorHighlightColor);
+          g.setColor(Value.widthErrorHighlightColor());
           g.drawOval(p.getX() - 5, p.getY() - 5, 10, 10);
         }
-        g.setColor(Value.widthErrorColor);
+        g.setColor(Value.widthErrorColor());
         g.drawOval(p.getX() - 4, p.getY() - 4, 8, 8);
         GraphicsUtil.switchToWidth(g, 3);
         GraphicsUtil.outlineText(
@@ -94,10 +95,10 @@ class CanvasPainter implements PropertyChangeListener {
             caption.toString(),
             p.getX() + 4,
             p.getY() + 1 + fm.getAscent(),
-            Value.widthErrorCaptionColor,
+            Value.widthErrorCaptionColor(),
             common != null && !w.equals(common)
-                ? Value.widthErrorHighlightColor
-                : Value.widthErrorCaptionBgcolor);
+                ? Value.widthErrorHighlightColor()
+                : Value.widthErrorCaptionBgcolor());
       }
     }
     g.setColor(componentColor());
@@ -119,18 +120,13 @@ class CanvasPainter implements PropertyChangeListener {
         && haloedComponent != null
         && haloedCircuit == circ
         && !hidden.contains(haloedComponent)) {
-      GraphicsUtil.switchToWidth(g, 3);
-      g.setColor(Canvas.HALO_COLOR);
-      final var bds = haloedComponent.getBounds(g).expand(5);
-      final var width = bds.getWidth();
-      final var height = bds.getHeight();
-      final var a = Canvas.SQRT_2 * width;
-      final var b = Canvas.SQRT_2 * height;
-      g.drawOval(
-          (int) Math.round(bds.getX() + width / 2.0 - a / 2.0),
-          (int) Math.round(bds.getY() + height / 2.0 - b / 2.0),
-          (int) Math.round(a),
-          (int) Math.round(b));
+      // A ring that follows the component's own shape. It used to be a magenta ellipse scaled by
+      // the square root of two, which swallowed everything around a small component.
+      GraphicsUtil.switchToWidth(g, 2);
+      g.setColor(CanvasStyle.halo(false));
+      final var bds = haloedComponent.getBounds(g).expand(4);
+      final var radius = CanvasStyle.bodyRadius() + 4;
+      g.drawRoundRect(bds.getX(), bds.getY(), bds.getWidth(), bds.getHeight(), radius, radius);
       GraphicsUtil.switchToWidth(g, 1);
       g.setColor(componentColor());
     }

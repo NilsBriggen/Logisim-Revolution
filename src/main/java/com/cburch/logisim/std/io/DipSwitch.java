@@ -262,7 +262,7 @@ public class DipSwitch extends InstanceFactory {
       g.setFont(g.getFont().deriveFont(g.getFont().getSize2D() * 0.6f));
     }
     for (var i = 0; i < n; i++) {
-      g.setColor(state.isBitSet(i) ? Value.trueColor : Color.white);
+      g.setColor(state.isBitSet(i) ? Value.trueColor() : Color.white);
       g.fillRect(7 + (i * segmentWidth), 16, 6, 20);
 
       g.setColor(Color.white);
