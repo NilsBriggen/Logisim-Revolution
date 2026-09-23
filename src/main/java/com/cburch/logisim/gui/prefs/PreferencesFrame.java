@@ -18,12 +18,18 @@ import com.cburch.logisim.util.LocaleListener;
 import com.cburch.logisim.util.LocaleManager;
 import com.cburch.logisim.util.WindowMenuItemManager;
 import com.cburch.logisim.util.StringGetter;
+import com.cburch.logisim.gui.shell.PanelHeader;
+import com.cburch.logisim.gui.shell.SettingsNav;
+import com.cburch.logisim.prefs.AppPreferences;
 import java.awt.BorderLayout;
+import java.awt.CardLayout;
+import java.awt.Dimension;
 import java.util.List;
 import java.util.function.Function;
 import javax.swing.JFrame;
 import javax.swing.JScrollPane;
-import javax.swing.JTabbedPane;
+import javax.swing.JPanel;
+import javax.swing.JSplitPane;
 
 public class PreferencesFrame extends LFrame.Dialog {
 
@@ -55,30 +61,72 @@ public class PreferencesFrame extends LFrame.Dialog {
   private static WindowMenuManager MENU_MANAGER = null;
   private final MyListener myListener = new MyListener();
   private final OptionsPanel[] panels;
-  private final JTabbedPane tabbedPane;
+  private final SettingsNav nav;
+  private final CardLayout pages = new CardLayout();
+  private final JPanel pageHolder = new JPanel(pages);
+  private final PanelHeader pageHeader = new PanelHeader("");
   private int fpgaTabIdx = -1;
+  private int selectedIndex = -1;
 
   private PreferencesFrame() {
     super(null);
 
     panels = TABS.stream().map(tab -> tab.factory().apply(this)).toArray(OptionsPanel[]::new);
-    tabbedPane = new JTabbedPane();
-    int intlIndex = -1;
+    var intlIndex = -1;
     for (var index = 0; index < panels.length; index++) {
       final var panel = panels[index];
-      tabbedPane.addTab(panel.getTitle(), null, panel, panel.getToolTipText());
+      pageHolder.add(new JScrollPane(panel), String.valueOf(index));
       if (panel instanceof IntlOptions) intlIndex = index;
       if (panel instanceof FpgaOptions) fpgaTabIdx = index;
     }
 
-    final var contents = getContentPane();
-    contents.add(new JScrollPane(tabbedPane), BorderLayout.CENTER);
+    nav = new SettingsNav(S.get("preferencesFilterHint"), this::showPage);
+    final var navWidth = AppPreferences.getScaled(NAV_WIDTH);
+    nav.setPreferredSize(new Dimension(navWidth, 0));
+    nav.setMinimumSize(new Dimension(navWidth, 0));
 
-    if (intlIndex >= 0) tabbedPane.setSelectedIndex(intlIndex);
+    final var page = new JPanel(new BorderLayout());
+    page.add(pageHeader, BorderLayout.NORTH);
+    page.add(pageHolder, BorderLayout.CENTER);
+
+    final var split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, true, nav, page);
+    split.setBorder(null);
+    split.setDividerSize(1);
+    split.setResizeWeight(0.0);
+
+    getContentPane().add(split, BorderLayout.CENTER);
+    setPreferredSize(
+        new Dimension(AppPreferences.getScaled(WINDOW_WIDTH), AppPreferences.getScaled(WINDOW_HEIGHT)));
 
     LocaleManager.addLocaleListener(myListener);
     myListener.localeChanged();
+    showPage(intlIndex >= 0 ? intlIndex : 0);
     pack();
+    // After packing: a split pane clamps a divider position to its own width, which it does not
+    // have until the window has been laid out.
+    split.setDividerLocation(navWidth);
+  }
+
+  /** Unscaled width of the page list. */
+  private static final int NAV_WIDTH = 190;
+
+  /** Unscaled size the window opens at. */
+  private static final int WINDOW_WIDTH = 820;
+
+  private static final int WINDOW_HEIGHT = 560;
+
+  /** Shows the page at {@code index} in {@link #TABS} order. */
+  private void showPage(int index) {
+    if (index < 0 || index >= panels.length) return;
+    selectedIndex = index;
+    pages.show(pageHolder, String.valueOf(index));
+    pageHeader.setTitle(panels[index].getTitle());
+    nav.setSelectedIndex(index);
+  }
+
+  /** Builds a window without showing it, for the development snapshot tool. */
+  public static PreferencesFrame buildForSnapshot() {
+    return new PreferencesFrame();
   }
 
   public static void initializeManager() {
@@ -98,9 +146,7 @@ public class PreferencesFrame extends LFrame.Dialog {
   /** Shows the preferences window open at the tab at {@code index} in {@link #getTabTitles()}. */
   public static void showPreferences(int index) {
     final var frame = (PreferencesFrame) MENU_MANAGER.getJFrame(true, null);
-    if (index >= 0 && index < frame.tabbedPane.getTabCount()) {
-      frame.tabbedPane.setSelectedIndex(index);
-    }
+    frame.showPage(index);
     frame.setVisible(true);
   }
 
@@ -111,8 +157,7 @@ public class PreferencesFrame extends LFrame.Dialog {
   }
 
   public void setFpgaTab() {
-    if (fpgaTabIdx < 0) return;
-    tabbedPane.setSelectedIndex(fpgaTabIdx);
+    showPage(fpgaTabIdx);
   }
 
   private static class WindowMenuManager extends WindowMenuItemManager implements LocaleListener {
@@ -145,10 +190,14 @@ public class PreferencesFrame extends LFrame.Dialog {
     @Override
     public void localeChanged() {
       setTitle(S.get("preferencesFrameTitle"));
-      for (int i = 0; i < panels.length; i++) {
-        tabbedPane.setTitleAt(i, panels[i].getTitle());
-        tabbedPane.setToolTipTextAt(i, panels[i].getToolTipText());
-        panels[i].localeChanged();
+      for (final var panel : panels) {
+        panel.localeChanged();
+      }
+      nav.setFilterHint(S.get("preferencesFilterHint"));
+      nav.setTitles(getTabTitles());
+      if (selectedIndex >= 0) {
+        pageHeader.setTitle(panels[selectedIndex].getTitle());
+        nav.setSelectedIndex(selectedIndex);
       }
     }
   }

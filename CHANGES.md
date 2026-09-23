@@ -3,6 +3,8 @@
 # Changes #
 
 * @dev (????-??-??)
+  * The preferences window has a list of pages with a filter instead of ten tabs whose names
+    did not fit (@YOUR_GITHUB_HANDLE).
   * Starting without a file now opens a welcome screen offering a new project, a file to open
     and the projects you had open recently, instead of an empty grid (@YOUR_GITHUB_HANDLE).
   * The zoom controls float over the corner of the canvas instead of taking a strip of the

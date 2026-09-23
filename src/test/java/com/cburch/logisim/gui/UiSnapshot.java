@@ -41,6 +41,38 @@ public final class UiSnapshot {
     throw new UnsupportedOperationException("Utility class, do not instantiate.");
   }
 
+  /** Renders any window's contents, for reviewing a dialog rather than the main window. */
+  private static void captureWindow(javax.swing.JFrame window, File output, Theme.Mode mode)
+      throws Exception {
+    SwingUtilities.invokeAndWait(
+        () -> {
+          window.pack();
+          window.validate();
+          window.getContentPane().doLayout();
+        });
+    // The contents, not the frame: an unshown frame paints nothing of its own.
+    final var target = window.getContentPane();
+    final var size = target.getSize();
+    final var image = new BufferedImage(size.width, size.height, BufferedImage.TYPE_INT_RGB);
+    for (var pass = 0; pass < 2; pass++) {
+      SwingUtilities.invokeAndWait(
+          () -> {
+            final var graphics = image.createGraphics();
+            try {
+              target.printAll(graphics);
+            } finally {
+              graphics.dispose();
+            }
+          });
+    }
+    final var parent = output.getAbsoluteFile().getParentFile();
+    if (parent != null) parent.mkdirs();
+    ImageIO.write(image, "png", output);
+    System.out.println(
+        String.format(
+            Locale.ROOT, "wrote %s (%dx%d, %s theme)", output, size.width, size.height, mode.key()));
+  }
+
   public static void main(String[] args) throws Exception {
     final var mode = Theme.Mode.fromKey(System.getProperty("snapshot.theme", "dark"));
     final var output = new File(System.getProperty("snapshot.out", "build/ui-snapshot.png"));
@@ -71,6 +103,12 @@ public final class UiSnapshot {
     }
     final var frame = project.getFrame();
     if (frame == null) throw new IllegalStateException("the project window was never created");
+
+    if (Boolean.getBoolean("snapshot.preferences")) {
+      captureWindow(
+          com.cburch.logisim.gui.prefs.PreferencesFrame.buildForSnapshot(), output, mode);
+      System.exit(0);
+    }
 
     SwingUtilities.invokeAndWait(
         () -> {
