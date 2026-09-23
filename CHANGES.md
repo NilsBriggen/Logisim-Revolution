@@ -3,6 +3,9 @@
 # Changes #
 
 * @dev (????-??-??)
+  * The splash and about windows follow the theme instead of being white with a two-pixel
+    black frame, and the about panel uses a real layout rather than fixed positions
+    (@YOUR_GITHUB_HANDLE).
   * The preferences window has a list of pages with a filter instead of ten tabs whose names
     did not fit (@YOUR_GITHUB_HANDLE).
   * Starting without a file now opens a welcome screen offering a new project, a file to open

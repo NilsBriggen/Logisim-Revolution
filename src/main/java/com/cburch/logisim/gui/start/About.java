@@ -11,6 +11,7 @@ package com.cburch.logisim.gui.start;
 
 import com.cburch.logisim.Main;
 import com.cburch.logisim.generated.BuildInfo;
+import com.cburch.logisim.gui.theme.Tokens;
 import com.cburch.logisim.util.LineBuffer;
 import com.cburch.logisim.util.UniquelyNamedThread;
 
@@ -53,7 +54,7 @@ public class About {
 
     final var content = new JPanel(new BorderLayout());
     content.add(new AboutPanel(true));
-    content.setBorder(BorderFactory.createLineBorder(Color.BLACK, 2));
+    content.setBorder(BorderFactory.createLineBorder(Tokens.divider(), 1));
 
     final var dialog = new JDialog(owner, S.get("aboutDialogTitle"), true);
     final var optionPane = new JOptionPane(content, JOptionPane.PLAIN_MESSAGE);
@@ -100,7 +101,11 @@ public class About {
     }
 
     public AboutPanel(boolean includeCredits) {
-      setLayout(null);
+      // A real layout rather than absolute positions: the panel is shown at several sizes, and
+      // the logo and the credits were placed by arithmetic that assumed only one of them.
+      setLayout(new java.awt.BorderLayout());
+      setBorder(
+          javax.swing.BorderFactory.createEmptyBorder(PADDING, PADDING, PADDING, PADDING));
 
       final var prefWidth = PANEL_WIDTH + 2 * PADDING;
       var prefHeight = LOGO_HEIGHT + 2 * PADDING;
@@ -109,17 +114,18 @@ public class About {
       }
 
       setPreferredSize(new Dimension(prefWidth, prefHeight));
-      setBackground(Color.WHITE);
+      // The panel is part of the application's own window, so it takes the theme's background
+      // rather than being white whatever else is on screen.
+      setBackground(Tokens.color("Logisim.sidePanel.background", getBackground()));
       addAncestorListener(this);
 
       final var logo = new JLabel(new ImageIcon(getClass().getClassLoader().getResource(LOGO_IMG)));
-      logo.setBounds(0, 20, prefWidth, LOGO_HEIGHT);
-      add(logo);
+      logo.setHorizontalAlignment(JLabel.CENTER);
+      add(logo, java.awt.BorderLayout.NORTH);
 
       if (includeCredits) {
         credits = new AboutCredits(PANEL_WIDTH, SCROLLER_HEIGHT);
-        credits.setBounds(0, prefHeight / 2, prefWidth, SCROLLER_HEIGHT);
-        add(credits);
+        add(credits, java.awt.BorderLayout.CENTER);
       }
     }
 

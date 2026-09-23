@@ -12,6 +12,7 @@ package com.cburch.logisim.gui.start;
 import static com.cburch.logisim.gui.Strings.S;
 
 import com.cburch.logisim.generated.BuildInfo;
+import com.cburch.logisim.gui.theme.Tokens;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import javax.swing.BorderFactory;
@@ -64,10 +65,12 @@ public class SplashScreen extends JWindow {
 
     JPanel contents = new JPanel(new BorderLayout());
     contents.add(imagePanel, BorderLayout.NORTH);
-    contents.add(progress, BorderLayout.CENTER);
-    contents.setBorder(BorderFactory.createLineBorder(Color.BLACK, 2));
+    contents.add(progress, BorderLayout.SOUTH);
+    // A thin line in the theme's own divider colour rather than a two-pixel black frame, which
+    // read as a border drawn around the window by the application itself.
+    contents.setBorder(BorderFactory.createLineBorder(Tokens.divider(), 1));
 
-    Color bg = imagePanel.getBackground();
+    final var bg = imagePanel.getBackground();
     contents.setBackground(bg);
     setBackground(bg);
     setContentPane(contents);
