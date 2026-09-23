@@ -140,6 +140,9 @@ public class ShellLayout extends JPanel {
     /** Set while this class is moving the divider, so its own move is not read as a drag. */
     private boolean adjusting;
 
+    /** Whether the divider is already being watched for drags. */
+    private boolean dragWatched;
+
     SizedSplit(
         int orientation,
         JComponent first,
@@ -151,11 +154,28 @@ public class ShellLayout extends JPanel {
       this.storedIsSecond = storedIsSecond;
       this.storedSize = storedSize;
       this.sizeChanged = sizeChanged;
-      addPropertyChangeListener(
-          DIVIDER_LOCATION_PROPERTY,
-          event -> {
-            if (adjusting || extent() <= 0 || !hasBothChildren()) return;
-            sizeChanged.accept(sizeOfStoredChild());
+    }
+
+    /**
+     * Records the size only when the user has dragged the divider.
+     *
+     * <p>Laying the window out moves dividers too, at sizes that have nothing to do with what the
+     * user chose, so listening for the position to change would let the remembered size drift
+     * every time the window was built. Watching the divider itself is exact.
+     */
+    private void watchForDrags() {
+      if (dragWatched) return;
+      if (!(getUI() instanceof javax.swing.plaf.basic.BasicSplitPaneUI splitUi)) return;
+      final var divider = splitUi.getDivider();
+      if (divider == null) return;
+      dragWatched = true;
+      divider.addMouseListener(
+          new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseReleased(java.awt.event.MouseEvent event) {
+              if (extent() <= 0 || !hasBothChildren()) return;
+              sizeChanged.accept(sizeOfStoredChild());
+            }
           });
     }
 
@@ -181,6 +201,7 @@ public class ShellLayout extends JPanel {
     @Override
     public void doLayout() {
       super.doLayout();
+      watchForDrags();
       if (extent() <= 0 || !hasBothChildren()) return;
       final var wanted = storedSize.getAsInt();
       final var target = storedIsSecond ? extent() - getDividerSize() - wanted : wanted;
