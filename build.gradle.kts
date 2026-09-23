@@ -1095,3 +1095,10 @@ tasks.register<JavaExec>("uiSnapshot") {
   systemProperty("snapshot.height", project.findProperty("height") ?: "900")
   systemProperty("snapshot.scale", project.findProperty("scale") ?: "1.0")
 }
+
+tasks.register<JavaExec>("themeProbe") {
+  group = "verification"
+  classpath = sourceSets["test"].runtimeClasspath
+  mainClass.set("com.cburch.logisim.gui.theme.ThemeProbe")
+  args(project.findProperty("theme")?.toString() ?: "light")
+}

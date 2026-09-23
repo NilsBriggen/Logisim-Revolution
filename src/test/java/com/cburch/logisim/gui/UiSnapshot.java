@@ -69,41 +69,47 @@ public final class UiSnapshot {
     final var frame = project.getFrame();
     if (frame == null) throw new IllegalStateException("the project window was never created");
 
-    final var image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
     SwingUtilities.invokeAndWait(
         () -> {
-          frame.setSize(width, height);
           // Makes the frame displayable and lays it out without ever putting it on screen, so the
           // capture does not depend on the desktop, focus, or which window happens to be on top.
           frame.pack();
           frame.setSize(width, height);
+          frame.getContentPane().setSize(width, height);
+          frame.invalidate();
           frame.validate();
-          final var graphics = image.createGraphics();
-          try {
-            frame.getContentPane().printAll(graphics);
-          } finally {
-            graphics.dispose();
-          }
+          frame.getContentPane().doLayout();
         });
 
-    // A second pass: the canvas and several panels only paint their contents once they have been
-    // laid out at their final size, which the first pass is what establishes.
-    SwingUtilities.invokeAndWait(
-        () -> {
-          final var graphics = image.createGraphics();
-          try {
-            frame.getContentPane().printAll(graphics);
-          } finally {
-            graphics.dispose();
-          }
-        });
+    // The picture is the size of the window's contents, not of the window: the frame's own border
+    // and title bar are drawn by the desktop and are not part of what is being reviewed.
+    final var size = frame.getContentPane().getSize();
+    final var image = new BufferedImage(size.width, size.height, BufferedImage.TYPE_INT_RGB);
+    // Two passes: several panels only paint their contents once they have been laid out at their
+    // final size, which the first pass is what establishes.
+    for (var pass = 0; pass < 2; pass++) {
+      SwingUtilities.invokeAndWait(
+          () -> {
+            final var graphics = image.createGraphics();
+            try {
+              frame.getContentPane().printAll(graphics);
+            } finally {
+              graphics.dispose();
+            }
+          });
+    }
 
     final var parent = output.getAbsoluteFile().getParentFile();
     if (parent != null) parent.mkdirs();
     ImageIO.write(image, "png", output);
     System.out.println(
         String.format(
-            Locale.ROOT, "wrote %s (%dx%d, %s theme)", output, width, height, mode.key()));
+            Locale.ROOT,
+            "wrote %s (%dx%d, %s theme)",
+            output,
+            size.width,
+            size.height,
+            mode.key()));
     System.exit(0);
   }
 }

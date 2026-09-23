@@ -3,6 +3,13 @@
 # Changes #
 
 * @dev (????-??-??)
+  * The main window has been rebuilt. An activity bar chooses what the side panel shows, the
+    circuits you open get tabs above the canvas, properties have their own panel on the right
+    instead of sharing the left column, and a status bar reports the circuit, the zoom and what
+    the simulation is doing. The simulation controls sit at the end of the toolbar, in one fixed
+    place (@YOUR_GITHUB_HANDLE).
+  * Panel sizes are remembered in pixels rather than as a share of the window, so the side panel
+    no longer grows to a quarter of a wide screen (@YOUR_GITHUB_HANDLE).
   * The interface has two themes of its own, a light one and a dark one, and follows the
     desktop's light or dark setting by default. They replace the list of installed look and
     feels, which meant nothing the application drew itself could be designed to match. Menu,

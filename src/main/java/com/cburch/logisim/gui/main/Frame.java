@@ -38,6 +38,21 @@ import com.cburch.logisim.gui.generic.RegTabContent;
 import com.cburch.logisim.gui.generic.ZoomControl;
 import com.cburch.logisim.gui.generic.ZoomModel;
 import com.cburch.logisim.gui.menu.MainMenuListener;
+import com.cburch.logisim.gui.search.OmniSearchDialog;
+import com.cburch.logisim.gui.shell.ActivityBar;
+import com.cburch.logisim.gui.shell.BottomPanel;
+import com.cburch.logisim.gui.shell.EditorArea;
+import com.cburch.logisim.gui.shell.EditorTabModel;
+import com.cburch.logisim.gui.shell.EditorTabs;
+import com.cburch.logisim.gui.shell.Inspector;
+import com.cburch.logisim.gui.shell.LayoutPrefs;
+import com.cburch.logisim.gui.shell.MainToolbar;
+import com.cburch.logisim.gui.shell.ShellLayout;
+import com.cburch.logisim.gui.shell.SidePanel;
+import com.cburch.logisim.gui.shell.SideView;
+import com.cburch.logisim.gui.shell.StatusBar;
+import com.cburch.logisim.gui.theme.AppIcons;
+import com.cburch.logisim.gui.prefs.PreferencesFrame;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.formdev.flatlaf.FlatClientProperties;
 import com.cburch.logisim.util.UiFonts;
@@ -49,11 +64,9 @@ import com.cburch.logisim.proj.ProjectListener;
 import com.cburch.logisim.proj.Projects;
 import com.cburch.logisim.tools.AddTool;
 import com.cburch.logisim.tools.Tool;
-import com.cburch.logisim.util.HorizontalSplitPane;
 import com.cburch.logisim.util.JFileChoosers;
 import com.cburch.logisim.util.LocaleListener;
 import com.cburch.logisim.util.LocaleManager;
-import com.cburch.logisim.util.VerticalSplitPane;
 import com.cburch.logisim.vhdl.base.HdlModel;
 import com.cburch.logisim.vhdl.base.VhdlContent;
 import com.cburch.logisim.vhdl.gui.HdlContentView;
@@ -102,29 +115,31 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
   public static final String EDIT_LAYOUT = "layout";
   public static final String EDIT_APPEARANCE = "appearance";
   public static final String EDIT_HDL = "hdl";
-  private static final double DEFAULT_EXPLORER_SPLIT = 0.25;
-  private static final double MIN_EXPLORER_SPLIT = 0.05;
-  private static final double MAX_EXPLORER_SPLIT = 0.95;
-  private static final double DEFAULT_VHDL_CONSOLE_SPLIT = 0.75;
-  private static final double MIN_VHDL_CONSOLE_SPLIT = 0.05;
-  private static final double MAX_VHDL_CONSOLE_SPLIT = 0.95;
+  /** Identifier of the side view listing the project's circuits and libraries. */
+  public static final String EXPLORER_SIDE_VIEW = "explorer";
+  /** Identifier of the side view showing the running simulation. */
+  public static final String SIMULATION_SIDE_VIEW = "simulation";
+  /** Identifier of the VHDL console in the drawer below the canvas. */
+  private static final String VHDL_BOTTOM_PANEL = "vhdlConsole";
   private final Timer timer = new Timer();
   private final Project project;
   private final MyProjectListener myProjectListener = new MyProjectListener();
   // GUI elements shared between views
   private final MainMenuListener menuListener;
   private final Toolbar toolbar;
+  private final Toolbar simulationToolbar;
   private final KeyboardToolSelection.Registration keyboardToolSelection;
-  private final HorizontalSplitPane leftRegion;
-  private final HorizontalSplitPane rightRegion;
-  private final HorizontalSplitPane editRegion;
-  private final MainRegionVerticalSplitPane mainRegion;
-  private final JPanel rightPanel;
+  private final ShellLayout shell;
+  private final EditorTabModel editorTabModel = new EditorTabModel();
+  private final EditorTabs editorTabs;
+  private final SidePanel sidePanel;
+  private final Inspector inspector;
+  private final BottomPanel bottomPanel;
+  private final StatusBar statusBar;
+  private final JTabbedPane inspectorTabs;
   private final JPanel mainPanelSuper;
   private final CardPanel mainPanel;
   // left-side elements
-  private final JTabbedPane topTab;
-  private final JTabbedPane bottomTab;
   private final Toolbox toolbox;
   private final SimulationExplorer simExplorer;
   private final AttrTable attrTable;
@@ -141,10 +156,47 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
   private final AttrTableSelectionModel attrTableSelectionModel;
   // for the Appearance view
   private AppearanceView appearance;
-  private Double lastExplorerFraction =
-      sanitizeExplorerSplitFraction(AppPreferences.WINDOW_MAIN_SPLIT.get());
-  private Double lastFraction = AppPreferences.WINDOW_RIGHT_SPLIT.get();
   private final RegTabContent regTabContent;
+
+  /**
+   * A side view that simply shows a panel the window already builds.
+   *
+   * <p>The panels themselves are unchanged here; what changed is where they live and that only
+   * one is on screen at a time.
+   */
+  private static final class SimpleSideView implements SideView {
+    private final String id;
+    private final String titleKey;
+    private final AppIcons.Id icon;
+    private final JComponent component;
+
+    SimpleSideView(String id, String titleKey, AppIcons.Id icon, JComponent component) {
+      this.id = id;
+      this.titleKey = titleKey;
+      this.icon = icon;
+      this.component = component;
+    }
+
+    @Override
+    public String id() {
+      return id;
+    }
+
+    @Override
+    public String title() {
+      return S.get(titleKey);
+    }
+
+    @Override
+    public AppIcons.Id icon() {
+      return icon;
+    }
+
+    @Override
+    public JComponent component() {
+      return component;
+    }
+  }
 
   public Frame(Project project) {
     super(project);
@@ -179,18 +231,14 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     menuListener.setEditHandler(layoutEditHandler);
     toolbar = new Toolbar(layoutToolbarModel);
 
-    // set up the left-side components
+    // set up the side views
     toolbox = new Toolbox(project, this, menuListener);
     simExplorer = new SimulationExplorer(project, menuListener);
-    bottomTab = new JTabbedPane();
-    styleDockTabs(bottomTab);
-    bottomTab.add(attrTable = new AttrTable(this));
+    attrTable = new AttrTable(this);
     regTabContent = new RegTabContent(this);
-    bottomTab.add(regTabContent);
-
     zoom = new ZoomControl(layoutZoomModel, layoutCanvas);
 
-    // set up the central area
+    // set up the editor area: one canvas, with tabs above it choosing what it shows
     mainPanelSuper = new JPanel(new BorderLayout());
     layoutCanvasPane.setZoomModel(layoutZoomModel);
     mainPanel = new CardPanel();
@@ -198,46 +246,68 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     mainPanel.setView(EDIT_LAYOUT);
     mainPanelSuper.add(mainPanel, BorderLayout.CENTER);
 
-    // set up the contents, split down the middle, with the canvas
-    // on the right and a split pane on the left containing the
-    // explorer and attribute values.
-    final var explPanel = new JPanel(new BorderLayout());
-    explPanel.add(toolbox, BorderLayout.CENTER);
-
-    final var simPanel = new JPanel(new BorderLayout());
-    simPanel.add(simExplorer, BorderLayout.CENTER);
-
-    topTab = new JTabbedPane();
-    styleDockTabs(topTab);
-    topTab.add(explPanel);
-    topTab.add(simPanel);
-
-    final var attrFooter = new JPanel(new BorderLayout());
-    attrFooter.setBorder(Spacing.border(Spacing.XS));
-    attrFooter.add(zoom);
-
-    final var bottomTabAndZoom = new JPanel(new BorderLayout());
-    bottomTabAndZoom.add(bottomTab, BorderLayout.CENTER);
-    bottomTabAndZoom.add(attrFooter, BorderLayout.SOUTH);
-    leftRegion = new HorizontalSplitPane(topTab, bottomTabAndZoom, AppPreferences.WINDOW_LEFT_SPLIT.get());
-
     hdlEditor = new HdlContentView(project);
+    mainPanel.addView(EDIT_HDL, hdlEditor);
     vhdlSimulatorConsole = new VhdlSimulatorConsole(project);
-    editRegion = new HorizontalSplitPane(mainPanelSuper, hdlEditor, 1.0);
-    rightRegion = new HorizontalSplitPane(editRegion, vhdlSimulatorConsole, 1.0);
-
-    rightPanel = new JPanel(new BorderLayout());
-    rightPanel.add(rightRegion, BorderLayout.CENTER);
 
     final var state = new VhdlSimState(project);
     state.stateChanged();
     project.getVhdlSimulator().addVhdlSimStateListener(state);
 
-    mainRegion = new MainRegionVerticalSplitPane(leftRegion, rightPanel);
-    if (!AppPreferences.WINDOW_EXPLORER_VISIBLE.getBoolean()) {
-      mainRegion.setFraction(0.0);
+    editorTabModel.setNavigator(this::activateEditorTab);
+    editorTabs = new EditorTabs(editorTabModel, this::editorTabTitle);
+    final var editorArea = new EditorArea(editorTabs, mainPanelSuper);
+
+    sidePanel = new SidePanel();
+    sidePanel.addView(
+        new SimpleSideView(EXPLORER_SIDE_VIEW, "designTab", AppIcons.Id.EXPLORER, toolbox));
+    sidePanel.addView(
+        new SimpleSideView(SIMULATION_SIDE_VIEW, "simulateTab", AppIcons.Id.SIMULATION,
+            simExplorer));
+
+    final var activityBar = new ActivityBar();
+    for (final var view : sidePanel.views()) {
+      activityBar.addView(view, view.title(), this::toggleSideView);
     }
-    getContentPane().add(mainRegion, BorderLayout.CENTER);
+    activityBar.addAction(
+        "search",
+        AppIcons.Id.SEARCH,
+        S.get("searchTitle"),
+        () -> OmniSearchDialog.showForWindow(this));
+    activityBar.addAction(
+        "settings",
+        AppIcons.Id.SETTINGS,
+        S.get("preferencesFrameMenuItem"),
+        PreferencesFrame::showPreferences);
+
+    inspectorTabs = new JTabbedPane();
+    styleDockTabs(inspectorTabs);
+    inspectorTabs.add(attrTable);
+    inspectorTabs.add(regTabContent);
+    inspector = new Inspector(S.get("propertiesTab"));
+    inspector.setContent(inspectorTabs);
+    final var zoomFooter = new JPanel(new BorderLayout());
+    zoomFooter.setBorder(Spacing.border(Spacing.XS));
+    zoomFooter.add(zoom);
+    inspector.setFooter(zoomFooter);
+
+    bottomPanel = new BottomPanel();
+    bottomPanel.addPanel(
+        VHDL_BOTTOM_PANEL,
+        S.get("vhdlConsoleTab"),
+        AppIcons.get(AppIcons.Id.TERMINAL, 14),
+        vhdlSimulatorConsole);
+
+    statusBar = new StatusBar();
+    simulationToolbar = new Toolbar(new SimulationToolbarModel(project, menuListener));
+    final var mainToolbar = new MainToolbar(toolbar, simulationToolbar);
+
+    LayoutPrefs.migrate(AppPreferences.WINDOW_WIDTH.get(), AppPreferences.WINDOW_HEIGHT.get());
+    shell =
+        new ShellLayout(
+            mainToolbar, activityBar, sidePanel, editorArea, inspector, bottomPanel, statusBar);
+    shell.setBottomVisible(false);
+    getContentPane().add(shell, BorderLayout.CENTER);
 
     localeChanged();
 
@@ -263,6 +333,10 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     LocaleManager.addLocaleListener(this);
     toolbox.updateStructure();
 
+    syncEditorTabs();
+    statusBar.setCircuitName(circuitName());
+    updateZoomStatus();
+    layoutZoomModel.addPropertyChangeListener(ZoomModel.ZOOM, event -> updateZoomStatus());
     restoreLayoutView(project.getCurrentCircuit());
   }
 
@@ -418,90 +492,6 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
   }
 
   /**
-   * Content aware VerticalSplitPane that handles main layout changes with bit of extra logic.
-   */
-  private static class MainRegionVerticalSplitPane extends VerticalSplitPane implements PropertyChangeListener {
-    private final JComponent componentTree;
-    private final JComponent mainCanvas;
-    private Direction orientation;
-
-    public MainRegionVerticalSplitPane(JComponent componentTree, JComponent mainCanvas) {
-      this(
-          componentTree,
-          mainCanvas,
-          sanitizeExplorerSplitFraction(AppPreferences.WINDOW_MAIN_SPLIT.get()),
-          Direction.parse(AppPreferences.CANVAS_PLACEMENT.get()));
-    }
-
-    public MainRegionVerticalSplitPane(JComponent componentTree, JComponent mainCanvas, double fraction,
-                                       Direction orientation) {
-      super();
-
-      this.componentTree = componentTree;
-      this.mainCanvas = mainCanvas;
-      this.orientation = orientation;
-      this.realFraction = fraction;
-
-      if (orientation == Direction.EAST) {
-        init(componentTree, mainCanvas, fraction);
-      } else {
-        init(mainCanvas, componentTree, fraction);
-      }
-
-      AppPreferences.CANVAS_PLACEMENT.addPropertyChangeListener(this);
-    }
-
-    public void setOrientation(Direction newOrientation) {
-      if (newOrientation != orientation) {
-        orientation = newOrientation;
-      }
-    }
-
-    @Override
-    public void propertyChange(PropertyChangeEvent event) {
-      if (AppPreferences.CANVAS_PLACEMENT.isSource(event)) {
-        swapComponents();
-      }
-    }
-
-    /**
-     * As pane swapping should be fully transparent to the outer world, we must facade real
-     * fraction value here, as it must stay unaltered regardles of the real content order.
-     */
-    private double realFraction;
-
-    @Override
-    public double getFraction() {
-      return realFraction;
-    }
-
-    @Override
-    public void setFraction(double value) {
-      realFraction = value;
-      super.setFraction(orientation == Direction.EAST ? value : 1 - value);
-    }
-
-    protected void swapComponents() {
-      final var tmpOrient = Direction.parse(AppPreferences.CANVAS_PLACEMENT.get());
-      if (orientation != tmpOrient) {
-        orientation = tmpOrient;
-
-        final var isSwapped = (orientation == Direction.WEST);
-        compLeft = isSwapped ? mainCanvas : componentTree;
-        compRight = isSwapped ? componentTree : mainCanvas;
-
-        setFraction(realFraction);
-
-        // setFraction() calls revalidate() if fraction changed, so for value of 0.5
-        // the swap needs manual trigger
-        if (super.getFraction() == realFraction) {
-          revalidate();
-        }
-      }
-    }
-  }
-
-  /**
    * Computes allowed zoom steps.
    *
    * @return
@@ -583,12 +573,7 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
   }
 
   public void resetLayout() {
-    lastExplorerFraction = DEFAULT_EXPLORER_SPLIT;
-    mainRegion.setFraction(DEFAULT_EXPLORER_SPLIT);
-    AppPreferences.WINDOW_EXPLORER_VISIBLE.set(true);
-    mainRegion.setOrientation(Direction.EAST);
-    leftRegion.setFraction(0.5);
-    rightRegion.setFraction(1.0);
+    shell.resetLayout();
   }
 
   public Toolbar getToolbar() {
@@ -653,6 +638,76 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     return ret;
   }
 
+  /**
+   * Shows what a tab stands for, because the user clicked it.
+   *
+   * <p>The tabs do not own editors: each one names a circuit, and choosing it is the same request
+   * the explorer makes. Going through the project rather than straight to the canvas means the
+   * explorer, the title bar and the attribute panel all follow, as they already do.
+   */
+  private void activateEditorTab(EditorTabModel.Tab tab) {
+    switch (tab.kind()) {
+      case LAYOUT -> {
+        if (tab.target() instanceof Circuit circuit) {
+          if (project.getCurrentCircuit() != circuit) {
+            project.setCurrentCircuit(circuit);
+          } else {
+            setEditorView(EDIT_LAYOUT);
+          }
+        }
+      }
+      case APPEARANCE -> {
+        if (tab.target() instanceof Circuit circuit) {
+          if (project.getCurrentCircuit() != circuit) project.setCurrentCircuit(circuit);
+          setEditorView(EDIT_APPEARANCE);
+        }
+      }
+      case HDL -> {
+        if (tab.target() instanceof HdlModel model) project.setCurrentHdlModel(model);
+      }
+    }
+  }
+
+  /** The label for a tab. Asked again on every redraw, so renaming a circuit needs no bookkeeping. */
+  private String editorTabTitle(EditorTabModel.Tab tab) {
+    if (tab.target() instanceof Circuit circuit) return circuit.getName();
+    if (tab.target() instanceof HdlModel model) return model.getName();
+    return "";
+  }
+
+  /** Shows the zoom level in the status bar, as a percentage. */
+  private void updateZoomStatus() {
+    statusBar.setZoom(Math.round(layoutZoomModel.getZoomFactor() * 100) + "%");
+  }
+
+  /** The name of whatever is being edited, for the status bar. */
+  private String circuitName() {
+    final var hdl = project.getCurrentHdl();
+    if (hdl != null) return hdl.getName();
+    final var circuit = project.getCurrentCircuit();
+    return circuit == null ? "" : circuit.getName();
+  }
+
+  /** Shows a side view, or collapses the panel when that view is already the one showing. */
+  private void toggleSideView(String id) {
+    shell.toggleSideView(id);
+  }
+
+  /** Opens or selects the tab for whatever the project is now showing. */
+  private void syncEditorTabs() {
+    final var circuit = project.getCurrentCircuit();
+    final var hdl = project.getCurrentHdl();
+    if (hdl != null) {
+      editorTabModel.syncTo(new EditorTabModel.Tab(EditorTabModel.Kind.HDL, hdl));
+    } else if (circuit != null) {
+      final var kind =
+          EDIT_APPEARANCE.equals(mainPanel.getView())
+              ? EditorTabModel.Kind.APPEARANCE
+              : EditorTabModel.Kind.LAYOUT;
+      editorTabModel.syncTo(new EditorTabModel.Tab(kind, circuit));
+    }
+  }
+
   public Canvas getCanvas() {
     return layoutCanvas;
   }
@@ -669,7 +724,6 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
   public void setEditorView(String view) {
     final var curView = mainPanel.getView();
     if (hdlEditor.getHdlModel() == null && curView.equals(view)) return;
-    editRegion.setFraction(1.0);
     hdlEditor.setHdlModel(null);
 
     if (view.equals(EDIT_APPEARANCE)) {
@@ -687,6 +741,7 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
       zoom.setAutoZoomButtonEnabled(false);
       menuListener.setEditHandler(app.getEditHandler());
       mainPanel.setView(view);
+      syncEditorTabs();
       app.getCanvas().requestFocus();
     } else {
       // layout view
@@ -696,6 +751,7 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
       menuListener.setEditHandler(layoutEditHandler);
       viewAttributes(project.getTool(), true);
       mainPanel.setView(view);
+      syncEditorTabs();
       layoutCanvas.requestFocus();
     }
   }
@@ -763,34 +819,28 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
   @Override
   public void localeChanged() {
     buildTitleString();
-    topTab.setTitleAt(0, S.get("designTab"));
-    topTab.setTitleAt(1, S.get("simulateTab"));
-    bottomTab.setTitleAt(0, S.get("propertiesTab"));
-    bottomTab.setTitleAt(1, S.get("stateTab"));
+    sidePanel.localeChanged();
+    for (final var view : sidePanel.views()) {
+      shell.getActivityBar().setTooltip(view.id(), view.title());
+    }
+    inspector.setTitle(S.get("propertiesTab"));
+    inspectorTabs.setTitleAt(0, S.get("propertiesTab"));
+    inspectorTabs.setTitleAt(1, S.get("stateTab"));
+    bottomPanel.setTitle(VHDL_BOTTOM_PANEL, S.get("vhdlConsoleTab"));
+    editorTabs.refresh();
   }
 
+  /**
+   * Shows or hides the toolbar.
+   *
+   * <p>It no longer moves: the drawing tools sit on the left of the top row and the simulation
+   * controls on the right, so those controls are always in the same place. The "Show toolbar"
+   * menu item still works.
+   */
   private void placeToolbar() {
     final var loc = AppPreferences.TOOLBAR_PLACEMENT.get();
-    rightPanel.remove(toolbar);
-    if (!AppPreferences.TOOLBAR_HIDDEN.equals(loc)) {
-      var value = BorderLayout.NORTH;
-      for (final var dir : Direction.cardinals) {
-        if (dir.toString().equals(loc)) {
-          if (dir == Direction.EAST) {
-            value = BorderLayout.EAST;
-          } else if (dir == Direction.SOUTH) {
-            value = BorderLayout.SOUTH;
-          } else if (dir == Direction.WEST) {
-            value = BorderLayout.WEST;
-          } else {
-            value = BorderLayout.NORTH;
-          }
-        }
-      }
-      rightPanel.add(toolbar, value);
-      final var vertical = BorderLayout.WEST.equals(value) || BorderLayout.EAST.equals(value);
-      toolbar.setOrientation(vertical ? Toolbar.VERTICAL : Toolbar.HORIZONTAL);
-    }
+    toolbar.setOrientation(Toolbar.HORIZONTAL);
+    toolbar.setVisible(!AppPreferences.TOOLBAR_HIDDEN.equals(loc));
     getContentPane().validate();
   }
 
@@ -815,16 +865,8 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
       loc = Projects.getLocation(this);
     }
     if (loc != null) AppPreferences.WINDOW_LOCATION.set(loc.x + "," + loc.y);
-    if (leftRegion.getFraction() > 0) AppPreferences.WINDOW_LEFT_SPLIT.set(leftRegion.getFraction());
-    final var rightFraction = rightRegion.getFraction();
-    if (isUsableVhdlConsoleSplitFraction(rightFraction)) {
-      AppPreferences.WINDOW_RIGHT_SPLIT.set(rightFraction);
-    }
-    final var explorerFraction = mainRegion.getFraction();
-    AppPreferences.WINDOW_EXPLORER_VISIBLE.set(explorerFraction > 0.0);
-    if (isUsableExplorerSplitFraction(explorerFraction)) {
-      AppPreferences.WINDOW_MAIN_SPLIT.set(explorerFraction);
-    }
+    shell.savePreferences();
+    AppPreferences.WINDOW_EXPLORER_VISIBLE.set(shell.isSideVisible());
     AppPreferences.DIALOG_DIRECTORY.set(JFileChoosers.getCurrentDirectory());
   }
 
@@ -848,69 +890,24 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
   }
 
   public void setVhdlSimulatorConsoleStatusVisible() {
-    lastFraction = sanitizeVhdlConsoleSplitFraction(lastFraction);
-    rightRegion.setFractionBounds(MIN_VHDL_CONSOLE_SPLIT, MAX_VHDL_CONSOLE_SPLIT);
-    rightRegion.setFraction(lastFraction);
+    shell.showBottomPanel(VHDL_BOTTOM_PANEL);
   }
 
   public void setVhdlSimulatorConsoleStatusInvisible() {
-    final var rightFraction = rightRegion.getFraction();
-    if (isUsableVhdlConsoleSplitFraction(rightFraction)) {
-      lastFraction = rightFraction;
-    }
-    rightRegion.setFractionBounds(0.0, 1.0);
-    rightRegion.setFraction(1);
+    shell.setBottomVisible(false);
   }
 
   public boolean isExplorerVisible() {
-    return mainRegion != null && mainRegion.getFraction() > 0.0;
+    return shell != null && shell.isSideVisible();
   }
 
   public void setExplorerVisible(boolean visible) {
     final var oldVisible = isExplorerVisible();
-
-    if (visible) {
-      lastExplorerFraction = sanitizeExplorerSplitFraction(lastExplorerFraction);
-      mainRegion.setFraction(lastExplorerFraction);
-    } else {
-      final var explorerFraction = mainRegion.getFraction();
-      if (isUsableExplorerSplitFraction(explorerFraction)) {
-        lastExplorerFraction = explorerFraction;
-      }
-      mainRegion.setFraction(0.0);
-    }
-
+    shell.setSideVisible(visible);
     AppPreferences.WINDOW_EXPLORER_VISIBLE.set(visible);
-    final var newVisible = isExplorerVisible();
-    if (oldVisible != newVisible) {
-      firePropertyChange(EXPLORER_VIEW, oldVisible, newVisible);
+    if (oldVisible != visible) {
+      firePropertyChange(EXPLORER_VIEW, oldVisible, visible);
     }
-  }
-
-  static double sanitizeExplorerSplitFraction(Double fraction) {
-    if (fraction == null || !isUsableExplorerSplitFraction(fraction)) {
-      return DEFAULT_EXPLORER_SPLIT;
-    }
-    return fraction;
-  }
-
-  static boolean isUsableExplorerSplitFraction(double fraction) {
-    return Double.isFinite(fraction)
-        && fraction >= MIN_EXPLORER_SPLIT
-        && fraction <= MAX_EXPLORER_SPLIT;
-  }
-
-  static double sanitizeVhdlConsoleSplitFraction(Double fraction) {
-    if (fraction == null || !isUsableVhdlConsoleSplitFraction(fraction)) {
-      return DEFAULT_VHDL_CONSOLE_SPLIT;
-    }
-    return fraction;
-  }
-
-  static boolean isUsableVhdlConsoleSplitFraction(double fraction) {
-    return Double.isFinite(fraction)
-        && fraction >= MIN_VHDL_CONSOLE_SPLIT
-        && fraction <= MAX_VHDL_CONSOLE_SPLIT;
   }
 
   public HdlModel getHdlEditorView() {
@@ -920,7 +917,7 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
   private void setHdlEditorView(HdlModel hdl) {
     hdlEditor.setHdlModel(hdl);
     zoom.setZoomModel(null);
-    editRegion.setFraction(0.0);
+    mainPanel.setView(EDIT_HDL);
     toolbar.setToolbarModel(hdlEditor.getToolbarModel());
   }
 
@@ -985,6 +982,8 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     public void circuitChanged(CircuitEvent event) {
       if (event.getAction() == CircuitEvent.ACTION_SET_NAME) {
         buildTitleString();
+        editorTabs.refresh();
+        statusBar.setCircuitName(circuitName());
       }
     }
 
@@ -1000,10 +999,12 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
       } else if (e.getAction() == LibraryEvent.DIRTY_STATE) {
         buildTitleString();
         enableSave();
+        if (!project.isFileDirty()) editorTabModel.clearDirty();
       } else if (e.getAction() == LibraryEvent.REMOVE_TOOL
           && e.getData() instanceof AddTool tool
           && tool.getFactory() instanceof SubcircuitFactory subcircuitFactory) {
         layoutViewMemory.forget(subcircuitFactory.getSubcircuit());
+        editorTabModel.removeTarget(subcircuitFactory.getSubcircuit());
       }
     }
 
@@ -1013,13 +1014,18 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
 
       if (action == ProjectEvent.ACTION_SET_FILE) {
         buildTitleString();
+        editorTabModel.clear();
         project.setTool(project.getOptions().getToolbarData().getFirstTool());
         placeToolbar();
+        syncEditorTabs();
+      } else if (action == ProjectEvent.ACTION_COMPLETE) {
+        // An edit landed: mark the circuit it changed, so its tab says so.
+        editorTabModel.setDirty(project.getCurrentCircuit(), true);
       } else if (action == ProjectEvent.ACTION_SET_STATE) {
         if (event.getData() instanceof CircuitState state) {
           if (state.getParentState() != null) {
-            // sim explorer view
-            topTab.setSelectedIndex(1);
+            // Looking inside a subcircuit: show the simulation tree, which is where that state is.
+            shell.showSideView(SIMULATION_SIDE_VIEW);
           }
         }
       } else if (action == ProjectEvent.ACTION_SET_CURRENT) {
@@ -1037,6 +1043,8 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
         } else {
           viewAttributes(project.getTool());
         }
+        syncEditorTabs();
+        statusBar.setCircuitName(circuitName());
         buildTitleString();
       } else if (action == ProjectEvent.ACTION_SET_TOOL) {
         if (attrTable == null) {
