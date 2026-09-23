@@ -45,7 +45,7 @@ public class SwitchIcon extends BaseIcon {
     path1.lineTo(scale(10.2796), scale(12.9999));
     path1.lineTo(scale(3.2747), scale(12.9999));
     path1.closePath();
-    g2.setColor(AppPreferences.isDarkTheme(AppPreferences.LookAndFeel.get()) ? new Color(40, 40, 40) : Color.WHITE);
+    g2.setColor(AppPreferences.isDarkTheme() ? new Color(40, 40, 40) : Color.WHITE);
     g2.fill(path1);
     g2.setColor(currentColor);
     g2.setStroke(new BasicStroke(scale(1.0000f), BasicStroke.CAP_SQUARE, BasicStroke.JOIN_ROUND));

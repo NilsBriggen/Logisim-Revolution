@@ -30,6 +30,10 @@ public class BoardList {
   private static Collection<String> getBoards(Pattern pattern, String match, String element) {
     final var ret = new ArrayList<String>();
     final var file = new File(element);
+    // A class path may name entries that are not there: running from a build directory lists
+    // output folders that no task has created yet. Such an entry simply holds no boards; opening
+    // it as an archive used to fail and take the whole application down before its first window.
+    if (!file.exists()) return ret;
     if (file.isDirectory()) {
       ret.addAll(getBoardsfromDirectory(pattern, match, file));
     } else {
@@ -42,6 +46,7 @@ public class BoardList {
       Pattern pattern, String match, File dir) {
     final var ret = new ArrayList<String>();
     final var fileList = dir.listFiles();
+    if (fileList == null) return ret;
     for (final var file : fileList) {
       if (file.isDirectory()) {
         ret.addAll(getBoardsfromDirectory(pattern, match, file));
@@ -69,7 +74,8 @@ public class BoardList {
     try {
       zf = new ZipFile(dir);
     } catch (IOException e) {
-      throw new Error(e);
+      // Not an archive, or not readable. Neither is worth refusing to start over.
+      return ret;
     }
     final var entries = zf.entries();
     while (entries.hasMoreElements()) {

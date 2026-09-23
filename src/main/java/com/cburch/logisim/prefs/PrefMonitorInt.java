@@ -73,9 +73,15 @@ class PrefMonitorInt extends AbstractPrefMonitor<Integer> {
    * @param newValue The new integer value to set.
    */
   public void set(Integer newValue) {
+    final var oldValue = value;
     final var newVal = newValue;
-    if (value != newVal) {
+    if (oldValue != newVal) {
+      // The cached value is updated here rather than being left to the preference-change
+      // listener, which runs on another thread: a caller that sets a colour and then reads it
+      // back, as switching theme does, would otherwise get the colour it just replaced.
+      value = newVal;
       AppPreferences.getPrefs().putInt(getIdentifier(), newVal);
+      AppPreferences.firePropertyChange(getIdentifier(), oldValue, newVal);
     }
   }
 }

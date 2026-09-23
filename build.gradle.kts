@@ -45,13 +45,13 @@ dependencies {
   implementation("org.hamcrest:hamcrest:3.0")
   implementation("javax.help:javahelp:2.0.05")
   implementation("com.fifesoft:rsyntaxtextarea:4.0.1")
-  implementation("net.sf.nimrod:nimrod-laf:1.2")
   implementation("org.drjekyll:colorpicker:2.0.1")
   implementation("at.swimmesberger:swingx-core:1.6.8")
   implementation("org.scijava:swing-checkbox-tree:1.0.2")
   implementation("org.slf4j:slf4j-api:2.0.19")
   implementation("org.slf4j:slf4j-simple:2.0.19")
   implementation("com.formdev:flatlaf:3.7.2")
+  implementation("com.formdev:flatlaf-extras:3.7.2")
   implementation("commons-cli:commons-cli:1.11.0")
   implementation("com.vladsch.flexmark:flexmark-all:0.64.8")
   implementation("org.apache.commons:commons-text:1.15.0")
@@ -1075,4 +1075,23 @@ tasks {
   checkstyleTest {
     source = fileTree("src/test/java")
   }
+}
+
+
+/**
+ * Renders the main window to a PNG for reviewing the interface.
+ *
+ * Development only: the tool lives in the test sources and never ships.
+ * Usage: ./gradlew uiSnapshot -Ptheme=dark -Pout=build/ui-dark.png
+ */
+tasks.register<JavaExec>("uiSnapshot") {
+  group = "verification"
+  description = "Renders the main window to a PNG."
+  classpath = sourceSets["test"].runtimeClasspath
+  mainClass.set("com.cburch.logisim.gui.UiSnapshot")
+  systemProperty("snapshot.theme", project.findProperty("theme") ?: "dark")
+  systemProperty("snapshot.out", project.findProperty("out") ?: "build/ui-snapshot.png")
+  systemProperty("snapshot.width", project.findProperty("width") ?: "1440")
+  systemProperty("snapshot.height", project.findProperty("height") ?: "900")
+  systemProperty("snapshot.scale", project.findProperty("scale") ?: "1.0")
 }

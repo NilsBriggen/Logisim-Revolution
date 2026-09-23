@@ -115,7 +115,7 @@ public class InstanceTextFieldTest {
 
   @Test
   public void componentWithoutLabelColorTracksThemeChanges() {
-    final var originalLookAndFeel = AppPreferences.LookAndFeel.get();
+    final var originalTheme = AppPreferences.THEME_MODE.get();
     final var comp = mock(InstanceComponent.class);
     final var attrs = mock(AttributeSet.class);
     final var textField = new InstanceTextField(comp);
@@ -134,15 +134,15 @@ public class InstanceTextFieldTest {
         GraphicsUtil.V_CENTER);
 
     try {
-      AppPreferences.LookAndFeel.set("TestLight");
+      AppPreferences.THEME_MODE.set(AppPreferences.THEME_LIGHT);
       final var lightGraphics = draw(textField, comp);
       verify(lightGraphics).setColor(Color.BLUE);
 
-      AppPreferences.LookAndFeel.set("TestDark");
+      AppPreferences.THEME_MODE.set(AppPreferences.THEME_DARK);
       final var darkGraphics = draw(textField, comp);
       verify(darkGraphics).setColor(new Color(0x6C, 0xB6, 0xFF));
     } finally {
-      AppPreferences.LookAndFeel.set(originalLookAndFeel);
+      AppPreferences.THEME_MODE.set(originalTheme);
     }
   }
 

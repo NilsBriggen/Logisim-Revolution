@@ -9,57 +9,50 @@
 
 package com.cburch.logisim.gui.icons;
 
-import com.cburch.logisim.prefs.AppPreferences;
-import java.awt.BasicStroke;
-import java.awt.Color;
+import com.cburch.logisim.gui.theme.AppIcons;
+import com.cburch.logisim.gui.theme.Tokens;
 import java.awt.Component;
-import java.awt.Font;
 import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.font.TextLayout;
 import javax.swing.Icon;
 
+/**
+ * Marks something that needs attention but still works.
+ *
+ * <p>Drawn from the shared icon set rather than by hand, so it matches the rest of the interface
+ * and stays sharp at any scale. The colour comes from the theme.
+ */
 public class WarningIcon implements Icon {
-  private final int wixth;
+
+  private final int size;
 
   public WarningIcon() {
-    wixth = AppPreferences.getIconSize();
+    this(1.0);
   }
 
+  /**
+   * @param scale multiple of the standard icon size
+   */
   public WarningIcon(double scale) {
-    wixth = (int) AppPreferences.getScaled(scale * AppPreferences.getIconSize());
+    size = (int) Math.round(AppIcons.SIZE * scale);
   }
 
-  public static int scale(int v) {
-    return AppPreferences.getScaled(v);
+  /** Resolved on each paint, so the icon follows a theme change without being rebuilt. */
+  private Icon icon() {
+    return AppIcons.colored(AppIcons.Id.WARNING, size, Tokens.warning());
   }
 
   @Override
-  public void paintIcon(Component c, Graphics g, int x, int y) {
-    Graphics2D g2 = (Graphics2D) g.create();
-    g2.translate(x, y);
-    final int[] xpos = {0, wixth / 2 - 1, wixth - 1};
-    final int[] ypos = {wixth - 1, 0, wixth - 1};
-    g2.setColor(Color.YELLOW.brighter().brighter());
-    g2.fillPolygon(xpos, ypos, 3);
-    g2.setStroke(new BasicStroke(scale(1)));
-    g2.setColor(Color.BLACK);
-    g2.drawPolygon(xpos, ypos, 3);
-    final var f = g2.getFont().deriveFont((float) wixth / (float) 1.3).deriveFont(Font.BOLD);
-    final var t = new TextLayout("!", f, g2.getFontRenderContext());
-    final var xc = (float) wixth / (float) 2 - (float) t.getBounds().getCenterX();
-    final var yc = (float) (5 * wixth) / (float) 8 - (float) t.getBounds().getCenterY();
-    t.draw(g2, xc, yc);
-    g2.dispose();
+  public void paintIcon(Component comp, Graphics gfx, int x, int y) {
+    icon().paintIcon(comp, gfx, x, y);
   }
 
   @Override
   public int getIconWidth() {
-    return wixth;
+    return icon().getIconWidth();
   }
 
   @Override
   public int getIconHeight() {
-    return wixth;
+    return icon().getIconHeight();
   }
 }

@@ -1,0 +1,150 @@
+/*
+ * Logisim-evolution - digital logic design tool and simulator
+ * Copyright by the Logisim-evolution developers
+ *
+ * https://github.com/logisim-evolution/
+ *
+ * This is free software released under GNU GPLv3 license
+ */
+
+package com.cburch.logisim.prefs;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.prefs.BackingStoreException;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+/**
+ * The application used to overwrite every drawing colour whenever the theme changed, which threw
+ * away any colour the user had picked. These tests pin the behaviour that replaced it.
+ */
+class ThemeColorPrefsTest {
+
+  private static final int CHOSEN = 0xFF123456;
+
+  private static final String KEY = AppPreferences.CANVAS_BG_COLOR.getIdentifier();
+  private static final String LIGHT_KEY = "theme.light." + KEY;
+  private static final String DARK_KEY = "theme.dark." + KEY;
+
+  private String originalTheme;
+  private String originalCurrent;
+  private final Map<String, String> savedThemeKeys = new HashMap<>();
+
+  /**
+   * These tests write to the developer's own preferences, so everything they touch is copied
+   * first and put back afterwards: resetting to defaults instead would throw away colours the
+   * developer had chosen. The per-theme entries are also cleared so the tests do not depend on
+   * what an earlier test, or an earlier run of the application, happened to leave behind.
+   */
+  @BeforeEach
+  void takeOverPreferences() throws BackingStoreException {
+    originalTheme = AppPreferences.THEME_MODE.get();
+    originalCurrent = AppPreferences.getPrefs().get(KEY, null);
+    for (final var key : AppPreferences.getPrefs().keys()) {
+      for (final var prefix : ThemeColorPrefs.storagePrefixes()) {
+        if (key.startsWith(prefix)) savedThemeKeys.put(key, AppPreferences.getPrefs().get(key, null));
+      }
+    }
+    clearThemeKeys();
+    ThemeColorPrefs.forgetLoadedTheme();
+  }
+
+  @AfterEach
+  void restorePreferences() throws BackingStoreException {
+    clearThemeKeys();
+    for (final var saved : savedThemeKeys.entrySet()) {
+      AppPreferences.getPrefs().put(saved.getKey(), saved.getValue());
+    }
+    if (originalCurrent == null) {
+      AppPreferences.getPrefs().remove(KEY);
+    } else {
+      AppPreferences.getPrefs().put(KEY, originalCurrent);
+    }
+    AppPreferences.THEME_MODE.set(originalTheme);
+    ThemeColorPrefs.forgetLoadedTheme();
+    AppPreferences.applyThemeColors();
+  }
+
+  private static void clearThemeKeys() throws BackingStoreException {
+    for (final var key : AppPreferences.getPrefs().keys()) {
+      for (final var prefix : ThemeColorPrefs.storagePrefixes()) {
+        if (key.startsWith(prefix)) AppPreferences.getPrefs().remove(key);
+      }
+    }
+  }
+
+  /** Switches theme and loads that theme's colours, as a preference change would. */
+  private static void useTheme(String mode) {
+    AppPreferences.THEME_MODE.set(mode);
+    AppPreferences.applyThemeColors();
+  }
+
+  @Test
+  void eachThemeGetsItsOwnShippedColours() {
+    useTheme(AppPreferences.THEME_LIGHT);
+    final var light = AppPreferences.CANVAS_BG_COLOR.get();
+
+    useTheme(AppPreferences.THEME_DARK);
+    final var dark = AppPreferences.CANVAS_BG_COLOR.get();
+
+    assertEquals(AppPreferences.DEFAULT_CANVAS_BG_COLOR, light);
+    assertEquals(AppPreferences.DARK_CANVAS_BG_COLOR, dark);
+    assertNotEquals(light, dark);
+  }
+
+  @Test
+  void colourChosenInOneThemeSurvivesSwitchingAwayAndBack() {
+    useTheme(AppPreferences.THEME_DARK);
+    AppPreferences.CANVAS_BG_COLOR.set(CHOSEN);
+
+    useTheme(AppPreferences.THEME_LIGHT);
+    assertEquals(
+        AppPreferences.DEFAULT_CANVAS_BG_COLOR,
+        AppPreferences.CANVAS_BG_COLOR.get(),
+        "the light theme must not inherit a colour chosen for the dark one");
+
+    useTheme(AppPreferences.THEME_DARK);
+    assertEquals(CHOSEN, AppPreferences.CANVAS_BG_COLOR.get());
+  }
+
+  @Test
+  void resetToDefaultsOnlyTouchesTheThemeShowing() {
+    useTheme(AppPreferences.THEME_DARK);
+    AppPreferences.CANVAS_BG_COLOR.set(CHOSEN);
+    useTheme(AppPreferences.THEME_LIGHT);
+    AppPreferences.CANVAS_BG_COLOR.set(CHOSEN);
+
+    AppPreferences.setDefaultGridColors();
+
+    assertEquals(AppPreferences.DEFAULT_CANVAS_BG_COLOR, AppPreferences.CANVAS_BG_COLOR.get());
+    useTheme(AppPreferences.THEME_DARK);
+    assertEquals(CHOSEN, AppPreferences.CANVAS_BG_COLOR.get(), "the other theme was reset too");
+  }
+
+  @Test
+  void theValueColoursFollowTheThemeThatIsShowing() {
+    useTheme(AppPreferences.THEME_LIGHT);
+    final var light = com.cburch.logisim.data.Value.trueColor;
+
+    useTheme(AppPreferences.THEME_DARK);
+    final var dark = com.cburch.logisim.data.Value.trueColor;
+
+    assertEquals(new java.awt.Color(AppPreferences.DEFAULT_TRUE_COLOR), light);
+    assertEquals(new java.awt.Color(AppPreferences.DARK_TRUE_COLOR), dark);
+  }
+
+  @Test
+  void everyColourThatDiffersBetweenThemesIsRegistered() {
+    AppPreferences.applyThemeColors();
+
+    // A colour left out of the table would silently go back to sharing one value between themes.
+    assertTrue(ThemeColorPrefs.registeredCount() >= 24, "registered: "
+        + ThemeColorPrefs.registeredCount());
+  }
+}

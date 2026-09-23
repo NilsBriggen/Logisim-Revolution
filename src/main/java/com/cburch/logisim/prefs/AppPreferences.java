@@ -20,11 +20,11 @@ import com.cburch.logisim.fpga.hdlgenerator.HdlGeneratorFactory;
 import com.cburch.logisim.gui.menu.Menu;
 import com.cburch.logisim.gui.menu.MenuItemImpl;
 import com.cburch.logisim.gui.start.Startup;
+import com.cburch.logisim.gui.theme.Theme;
 import com.cburch.logisim.instance.StdAttr;
 import com.cburch.logisim.util.LocaleListener;
 import com.cburch.logisim.util.LocaleManager;
 import com.cburch.logisim.util.PropertyChangeWeakSupport;
-import com.formdev.flatlaf.FlatIntelliJLaf;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
@@ -206,6 +206,8 @@ public class AppPreferences {
   }
 
   static void firePropertyChange(String property, Object oldVal, Object newVal) {
+    // A colour the user has just picked belongs to the theme it was picked for, not to both.
+    ThemeColorPrefs.mirrorChange(property);
     propertySupport.firePropertyChange(property, oldVal, newVal);
   }
 
@@ -594,8 +596,41 @@ public class AppPreferences {
                   Direction.WEST.toString()},
               Direction.EAST.toString()));
 
-  public static final PrefMonitor<String> LookAndFeel =
-      create(new PrefMonitorString("LookAndFeel", FlatIntelliJLaf.class.getName()));
+  public static final String THEME_LIGHT = "light";
+  public static final String THEME_DARK = "dark";
+  public static final String THEME_SYSTEM = "system";
+  public static final String[] THEME_MODES = {THEME_LIGHT, THEME_DARK, THEME_SYSTEM};
+
+  /** Name of the preference that used to hold a look-and-feel class name. */
+  private static final String LEGACY_LAF_KEY = "LookAndFeel";
+
+  static {
+    migrateLookAndFeelToTheme();
+  }
+
+  /**
+   * Carries a stored look-and-feel choice over to the new light/dark preference, once.
+   *
+   * <p>Someone who had picked a dark look and feel should not be handed a light window after
+   * updating, and someone who never chose anything should follow their desktop.
+   */
+  private static void migrateLookAndFeelToTheme() {
+    final var prefs = getPrefs();
+    if (prefs.get("theme", null) != null) return;
+    final var legacy = prefs.get(LEGACY_LAF_KEY, null);
+    if (legacy == null) return;
+    final var dark = legacy.contains("Dark") || legacy.contains("Darcula");
+    prefs.put("theme", dark ? THEME_DARK : THEME_LIGHT);
+  }
+
+  /**
+   * Whether to use the light theme, the dark theme, or whatever the desktop is set to.
+   *
+   * <p>Logisim-evolution used to let any installed look and feel be chosen, which meant nothing
+   * the application drew itself could be designed to match. There are now two themes of its own.
+   */
+  public static final PrefMonitor<String> THEME_MODE =
+      create(new PrefMonitorStringOpts("theme", THEME_MODES, THEME_SYSTEM));
 
   public static final String EDITOR_THEME_DEFAULT = "default";
   public static final String EDITOR_THEME_DARK = "dark";
@@ -697,65 +732,60 @@ public class AppPreferences {
   public static final int DEFAULT_BUS_COLOR = 0x00000000;
   public static final int DEFAULT_STROKE_COLOR = 0x00FF00FF;
 
-  // returns true if the given LookAndFeel class name indicates a dark theme
-  public static boolean isDarkTheme(String lafClassName) {
-    return lafClassName != null && (
-        lafClassName.contains("Dark") || lafClassName.contains("Darcula"));
+  /**
+   * Whether a dark theme is showing.
+   *
+   * <p>Component drawing asks this in a dozen places to pick a readable colour; it used to be
+   * answered by looking for "Dark" in a look-and-feel class name.
+   */
+  public static boolean isDarkTheme() {
+    return Theme.isDark();
   }
 
-  // applies theme-appropriate grid/component/signal colors based on current LookAndFeel
+  /** Set once the theme-dependent colours have been declared to {@link ThemeColorPrefs}. */
+  private static boolean themeColorsRegistered = false;
+
+  /**
+   * Loads the drawing colours belonging to the theme now showing and hands them to {@link Value}.
+   *
+   * <p>Called at startup and whenever the theme changes. It no longer overwrites the colour
+   * preferences: each theme keeps its own set, so a colour the user picked survives switching
+   * away and back. See {@link ThemeColorPrefs}.
+   */
   public static void applyThemeColors() {
-    if (isDarkTheme(LookAndFeel.get())) {
-      CANVAS_BG_COLOR.set(DARK_CANVAS_BG_COLOR);
-      GRID_BG_COLOR.set(DARK_GRID_BG_COLOR);
-      GRID_DOT_COLOR.set(DARK_GRID_DOT_COLOR);
-      GRID_ZOOMED_DOT_COLOR.set(DARK_ZOOMED_DOT_COLOR);
-      COMPONENT_COLOR.set(DARK_COMPONENT_COLOR);
-      COMPONENT_SECONDARY_COLOR.set(DARK_COMPONENT_SECONDARY_COLOR);
-      COMPONENT_GHOST_COLOR.set(DARK_COMPONENT_GHOST_COLOR);
-      COMPONENT_ICON_COLOR.set(DARK_COMPONENT_ICON_COLOR);
-      KMAP_CELL_TEXT_COLOR.set(DARK_KMAP_CELL_TEXT_COLOR);
-      TABLE_CURSOR_COLOR.set(DARK_TABLE_CURSOR_COLOR);
-      TABLE_HIGHLIGHT_COLOR.set(DARK_TABLE_HIGHLIGHT_COLOR);
-      TABLE_SELECTION_COLOR.set(DARK_TABLE_SELECTION_COLOR);
-      TRUE_COLOR.set(DARK_TRUE_COLOR);
-      FALSE_COLOR.set(DARK_FALSE_COLOR);
-      UNKNOWN_COLOR.set(DARK_UNKNOWN_COLOR);
-      ERROR_COLOR.set(DARK_ERROR_COLOR);
-      NIL_COLOR.set(DARK_NIL_COLOR);
-      BUS_COLOR.set(DARK_BUS_COLOR);
-      STROKE_COLOR.set(DARK_STROKE_COLOR);
-      CHRONO_BG_COLOR.set(DARK_CHRONO_BG_COLOR);
-      CHRONO_SIGNAL_COLOR.set(DARK_CHRONO_SIGNAL_COLOR);
-      CHRONO_LABEL_COLOR.set(DARK_CHRONO_LABEL_COLOR);
-      CHRONO_ROW_BG_COLOR.set(DARK_CHRONO_ROW_BG_COLOR);
-      CHRONO_SPOT_BG_COLOR.set(DARK_CHRONO_SPOT_BG_COLOR);
-    } else {
-      CANVAS_BG_COLOR.set(DEFAULT_CANVAS_BG_COLOR);
-      GRID_BG_COLOR.set(DEFAULT_GRID_BG_COLOR);
-      GRID_DOT_COLOR.set(DEFAULT_GRID_DOT_COLOR);
-      GRID_ZOOMED_DOT_COLOR.set(DEFAULT_ZOOMED_DOT_COLOR);
-      COMPONENT_COLOR.set(DEFAULT_COMPONENT_COLOR);
-      COMPONENT_SECONDARY_COLOR.set(DEFAULT_COMPONENT_SECONDARY_COLOR);
-      COMPONENT_GHOST_COLOR.set(DEFAULT_COMPONENT_GHOST_COLOR);
-      COMPONENT_ICON_COLOR.set(DEFAULT_COMPONENT_ICON_COLOR);
-      KMAP_CELL_TEXT_COLOR.set(DEFAULT_KMAP_CELL_TEXT_COLOR);
-      TABLE_CURSOR_COLOR.set(DEFAULT_TABLE_CURSOR_COLOR);
-      TABLE_HIGHLIGHT_COLOR.set(DEFAULT_TABLE_HIGHLIGHT_COLOR);
-      TABLE_SELECTION_COLOR.set(DEFAULT_TABLE_SELECTION_COLOR);
-      TRUE_COLOR.set(DEFAULT_TRUE_COLOR);
-      FALSE_COLOR.set(DEFAULT_FALSE_COLOR);
-      UNKNOWN_COLOR.set(DEFAULT_UNKNOWN_COLOR);
-      ERROR_COLOR.set(DEFAULT_ERROR_COLOR);
-      NIL_COLOR.set(DEFAULT_NIL_COLOR);
-      BUS_COLOR.set(DEFAULT_BUS_COLOR);
-      STROKE_COLOR.set(DEFAULT_STROKE_COLOR);
-      CHRONO_BG_COLOR.set(DEFAULT_CHRONO_BG_COLOR);
-      CHRONO_SIGNAL_COLOR.set(DEFAULT_CHRONO_SIGNAL_COLOR);
-      CHRONO_LABEL_COLOR.set(DEFAULT_CHRONO_LABEL_COLOR);
-      CHRONO_ROW_BG_COLOR.set(DEFAULT_CHRONO_ROW_BG_COLOR);
-      CHRONO_SPOT_BG_COLOR.set(DEFAULT_CHRONO_SPOT_BG_COLOR);
+    if (!themeColorsRegistered) {
+      themeColorsRegistered = true;
+      ThemeColorPrefs.register(CANVAS_BG_COLOR, DEFAULT_CANVAS_BG_COLOR, DARK_CANVAS_BG_COLOR);
+      ThemeColorPrefs.register(GRID_BG_COLOR, DEFAULT_GRID_BG_COLOR, DARK_GRID_BG_COLOR);
+      ThemeColorPrefs.register(GRID_DOT_COLOR, DEFAULT_GRID_DOT_COLOR, DARK_GRID_DOT_COLOR);
+      ThemeColorPrefs.register(GRID_ZOOMED_DOT_COLOR, DEFAULT_ZOOMED_DOT_COLOR, DARK_ZOOMED_DOT_COLOR);
+      ThemeColorPrefs.register(COMPONENT_COLOR, DEFAULT_COMPONENT_COLOR, DARK_COMPONENT_COLOR);
+      ThemeColorPrefs.register(COMPONENT_SECONDARY_COLOR, DEFAULT_COMPONENT_SECONDARY_COLOR, DARK_COMPONENT_SECONDARY_COLOR);
+      ThemeColorPrefs.register(COMPONENT_GHOST_COLOR, DEFAULT_COMPONENT_GHOST_COLOR, DARK_COMPONENT_GHOST_COLOR);
+      ThemeColorPrefs.register(COMPONENT_ICON_COLOR, DEFAULT_COMPONENT_ICON_COLOR, DARK_COMPONENT_ICON_COLOR);
+      ThemeColorPrefs.register(KMAP_CELL_TEXT_COLOR, DEFAULT_KMAP_CELL_TEXT_COLOR, DARK_KMAP_CELL_TEXT_COLOR);
+      ThemeColorPrefs.register(TABLE_CURSOR_COLOR, DEFAULT_TABLE_CURSOR_COLOR, DARK_TABLE_CURSOR_COLOR);
+      ThemeColorPrefs.register(TABLE_HIGHLIGHT_COLOR, DEFAULT_TABLE_HIGHLIGHT_COLOR, DARK_TABLE_HIGHLIGHT_COLOR);
+      ThemeColorPrefs.register(TABLE_SELECTION_COLOR, DEFAULT_TABLE_SELECTION_COLOR, DARK_TABLE_SELECTION_COLOR);
+      ThemeColorPrefs.register(TRUE_COLOR, DEFAULT_TRUE_COLOR, DARK_TRUE_COLOR);
+      ThemeColorPrefs.register(FALSE_COLOR, DEFAULT_FALSE_COLOR, DARK_FALSE_COLOR);
+      ThemeColorPrefs.register(UNKNOWN_COLOR, DEFAULT_UNKNOWN_COLOR, DARK_UNKNOWN_COLOR);
+      ThemeColorPrefs.register(ERROR_COLOR, DEFAULT_ERROR_COLOR, DARK_ERROR_COLOR);
+      ThemeColorPrefs.register(NIL_COLOR, DEFAULT_NIL_COLOR, DARK_NIL_COLOR);
+      ThemeColorPrefs.register(BUS_COLOR, DEFAULT_BUS_COLOR, DARK_BUS_COLOR);
+      ThemeColorPrefs.register(STROKE_COLOR, DEFAULT_STROKE_COLOR, DARK_STROKE_COLOR);
+      ThemeColorPrefs.register(CHRONO_BG_COLOR, DEFAULT_CHRONO_BG_COLOR, DARK_CHRONO_BG_COLOR);
+      ThemeColorPrefs.register(CHRONO_SIGNAL_COLOR, DEFAULT_CHRONO_SIGNAL_COLOR, DARK_CHRONO_SIGNAL_COLOR);
+      ThemeColorPrefs.register(CHRONO_LABEL_COLOR, DEFAULT_CHRONO_LABEL_COLOR, DARK_CHRONO_LABEL_COLOR);
+      ThemeColorPrefs.register(CHRONO_ROW_BG_COLOR, DEFAULT_CHRONO_ROW_BG_COLOR, DARK_CHRONO_ROW_BG_COLOR);
+      ThemeColorPrefs.register(CHRONO_SPOT_BG_COLOR, DEFAULT_CHRONO_SPOT_BG_COLOR, DARK_CHRONO_SPOT_BG_COLOR);
     }
+    ThemeColorPrefs.applyTheme(isDarkTheme());
+    reloadValueColors();
+  }
+
+  /** Copies the colour preferences into the static fields {@link Value} paints with. */
+  static void reloadValueColors() {
     Value.trueColor = new Color(TRUE_COLOR.get());
     Value.falseColor = new Color(FALSE_COLOR.get());
     Value.unknownColor = new Color(UNKNOWN_COLOR.get());
@@ -770,9 +800,11 @@ public class AppPreferences {
     Value.clockFrequencyColor = new Color(CLOCK_FREQUENCY_COLOR.get());
   }
 
-  // restores default grid/component colors (theme-aware)
+  /** Puts the shipped colours back, for the theme showing now only. */
   public static void setDefaultGridColors() {
     applyThemeColors();
+    ThemeColorPrefs.resetCurrentTheme();
+    reloadValueColors();
   }
 
   public static final PrefMonitor<Integer> CANVAS_BG_COLOR =

@@ -9,45 +9,50 @@
 
 package com.cburch.logisim.gui.icons;
 
-import com.cburch.logisim.prefs.AppPreferences;
-import java.awt.BasicStroke;
-import java.awt.Color;
+import com.cburch.logisim.gui.theme.AppIcons;
+import com.cburch.logisim.gui.theme.Tokens;
 import java.awt.Component;
-import java.awt.Font;
 import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.font.TextLayout;
 import javax.swing.Icon;
 
+/**
+ * Marks a question put to the user.
+ *
+ * <p>Drawn from the shared icon set rather than by hand, so it matches the rest of the interface
+ * and stays sharp at any scale. The colour comes from the theme.
+ */
 public class QuestionIcon implements Icon {
 
-  final int width = AppPreferences.getIconSize();
+  private final int size;
+
+  public QuestionIcon() {
+    this(1.0);
+  }
+
+  /**
+   * @param scale multiple of the standard icon size
+   */
+  public QuestionIcon(double scale) {
+    size = (int) Math.round(AppIcons.SIZE * scale);
+  }
+
+  /** Resolved on each paint, so the icon follows a theme change without being rebuilt. */
+  private Icon icon() {
+    return AppIcons.colored(AppIcons.Id.QUESTION, size, Tokens.accent());
+  }
 
   @Override
-  public void paintIcon(Component c, Graphics g, int x, int y) {
-    final var g2 = (Graphics2D) g.create();
-    g2.translate(x, y);
-    g2.setColor(Color.GREEN);
-    g2.fillRect(0, 0, width - 1, width - 1);
-    g2.setColor(Color.BLACK);
-    g2.setStroke(new BasicStroke(AppPreferences.getScaled((float) 1)));
-    g2.drawRect(0, 0, width - 1, width - 1);
-    g2.setColor(Color.GREEN.darker().darker().darker().darker());
-    final var f = g2.getFont().deriveFont((float) width / (float) 1.3).deriveFont(Font.BOLD);
-    final var t = new TextLayout("?", f, g2.getFontRenderContext());
-    final var centerX = (float) width / (float) 2 - (float) t.getBounds().getCenterX();
-    final var centerY = (float) width / (float) 2 - (float) t.getBounds().getCenterY();
-    t.draw(g2, centerX, centerY);
-    g2.dispose();
+  public void paintIcon(Component comp, Graphics gfx, int x, int y) {
+    icon().paintIcon(comp, gfx, x, y);
   }
 
   @Override
   public int getIconWidth() {
-    return width;
+    return icon().getIconWidth();
   }
 
   @Override
   public int getIconHeight() {
-    return width;
+    return icon().getIconHeight();
   }
 }

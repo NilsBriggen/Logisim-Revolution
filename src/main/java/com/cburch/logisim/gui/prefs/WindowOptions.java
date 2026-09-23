@@ -13,6 +13,7 @@ import static com.cburch.logisim.gui.Strings.S;
 
 import com.cburch.logisim.data.Direction;
 import com.cburch.logisim.fpga.gui.ZoomSlider;
+import com.cburch.logisim.gui.theme.Theme;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.proj.Projects;
 import com.cburch.logisim.util.TableLayout;
@@ -63,30 +64,30 @@ class WindowOptions extends OptionsPanel {
 
   private final ZoomSlider zoomValue;
   private final JButton zoomAutoButton;
-  private final JLabel lookfeelLabel;
+  private final JLabel themeLabel;
   private final JLabel appFontLabel;
   private final JLabel restartWarning;
   private final JLabel restartWarningSpacer;
   private final JLabel zoomLabel;
   private final JTextArea zoomFactorImportant;
-  private final JComboBox<String> lookAndFeel;
+  private final JComboBox<String> themeMode;
   private final JLabel editorThemeLabel;
   private final JComboBox<String> editorTheme;
   private final JComboBox<String> appFont;
-  private final LookAndFeelInfo[] lookAndFeelInfos;
-  private int index = 0;
 
   private String initialAppFont;
-  private String initialLookAndFeel;
 
   protected final String cmdResetWindowLayout = "reset-window-layout";
   protected final String cmdResetGridColors = "reset-grid-colors";
   protected final String cmdSetAutoScaleFactor = "set-auto-scale-factor";
 
+  /** Kept so the theme combo can be relabelled without the relabel looking like a user choice. */
+  private final SettingsChangeListener myListener = new SettingsChangeListener();
+
   public WindowOptions(PreferencesFrame window) {
     super(window);
 
-    final var listener = new SettingsChangeListener();
+    final var listener = myListener;
     final var panel = new JPanel(new TableLayout(2));
 
     checks =
@@ -187,15 +188,11 @@ class WindowOptions extends OptionsPanel {
     panel.add(new JLabel(" "));
 
     // Initialize components before adding
-    lookAndFeel = new JComboBox<>();
-    lookAndFeelInfos = UIManager.getInstalledLookAndFeels();
-    initialLookAndFeel = AppPreferences.LookAndFeel.get();
-    for (var i = 0; i < lookAndFeelInfos.length; i++) {
-      lookAndFeel.addItem(lookAndFeelInfos[i].getName());
-      if (lookAndFeelInfos[i].getClassName().equals(initialLookAndFeel)) {
-        lookAndFeel.setSelectedIndex(index = i);
-      }
+    themeMode = new JComboBox<>();
+    for (final var mode : Theme.Mode.values()) {
+      themeMode.addItem(themeModeLabel(mode));
     }
+    themeMode.setSelectedIndex(Theme.currentMode().ordinal());
 
     editorTheme = new JComboBox<>();
     editorTheme.addItem("Default");
@@ -220,10 +217,10 @@ class WindowOptions extends OptionsPanel {
     appFontLabel = new JLabel(S.get("windowAppFont"));
 
     // Add components
-    lookfeelLabel = new JLabel(S.get("windowToolbarLookandfeel"));
-    panel.add(lookfeelLabel);
-    panel.add(lookAndFeel);
-    lookAndFeel.addActionListener(listener);
+    themeLabel = new JLabel(S.get("windowTheme"));
+    panel.add(themeLabel);
+    panel.add(themeMode);
+    themeMode.addActionListener(listener);
 
     panel.add(editorThemeLabel);
     panel.add(editorTheme);
@@ -256,31 +253,45 @@ class WindowOptions extends OptionsPanel {
     add(panel);
   }
 
-  private void applyLookAndFeelGlobally(String lafClassName) {
-    try {
-      UIManager.setLookAndFeel(lafClassName);
-      for (final var win : Window.getWindows()) {
-        SwingUtilities.updateComponentTreeUI(win);
-      }
-      // Rebuild default circuit appearances to pick up new component colors
-      for (final var proj : Projects.getOpenProjects()) {
-        for (final var circuit : proj.getLogisimFile().getCircuits()) {
-          if (circuit.getAppearance().isDefaultAppearance()) {
-            circuit.getAppearance().recomputeDefaultAppearance();
-          }
+  /** The localized name of a theme choice, in the order {@link Theme.Mode} declares them. */
+  private static String themeModeLabel(Theme.Mode mode) {
+    return switch (mode) {
+      case LIGHT -> S.get("windowThemeLight");
+      case DARK -> S.get("windowThemeDark");
+      case SYSTEM -> S.get("windowThemeSystem");
+    };
+  }
+
+  /**
+   * Rebuilds the theme choices in the current language, without letting the rebuild look like the
+   * user picking a different theme.
+   */
+  private void relabelThemeModes() {
+    final var selected = themeMode.getSelectedIndex();
+    themeMode.removeActionListener(myListener);
+    themeMode.removeAllItems();
+    for (final var mode : Theme.Mode.values()) {
+      themeMode.addItem(themeModeLabel(mode));
+    }
+    themeMode.setSelectedIndex(selected >= 0 ? selected : Theme.currentMode().ordinal());
+    themeMode.addActionListener(myListener);
+  }
+
+  /** Re-applies every open project's default appearance after a theme change. */
+  private static void refreshProjectsForTheme() {
+    for (final var proj : Projects.getOpenProjects()) {
+      for (final var circuit : proj.getLogisimFile().getCircuits()) {
+        if (circuit.getAppearance().isDefaultAppearance()) {
+          circuit.getAppearance().recomputeDefaultAppearance();
         }
-        proj.getFrame().repaint();
       }
-    } catch (IllegalAccessException
-        | UnsupportedLookAndFeelException
-        | InstantiationException
-        | ClassNotFoundException ignored) {
+      proj.getFrame().repaint();
     }
   }
 
   private void updateEditorThemeSelection() {
     final var preference =
-        AppPreferences.isDarkTheme(AppPreferences.LookAndFeel.get())
+        AppPreferences.isDarkTheme()
             ? AppPreferences.DARK_EDITOR_THEME
             : AppPreferences.LIGHT_EDITOR_THEME;
     final var selectedTheme = preference.get();
@@ -309,7 +320,8 @@ class WindowOptions extends OptionsPanel {
     }
     toolbarPlacement.localeChanged();
     zoomLabel.setText(S.get("windowToolbarZoomfactor"));
-    lookfeelLabel.setText(S.get("windowToolbarLookandfeel"));
+    themeLabel.setText(S.get("windowTheme"));
+    relabelThemeModes();
     editorThemeLabel.setText(S.get("windowEditorTheme"));
     appFontLabel.setText(S.get("windowAppFont"));
     restartWarning.setText(S.get("windowRestartWarning"));
@@ -344,21 +356,19 @@ class WindowOptions extends OptionsPanel {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-      if (e.getSource().equals(lookAndFeel)) {
-        int newIndex = lookAndFeel.getSelectedIndex();
-        if (newIndex != index && newIndex >= 0 && newIndex < lookAndFeelInfos.length) {
-          index = newIndex;
-          AppPreferences.LookAndFeel.set(lookAndFeelInfos[index].getClassName());
+      if (e.getSource().equals(themeMode)) {
+        final var selected = themeMode.getSelectedIndex();
+        if (selected >= 0 && selected < Theme.Mode.values().length) {
+          Theme.setMode(Theme.Mode.values()[selected]);
           AppPreferences.applyThemeColors();
-          applyLookAndFeelGlobally(lookAndFeelInfos[index].getClassName());
+          refreshProjectsForTheme();
           updateEditorThemeSelection();
         }
-        checkRestartWarning();
       } else if (e.getSource().equals(editorTheme)) {
         final var selectedIndex = editorTheme.getSelectedIndex();
         if (selectedIndex >= 0 && selectedIndex < AppPreferences.EDITOR_THEMES.length) {
           final var preference =
-              AppPreferences.isDarkTheme(AppPreferences.LookAndFeel.get())
+              AppPreferences.isDarkTheme()
                   ? AppPreferences.DARK_EDITOR_THEME
                   : AppPreferences.LIGHT_EDITOR_THEME;
           preference.set(AppPreferences.EDITOR_THEMES[selectedIndex]);

@@ -916,7 +916,7 @@ public class CircuitWires {
     }
     final var oldFont = g.getFont();
     final var oldColor = g.getColor();
-    final var isDark = AppPreferences.isDarkTheme(AppPreferences.LookAndFeel.get());
+    final var isDark = AppPreferences.isDarkTheme();
     g.setColor(isDark ? new Color(200, 200, 200) : Color.DARK_GRAY);
     GraphicsUtil.switchToWidth(g, 2);
     g.drawLine(px - 4, py + 4, px + 4, py - 4);

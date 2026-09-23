@@ -153,7 +153,7 @@ public class Switch extends InstanceFactory {
     }
 
     Color color = painter.getAttributeValue(IoLibrary.ATTR_COLOR);
-    if (Color.WHITE.equals(color) && AppPreferences.isDarkTheme(AppPreferences.LookAndFeel.get())) {
+    if (Color.WHITE.equals(color) && AppPreferences.isDarkTheme()) {
       color = new Color(40, 40, 40);
     }
     if (!painter.shouldDrawColor()) {

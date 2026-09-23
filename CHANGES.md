@@ -3,6 +3,17 @@
 # Changes #
 
 * @dev (????-??-??)
+  * The interface has two themes of its own, a light one and a dark one, and follows the
+    desktop's light or dark setting by default. They replace the list of installed look and
+    feels, which meant nothing the application drew itself could be designed to match. Menu,
+    toolbar and panel icons are now drawn from a vector set, so they stay sharp at any size and
+    take their colour from the theme (@YOUR_GITHUB_HANDLE).
+  * A colour picked in the preferences is no longer thrown away when the theme changes. Each
+    theme keeps its own set, so switching away and back brings your colours back
+    (@YOUR_GITHUB_HANDLE).
+  * Fixed the application refusing to start when run from a build directory: a class path entry
+    that does not exist was opened as an archive while looking for FPGA boards
+    (@YOUR_GITHUB_HANDLE).
   * The canvas auto-zoom button, the grid toggle icon, the hex editor selection, the FPGA
     settings borders and the FPGA report font now follow the look and feel and the interface
     scale. Several fonts requested the non-existent "Sans Serif" family and silently fell

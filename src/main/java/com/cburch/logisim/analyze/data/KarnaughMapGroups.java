@@ -131,7 +131,7 @@ public class KarnaughMapGroups {
         boolean colored) {
       int d = 2 * IMP_RADIUS;
       final var oldColor = g.getColor();
-      final var isDark = AppPreferences.isDarkTheme(AppPreferences.LookAndFeel.get());
+      final var isDark = AppPreferences.isDarkTheme();
       if (highlighted)
         g.setColor(adjustColor(color, 180, 220, isDark));
       else if (colored)

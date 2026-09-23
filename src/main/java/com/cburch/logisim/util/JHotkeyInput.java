@@ -3,6 +3,8 @@ package com.cburch.logisim.util;
 import static com.cburch.logisim.gui.Strings.S;
 
 import com.cburch.logisim.gui.generic.OptionPane;
+import com.cburch.logisim.gui.theme.AppIcons;
+import com.cburch.logisim.gui.theme.Tokens;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.prefs.PrefMonitorKeyStroke;
 import java.awt.Color;
@@ -137,10 +139,8 @@ public class JHotkeyInput extends JPanel {
       }
     });
 
-    Icon iconOK = IconsUtil.getIcon("ok.gif");
-    Icon iconCancel = IconsUtil.getIcon("cancel.gif");
-    applyButton.setIcon(iconOK);
-    resetButton.setIcon(iconCancel);
+    applyButton.setIcon(AppIcons.colored(AppIcons.Id.CHECK, AppIcons.SIZE, Tokens.success()));
+    resetButton.setIcon(AppIcons.colored(AppIcons.Id.CLOSE, AppIcons.SIZE, Tokens.error()));
     applyButton.setBorder(BorderFactory.createEmptyBorder());
     applyButton.setVisible(false);
     resetButton.setBorder(BorderFactory.createEmptyBorder());

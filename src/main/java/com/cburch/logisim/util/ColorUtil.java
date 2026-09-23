@@ -9,7 +9,7 @@
 
 package com.cburch.logisim.util;
 
-import com.cburch.logisim.prefs.AppPreferences;
+import com.cburch.logisim.gui.theme.Tokens;
 import java.awt.Color;
 import java.awt.Component;
 import javax.swing.UIManager;
@@ -64,8 +64,7 @@ public final class ColorUtil {
    * Return active theme accent color for active circuit highlight.
    */
   public static Color getThemeAccentColor() {
-    final var isDark = AppPreferences.isDarkTheme(AppPreferences.LookAndFeel.get());
-    return isDark ? new Color(255, 107, 107) : new Color(185, 28, 28);
+    return Tokens.accent();
   }
 
   /**

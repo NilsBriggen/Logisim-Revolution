@@ -9,42 +9,50 @@
 
 package com.cburch.logisim.gui.icons;
 
-import com.cburch.logisim.prefs.AppPreferences;
-import java.awt.Color;
+import com.cburch.logisim.gui.theme.AppIcons;
+import com.cburch.logisim.gui.theme.Tokens;
 import java.awt.Component;
-import java.awt.Font;
 import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.font.TextLayout;
 import javax.swing.Icon;
 
+/**
+ * Marks a remark that is neither a problem nor a question.
+ *
+ * <p>Drawn from the shared icon set rather than by hand, so it matches the rest of the interface
+ * and stays sharp at any scale. The colour comes from the theme.
+ */
 public class InfoIcon implements Icon {
 
-  final int iconWidth = AppPreferences.getIconSize();
+  private final int size;
+
+  public InfoIcon() {
+    this(1.0);
+  }
+
+  /**
+   * @param scale multiple of the standard icon size
+   */
+  public InfoIcon(double scale) {
+    size = (int) Math.round(AppIcons.SIZE * scale);
+  }
+
+  /** Resolved on each paint, so the icon follows a theme change without being rebuilt. */
+  private Icon icon() {
+    return AppIcons.colored(AppIcons.Id.INFO, size, Tokens.accent());
+  }
 
   @Override
-  public void paintIcon(Component c, Graphics g, int x, int y) {
-    final var g2 = (Graphics2D) g.create();
-    g2.translate(x, y);
-    g2.setColor(Color.CYAN.darker());
-    g2.fillOval(0, 0, iconWidth - 1, iconWidth - 1);
-    g2.drawOval(0, 0, iconWidth - 1, iconWidth - 1);
-    g2.setColor(Color.BLUE.darker().darker().darker().darker());
-    final var f = g2.getFont().deriveFont((float) iconWidth / (float) 1.3).deriveFont(Font.BOLD);
-    final var t = new TextLayout("i", f, g2.getFontRenderContext());
-    final var xc = (float) iconWidth / (float) 2 - (float) t.getBounds().getCenterX();
-    final var yc = (float) iconWidth / (float) 2 - (float) t.getBounds().getCenterY();
-    t.draw(g2, xc, yc);
-    g2.dispose();
+  public void paintIcon(Component comp, Graphics gfx, int x, int y) {
+    icon().paintIcon(comp, gfx, x, y);
   }
 
   @Override
   public int getIconWidth() {
-    return iconWidth;
+    return icon().getIconWidth();
   }
 
   @Override
   public int getIconHeight() {
-    return iconWidth;
+    return icon().getIconHeight();
   }
 }

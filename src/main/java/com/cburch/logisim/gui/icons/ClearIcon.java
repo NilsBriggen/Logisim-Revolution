@@ -9,55 +9,50 @@
 
 package com.cburch.logisim.gui.icons;
 
-import com.cburch.logisim.prefs.AppPreferences;
-import java.awt.BasicStroke;
-import java.awt.Color;
+import com.cburch.logisim.gui.theme.AppIcons;
+import com.cburch.logisim.gui.theme.Tokens;
 import java.awt.Component;
 import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
 import javax.swing.Icon;
 
 /**
- * The "clear the content" icon.
+ * Clears the content of the field it sits in.
+ *
+ * <p>Drawn from the shared icon set rather than by hand, so it matches the rest of the interface
+ * and stays sharp at any scale. The colour comes from the theme.
  */
 public class ClearIcon implements Icon {
-  // How much of the box is left empty around the mark as a fraction of its size.
-  private static final double MARGIN = 0.3;
-  private final int wh;
+
+  private final int size;
 
   public ClearIcon() {
-    wh = AppPreferences.getIconSize();
+    this(1.0);
+  }
+
+  /**
+   * @param scale multiple of the standard icon size
+   */
+  public ClearIcon(double scale) {
+    size = (int) Math.round(AppIcons.SIZE * scale);
+  }
+
+  /** Resolved on each paint, so the icon follows a theme change without being rebuilt. */
+  private Icon icon() {
+    return AppIcons.colored(AppIcons.Id.CLEAR, size, Tokens.iconForeground());
   }
 
   @Override
   public void paintIcon(Component comp, Graphics gfx, int x, int y) {
-    final var g2 = (Graphics2D) gfx.create();
-    if (AppPreferences.UI_ANTIALIASING.getBoolean()) {
-      g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-      g2.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
-    }
-    g2.translate(x, y);
-    g2.setColor((comp == null) ? Color.GRAY : comp.getForeground());
-    g2.setStroke(new BasicStroke(
-        AppPreferences.getScaled(1.5f), BasicStroke.CAP_ROUND,
-        BasicStroke.JOIN_ROUND));
-
-    final var from = (int) Math.round(wh * MARGIN);
-    final var to = wh - from - 1;
-    g2.drawLine(from, from, to, to);
-    g2.drawLine(from, to, to, from);
-
-    g2.dispose();
+    icon().paintIcon(comp, gfx, x, y);
   }
 
   @Override
   public int getIconWidth() {
-    return wh;
+    return icon().getIconWidth();
   }
 
   @Override
   public int getIconHeight() {
-    return wh;
+    return icon().getIconHeight();
   }
 }

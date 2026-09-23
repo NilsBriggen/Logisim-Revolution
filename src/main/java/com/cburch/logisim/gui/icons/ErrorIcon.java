@@ -9,112 +9,76 @@
 
 package com.cburch.logisim.gui.icons;
 
-import com.cburch.logisim.prefs.AppPreferences;
-import java.awt.BasicStroke;
-import java.awt.Color;
+import com.cburch.logisim.gui.theme.AppIcons;
+import com.cburch.logisim.gui.theme.Tokens;
 import java.awt.Component;
-import java.awt.Font;
 import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.font.TextLayout;
 import javax.swing.Icon;
 
+/**
+ * Marks something that failed.
+ *
+ * <p>Drawn from the shared icon set rather than by hand, so it matches the rest of the interface
+ * and stays sharp at any scale. The colour comes from the theme.
+ */
 public class ErrorIcon implements Icon {
 
-  private final int wh;
-  private boolean forwardArrow = false;
-  private boolean backwardArrow = false;
+  private final int size;
+  private AppIcons.Id glyph = AppIcons.Id.ERROR;
 
   public ErrorIcon() {
-    wh = AppPreferences.getIconSize();
+    this(1.0);
   }
 
+  /**
+   * @param scale multiple of the standard icon size
+   */
   public ErrorIcon(double scale) {
-    wh = (int) AppPreferences.getScaled(scale * AppPreferences.getIconSize());
+    size = (int) Math.round(AppIcons.SIZE * scale);
   }
 
+  /**
+   * @param size edge length in unscaled pixels
+   */
   public ErrorIcon(int size) {
-    wh = AppPreferences.getScaled(size);
+    this.size = size;
   }
 
+  /**
+   * The icon for a button that steps through the errors found in a listing.
+   *
+   * <p>A direction reads better than an error mark here: the button does not report an error, it
+   * moves to one.
+   *
+   * @param forward towards the next error
+   * @param backward towards the previous error
+   */
   public ErrorIcon(boolean forward, boolean backward) {
-    wh = AppPreferences.getIconSize();
+    this(1.0);
     if (forward) {
-      forwardArrow = true;
-      backwardArrow = false;
-    } else {
-      forwardArrow = false;
-      backwardArrow = backward;
+      glyph = AppIcons.Id.CHEVRON_RIGHT;
+    } else if (backward) {
+      glyph = AppIcons.Id.CHEVRON_LEFT;
     }
   }
 
-  public static int scale(int v) {
-    return AppPreferences.getScaled(v);
+  /** Resolved on each paint, so the icon follows a theme change without being rebuilt. */
+  private Icon icon() {
+    return AppIcons.colored(glyph, size, Tokens.error());
   }
 
   @Override
-  public void paintIcon(Component c, Graphics g, int x, int y) {
-    final var g2 = (Graphics2D) g.create();
-    g2.translate(x, y);
-    final var mywh = !forwardArrow && !backwardArrow ? wh : (3 * wh) >> 2;
-    final var xoff = !forwardArrow && !backwardArrow ? 0 : wh >> 3;
-    final var trd = mywh / 3;
-    int[] xPos = {
-      xoff,
-      xoff + trd,
-      xoff + (2 * trd),
-      xoff + mywh - 1,
-      xoff + mywh - 1,
-      xoff + (2 * trd),
-      xoff + trd,
-      xoff
-    };
-    int[] ypos = {trd, 0, 0, trd, 2 * trd, mywh - 1, mywh - 1, 2 * trd};
-    g2.setColor(Color.RED.brighter().brighter());
-    g2.fillPolygon(xPos, ypos, 8);
-    g2.setStroke(new BasicStroke(scale(1)));
-    g2.setColor(Color.RED.darker().darker());
-    g2.drawPolygon(xPos, ypos, 8);
-    g2.setColor(Color.WHITE);
-    final var f = g2.getFont().deriveFont((float) mywh / (float) 1.3).deriveFont(Font.BOLD);
-    final var t = new TextLayout("X", f, g2.getFontRenderContext());
-    final var xc = (float) mywh / (float) 2 - (float) t.getBounds().getCenterX() + (float) xoff;
-    final var yc = (float) mywh / (float) 2 - (float) t.getBounds().getCenterY();
-    t.draw(g2, xc, yc);
-    if (forwardArrow) {
-      g2.setColor(Color.BLACK);
-      final var five = (5 * wh) >> 3;
-      final var six = (6 * wh) >> 3;
-      final var seven = (7 * wh) >> 3;
-      final int[] axPos = {xoff, five, five, seven, five, five, xoff};
-      final var yOff = AppPreferences.getScaled(1);
-      final int[] ayPos = {
-        seven - yOff, seven - yOff, six, seven, wh - 1, seven + yOff, seven + yOff
-      };
-      g2.fillPolygon(axPos, ayPos, 7);
-    }
-    if (backwardArrow) {
-      g2.setColor(Color.BLACK);
-      final var three = (3 * wh) >> 3;
-      final var six = (6 * wh) >> 3;
-      final var seven = (7 * wh) >> 3;
-      final int[] axPos = {seven, three, three, xoff, three, three, seven};
-      final var yOff = AppPreferences.getScaled(1);
-      final int[] ayPos = {
-        seven - yOff, seven - yOff, six, seven, wh - 1, seven + yOff, seven + yOff
-      };
-      g2.fillPolygon(axPos, ayPos, 7);
-    }
-    g2.dispose();
+  public void paintIcon(Component comp, Graphics gfx, int x, int y) {
+    icon().paintIcon(comp, gfx, x, y);
   }
 
   @Override
   public int getIconWidth() {
-    return wh;
+    return icon().getIconWidth();
   }
 
   @Override
   public int getIconHeight() {
-    return wh;
+    return icon().getIconHeight();
   }
 }

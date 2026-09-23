@@ -12,19 +12,13 @@ package com.cburch.logisim;
 import com.cburch.logisim.generated.BuildInfo;
 import com.cburch.logisim.gui.generic.OptionPane;
 import com.cburch.logisim.gui.start.Startup;
+import com.cburch.logisim.gui.theme.Theme;
 import com.cburch.logisim.prefs.AppPreferences;
-import com.formdev.flatlaf.FlatDarculaLaf;
-import com.formdev.flatlaf.FlatDarkLaf;
-import com.formdev.flatlaf.FlatIntelliJLaf;
-import com.formdev.flatlaf.FlatLightLaf;
-import com.formdev.flatlaf.themes.FlatMacDarkLaf;
-import com.formdev.flatlaf.themes.FlatMacLightLaf;
 import java.awt.Font;
 import java.awt.GraphicsEnvironment;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import javax.swing.UIManager;
-import javax.swing.UnsupportedLookAndFeelException;
 import javax.swing.plaf.FontUIResource;
 
 public class Main {
@@ -42,37 +36,17 @@ public class Main {
     System.setProperty("apple.awt.application.name", BuildInfo.name);
     try {
       if (!GraphicsEnvironment.isHeadless()) {
-        FlatLightLaf.installLafInfo();
-        FlatDarkLaf.installLafInfo();
-        FlatIntelliJLaf.installLafInfo();
-        FlatDarculaLaf.installLafInfo();
-        FlatMacLightLaf.installLafInfo();
-        FlatMacDarkLaf.installLafInfo();
-
-        UIManager.setLookAndFeel(AppPreferences.LookAndFeel.get());
+        Theme.install();
         AppPreferences.applyThemeColors();
 
-        // Apply global font preference
+        // Apply global font preference. The themes set the interface font themselves, so this is
+        // only for someone who has deliberately chosen another family.
         final var appFont = AppPreferences.APP_FONT.get();
         if (appFont != null && !appFont.isBlank()) {
           updateGlobalFont(appFont);
-        } else {
-          UIManager.put(
-              "ToolTip.font",
-            new FontUIResource("SansSerif", Font.BOLD, AppPreferences.getScaled(12)));
-          UIManager.put(
-              "Tree.font",
-            new FontUIResource("SansSerif", Font.BOLD, AppPreferences.getScaled(12)));
-          // don't need this
-          // UIManager.put(
-          //     "Label.font",
-          //   new FontUIResource("SansSerif", Font.BOLD, AppPreferences.getScaled(12)));
         }
       }
-    } catch (ClassNotFoundException
-        | UnsupportedLookAndFeelException
-        | IllegalAccessException
-        | InstantiationException e) {
+    } catch (RuntimeException e) {
       e.printStackTrace();
     }
 

@@ -49,7 +49,7 @@ public interface StdAttr {
   Color DARK_DEFAULT_LABEL_COLOR = new Color(0x6C, 0xB6, 0xFF);
 
   static Color getDefaultLabelColor() {
-    return AppPreferences.isDarkTheme(AppPreferences.LookAndFeel.get())
+    return AppPreferences.isDarkTheme()
         ? DARK_DEFAULT_LABEL_COLOR
         : DEFAULT_LABEL_COLOR;
   }

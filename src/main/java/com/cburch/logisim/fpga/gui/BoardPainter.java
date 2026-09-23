@@ -72,7 +72,7 @@ public class BoardPainter {
     int yoffset = AppPreferences.getScaled(BoardManipulator.IMAGE_HEIGHT + 2, scale);
     int skip = AppPreferences.getScaled(BoardManipulator.CONSTANT_BUTTON_WIDTH, scale);
     int xoffset = AppPreferences.getScaled(1, scale);
-    final var isDark = AppPreferences.isDarkTheme(AppPreferences.LookAndFeel.get());
+    final var isDark = AppPreferences.isDarkTheme();
     final var outlineColor = isDark
         ? new Color(AppPreferences.DARK_FPGA_BOARD_OUTLINE_COLOR)
         : new Color(AppPreferences.DEFAULT_FPGA_BOARD_OUTLINE_COLOR);
