@@ -3,6 +3,11 @@
 # Changes #
 
 * @dev (????-??-??)
+  * The zoom controls float over the corner of the canvas instead of taking a strip of the
+    side panel, and the properties panel no longer hides the state readout behind a tab
+    (@YOUR_GITHUB_HANDLE).
+  * The clock rate and the single-step message are shown in the status bar rather than painted
+    over the circuit, the clock rate in 28-point monospace (@YOUR_GITHUB_HANDLE).
   * The side panel now has a Circuits view listing only what you have made, with a filter, so
     moving between circuits no longer means finding one in a tree that also holds every
     component library. Libraries and the running simulation are separate views

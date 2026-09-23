@@ -48,10 +48,12 @@ import com.cburch.logisim.gui.shell.EditorTabs;
 import com.cburch.logisim.gui.shell.Inspector;
 import com.cburch.logisim.gui.shell.LayoutPrefs;
 import com.cburch.logisim.gui.shell.MainToolbar;
+import com.cburch.logisim.gui.shell.SectionPanel;
 import com.cburch.logisim.gui.shell.ShellLayout;
 import com.cburch.logisim.gui.shell.SidePanel;
 import com.cburch.logisim.gui.shell.SideView;
 import com.cburch.logisim.gui.shell.StatusBar;
+import com.cburch.logisim.gui.shell.ZoomPill;
 import com.cburch.logisim.gui.theme.AppIcons;
 import com.cburch.logisim.gui.prefs.PreferencesFrame;
 import com.cburch.logisim.prefs.AppPreferences;
@@ -139,7 +141,8 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
   private final Inspector inspector;
   private final BottomPanel bottomPanel;
   private final StatusBar statusBar;
-  private final JTabbedPane inspectorTabs;
+  private final SectionPanel stateSection;
+  private final ZoomPill zoomPill;
   private final JPanel mainPanelSuper;
   private final CardPanel mainPanel;
   // left-side elements
@@ -264,6 +267,8 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     editorTabModel.setNavigator(this::activateEditorTab);
     editorTabs = new EditorTabs(editorTabModel, this::editorTabTitle);
     final var editorArea = new EditorArea(editorTabs, mainPanelSuper);
+    zoomPill = new ZoomPill(zoom, layoutZoomModel);
+    editorArea.setOverlay(zoomPill);
 
     circuitList = new CircuitListView(project);
     sidePanel = new SidePanel();
@@ -290,16 +295,14 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
         S.get("preferencesFrameMenuItem"),
         PreferencesFrame::showPreferences);
 
-    inspectorTabs = new JTabbedPane();
-    styleDockTabs(inspectorTabs);
-    inspectorTabs.add(attrTable);
-    inspectorTabs.add(regTabContent);
+    // The panel's heading names what is selected, so the table does not repeat it above itself.
+    attrTable.setTitleEnabled(false);
+    stateSection = new SectionPanel(S.get("stateTab"), regTabContent, false);
+    final var inspectorBody = new JPanel(new BorderLayout());
+    inspectorBody.add(attrTable, BorderLayout.CENTER);
+    inspectorBody.add(stateSection, BorderLayout.SOUTH);
     inspector = new Inspector(S.get("propertiesTab"));
-    inspector.setContent(inspectorTabs);
-    final var zoomFooter = new JPanel(new BorderLayout());
-    zoomFooter.setBorder(Spacing.border(Spacing.XS));
-    zoomFooter.add(zoom);
-    inspector.setFooter(zoomFooter);
+    inspector.setContent(inspectorBody);
 
     bottomPanel = new BottomPanel();
     bottomPanel.addPanel(
@@ -685,9 +688,29 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     return "";
   }
 
+  /** Reports the clock rate the simulation is running at. */
+  void setStatusTickRate(String text) {
+    statusBar.setTickRate(text);
+  }
+
+  /** Reports what the simulation is doing, when it is not simply running. */
+  void setStatusSimulationState(String text) {
+    statusBar.setSimulationState(text);
+  }
+
   /** Shows the zoom level in the status bar, as a percentage. */
   private void updateZoomStatus() {
     statusBar.setZoom(Math.round(layoutZoomModel.getZoomFactor() * 100) + "%");
+  }
+
+  /**
+   * The heading of the properties panel: what is selected, or the panel's own name when nothing
+   * is.
+   */
+  private String inspectorTitle() {
+    final var model = attrTable.getAttrTableModel();
+    final var title = model == null ? null : model.getTitle();
+    return (title == null || title.isBlank()) ? S.get("propertiesTab") : title;
   }
 
   /** The name of whatever is being edited, for the status bar. */
@@ -749,6 +772,7 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
       app.getAttrTableDrawManager(attrTable).attributesSelected();
       zoom.setZoomModel(app.getZoomModel());
       zoom.setAutoZoomButtonEnabled(false);
+      zoomPill.setModel(app.getZoomModel());
       menuListener.setEditHandler(app.getEditHandler());
       mainPanel.setView(view);
       syncEditorTabs();
@@ -758,6 +782,7 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
       toolbar.setToolbarModel(layoutToolbarModel);
       zoom.setZoomModel(layoutZoomModel);
       zoom.setAutoZoomButtonEnabled(true);
+      zoomPill.setModel(layoutZoomModel);
       menuListener.setEditHandler(layoutEditHandler);
       viewAttributes(project.getTool(), true);
       mainPanel.setView(view);
@@ -834,9 +859,8 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     for (final var view : sidePanel.views()) {
       shell.getActivityBar().setTooltip(view.id(), view.title());
     }
-    inspector.setTitle(S.get("propertiesTab"));
-    inspectorTabs.setTitleAt(0, S.get("propertiesTab"));
-    inspectorTabs.setTitleAt(1, S.get("stateTab"));
+    inspector.setTitle(inspectorTitle());
+    stateSection.setTitle(S.get("stateTab"));
     bottomPanel.setTitle(VHDL_BOTTOM_PANEL, S.get("vhdlConsoleTab"));
     editorTabs.refresh();
   }
@@ -883,6 +907,7 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
 
   void setAttrTableModel(AttrTableModel value) {
     attrTable.setAttrTableModel(value);
+    inspector.setTitle(inspectorTitle());
     if (value instanceof AttrTableToolModel model) {
       final var tool = model.getTool();
       toolbox.setHaloedTool(tool);
@@ -928,6 +953,7 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
   private void setHdlEditorView(HdlModel hdl) {
     hdlEditor.setHdlModel(hdl);
     zoom.setZoomModel(null);
+    zoomPill.setModel(null);
     mainPanel.setView(EDIT_HDL);
     toolbar.setToolbarModel(hdlEditor.getToolbarModel());
   }

@@ -107,11 +107,6 @@ public class Canvas extends JPanel implements LocaleListener, CanvasPaneContents
   private static final Font ERR_MSG_FONT =
       AppPreferences.getScaledFont(new Font(Font.SANS_SERIF, Font.BOLD, 18));
   private static final Color TICK_RATE_COLOR = new Color(0, 0, 92, 92);
-  private static final Font TICK_RATE_FONT =
-      AppPreferences.getScaledFont(new Font(Font.MONOSPACED, Font.PLAIN, 28));
-  private static final Color SINGLE_STEP_MSG_COLOR = Color.BLUE;
-  private static final Font SINGLE_STEP_MSG_FONT =
-      AppPreferences.getScaledFont(new Font(Font.SANS_SERIF, Font.BOLD, 12));
   // public static BufferedImage image;
   private final Project proj;
   private final Selection selection;
@@ -225,6 +220,23 @@ public class Canvas extends JPanel implements LocaleListener, CanvasPaneContents
         width - size / 2,
         height - size * 3 / 4 - handleGap);
     g.setColor(oldColor);
+  }
+
+  /**
+   * Hands the tick rate and the simulation's own message to the status bar.
+   *
+   * <p>Called while painting, because that is when the canvas already knows both, but it only
+   * writes two labels; nothing is drawn.
+   */
+  private void reportSimulationStatus() {
+    final var frame = proj.getFrame();
+    if (frame == null) return;
+    final var rate =
+        AppPreferences.SHOW_TICK_RATE.getBoolean() ? tickCounter.getTickRate() : null;
+    frame.setStatusTickRate(rate == null || rate.isEmpty() ? "" : rate);
+    final var simulator = proj.getSimulator();
+    frame.setStatusSimulationState(
+        simulator.isAutoPropagating() ? "" : simulator.getSingleStepMessage());
   }
 
   public static void snapToGrid(final MouseEvent e) {
@@ -1407,26 +1419,9 @@ public class Canvas extends JPanel implements LocaleListener, CanvasPaneContents
         if (isSouthwest)
           GraphicsUtil.drawArrow2(g, 30, sz.height - 5, 5, sz.height - 5, 5, sz.height - 30);
       } else zoomButtonVisible = false;
-      if (AppPreferences.SHOW_TICK_RATE.getBoolean()) {
-        final var hz = tickCounter.getTickRate();
-        if (hz != null && !hz.equals("")) {
-          final var fm = g.getFontMetrics();
-          final var x = 10;
-          final var y = fm.getAscent() + 10;
-
-          g.setColor(new Color(AppPreferences.CLOCK_FREQUENCY_COLOR.get()));
-          g.setFont(TICK_RATE_FONT);
-          g.drawString(hz, x, y);
-        }
-      }
-
-      if (!proj.getSimulator().isAutoPropagating()) {
-        g.setColor(SINGLE_STEP_MSG_COLOR);
-        final var old = g.getFont();
-        g.setFont(SINGLE_STEP_MSG_FONT);
-        g.drawString(proj.getSimulator().getSingleStepMessage(), 10, 15);
-        g.setFont(old);
-      }
+      // The tick rate and the single-step message used to be painted here, over the user's
+      // circuit, the tick rate in 28-point monospace. They are reported in the status bar now.
+      reportSimulationStatus();
 
       g.setColor(Color.BLACK);
     }

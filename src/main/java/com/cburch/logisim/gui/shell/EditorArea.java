@@ -9,8 +9,11 @@
 
 package com.cburch.logisim.gui.shell;
 
+import com.cburch.logisim.util.UiScale;
 import java.awt.BorderLayout;
+import java.awt.Dimension;
 import javax.swing.JComponent;
+import javax.swing.JLayeredPane;
 import javax.swing.JPanel;
 
 /**
@@ -21,14 +24,52 @@ public class EditorArea extends JPanel {
   private static final long serialVersionUID = 1L;
 
   private final EditorTabs tabs;
-  private final JPanel body = new JPanel(new BorderLayout());
+  private final JLayeredPane body = new JLayeredPane();
+  private final JComponent editor;
+  private JComponent overlay;
 
   public EditorArea(EditorTabs tabs, JComponent editor) {
     super(new BorderLayout());
     this.tabs = tabs;
+    this.editor = editor;
     add(tabs, BorderLayout.NORTH);
-    body.add(editor, BorderLayout.CENTER);
+    body.setLayout(null);
+    body.add(editor, JLayeredPane.DEFAULT_LAYER);
     add(body, BorderLayout.CENTER);
+  }
+
+  /**
+   * Floats a component over the bottom corner of the editor.
+   *
+   * <p>Laid out by hand because the whole point is that it does not take part in the layout: it
+   * sits over the drawing rather than beside it.
+   */
+  public void setOverlay(JComponent component) {
+    if (overlay != null) body.remove(overlay);
+    overlay = component;
+    if (component != null) body.add(component, JLayeredPane.PALETTE_LAYER);
+    revalidate();
+  }
+
+  @Override
+  public void doLayout() {
+    super.doLayout();
+    editor.setBounds(0, 0, body.getWidth(), body.getHeight());
+    if (overlay != null && overlay.isVisible()) {
+      final var size = overlay.getPreferredSize();
+      final var margin = UiScale.scaled(ZoomPill.MARGIN);
+      overlay.setBounds(
+          Math.max(0, body.getWidth() - size.width - margin),
+          Math.max(0, body.getHeight() - size.height - margin),
+          size.width,
+          size.height);
+    }
+  }
+
+  @Override
+  public Dimension getPreferredSize() {
+    final var preferred = super.getPreferredSize();
+    return new Dimension(Math.max(preferred.width, editor.getPreferredSize().width), preferred.height);
   }
 
   public EditorTabs tabs() {
