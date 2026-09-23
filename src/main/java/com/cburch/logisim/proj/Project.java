@@ -601,7 +601,10 @@ public class Project {
   // actions
   //
   public void setStartupScreen(boolean value) {
+    if (startupScreen == value) return;
     startupScreen = value;
+    // The window is built before this is set, so it has to be told rather than asked.
+    if (frame != null) frame.startupScreenChanged(value);
   }
 
   public void setTool(Tool value) {

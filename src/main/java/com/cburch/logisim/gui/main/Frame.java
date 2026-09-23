@@ -53,6 +53,7 @@ import com.cburch.logisim.gui.shell.ShellLayout;
 import com.cburch.logisim.gui.shell.SidePanel;
 import com.cburch.logisim.gui.shell.SideView;
 import com.cburch.logisim.gui.shell.StatusBar;
+import com.cburch.logisim.gui.shell.WelcomePanel;
 import com.cburch.logisim.gui.shell.ZoomPill;
 import com.cburch.logisim.gui.theme.AppIcons;
 import com.cburch.logisim.gui.prefs.PreferencesFrame;
@@ -118,6 +119,8 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
   public static final String EDIT_LAYOUT = "layout";
   public static final String EDIT_APPEARANCE = "appearance";
   public static final String EDIT_HDL = "hdl";
+  /** The card shown when the application is started without a file. */
+  public static final String EDIT_WELCOME = "welcome";
   /** Identifier of the side view listing the project's circuits and libraries. */
   public static final String EXPLORER_SIDE_VIEW = "explorer";
   /** Identifier of the side view holding the component libraries. */
@@ -143,6 +146,8 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
   private final StatusBar statusBar;
   private final SectionPanel stateSection;
   private final ZoomPill zoomPill;
+  private final WelcomePanel welcomePanel;
+  private final EditorArea editorArea;
   private final JPanel mainPanelSuper;
   private final CardPanel mainPanel;
   // left-side elements
@@ -264,9 +269,16 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     state.stateChanged();
     project.getVhdlSimulator().addVhdlSimStateListener(state);
 
+    welcomePanel =
+        new WelcomePanel(
+            () -> ProjectActions.doNew(project),
+            () -> ProjectActions.doOpen(this, project),
+            file -> ProjectActions.doOpenReplacingBlank(this, project, project, file));
+    mainPanel.addView(EDIT_WELCOME, welcomePanel);
+
     editorTabModel.setNavigator(this::activateEditorTab);
     editorTabs = new EditorTabs(editorTabModel, this::editorTabTitle);
-    final var editorArea = new EditorArea(editorTabs, mainPanelSuper);
+    editorArea = new EditorArea(editorTabs, mainPanelSuper);
     zoomPill = new ZoomPill(zoom, layoutZoomModel);
     editorArea.setOverlay(zoomPill);
 
@@ -346,6 +358,7 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     LocaleManager.addLocaleListener(this);
     toolbox.updateStructure();
 
+    if (project.isStartupScreen()) showWelcome();
     syncEditorTabs();
     statusBar.setCircuitName(circuitName());
     updateZoomStatus();
@@ -686,6 +699,36 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     if (tab.target() instanceof Circuit circuit) return circuit.getName();
     if (tab.target() instanceof HdlModel model) return model.getName();
     return "";
+  }
+
+  /** Called by the project when its startup-screen flag changes. */
+  public void startupScreenChanged(boolean startup) {
+    if (startup) {
+      showWelcome();
+    } else {
+      dismissWelcome();
+    }
+  }
+
+  /**
+   * Shows the welcome screen in place of the canvas.
+   *
+   * <p>The tab strip goes with it: there is nothing open yet, and an empty strip above a welcome
+   * page would only say so twice.
+   */
+  private void showWelcome() {
+    mainPanel.setView(EDIT_WELCOME);
+    welcomePanel.refresh();
+    editorArea.setTabsVisible(false);
+    zoomPill.setVisible(false);
+  }
+
+  /** Puts the canvas back, once the user has something open. */
+  private void dismissWelcome() {
+    if (!EDIT_WELCOME.equals(mainPanel.getView())) return;
+    mainPanel.setView(EDIT_LAYOUT);
+    editorArea.setTabsVisible(true);
+    zoomPill.setVisible(true);
   }
 
   /** Reports the clock rate the simulation is running at. */
@@ -1055,6 +1098,10 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
         project.setTool(project.getOptions().getToolbarData().getFirstTool());
         placeToolbar();
         syncEditorTabs();
+      } else if (action == ProjectEvent.ACTION_START) {
+        // The first edit means the user has started work, so the welcome screen has served its
+        // purpose. Going through the project keeps the flag and the window in step.
+        project.setStartupScreen(false);
       } else if (action == ProjectEvent.ACTION_COMPLETE) {
         // An edit landed: mark the circuit it changed, so its tab says so.
         editorTabModel.setDirty(project.getCurrentCircuit(), true);

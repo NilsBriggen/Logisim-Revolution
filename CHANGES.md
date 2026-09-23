@@ -3,6 +3,8 @@
 # Changes #
 
 * @dev (????-??-??)
+  * Starting without a file now opens a welcome screen offering a new project, a file to open
+    and the projects you had open recently, instead of an empty grid (@YOUR_GITHUB_HANDLE).
   * The zoom controls float over the corner of the canvas instead of taking a strip of the
     side panel, and the properties panel no longer hides the state readout behind a tab
     (@YOUR_GITHUB_HANDLE).

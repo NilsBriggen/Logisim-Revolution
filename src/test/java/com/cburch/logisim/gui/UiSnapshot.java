@@ -61,7 +61,10 @@ public final class UiSnapshot {
     Theme.install();
     AppPreferences.applyThemeColors();
 
-    final var project = ProjectActions.doNew((com.cburch.logisim.gui.start.SplashScreen) null);
+    final var project =
+        ProjectActions.doNew(
+            (com.cburch.logisim.gui.start.SplashScreen) null,
+            Boolean.getBoolean("snapshot.welcome"));
     final var deadline = System.currentTimeMillis() + FRAME_TIMEOUT_MS;
     while (project.getFrame() == null && System.currentTimeMillis() < deadline) {
       Thread.sleep(50);
