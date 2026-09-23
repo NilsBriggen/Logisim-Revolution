@@ -28,6 +28,6 @@ public class LedBarShape extends DotMatrixBaseShape {
 
   @Override
   public String getDisplayName() {
-    return S.get("ledBarComponent");
+    return S.get("ioLedBarComponent");
   }
 }

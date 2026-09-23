@@ -3,6 +3,17 @@
 # Changes #
 
 * @dev (????-??-??)
+  * The English wording has been rewritten to use words people already know instead of words this
+    program invented: Poke is Interact, Toolbox is Components, Plexers are Multiplexers, Radix is
+    Number base, Attributes are Properties, "Add Circuit" is "New Circuit", and "Raise To Top" is
+    "Bring to Front". `docs/glossary.md` lists every change so course material can be brought up
+    to date. No key was renamed and no identifier changed, so the twelve translations keep
+    working and fall back to English for the text they have not been given yet
+    (@YOUR_GITHUB_HANDLE).
+  * Fixed: six pieces of text were asked for under a name no bundle had, so the program showed the
+    name itself where a sentence should be — among them the LED Bar's name in the appearance
+    editor and the caption on the Real Time Clock. A test now checks every one of the several
+    thousand lookups in the program (@YOUR_GITHUB_HANDLE).
   * The component library is now a palette of tiles showing each component's own symbol, grouped
     by what the components are for -- Logic, Wiring & routing, Arithmetic, Memory, Input & output,
     Displays, Chips & TTL, Advanced -- instead of a folder tree of several hundred identical rows

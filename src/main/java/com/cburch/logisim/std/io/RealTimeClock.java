@@ -200,7 +200,7 @@ public class RealTimeClock extends InstanceFactory {
 
     g2.setStroke(oldStroke);
     g.setColor(Color.BLACK);
-    String txt = S.get("Time");
+    String txt = S.get("realTimeClockTimeLabel");
     g.drawString(txt, x + 2, y + offset - 1);
     painter.drawPorts();
     painter.drawLabel();
