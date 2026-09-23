@@ -15,6 +15,7 @@ import com.cburch.logisim.circuit.CircuitState;
 import com.cburch.logisim.circuit.appear.DynamicElement;
 import com.cburch.logisim.data.Attribute;
 import com.cburch.logisim.data.Bounds;
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.instance.StdAttr;
 import com.cburch.logisim.util.GraphicsUtil;
 import com.cburch.logisim.util.UnmodifiableList;
@@ -55,7 +56,7 @@ public class TtyShape extends DynamicElement {
         bounds.getHeight(),
         2 * Tty.BORDER,
         2 * Tty.BORDER);
-    g.setColor(Color.BLACK);
+    g.setColor(CanvasStyle.componentColor());
     g.drawRoundRect(
         bounds.getX(),
         bounds.getY(),

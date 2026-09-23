@@ -18,6 +18,7 @@ import com.cburch.logisim.circuit.CircuitState;
 import com.cburch.logisim.circuit.appear.DynamicElement;
 import com.cburch.logisim.data.Attribute;
 import com.cburch.logisim.data.Bounds;
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.instance.StdAttr;
 import com.cburch.logisim.std.base.Text;
 import com.cburch.logisim.util.GraphicsUtil;
@@ -38,7 +39,6 @@ public class RegisterShape extends DynamicElement {
   public RegisterShape(int x, int y, DynamicElement.Path p) {
     super(p, Bounds.create(x, y, 1, 1));
     label = new EditableLabel(x, y, "0", DEFAULT_FONT);
-    label.setColor(Color.BLACK);
     label.setHorizontalAlignment(EditableLabel.CENTER);
     label.setVerticalAlignment(EditableLabel.MIDDLE);
     calculateBounds();
@@ -96,7 +96,7 @@ public class RegisterShape extends DynamicElement {
       g.setColor(Color.lightGray);
       g.fillRect(x, y, w, h);
     }
-    g.setColor(Color.BLACK);
+    g.setColor(CanvasStyle.componentColor());
     g.drawRect(x, y, w, h);
     if (state != null) {
       final var widthVal = path.leaf().getAttributeSet().getValue(StdAttr.WIDTH);
@@ -105,6 +105,7 @@ public class RegisterShape extends DynamicElement {
       final var val = data == null ? 0 : data.value.toLongValue();
       label.setText(StringUtil.toHexString(width, val));
     }
+    label.setColor(CanvasStyle.componentColor());
     label.paint(g);
     drawLabel(g);
   }

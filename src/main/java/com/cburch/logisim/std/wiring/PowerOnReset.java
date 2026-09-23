@@ -20,6 +20,7 @@ import com.cburch.logisim.data.BitWidth;
 import com.cburch.logisim.data.Bounds;
 import com.cburch.logisim.data.Direction;
 import com.cburch.logisim.data.Value;
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.instance.Instance;
 import com.cburch.logisim.instance.InstanceComponent;
 import com.cburch.logisim.instance.InstanceData;
@@ -247,14 +248,14 @@ public class PowerOnReset extends InstanceFactory {
       if (((facing == Direction.NORTH) || (facing == Direction.SOUTH)) && (g instanceof Graphics2D g2)) {
         int xpos = facing == Direction.NORTH ? x + 20 - fm.getDescent() : x + 20 + fm.getDescent();
         int ypos = facing == Direction.NORTH ? y + offset : y + height - offset;
-        g.setColor(Color.BLACK);
+        g.setColor(CanvasStyle.componentColor());
         g2.translate(xpos, ypos);
         g2.rotate(facing.toRadians());
         g.drawString(txt, 0, 0);
         g2.rotate(-facing.toRadians());
         g2.translate(-xpos, -ypos);
       } else {
-        g.setColor(Color.BLACK);
+        g.setColor(CanvasStyle.componentColor());
         g.drawString(txt, x + offset, y + fm.getDescent() + 20);
       }
     } else {

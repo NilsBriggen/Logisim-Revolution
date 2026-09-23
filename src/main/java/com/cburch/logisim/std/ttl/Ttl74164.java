@@ -12,6 +12,7 @@ package com.cburch.logisim.std.ttl;
 import com.cburch.logisim.data.BitWidth;
 import com.cburch.logisim.data.Value;
 import com.cburch.logisim.fpga.designrulecheck.netlistComponent;
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.instance.InstancePainter;
 import com.cburch.logisim.instance.InstancePoker;
 import com.cburch.logisim.instance.InstanceState;
@@ -150,7 +151,7 @@ public class Ttl74164 extends AbstractTtlGate {
       gfx.setColor(Color.WHITE);
       GraphicsUtil.drawCenteredText(gfx, state.get(7 - i).toDisplayString(), x + 40 + i * 10, y + height / 2);
     }
-    gfx.setColor(Color.BLACK);
+    gfx.setColor(CanvasStyle.componentColor());
   }
 
   @Override

@@ -18,6 +18,7 @@ import com.cburch.logisim.data.Bounds;
 import com.cburch.logisim.data.Direction;
 import com.cburch.logisim.data.Location;
 import com.cburch.logisim.data.Value;
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.instance.Instance;
 import com.cburch.logisim.instance.InstanceComponent;
 import com.cburch.logisim.instance.InstanceFactory;
@@ -38,8 +39,8 @@ import java.awt.AlphaComposite;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Composite;
-import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Graphics;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.font.TextLayout;
@@ -436,7 +437,7 @@ public class SubcircuitFactory extends InstanceFactory {
         AppPreferences.getScaled(6),
         180,
         180);
-    g2.setColor(Color.BLACK);
+    g2.setColor(CanvasStyle.componentColor());
     g2.drawRect(
         AppPreferences.getScaled(2),
         AppPreferences.getScaled(1),
@@ -455,7 +456,7 @@ public class SubcircuitFactory extends InstanceFactory {
 
   public static void paintHCIcon(Graphics2D g2) {
     g2.setStroke(new BasicStroke(AppPreferences.getScaled(2)));
-    g2.setColor(Color.BLACK);
+    g2.setColor(CanvasStyle.componentColor());
     g2.drawRect(
         AppPreferences.getScaled(1),
         AppPreferences.getScaled(1),

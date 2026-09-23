@@ -9,6 +9,7 @@
 
 package com.cburch.logisim.std.memory;
 
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.instance.InstancePainter;
 import com.cburch.logisim.instance.StdAttr;
 import java.awt.Color;
@@ -39,6 +40,6 @@ public class CounterPoker extends RegisterPoker {
           valueBounds.getWidth(),
           valueBounds.getHeight());
     }
-    g.setColor(Color.BLACK);
+    g.setColor(CanvasStyle.componentColor());
   }
 }

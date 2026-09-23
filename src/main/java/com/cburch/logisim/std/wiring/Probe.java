@@ -21,6 +21,7 @@ import com.cburch.logisim.data.BitWidth;
 import com.cburch.logisim.data.Bounds;
 import com.cburch.logisim.data.Direction;
 import com.cburch.logisim.data.Value;
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.instance.Instance;
 import com.cburch.logisim.instance.InstanceData;
 import com.cburch.logisim.instance.InstanceFactory;
@@ -34,8 +35,8 @@ import com.cburch.logisim.prefs.PrefMonitorBooleanConvert;
 import com.cburch.logisim.tools.key.DirectionConfigurator;
 import com.cburch.logisim.util.GraphicsUtil;
 import java.awt.Color;
-import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Graphics;
 import java.awt.event.KeyEvent;
 import java.util.Objects;
 
@@ -226,7 +227,7 @@ public class Probe extends InstanceFactory implements DynamicElementProvider {
         (int) ((bds.getX() + bds.getWidth() - LabelValueXOffset) / 0.7),
         (int) ((bds.getY() + bds.getHeight() - 2) / 0.7));
     g2.scale(1.0 / 0.7, 1.0 / 0.7);
-    g.setColor(Color.BLACK);
+    g.setColor(CanvasStyle.componentColor());
     if (radix == null || radix == RadixOption.RADIX_2) {
       int x = bds.getX();
       int y = bds.getY();

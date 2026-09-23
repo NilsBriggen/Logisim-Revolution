@@ -10,6 +10,7 @@
 package com.cburch.logisim.std.memory;
 
 import com.cburch.logisim.data.Bounds;
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.instance.InstancePainter;
 import com.cburch.logisim.instance.InstancePoker;
 import com.cburch.logisim.instance.InstanceState;
@@ -93,7 +94,7 @@ public class MemPoker extends InstancePoker {
       final var g = painter.getGraphics();
       g.setColor(Color.RED);
       g.drawRect(bds.getX(), bds.getY(), bds.getWidth(), bds.getHeight());
-      g.setColor(Color.BLACK);
+      g.setColor(CanvasStyle.componentColor());
     }
   }
 
@@ -204,7 +205,7 @@ public class MemPoker extends InstancePoker {
       final var g = painter.getGraphics();
       g.setColor(Color.RED);
       g.drawRect(bds.getX(), bds.getY(), bds.getWidth(), bds.getHeight());
-      g.setColor(Color.BLACK);
+      g.setColor(CanvasStyle.componentColor());
     }
 
     @Override

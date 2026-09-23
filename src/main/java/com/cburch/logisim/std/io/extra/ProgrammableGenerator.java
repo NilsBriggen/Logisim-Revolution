@@ -22,6 +22,7 @@ import com.cburch.logisim.data.BitWidth;
 import com.cburch.logisim.data.Bounds;
 import com.cburch.logisim.data.Direction;
 import com.cburch.logisim.data.Value;
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.gui.main.Frame;
 import com.cburch.logisim.instance.Instance;
 import com.cburch.logisim.instance.InstanceFactory;
@@ -365,7 +366,7 @@ public class ProgrammableGenerator extends InstanceFactory {
     int x = bds.getX();
     int y = bds.getY();
     painter.drawLabel();
-    g.setColor(Color.BLACK);
+    g.setColor(CanvasStyle.componentColor());
     boolean drawUp;
     if (painter.getShowState()) {
       ProgrammableGeneratorState state = getState(painter);

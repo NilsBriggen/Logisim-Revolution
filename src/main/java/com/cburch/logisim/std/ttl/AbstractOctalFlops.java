@@ -13,6 +13,7 @@ import com.cburch.logisim.data.BitWidth;
 import com.cburch.logisim.data.Value;
 import com.cburch.logisim.fpga.designrulecheck.netlistComponent;
 import com.cburch.logisim.fpga.hdlgenerator.HdlGeneratorFactory;
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.instance.InstancePainter;
 import com.cburch.logisim.instance.InstancePoker;
 import com.cburch.logisim.instance.InstanceState;
@@ -228,7 +229,7 @@ public class AbstractOctalFlops extends AbstractTtlGate {
       GraphicsUtil.drawCenteredText(g, state.getValue().get(i).toDisplayString(), x - 41, y + 94 + i * 10);
     }
     g.rotate(-Math.PI / 2, x, y);
-    g.setColor(Color.BLACK);
+    g.setColor(CanvasStyle.componentColor());
   }
 
   @Override

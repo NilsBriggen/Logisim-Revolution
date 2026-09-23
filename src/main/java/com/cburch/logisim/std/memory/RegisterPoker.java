@@ -11,6 +11,7 @@ package com.cburch.logisim.std.memory;
 
 import com.cburch.logisim.data.BitWidth;
 import com.cburch.logisim.data.Value;
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.instance.InstancePainter;
 import com.cburch.logisim.instance.InstancePoker;
 import com.cburch.logisim.instance.InstanceState;
@@ -81,6 +82,6 @@ public class RegisterPoker extends InstancePoker {
     g.setColor(Color.RED);
     final var wid = 8 * len + 2;
     g.drawRect(bds.getX() + (bds.getWidth() - wid) / 2, bds.getY(), wid, 16);
-    g.setColor(Color.BLACK);
+    g.setColor(CanvasStyle.componentColor());
   }
 }

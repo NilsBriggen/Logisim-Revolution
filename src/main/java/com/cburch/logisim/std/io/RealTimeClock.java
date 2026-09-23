@@ -9,15 +9,7 @@
 
 package com.cburch.logisim.std.io;
 
-import java.awt.BasicStroke;
-import java.awt.Color;
-import java.awt.Font;
-import java.awt.Graphics2D;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.time.ZonedDateTime;
-
-import javax.swing.Timer;
+import static com.cburch.logisim.std.Strings.S;
 
 import com.cburch.logisim.circuit.Simulator;
 import com.cburch.logisim.data.Attribute;
@@ -28,6 +20,7 @@ import com.cburch.logisim.data.BitWidth;
 import com.cburch.logisim.data.Bounds;
 import com.cburch.logisim.data.Direction;
 import com.cburch.logisim.data.Value;
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.instance.Instance;
 import com.cburch.logisim.instance.InstanceComponent;
 import com.cburch.logisim.instance.InstanceData;
@@ -37,8 +30,15 @@ import com.cburch.logisim.instance.InstanceState;
 import com.cburch.logisim.instance.Port;
 import com.cburch.logisim.instance.StdAttr;
 import com.cburch.logisim.prefs.AppPreferences;
-import static com.cburch.logisim.std.Strings.S;
 import com.cburch.logisim.util.GraphicsUtil;
+import java.awt.BasicStroke;
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.Graphics2D;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.time.ZonedDateTime;
+import javax.swing.Timer;
 
 public class RealTimeClock extends InstanceFactory {
   /**
@@ -199,7 +199,7 @@ public class RealTimeClock extends InstanceFactory {
     g.drawLine(xCenter, yCenter, x2, y2);
 
     g2.setStroke(oldStroke);
-    g.setColor(Color.BLACK);
+    g.setColor(CanvasStyle.componentColor());
     String txt = S.get("realTimeClockTimeLabel");
     g.drawString(txt, x + 2, y + offset - 1);
     painter.drawPorts();

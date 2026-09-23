@@ -23,6 +23,7 @@ import com.cburch.logisim.data.BitWidth;
 import com.cburch.logisim.data.Bounds;
 import com.cburch.logisim.data.Direction;
 import com.cburch.logisim.data.Value;
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.instance.Instance;
 import com.cburch.logisim.instance.InstanceData;
 import com.cburch.logisim.instance.InstanceFactory;
@@ -205,7 +206,7 @@ public class Buzzer extends InstanceFactory {
     g.setColor(Color.DARK_GRAY);
     g.drawLine(x + 4, y + height / 2, x + 36, y + height / 2);
     g.drawLine(x + width / 2, y + 4, x + width / 2, y + 36);
-    g.setColor(Color.BLACK);
+    g.setColor(CanvasStyle.componentColor());
     g.fillOval(x + 15, y + 15, 10, 10);
     g.setColor(new Color(AppPreferences.COMPONENT_COLOR.get()));
     g.drawOval(x, y, 40, 40);

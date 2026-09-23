@@ -22,6 +22,7 @@ import com.cburch.logisim.data.Bounds;
 import com.cburch.logisim.data.Direction;
 import com.cburch.logisim.data.Location;
 import com.cburch.logisim.data.Value;
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.instance.Instance;
 import com.cburch.logisim.instance.InstanceFactory;
 import com.cburch.logisim.instance.InstancePainter;
@@ -260,7 +261,7 @@ public class Constant extends InstanceFactory {
           x + bds.getX() + bds.getWidth() / 2,
           y + bds.getY() + bds.getHeight() / 2 - 2);
     } else {
-      g.setColor(Color.BLACK);
+      g.setColor(CanvasStyle.componentColor());
       g.setFont(DEFAULT_FONT);
       GraphicsUtil.drawCenteredText(
           g,

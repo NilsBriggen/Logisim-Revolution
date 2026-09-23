@@ -12,6 +12,7 @@ package com.cburch.logisim.std.memory;
 import com.cburch.hex.HexModel;
 import com.cburch.hex.HexModelListener;
 import com.cburch.logisim.data.Bounds;
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.instance.InstanceData;
 import com.cburch.logisim.util.GraphicsUtil;
 import com.cburch.logisim.util.StringUtil;
@@ -227,7 +228,7 @@ class MemState implements InstanceData, Cloneable, HexModelListener {
     g.fillRect(leftX + xOffset, topY + yOffset, dataBlockSize + addrBlockSize, blockHeight);
     g.setColor(Color.DARK_GRAY);
     g.drawRect(leftX + xOffset + addrBlockSize, topY + yOffset, dataBlockSize, blockHeight);
-    g.setColor(Color.BLACK);
+    g.setColor(CanvasStyle.componentColor());
     /* draw the addresses */
     int addr = (int) curScroll;
     if ((addr + (nrOfLines * nrDataSymbolsEachLine)) > totalNrOfEntries) {
@@ -269,7 +270,7 @@ class MemState implements InstanceData, Cloneable, HexModelListener {
                 firsty + i * yinc,
                 GraphicsUtil.H_CENTER,
                 GraphicsUtil.V_CENTER);
-            g.setColor(Color.BLACK);
+            g.setColor(CanvasStyle.componentColor());
           } else {
             GraphicsUtil.drawText(
                 g,

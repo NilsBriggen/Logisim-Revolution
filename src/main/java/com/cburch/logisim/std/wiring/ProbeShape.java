@@ -15,6 +15,7 @@ import com.cburch.logisim.circuit.RadixOption;
 import com.cburch.logisim.circuit.appear.DynamicElement;
 import com.cburch.logisim.data.Attribute;
 import com.cburch.logisim.data.Bounds;
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.data.Value;
 import com.cburch.logisim.instance.StdAttr;
 import com.cburch.logisim.std.base.Text;
@@ -38,7 +39,6 @@ public class ProbeShape extends DynamicElement {
   public ProbeShape(int x, int y, DynamicElement.Path p) {
     super(p, Bounds.create(x, y, 1, 1));
     label = new EditableLabel(x, y, "xxx", DEFAULT_FONT);
-    label.setColor(Color.BLACK);
     label.setHorizontalAlignment(EditableLabel.CENTER);
     label.setVerticalAlignment(EditableLabel.MIDDLE);
     calculateBounds();
@@ -107,6 +107,7 @@ public class ProbeShape extends DynamicElement {
         text = radix.toString(val);
       label.setText(text);
     }
+    label.setColor(CanvasStyle.componentColor());
     label.paint(g);
     drawLabel(g);
   }

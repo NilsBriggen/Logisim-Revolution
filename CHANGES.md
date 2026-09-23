@@ -3,6 +3,13 @@
 # Changes #
 
 * @dev (????-??-??)
+  * Fixed: twenty-seven places in the component painters drew in pure black whatever the theme, so
+    on a dark canvas a register's contents, a counter's mode labels, a RAM's cells, the value on a
+    poked memory or register, a probe's reading, a constant's value and the TTL chips' captions
+    were black on black. They now use the theme's component colour, as the shared drawing code
+    already did. Components that fill a surface of their own first -- the video screen, the
+    oscilloscope's white trace area, the PLA editor, a keypad's coloured keys -- still draw in
+    black on it, which is correct (@YOUR_GITHUB_HANDLE).
   * The English wording has been rewritten to use words people already know instead of words this
     program invented: Poke is Interact, Toolbox is Components, Plexers are Multiplexers, Radix is
     Number base, Attributes are Properties, "Add Circuit" is "New Circuit", and "Raise To Top" is
