@@ -3,6 +3,19 @@
 # Changes #
 
 * @dev (????-??-??)
+  * The component library is now a palette of tiles showing each component's own symbol, grouped
+    by what the components are for -- Logic, Wiring & routing, Arithmetic, Memory, Input & output,
+    Displays, Chips & TTL, Advanced -- instead of a folder tree of several hundred identical rows
+    grouped by the part of the program they live in. Components can be pinned to the top, and the
+    ones used most recently appear there on their own. The library tree is still available from a
+    button in the panel's heading, since it is where a library is unloaded or reordered
+    (@YOUR_GITHUB_HANDLE).
+  * The grouping is a presentation layer only: library identifiers, the contents of a `.circ` file
+    and the structure of the built-in libraries are unchanged, and a library the palette does not
+    recognise keeps all of its components under its own name (@YOUR_GITHUB_HANDLE).
+  * The buttons for adding, reordering and removing a circuit have moved from the component panel,
+    where they had nothing to do with what was below them, to the heading of the Circuits panel
+    (@YOUR_GITHUB_HANDLE).
   * The circuit canvas has been redrawn. Lines end and meet in rounded joins, component bodies
     have rounded corners, selection handles are filled discs in the accent colour instead of
     white squares with a black outline that were invisible on a dark canvas, the magenta

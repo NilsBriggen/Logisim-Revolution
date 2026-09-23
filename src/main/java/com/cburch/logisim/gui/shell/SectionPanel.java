@@ -36,7 +36,11 @@ public class SectionPanel extends JPanel {
 
   private static final long serialVersionUID = 1L;
 
+  /** Fired when the section is folded or unfolded, so a panel can remember the state. */
+  public static final String EXPANDED_PROPERTY = "expanded";
+
   private final JLabel titleLabel = new JLabel();
+  private final JLabel badgeLabel = new JLabel();
   private final JPanel headerRow = new JPanel(new BorderLayout());
   private final JComponent content;
 
@@ -50,6 +54,9 @@ public class SectionPanel extends JPanel {
     headerRow.setBorder(
         BorderFactory.createEmptyBorder(Spacing.xs(), Spacing.sm(), Spacing.xs(), Spacing.sm()));
     headerRow.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    badgeLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, Spacing.xs()));
+    badgeLabel.setVisible(false);
+    headerRow.add(badgeLabel, BorderLayout.WEST);
     headerRow.add(titleLabel, BorderLayout.CENTER);
     headerRow.addMouseListener(
         new MouseAdapter() {
@@ -83,11 +90,24 @@ public class SectionPanel extends JPanel {
   }
 
   public final void setExpanded(boolean expanded) {
+    final var previous = this.expanded;
     this.expanded = expanded;
     content.setVisible(expanded);
     refreshHeader();
     revalidate();
     repaint();
+    firePropertyChange(EXPANDED_PROPERTY, previous, expanded);
+  }
+
+  /**
+   * Puts a small icon before the title.
+   *
+   * <p>For the few sections that are not simply a name — the pinned components and the ones used
+   * most recently — where a symbol says at a glance why the group exists.
+   */
+  public void setBadge(AppIcons.Id icon) {
+    badgeLabel.setVisible(icon != null);
+    badgeLabel.setIcon(icon == null ? null : AppIcons.colored(icon, 12, Tokens.mutedForeground()));
   }
 
   public final void setTitle(String title) {

@@ -158,6 +158,7 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
   private final CardPanel mainPanel;
   // left-side elements
   private final Toolbox toolbox;
+  private final ToolboxToolbarModel circuitActions;
   private final CircuitListView circuitList;
   private final SimulationExplorer simExplorer;
   private final AttrTable attrTable;
@@ -187,12 +188,28 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     private final String titleKey;
     private final AppIcons.Id icon;
     private final JComponent component;
+    private final JComponent headerActions;
 
     SimpleSideView(String id, String titleKey, AppIcons.Id icon, JComponent component) {
+      this(id, titleKey, icon, component, null);
+    }
+
+    SimpleSideView(
+        String id,
+        String titleKey,
+        AppIcons.Id icon,
+        JComponent component,
+        JComponent headerActions) {
       this.id = id;
       this.titleKey = titleKey;
       this.icon = icon;
       this.component = component;
+      this.headerActions = headerActions;
+    }
+
+    @Override
+    public JComponent headerActions() {
+      return headerActions;
     }
 
     @Override
@@ -250,7 +267,8 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     toolbar = new Toolbar(layoutToolbarModel);
 
     // set up the side views
-    toolbox = new Toolbox(project, this, menuListener);
+    toolbox = new Toolbox(project);
+    circuitActions = new ToolboxToolbarModel(this, menuListener);
     simExplorer = new SimulationExplorer(project, menuListener);
     attrTable = new AttrTable(this);
     regTabContent = new RegTabContent(this);
@@ -291,9 +309,19 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     circuitList = new CircuitListView(project);
     sidePanel = new SidePanel();
     sidePanel.addView(
-        new SimpleSideView(EXPLORER_SIDE_VIEW, "explorerTab", AppIcons.Id.EXPLORER, circuitList));
+        new SimpleSideView(
+            EXPLORER_SIDE_VIEW,
+            "explorerTab",
+            AppIcons.Id.EXPLORER,
+            circuitList,
+            new Toolbar(circuitActions)));
     sidePanel.addView(
-        new SimpleSideView(LIBRARY_SIDE_VIEW, "libraryTab", AppIcons.Id.LIBRARY, toolbox));
+        new SimpleSideView(
+            LIBRARY_SIDE_VIEW,
+            "libraryTab",
+            AppIcons.Id.LIBRARY,
+            toolbox,
+            toolbox.headerActions()));
     sidePanel.addView(
         new SimpleSideView(SIMULATION_SIDE_VIEW, "simulateTab", AppIcons.Id.SIMULATION,
             simExplorer));
@@ -796,6 +824,11 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     if (hdl != null) return hdl.getName();
     final var circuit = project.getCurrentCircuit();
     return circuit == null ? "" : circuit.getName();
+  }
+
+  /** Brings one of the side panels to the front, as clicking its button in the activity bar does. */
+  public void showSideView(String id) {
+    shell.showSideView(id);
   }
 
   /** Shows a side view, or collapses the panel when that view is already the one showing. */

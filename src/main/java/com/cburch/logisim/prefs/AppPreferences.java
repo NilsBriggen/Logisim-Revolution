@@ -873,6 +873,18 @@ public class AppPreferences {
   public static final String ADD_AFTER_EDIT = "edit";
   public static final PrefMonitor<Boolean> ATTRIBUTE_HALO =
       create(new PrefMonitorBoolean("attributeHalo", true));
+
+  /** Components the user has pinned to the top of the palette, encoded by {@code PaletteMemory}. */
+  public static final PrefMonitor<String> PALETTE_FAVOURITES =
+      create(new PrefMonitorString("paletteFavourites", ""));
+
+  /** The components most recently placed, most recent first. */
+  public static final PrefMonitor<String> PALETTE_RECENTS =
+      create(new PrefMonitorString("paletteRecents", ""));
+
+  /** Whether the component panel shows the library tree rather than the palette of tiles. */
+  public static final PrefMonitor<Boolean> PALETTE_SHOW_TREE =
+      create(new PrefMonitorBoolean("paletteShowTree", false));
   public static final PrefMonitor<Boolean> COMPONENT_TIPS =
       create(new PrefMonitorBoolean("componentTips", true));
   public static final PrefMonitor<Boolean> MOVE_KEEP_CONNECT =

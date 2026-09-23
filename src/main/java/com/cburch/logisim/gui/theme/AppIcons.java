@@ -95,6 +95,9 @@ public final class AppIcons {
     MOVE_DOWN("move-down"),
     APPEARANCE("appearance"),
     PIN("pin"),
+    STAR("star"),
+    HISTORY("history"),
+    LIST_FILTER("list-filter"),
     MORE("more");
 
     private final String fileName;

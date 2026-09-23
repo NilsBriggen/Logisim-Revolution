@@ -162,6 +162,11 @@ public final class UiSnapshot {
       System.exit(0);
     }
 
+    final var sideView = System.getProperty("snapshot.side", "");
+    if (!sideView.isEmpty()) {
+      SwingUtilities.invokeAndWait(() -> frame.showSideView(sideView));
+    }
+
     SwingUtilities.invokeAndWait(
         () -> {
           // Makes the frame displayable and lays it out without ever putting it on screen, so the
