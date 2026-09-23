@@ -1125,6 +1125,17 @@ public class Startup implements AWTEventListener {
     if (proj != null)
       proj.doAction(LogisimFileActions.loadLibraries(defaultLibraries, proj.getLogisimFile()));
 
+    // Started without a file: offer the welcome screen rather than an empty grid. Done here,
+    // after the libraries are loaded, because loading them counts as an action on the project.
+    if (proj != null && filesToOpen.isEmpty()) {
+      final var startupProject = proj;
+      javax.swing.SwingUtilities.invokeLater(
+          () -> {
+            final var frame = startupProject.getFrame();
+            if (frame != null) frame.showWelcomeScreen();
+          });
+    }
+
     for (final var fileToPrint : filesToPrint) {
       doPrintFile(fileToPrint);
     }

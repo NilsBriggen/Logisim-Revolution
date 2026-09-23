@@ -148,6 +148,12 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
   private final ZoomPill zoomPill;
   private final WelcomePanel welcomePanel;
   private final EditorArea editorArea;
+
+  /** Whether the welcome screen is covering the canvas. */
+  private boolean welcomeShowing;
+
+  /** The editor the project asked for while the welcome screen was up. */
+  private String pendingEditorView;
   private final JPanel mainPanelSuper;
   private final CardPanel mainPanel;
   // left-side elements
@@ -358,7 +364,6 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     LocaleManager.addLocaleListener(this);
     toolbox.updateStructure();
 
-    if (project.isStartupScreen()) showWelcome();
     syncEditorTabs();
     statusBar.setCircuitName(circuitName());
     updateZoomStatus();
@@ -701,6 +706,32 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     return "";
   }
 
+  /**
+   * Shows an editor, unless the welcome screen is up.
+   *
+   * <p>Opening a project sets a circuit before the user has chosen anything, and that must not
+   * replace the welcome screen with an empty grid; the request is remembered and applied when the
+   * screen is dismissed.
+   */
+  private void showEditor(String view) {
+    if (welcomeShowing) {
+      pendingEditorView = view;
+      return;
+    }
+    mainPanel.setView(view);
+  }
+
+  /**
+   * Shows the welcome screen.
+   *
+   * <p>Asked for explicitly by the start-up code when no file was named, rather than read from the
+   * project's startup-screen flag: that flag is also cleared by loading the default libraries,
+   * which happens before anyone has touched anything.
+   */
+  public void showWelcomeScreen() {
+    showWelcome();
+  }
+
   /** Called by the project when its startup-screen flag changes. */
   public void startupScreenChanged(boolean startup) {
     if (startup) {
@@ -717,6 +748,7 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
    * page would only say so twice.
    */
   private void showWelcome() {
+    welcomeShowing = true;
     mainPanel.setView(EDIT_WELCOME);
     welcomePanel.refresh();
     editorArea.setTabsVisible(false);
@@ -725,8 +757,10 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
 
   /** Puts the canvas back, once the user has something open. */
   private void dismissWelcome() {
-    if (!EDIT_WELCOME.equals(mainPanel.getView())) return;
-    mainPanel.setView(EDIT_LAYOUT);
+    if (!welcomeShowing) return;
+    welcomeShowing = false;
+    mainPanel.setView(pendingEditorView == null ? EDIT_LAYOUT : pendingEditorView);
+    pendingEditorView = null;
     editorArea.setTabsVisible(true);
     zoomPill.setVisible(true);
   }
@@ -817,7 +851,7 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
       zoom.setAutoZoomButtonEnabled(false);
       zoomPill.setModel(app.getZoomModel());
       menuListener.setEditHandler(app.getEditHandler());
-      mainPanel.setView(view);
+      showEditor(view);
       syncEditorTabs();
       app.getCanvas().requestFocus();
     } else {
@@ -828,7 +862,7 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
       zoomPill.setModel(layoutZoomModel);
       menuListener.setEditHandler(layoutEditHandler);
       viewAttributes(project.getTool(), true);
-      mainPanel.setView(view);
+      showEditor(view);
       syncEditorTabs();
       layoutCanvas.requestFocus();
     }
@@ -997,7 +1031,7 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     hdlEditor.setHdlModel(hdl);
     zoom.setZoomModel(null);
     zoomPill.setModel(null);
-    mainPanel.setView(EDIT_HDL);
+    showEditor(EDIT_HDL);
     toolbar.setToolbarModel(hdlEditor.getToolbarModel());
   }
 
