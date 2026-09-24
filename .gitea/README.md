@@ -30,8 +30,9 @@ The check must print `aarch64` (Docker may warn about the host architecture). Ke
 ARM64 image on the server: act_runner cannot pull an ARM-only image using the host's default
 x86_64 platform. The ARM64 job installs an ARM64 JDK 21 inside its container, so
 `jpackage` embeds an ARM64 runtime. It uses the public Gitea source repository at the exact
-workflow commit. The x86_64 container installs `fakeroot` and RPM tools during its job. ARM64
-emulation is slower than a native ARM machine; the job timeout is four hours.
+workflow commit. Both Linux jobs install `fakeroot`, RPM tools, and `binutils` for
+`jpackage` (which calls `objcopy`). ARM64 emulation is slower than a native ARM machine;
+the job timeout is four hours.
 
 ## GitHub hosted Windows and Mac jobs
 
