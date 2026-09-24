@@ -169,11 +169,14 @@ public class HdlContentEditor extends JDialog implements JInputDialog {
   public HdlContentEditor(Dialog parent, Project proj, HdlModel model) {
     super(parent, S.get("hdlFrameTitle"), true);
     configure(proj, model);
+    // It never positioned itself, so it opened in the top-left corner of the screen.
+    setLocationRelativeTo(parent);
   }
 
   public HdlContentEditor(Frame parent, Project proj, HdlModel model) {
     super(parent, S.get("hdlFrameTitle"), true);
     configure(proj, model);
+    setLocationRelativeTo(parent);
   }
 
   private void close() {

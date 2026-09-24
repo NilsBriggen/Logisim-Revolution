@@ -9,6 +9,8 @@
 
 package com.cburch.logisim.fpga.gui;
 
+import static com.cburch.logisim.fpga.Strings.S;
+
 import com.cburch.contracts.BaseMouseListenerContract;
 import com.cburch.contracts.BaseWindowListenerContract;
 import com.cburch.logisim.fpga.data.FpgaCommanderListModel;
@@ -37,6 +39,11 @@ import javax.swing.text.DefaultCaret;
 
 public class FpgaReportTabbedPane extends JTabbedPane
     implements BaseMouseListenerContract, BaseWindowListenerContract {
+  /** A tab's name and how many messages are behind it, in the user's language. */
+  private static String tabTitle(String key, int count) {
+    return S.get(key) + " (" + count + ")";
+  }
+
 
   /** */
   private static final long serialVersionUID = 1L;
@@ -92,7 +99,7 @@ public class FpgaReportTabbedPane extends JTabbedPane
     panelInfos = new JPanel();
     panelInfos.setLayout(consolesLayout);
     panelInfos.add(textMessages);
-    panelInfos.setName("Infos (0)");
+    panelInfos.setName(tabTitle("FpgaReportInfos", 0));
     add(panelInfos, infoTabIndex);
 
     /* now we setup the Warning window */
@@ -113,7 +120,7 @@ public class FpgaReportTabbedPane extends JTabbedPane
     panelWarnings = new JPanel();
     panelWarnings.setLayout(consolesLayout);
     panelWarnings.add(textWarnings);
-    panelWarnings.setName("Warnings (0)");
+    panelWarnings.setName(tabTitle("FpgaReportWarnings", 0));
     add(panelWarnings, warningsTabIndex);
     warningsWindow =
         new FpgaCommanderListWindow("FPGACommander: Warnings", Color.ORANGE, true, warningsList);
@@ -139,7 +146,7 @@ public class FpgaReportTabbedPane extends JTabbedPane
     panelErrors = new JPanel();
     panelErrors.setLayout(consolesLayout);
     panelErrors.add(textErrors);
-    panelErrors.setName("Errors (0)");
+    panelErrors.setName(tabTitle("FpgaReportErrors", 0));
     add(panelErrors, errorsTabIndex);
     errorsWindow =
         new FpgaCommanderListWindow("FPGACommander: Errors", Color.RED, true, errorsList);
@@ -163,7 +170,7 @@ public class FpgaReportTabbedPane extends JTabbedPane
     panelConsole = new JPanel();
     panelConsole.setLayout(consolesLayout);
     panelConsole.add(textConsole);
-    panelConsole.setName("Console");
+    panelConsole.setName(S.get("FpgaReportConsole"));
     add(panelConsole, consoleTabIndex);
 
     addMouseListener(this);
@@ -212,7 +219,7 @@ public class FpgaReportTabbedPane extends JTabbedPane
     final var idx = indexOfComponent(panelInfos);
     if (idx >= 0) {
       setSelectedIndex(idx);
-      setTitleAt(idx, "Infos (" + infoMessages.size() + ")");
+      setTitleAt(idx, tabTitle("FpgaReportInfos", infoMessages.size()));
       panelInfos.revalidate();
       panelInfos.repaint();
     }
@@ -223,7 +230,7 @@ public class FpgaReportTabbedPane extends JTabbedPane
     final var idx = indexOfComponent(panelWarnings);
     if (idx >= 0) {
       setSelectedIndex(idx);
-      setTitleAt(idx, "Warnings (" + warningsList.getCountNr() + ")");
+      setTitleAt(idx, tabTitle("FpgaReportWarnings", warningsList.getCountNr()));
       panelWarnings.revalidate();
       panelWarnings.repaint();
     }
@@ -234,7 +241,7 @@ public class FpgaReportTabbedPane extends JTabbedPane
     final var idx = indexOfComponent(panelErrors);
     if (idx >= 0) {
       setSelectedIndex(idx);
-      setTitleAt(idx, "Errors (" + errorsList.getCountNr() + ")");
+      setTitleAt(idx, tabTitle("FpgaReportErrors", errorsList.getCountNr()));
       panelErrors.revalidate();
       panelErrors.repaint();
     }
@@ -289,15 +296,15 @@ public class FpgaReportTabbedPane extends JTabbedPane
     infoMessages.clear();
     int idx = indexOfComponent(panelInfos);
     if (idx >= 0) {
-      setTitleAt(idx, "Infos (" + infoMessages.size() + ")");
+      setTitleAt(idx, tabTitle("FpgaReportInfos", infoMessages.size()));
       setSelectedIndex(idx);
     }
     warningsList.clear();
     idx = indexOfComponent(panelWarnings);
-    if (idx >= 0) setTitleAt(idx, "Warnings (" + warningsList.getCountNr() + ")");
+    if (idx >= 0) setTitleAt(idx, tabTitle("FpgaReportWarnings", warningsList.getCountNr()));
     errorsList.clear();
     idx = indexOfComponent(panelErrors);
-    if (idx >= 0) setTitleAt(idx, "Errors (" + errorsList.getCountNr() + ")");
+    if (idx >= 0) setTitleAt(idx, tabTitle("FpgaReportErrors", errorsList.getCountNr()));
     final var rect = getBounds();
     rect.x = 0;
     rect.y = 0;
@@ -317,7 +324,7 @@ public class FpgaReportTabbedPane extends JTabbedPane
       if (warningsWindow.isVisible()) {
         warningsWindow.setVisible(false);
         add(panelWarnings, warningsTabIndex);
-        setTitleAt(warningsTabIndex, "Warnings (" + warningsList.getCountNr() + ")");
+        setTitleAt(warningsTabIndex, tabTitle("FpgaReportWarnings", warningsList.getCountNr()));
         clearDrcTrace();
       }
     }
@@ -325,7 +332,7 @@ public class FpgaReportTabbedPane extends JTabbedPane
       if (errorsWindow.isVisible()) {
         errorsWindow.setVisible(false);
         add(panelErrors, errorsTabIndex);
-        setTitleAt(errorsTabIndex, "Errors (" + errorsList.getCountNr() + ")");
+        setTitleAt(errorsTabIndex, tabTitle("FpgaReportErrors", errorsList.getCountNr()));
         clearDrcTrace();
       }
     if (consoleWindow != null)
@@ -440,7 +447,7 @@ public class FpgaReportTabbedPane extends JTabbedPane
       if (comps.contains(panelConsole)) idx = indexOfComponent(panelConsole);
       if (comps.contains(panelErrors)) idx = indexOfComponent(panelErrors);
       add(panelWarnings, idx);
-      setTitleAt(idx, "Warnings (" + warningsList.getCountNr() + ")");
+      setTitleAt(idx, tabTitle("FpgaReportWarnings", warningsList.getCountNr()));
       setSelectedIndex(idx);
       clearDrcTrace();
     }
@@ -449,7 +456,7 @@ public class FpgaReportTabbedPane extends JTabbedPane
       final var comps = new HashSet<>(Arrays.asList(getComponents()));
       if (comps.contains(panelConsole)) idx = indexOfComponent(panelConsole);
       add(panelErrors, idx);
-      setTitleAt(idx, "Errors (" + errorsList.getCountNr() + ")");
+      setTitleAt(idx, tabTitle("FpgaReportErrors", errorsList.getCountNr()));
       setSelectedIndex(idx);
       clearDrcTrace();
     }

@@ -606,6 +606,8 @@ public class AppPreferences {
               },
               Direction.NORTH.toString()));
 
+  /** Unused: nothing has ever read this. Kept so an existing preferences file is not disturbed. */
+  @Deprecated
   public static final PrefMonitor<String> CANVAS_PLACEMENT =
       create(
           new PrefMonitorStringOpts(
@@ -1258,7 +1260,6 @@ public class AppPreferences {
                   : 0)));
 
   public static void resetWindow() {
-    CANVAS_PLACEMENT.set(Direction.EAST.toString());
     WINDOW_EXPLORER_VISIBLE.set(true);
     WINDOW_MAIN_SPLIT.set(0.251);
     WINDOW_LEFT_SPLIT.set(0.51);

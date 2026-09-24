@@ -21,6 +21,7 @@ import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.std.memory.MemContents;
 import com.cburch.logisim.util.LocaleListener;
 import com.cburch.logisim.util.LocaleManager;
+import com.cburch.logisim.util.UiFonts;
 import com.cburch.logisim.util.WindowMenuItemManager;
 import java.awt.BorderLayout;
 import java.awt.Container;
@@ -58,6 +59,9 @@ public class HexFrame extends LFrame.SubWindow {
 
     this.model = model;
     this.editor = new HexEditor(model);
+    // A dump of hex digits has to be in a fixed-pitch face or the byte columns do not line up.
+    // Nobody had ever given the editor a font, so it inherited the proportional interface one.
+    this.editor.setFont(UiFonts.mono());
     this.instance = instance;
 
     final var buttonPanel = new JPanel();

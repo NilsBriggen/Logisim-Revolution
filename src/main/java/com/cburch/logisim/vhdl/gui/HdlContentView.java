@@ -55,7 +55,7 @@ public class HdlContentView extends JPanel
 
     @Override
     public String getName() {
-      return "VHDL edits";
+      return S.get("hdlEditAction");
     }
 
     @Override

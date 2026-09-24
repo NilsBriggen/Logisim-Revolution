@@ -22,8 +22,8 @@ import java.util.List;
 
 public class DrawAttr {
   public static final Font DEFAULT_FONT = new Font("SansSerif", Font.PLAIN, 12);
-  public static final Font DEFAULT_FIXED_PICH_FONT = new Font("Courier 10 Pitch", Font.PLAIN, 12);
-  public static final Font DEFAULT_NAME_FONT = new Font("Courier 10 Pitch", Font.BOLD, 14);
+  public static final Font DEFAULT_FIXED_PICH_FONT = new Font(Font.MONOSPACED, Font.PLAIN, 12);
+  public static final Font DEFAULT_NAME_FONT = new Font(Font.MONOSPACED, Font.BOLD, 14);
   public static final int FIXED_FONT_HEIGHT = 12;
   public static final int FIXED_FONT_CHAR_WIDTH = 8;
   public static final int FIXED_FONT_ASCENT = 9;

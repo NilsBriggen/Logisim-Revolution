@@ -137,6 +137,8 @@ class LayoutOptions extends OptionsPanel {
     }
     radix1.localeChanged();
     radix2.localeChanged();
+    // Left out, so this one label kept the previous language until the program was restarted.
+    prefPinAppearance.localeChanged();
     afterAdd.localeChanged();
     defaultAppearance.localeChanged();
   }

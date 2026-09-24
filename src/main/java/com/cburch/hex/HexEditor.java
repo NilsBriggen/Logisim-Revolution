@@ -9,12 +9,13 @@
 
 package com.cburch.hex;
 
+import com.cburch.logisim.gui.theme.Tokens;
 import com.cburch.logisim.prefs.AppPreferences;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
-import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Graphics;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import javax.swing.JComponent;
@@ -160,7 +161,7 @@ public class HexEditor extends JComponent implements Scrollable {
     gfx.setColor(getForeground());
     final var baseFont = gfx.getFont();
     final var baseFm = gfx.getFontMetrics(baseFont);
-    final var labelFont = baseFont.deriveFont(Font.ITALIC);
+    final var labelFont = baseFont;
     final var labelFm = gfx.getFontMetrics(labelFont);
     var cols = measures.getColumnCount();
     var baseX = measures.getBaseX();
@@ -173,8 +174,12 @@ public class HexEditor extends JComponent implements Scrollable {
     for (var a = xaddr0; a < xaddr1; a += cols, baseY += dy) {
       final var label = toHex(a, labelChars);
       gfx.setFont(labelFont);
+      // The address ruler is not data: it is quieter, and upright rather than italic, so the eye
+      // finds the first byte column without reading the addresses.
+      gfx.setColor(Tokens.mutedForeground());
       gfx.drawString(
           label, baseX - labelWidth + (labelWidth - labelFm.stringWidth(label)) / 2, baseY);
+      gfx.setColor(getForeground());
       gfx.setFont(baseFont);
       var b = a;
       for (var j = 0; j < cols; j++, b++) {

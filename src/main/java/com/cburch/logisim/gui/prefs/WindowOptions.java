@@ -42,7 +42,6 @@ import javax.swing.event.ChangeListener;
 class WindowOptions extends OptionsPanel {
   private static final long serialVersionUID = 1L;
   private final PrefBoolean[] checks;
-  private final PrefOptionList canvasPlacement;
   private final PrefOptionList toolbarPlacement;
 
   private final JButton resetWindowLayoutButton;
@@ -98,29 +97,17 @@ class WindowOptions extends OptionsPanel {
               AppPreferences.SEARCH_DOUBLE_SHIFT, S.getter("windowSearchDoubleShift")),
         };
 
-    canvasPlacement =
-        new PrefOptionList(
-            AppPreferences.CANVAS_PLACEMENT,
-            S.getter("windowCanvasLocation"),
-            new PrefOption[] {
-              new PrefOption(Direction.EAST.toString(), Direction.EAST.getDisplayGetter()),
-              new PrefOption(Direction.WEST.toString(), Direction.WEST.getDisplayGetter())
-            });
-
+    // Only two of the five choices ever did anything: the window puts the toolbar across the top
+    // whatever is picked here, and honours "hidden". The three that did nothing are gone, and so
+    // is the whole "Main canvas location" control, which had no reader anywhere in the program.
     toolbarPlacement =
         new PrefOptionList(
             AppPreferences.TOOLBAR_PLACEMENT,
             S.getter("windowToolbarLocation"),
             new PrefOption[] {
-              new PrefOption(Direction.NORTH.toString(), Direction.NORTH.getDisplayGetter()),
-              new PrefOption(Direction.SOUTH.toString(), Direction.SOUTH.getDisplayGetter()),
-              new PrefOption(Direction.EAST.toString(), Direction.EAST.getDisplayGetter()),
-              new PrefOption(Direction.WEST.toString(), Direction.WEST.getDisplayGetter()),
+              new PrefOption(Direction.NORTH.toString(), S.getter("windowToolbarShown")),
               new PrefOption(AppPreferences.TOOLBAR_HIDDEN, S.getter("windowToolbarHidden"))
             });
-
-    panel.add(canvasPlacement.getJLabel());
-    panel.add(canvasPlacement.getJComboBox());
 
     panel.add(toolbarPlacement.getJLabel());
     panel.add(toolbarPlacement.getJComboBox());

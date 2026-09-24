@@ -48,6 +48,20 @@ unchanged, and a library the palette does not recognise appears whole under its 
 | Can't Undo / Can't Redo | Nothing to Undo / Nothing to Redo | It is not that the program refuses; there is nothing there. |
 | Change Attribute | Change Property | Follows the panel. |
 
+## Circuit analysis
+
+The analysis window was missed by the first pass and has been brought in line with the rest.
+
+| Was | Is now | Why |
+| --- | --- | --- |
+| Combinational Analysis | Circuit Analysis | It matches the menu item that opens it, and says what it analyses. |
+| Inputs & Outputs (tab) | Signals | The tab lists both, and "signals" is what they are. |
+| Minimized (tab) | Simplified | Plainer, and it is what the tab shows. |
+| Set As Expression | Use This Expression | Says what pressing it does. |
+| Optimize minterms / maxterms | Simplify (sum of products) / (product of sums) | Names the form you get, which is the actual choice. |
+| Export TeX | Export LaTeX… | The name of the format, and the ellipsis that says a dialog follows. |
+| Style: / Format: | Map style: / Expression form: | Two controls both labelled with a bare noun sat next to each other. |
+
 ## Other wording
 
 | Was | Is now | Why |
@@ -56,6 +70,9 @@ unchanged, and a library the palette does not recognise appears whole under its 
 | First radix when wire poked | First number base when a wire is clicked | Both of the above at once. |
 | Attribute unchanged because request is invalid | The property was not changed because the value is not valid | It reads as a sentence. |
 | Move viewed circuit up list | Move this circuit up | The button is in the circuit's own list. |
+| Toolbar location: (5 choices) | Toolbar: Shown / Hidden | Three of the five never did anything. |
+| Infos (0) | Notes (0) | It was one of four English tab names in an otherwise translated window. |
+| Get Circuit Statistics | Circuit Statistics… | A noun phrase, with the ellipsis that says a dialog follows. |
 | Edit viewed circuit's appearance | Edit this circuit's appearance | As above. |
 
 ## Translations

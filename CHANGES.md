@@ -3,6 +3,26 @@
 # Changes #
 
 * @dev (????-??-??)
+  * The circuit analysis window was missed by the wording pass and has been brought in line: it is
+    "Circuit Analysis" rather than "Combinational Analysis", its tabs are Signals and Simplified,
+    and "Optimize minterms" / "Optimize maxterms" now name the form you get
+    (@YOUR_GITHUB_HANDLE).
+  * Fixed: the hex editor drew its dump in the proportional interface font, because nothing had
+    ever given it one, so the byte columns did not line up. It now uses the monospaced face, and
+    the address ruler is upright and quieter instead of italic in the same colour as the data
+    (@YOUR_GITHUB_HANDLE).
+  * Fixed: the generated circuit appearance asked for "Courier 10 Pitch", a face that exists only
+    on Linux, so on Windows and macOS the circuit name and port labels silently fell back to a
+    proportional font and no longer lined up (@YOUR_GITHUB_HANDLE).
+  * Fixed: three of the five choices under "Toolbar location" did nothing -- the toolbar is always
+    across the top -- and the whole "Main canvas location" control had no reader anywhere in the
+    program. The toolbar control is now Shown or Hidden, which is what it does
+    (@YOUR_GITHUB_HANDLE).
+  * Fixed: the four tabs in the Synthesize & Download window read "Infos (0)", "Warnings (0)",
+    "Errors (0)" and "Console" in every language; "Undo VHDL edits" stayed English in the Edit
+    menu; the HDL editor opened in the top-left corner of the screen instead of over the window
+    that opened it; and one Preferences label kept the previous language until restart
+    (@YOUR_GITHUB_HANDLE).
   * A circuit can be renamed. There was no rename anywhere in the program: the only way was to
     click empty canvas so the properties panel fell back to the circuit's own properties, then edit
     the name row. It is now F2 and a Rename item in the Circuits panel, as one undoable step
