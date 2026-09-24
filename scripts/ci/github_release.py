@@ -75,9 +75,19 @@ def mirror_and_dispatch():
         if git_output("-C", str(mirror), "write-tree") != source_tree:
             raise ValueError("GitHub snapshot does not match the Gitea source tree.")
         if subprocess.run(["git", "-C", str(mirror), "diff", "--cached", "--quiet"]).returncode:
-            git("-C", str(mirror), "-c", "user.name=Logisim Revolution CI",
-                "-c", "user.email=ci@users.noreply.github.com", "commit", "--quiet",
-                "-m", f"Build snapshot of Gitea {sha}")
+            author_name = git_output("show", "-s", "--format=%an", sha)
+            author_email = git_output("show", "-s", "--format=%ae", sha)
+            if author_name == "Nils Briggen" and author_email == "nilsbriggen@gmail.com":
+                author_email = "88196754+NilsBriggen@users.noreply.github.com"
+            identity = os.environ.copy()
+            identity.update({
+                "GIT_AUTHOR_NAME": author_name,
+                "GIT_AUTHOR_EMAIL": author_email,
+                "GIT_COMMITTER_NAME": author_name,
+                "GIT_COMMITTER_EMAIL": author_email,
+            })
+            git("-C", str(mirror), "commit", "--quiet",
+                "-m", f"Build snapshot of Gitea {sha}", env=identity)
         mirror_sha = git_output("-C", str(mirror), "rev-parse", "HEAD")
         askpass = Path(temporary) / "askpass.sh"
         askpass.write_text(
