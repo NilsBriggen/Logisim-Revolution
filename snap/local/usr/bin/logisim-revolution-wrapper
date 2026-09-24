@@ -1,0 +1,9 @@
+#!/bin/sh
+# Launch the bundled Revolution jar with the staged Java 21 runtime.
+set -eu
+for runtime in "$SNAP"/usr/lib/jvm/*/bin/java; do
+  if [ -x "$runtime" ]; then
+    exec "$runtime" --enable-native-access=ALL-UNNAMED -jar "$SNAP/jar/logisim-revolution.jar" "$@"
+  fi
+done
+exec java --enable-native-access=ALL-UNNAMED -jar "$SNAP/jar/logisim-revolution.jar" "$@"

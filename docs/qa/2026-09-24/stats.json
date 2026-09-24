@@ -1,0 +1,27 @@
+{
+  "recoveredObservations": 367,
+  "originalInspectionObservations": 352,
+  "recoveredVerifierAdditions": 15,
+  "newObservations": 14,
+  "totalTracked": 381,
+  "byStatus": {
+    "confirmed-runtime": 20,
+    "confirmed-visual": 65,
+    "design-recommendation": 87,
+    "confirmed-source": 58,
+    "unverified": 56,
+    "duplicate": 94,
+    "rejected": 1
+  },
+  "byWorkstream": {
+    "W1": 8,
+    "W7": 85,
+    "W6": 11,
+    "W2": 63,
+    "W5": 62,
+    "W4": 37,
+    "W3": 109,
+    "W8": 2,
+    "W0": 4
+  }
+}

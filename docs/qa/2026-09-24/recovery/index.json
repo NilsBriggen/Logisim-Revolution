@@ -1,0 +1,144 @@
+[
+  {
+    "label": "inspect:shell",
+    "agentId": "af210f52bb6917861",
+    "complete": true,
+    "findings": 38
+  },
+  {
+    "label": "inspect:palette",
+    "agentId": "a53cdff8cd9c3c4aa",
+    "complete": true,
+    "findings": 22
+  },
+  {
+    "label": "inspect:canvas",
+    "agentId": "a042ea884800a29c0",
+    "complete": true,
+    "findings": 37
+  },
+  {
+    "label": "inspect:components",
+    "agentId": "a1b9e051cd9006a8a",
+    "complete": true,
+    "findings": 32
+  },
+  {
+    "label": "inspect:inspector",
+    "agentId": "ad7a4b276b215ae1d",
+    "complete": true,
+    "findings": 31
+  },
+  {
+    "label": "inspect:simulation",
+    "agentId": "aa24a7916d5d01d39",
+    "complete": false
+  },
+  {
+    "label": "inspect:dialogs",
+    "agentId": "ac239b63248e4cc81",
+    "complete": true,
+    "findings": 27
+  },
+  {
+    "label": "inspect:analyzer",
+    "agentId": "a8cb396ebe90f4592",
+    "complete": true,
+    "findings": 29
+  },
+  {
+    "label": "inspect:projects",
+    "agentId": "ad69031b054217a0f",
+    "complete": false
+  },
+  {
+    "label": "inspect:hdl",
+    "agentId": "ae0775c0b1fb383e7",
+    "complete": false
+  },
+  {
+    "label": "inspect:light",
+    "agentId": "a8d753d9f53014c1f",
+    "complete": true,
+    "findings": 30
+  },
+  {
+    "label": "inspect:scaling",
+    "agentId": "a1e5698730e887149",
+    "complete": true,
+    "findings": 32
+  },
+  {
+    "label": "inspect:codeaudit",
+    "agentId": "ae9ac7df3503a5df8",
+    "complete": true,
+    "findings": 36
+  },
+  {
+    "label": "inspect:keyboard",
+    "agentId": "a32a5f7ff93ab290b",
+    "complete": false
+  },
+  {
+    "label": "inspect:critic",
+    "agentId": "a4f89b9be79743b82",
+    "complete": true,
+    "findings": 38
+  },
+  {
+    "label": "verify:codeaudit",
+    "agentId": "a0fcb22c166fe60a4",
+    "complete": true,
+    "findings": 36
+  },
+  {
+    "label": "verify:palette",
+    "agentId": "a0fa1b43fb0cba493",
+    "complete": false
+  },
+  {
+    "label": "verify:analyzer",
+    "agentId": "a0ddc41750f4870be",
+    "complete": false
+  },
+  {
+    "label": "verify:canvas",
+    "agentId": "ac10c37a05da2e62a",
+    "complete": false
+  },
+  {
+    "label": "verify:scaling",
+    "agentId": "abb9b36722701dc44",
+    "complete": false
+  },
+  {
+    "label": "verify:light",
+    "agentId": "a45987601cc39bc02",
+    "complete": false
+  },
+  {
+    "label": "verify:critic",
+    "agentId": "a68a4250ab7ab08bd",
+    "complete": false
+  },
+  {
+    "label": "verify:components",
+    "agentId": "ac3a8979d97031cff",
+    "complete": false
+  },
+  {
+    "label": "verify:shell",
+    "agentId": "a723f10c5083a52d5",
+    "complete": false
+  },
+  {
+    "label": "verify:inspector",
+    "agentId": "a11dbea53c4953db3",
+    "complete": false
+  },
+  {
+    "label": "verify:dialogs",
+    "agentId": "a02c4e3e5e3888aa2",
+    "complete": false
+  }
+]

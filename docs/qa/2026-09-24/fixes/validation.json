@@ -1,0 +1,17 @@
+{
+  "date": "2026-09-24",
+  "baseRevision": "0a62266649937f3c2cbcb1ef495b6d9be6ba2d5a",
+  "uncommitted": true,
+  "commands": [
+    "./gradlew test checkstyleMain checkstyleTest shadowJar",
+    "./gradlew build",
+    "git diff --check",
+    "node --check scripts/visual-qa.mjs",
+    "bash -n scripts/visual-qa-session.sh"
+  ],
+  "build": "passed",
+  "tests": {"total": 1030, "failures": 0, "errors": 0, "skipped": 0},
+  "artifact": "build/libs/logisim-evolution-5.1.0dev-all.jar",
+  "sha256": "50316d4a92230497b1c9486373333f3411580b0d9fec63c73f510b2c83e86908",
+  "nativeAcceptance": "See README.md and per-session reports; this is not full-matrix acceptance."
+}

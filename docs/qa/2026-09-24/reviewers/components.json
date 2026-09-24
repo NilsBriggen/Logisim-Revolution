@@ -1,0 +1,717 @@
+{
+  "reviewer": "components",
+  "date": "2026-09-24",
+  "repository": "/home/nilsb/Documents/projects/logisim-revolution",
+  "head": "0a62266649937f3c2cbcb1ef495b6d9be6ba2d5a",
+  "scope": [
+    "inspect-components.json: components-01 through components-32 only",
+    "verify-components-partial.md"
+  ],
+  "productionChanges": false,
+  "newRuntimeSession": false,
+  "provenance": {
+    "report": "/tmp/logisim-qa-recovery-20260924/reports/inspect-components.json",
+    "partialVerifier": "/tmp/logisim-qa-recovery-20260924/reports/verify-components-partial.md",
+    "screenshots": "Actual recovered UI images/crops visually inspected; enlarged crops are not physical-DPI measurements.",
+    "imageAccess": "view_image failed with mountinfo; authorized read-only base64 fallback emitted actual images.",
+    "displayedBuildMetadata": "components/22-gates.png displays main/2532c84d. Embedded metadata is stale; it is not used to assign the actual binary revision.",
+    "sourceIdentity": "0a62266649937f3c2cbcb1ef495b6d9be6ba2d5a, independently verified by git rev-parse HEAD.",
+    "binaryIdentity": {
+      "qaJar": "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/logisim.jar",
+      "matchingBuildJar": "/home/nilsb/Documents/projects/logisim-revolution/build/libs/logisim-evolution-5.1.0dev-all.jar",
+      "sha256": "c854edbbea34d6cfc0e53ac9cf70ef5b2a5dcf550a3959ff0ed99d852950d433",
+      "verification": "Fresh sha256sum during finalization proves the current files are byte-identical. It is independent of displayed build metadata. No per-capture binary hashes were recovered by this reviewer."
+    },
+    "headComparison": "Source-only comparison 2532c84d..HEAD: examined component painters, XmlReader, simulator and export code unchanged; preferences/interface-scale, hex editor and toolbar options changed. This source history does not identify or date the code in the current JAR. No fresh runtime or physical-DPI acceptance is claimed.",
+    "priorVerifier": "components-verify captures and Reptar trace are prior-agent evidence, not newly executed workflows."
+  },
+  "severityPolicy": {
+    "P0": "Actual demonstrated data loss; none established.",
+    "P1": "Blocked normal workflow; Reptar propagation in circuits containing it.",
+    "P2": "Readability, layout, export or workflow usability defect/recommendation.",
+    "P3": "Optional polish or undefined design contract."
+  },
+  "summary": {
+    "dispositions": 32,
+    "statusCounts": {
+      "design-recommendation": 10,
+      "confirmed-visual": 19,
+      "confirmed-source": 1,
+      "confirmed-runtime": 1,
+      "duplicate": 1
+    },
+    "independentBugCount": null,
+    "countNote": "These are claim dispositions, not independent bug counts. Shared renderer work, one duplicate, and narrowed/rejected subclaims are recorded.",
+    "p0": 0,
+    "p1Ids": [
+      "components-22"
+    ]
+  },
+  "plans": [
+    {
+      "id": "unsupported-reptar",
+      "priority": "P1",
+      "ids": [
+        "components-22"
+      ],
+      "rootCause": "A shipped component unconditionally throws from propagate; the simulator catches the failed propagation attempt.",
+      "reproduction": "Open a disposable fixture containing Reptar Local Bus, trigger propagation and inspect the simulator error/log.",
+      "fix": "Define an explicit unsupported/FPGA-only contract. Assign documented UNKNOWN values to output ports with correct widths instead of throwing, and show a capability notice. A no-op alone does not necessarily initialize outputs. Do not invent working bus simulation.",
+      "acceptance": "In an isolated circuit containing Reptar and an unrelated pin path, reset, poke and tick repeatedly. No propagation exception; independent path settles; Reptar outputs and notice match the declared unsupported contract. Exercise the public InstanceState/port API."
+    },
+    {
+      "id": "default-contrast",
+      "priority": "P2",
+      "ids": [
+        "components-03",
+        "components-05",
+        "components-07",
+        "components-08",
+        "components-09",
+        "components-21"
+      ],
+      "rootCause": "Theme foregrounds mix with fixed light fills; literal black/blue/white ink remains in painters/defaults. Explicit document colour attributes have a separate contract.",
+      "reproduction": "Use disposable Text, labelled Button/LED, Constant, ROM, POR, RTC, SoC bus and DMA fixtures in dark mode; poke a binary input high; compare inactive/active segments.",
+      "fix": "Pair built-in surface/ink tokens, with print variants. Choose on-value text against the actual fill. Introduce explicit auto/default semantics for new text/label/segment defaults; preserve explicit serialized colours, including black/white/blue. Never infer auto by RGB equality. Keep unknown/error semantics. Segment emphasis is a design decision.",
+      "acceptance": "Native dark/light and printer-view screenshots at interface scales 1.0/1.6/2.0 and zooms 100/200%. Built-in text meets a chosen 4.5:1 contrast target; symbols remain distinct. Explicit custom colour attributes round-trip unchanged after theme switches. No instance state in factories."
+    },
+    {
+      "id": "caption-layout",
+      "priority": "P2",
+      "ids": [
+        "components-02",
+        "components-11",
+        "components-12"
+      ],
+      "rootCause": "Fixed text positions compete with small bodies/ports; small literal fonts hide detail; gate labels are anchored at the body centre.",
+      "reproduction": "Place separated wide two-input plexers, arithmetic, sign extender, Telnet, DMA and labelled gates; inspect TTL/splitter captions at 100/200%.",
+      "fix": "Use explicit circuit-unit font roles, measured interiors and reserved port gutters. Shorten status copy with full tooltip when needed. Move gate labels outside via a compatibility-aware location option. Do not shrink critical bit numbers below a readable floor, or globally move existing footprints/ports.",
+      "acceptance": "All facings/themes and short/long/localized labels remain in intended regions without crossing ports/state glyphs. DMA panels do not overlap. Existing wires meet identical port coordinates. Verify both screen and export."
+    },
+    {
+      "id": "dot-coordinates",
+      "priority": "P2",
+      "ids": [
+        "components-17"
+      ],
+      "rootCause": "drawCircle multiplies absolute origins by scaleX/scaleY; LedBar uses scaleY=3.",
+      "reproduction": "Export a LedBar away from origin with Printer View on; compare a live circular bar and default DotMatrix.",
+      "fix": "Use fillOval(x + scaleX, y + scaleY, 8 * scaleX, 8 * scaleY), keeping x/y absolute and scaling only local inset/dimensions.",
+      "acceptance": "At multiple nonzero x/y positions, selection/facing variants, print view on/off and 1x/2x zoom, ellipses stay inside their cells. Default DotMatrix unchanged. Inspect an actual exported image in addition to geometry assertions."
+    },
+    {
+      "id": "export-fidelity",
+      "priority": "P2",
+      "ids": [
+        "components-15",
+        "components-18"
+      ],
+      "rootCause": "Raster export omits canvas AA hints; internal print status pairs and badge geometry are incomplete.",
+      "reproduction": "Export isolated gate/pin/VGA-status fixtures to PNG at 100/200%, printer view on/off.",
+      "fix": "Set raster shape/text AA hints without imposing raster assumptions on SVG/TikZ. Pair print status ink/surface and fit pin badges. Offer optional outline-only screen previews for ink savings; retain framebuffer data by default. Margin/default-scale changes are not required fixes.",
+      "acceptance": "Smooth curves/text, unchanged logical image dimensions, readable print status and fitted x1/x8 badges. Inspect PNG/GIF/JPEG separately and check vector regressions. Real PDF/physical print remains a separate acceptance check."
+    },
+    {
+      "id": "ghost-rendering",
+      "priority": "P2",
+      "ids": [
+        "components-19"
+      ],
+      "rootCause": "AbstractGate.paintBase overwrites the supplied ghost colour.",
+      "reproduction": "Hover an AND preview adjacent to/over a placed AND.",
+      "fix": "Pass ghost context through the shared primitive or scope a composite to copied Graphics2D. Honour ghost-colour preference and restore/dispose paint state.",
+      "acceptance": "Distinct preview at 100/200% in both themes; ports readable; no alpha leakage when leaving add mode. Include a painter setting its own colours. Do not infer missing collision prevention."
+    },
+    {
+      "id": "label-migration",
+      "priority": "P2",
+      "ids": [
+        "components-13"
+      ],
+      "rootCause": "readLibrary calls the sanitizer before version-specific repairs; invalid display labels can gain random suffixes.",
+      "reproduction": "Two fresh disposable copies with 8bit and valid_label, modern/legacy source versions; repeat reads of original, then save/reopen a sanitized copy.",
+      "fix": "Preserve user-facing labels on ordinary load. Generate deterministic collision-safe HDL identifiers during HDL generation or explicit compatibility migration with diagnostics. Preserve circuit reference remapping and legacy interoperability; do not remove all compatibility handling blindly.",
+      "acceptance": "Valid labels unchanged; repeated modern reads preserve display text invalid for HDL. Explicit legacy conversion stable/reported. HDL identifiers legal/deterministic under collisions. No second suffix after save/reopen. Cover absent, modern and pre-evolution source versions."
+    },
+    {
+      "id": "startup-diagnostics",
+      "priority": "P2",
+      "ids": [
+        "components-14",
+        "components-29"
+      ],
+      "rootCause": "Null-parent placement-worded load modal appears while splash remains visible.",
+      "reproduction": "Launch a copied fixture with a Probe/component-name label collision and splash enabled.",
+      "fix": "Collect load diagnostics and present an owned visible notification after splash dismissal. Explain loading changes accurately. Keep label-deletion semantic changes separate from artwork.",
+      "acceptance": "Warning text/actions fully visible and keyboard reachable. Correct collision/migration descriptions and open/cancel/save behavior on copied fixtures."
+    },
+    {
+      "id": "shell-usability",
+      "priority": "P2",
+      "ids": [
+        "components-16",
+        "components-24",
+        "components-25",
+        "components-26",
+        "components-28",
+        "components-31"
+      ],
+      "rootCause": "Independent shell issues form a coordination workstream, not one bug: overlay-unaware arrows, literal HDL cell colours, measured label/control layouts and unresolved selection/font causes.",
+      "reproduction": "At interface scale 1.6 inspect Export/Print, zoom with offscreen content, palette captions, gate inspector, File accelerators and two-circuit tab switching.",
+      "fix": "Reserve zoom-overlay bounds for arrows. Give forms scalable controls and header-token help/preview. Route palette/inspector clipping to measured layouts/tooltips. For tab/list mismatch trace event order/current target; do not add a duplicate listener since syncSelection exists. Measure accelerator defaults and scale once through theme fonts.",
+      "acceptance": "Default/minimum widths at scales 1.0/1.6/2.0 retain readable controls/labels and no overlay collision. Tab/canvas/title/list agree after list, mouse-tab, keyboard, appearance and HDL navigation. No double font scaling. Verify HEAD before claiming historical scale-sensitive symptoms persist."
+    },
+    {
+      "id": "design-contract",
+      "priority": "P3",
+      "ids": [
+        "components-01",
+        "components-04",
+        "components-06",
+        "components-10",
+        "components-20",
+        "components-23",
+        "components-27",
+        "components-30",
+        "components-32"
+      ],
+      "rootCause": "Design/wording choices, not established simulation failures. Recovery copy is P2 despite this workstream's usual P3.",
+      "reproduction": "Review cited zoom/editor/widget/custom-shape/bus/TTL/title/template/recovery images.",
+      "fix": "Define physical-DPI and circuit-unit behavior before changing base zoom. Offer explicit auto defaults for new shapes without rewriting existing colours. Make recovery choices express open recovered work/save copy/discard with document/time context. Preserve TTL orientation, HDL/TCL identifiers and access to build metadata. Treat icon/bevel refinements as optional.",
+      "acceptance": "Document scale/input-mapping contract and test actual devices if changed. Custom appearances round-trip unchanged across themes/export. Isolated recovery-copy scenarios explain correct actions. Existing TCL scripts still bind; values and pin mapping unchanged."
+    }
+  ],
+  "dispositions": [
+    {
+      "id": "components-01",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "group": "design-contract",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/03-gates-row12-100.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/22-gates.png"
+      ],
+      "reason": "Canvas geometry uses its own zoom. A physical-DPI contract has not been established, so the claimed blocker and assertion that 200% is really 125% are rejected. Crops cannot establish physical size. Do not automatically multiply by interface scale.",
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/Canvas.java:519",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/CanvasPainter.java:191"
+      ]
+    },
+    {
+      "id": "components-02",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "group": "caption-layout",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/20-ttl-100-7400.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/30-export-splitter.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components-verify/09-rom-100-x2.png"
+      ],
+      "reason": "Small fixed captions and crowded splitter annotations are visible; 7-unit fonts are confirmed in source. The universal claim unreadable even at 200% is too strong: enlarged TTL captions are readable. Fix local caption geometry and sizing, independent of the base-zoom decision.",
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/circuit/SplitterPainter.java:55",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/ttl/AbstractTtlGate.java:340",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/memory/RamAppearance.java:564"
+      ]
+    },
+    {
+      "id": "components-03",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "group": "default-contrast",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/24-texttool-typing-z.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/22-gates.png"
+      ],
+      "reason": "The existing annotation is black on dark canvas while the active editor remains legible. TextAttributes and the tool preference default to black. This is visual loss of legibility, not established loss of document data. Reject converting every stored black colour to auto.",
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/base/TextAttributes.java:39",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/prefs/AppPreferences.java:690",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/prefs/AppPreferences.java:922"
+      ]
+    },
+    {
+      "id": "components-04",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "group": "design-contract",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/24-texttool-typing-z.png"
+      ],
+      "reason": "Yellow editor, black text and caret are visible and readable. Restyling is reasonable but there is no demonstrated editing failure.",
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/comp/TextFieldCaret.java:34",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/comp/TextFieldCaret.java:108"
+      ]
+    },
+    {
+      "id": "components-05",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "group": "default-contrast",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components-verify/07-por-200.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components-verify/07-databus-const-200-x2.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components-verify/09-rom-100-x2.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components-verify/11-io-100-a-x2.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/21-soc-bus-100.png"
+      ],
+      "reason": "Light foreground over white/light grey/yellow is directly visible for POR, Constant, ROM, RTC and bus trace placeholder. Current paint sites retain the same mismatch. RAM and Dual RAM breadth is source-inferred from the shared MemState painter, not independently visually checked here.",
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/wiring/Constant.java:252",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/memory/MemState.java:227",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/wiring/PowerOnReset.java:230",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/io/RealTimeClock.java:162",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/soc/data/SocBusStateInfo.java:324"
+      ]
+    },
+    {
+      "id": "components-06",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "group": "design-contract",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/19-osc-200.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components-verify/11-io-100-a-x2.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/30-export-probe.png"
+      ],
+      "reason": "Bright widget fills and bevels are visible. These do not establish broken I/O. Unknown/error matrix colours and a black video framebuffer can convey simulation state and must not be globally replaced with neutral decoration. Preserve explicit I/O colours.",
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/wiring/Probe.java:351",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/io/DotMatrixBase.java:405",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/io/Video.java:225"
+      ]
+    },
+    {
+      "id": "components-07",
+      "status": "design-recommendation",
+      "severity": "P2",
+      "group": "default-contrast",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components-verify/11-io-100-a-x2.png"
+      ],
+      "reason": "Bright off segments are verified and source defaults are 220/220/220. The image also shows a red active digit distinguishable from grey off segments. This supports improving state emphasis, not an incorrect simulated digit or electrical state claim.",
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/io/SevenSegment.java:68",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/io/SevenSegment.java:132"
+      ]
+    },
+    {
+      "id": "components-08",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "group": "default-contrast",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components-verify/11-io-100-a-x2.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/43-pc-alu-100-x2.png"
+      ],
+      "reason": "Blue Button/LED labels and small blue radix suffixes have poor dark-background contrast. The CPU Start control is a different foreground/background pair and is not evidence of blue-on-dark text. Literal user label colours must remain literal.",
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/instance/StdAttr.java:48",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/wiring/Pin.java:875",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/wiring/Probe.java:223"
+      ]
+    },
+    {
+      "id": "components-09",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "group": "default-contrast",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/21-soc-dma-100.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/20-ttl-200-chips.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components-verify/07-ground-200-x4.png"
+      ],
+      "reason": "DMA CTRL/SRC/DST captions are black on dark and deserve correction. TTL outline/notch remain visible against the grey package, so invisible is overstated. Ground is deliberately value-coloured and visible but subdued; changing that convention is a design decision.",
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/soc/dma/SocDma.java:203",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/ttl/AbstractTtlGate.java:368",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/wiring/Ground.java:75"
+      ]
+    },
+    {
+      "id": "components-10",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "group": "design-contract",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/44-pc-fulladder-x3.png"
+      ],
+      "reason": "Recovered user-circuit image shows black custom shapes. It does not establish that the shapes were unintended or data-corrupted. SVG missing fill resolves to black and existing custom colours are literal. Reject blanket mapping of existing black/white colours; offer new auto-colour shapes or an explicit display option.",
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/draw/shapes/SvgReader.java:160",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/draw/shapes/FillableCanvasObject.java:25"
+      ]
+    },
+    {
+      "id": "components-11",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "group": "caption-layout",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/15-plexers-200-row1.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/16-arith-200-row1.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components-verify/07-bitext-200-x3.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/18-io-100-pio.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/21-soc-dma-100.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/17-ff-100.png"
+      ],
+      "reason": "Intrinsic caption collisions confirmed for plexers, arithmetic, bit extender, Telnet and DMA's three 100-unit status panels. Flip-flop K/R crowding is visible but less severe. Overlapping separate SoC components in the fixture are not proof of an intrinsic Nios/PIO layout defect; the report's full component inventory is not independently proven.",
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/plexers/Multiplexer.java:258",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/arith/Adder.java:136",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/wiring/BitExtender.java:118",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/soc/dma/SocDma.java:194",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/soc/data/SocBusInfo.java:52"
+      ]
+    },
+    {
+      "id": "components-12",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "group": "caption-layout",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/09-gates-200-labels.png"
+      ],
+      "reason": "Labels are centred inside shaped gates; the long label crosses the outline and ports. This is a distinct label-anchor defect within the caption-layout workstream.",
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/gates/AbstractGate.java:87",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/gates/AbstractGate.java:113"
+      ]
+    },
+    {
+      "id": "components-13",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "group": "label-migration",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/09-gates-200-labels.png"
+      ],
+      "reason": "Narrowed: findValidLabels rewrites only VHDL-invalid names/labels. generateValidVHDLLabel adds a random suffix only if normalization changes the trimmed label. Reopening the same unsanitized input can differ; saved valid labels do not randomly change every load. At HEAD readLibrary unconditionally calls ensureLogisimCompatibility at 1152 BEFORE considerRepairs at 1154. Version guards at 1024/1046/1076/1078 belong to subsequent repairs and do not guard this sanitizer. No save/reopen data-loss experiment performed.",
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/file/XmlReader.java:690",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/file/XmlReader.java:741",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/file/XmlReader.java:779",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/file/XmlReader.java:1022",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/file/XmlReader.java:1149",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/file/LogisimFile.java:303"
+      ]
+    },
+    {
+      "id": "components-14",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "group": "startup-diagnostics",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/47-splash-dialog.png"
+      ],
+      "reason": "Splash covers the warning text but OK remains visible; this is an obscured diagnostic, not a proven startup deadlock. Source clears matching component labels and opens a null-parent modal with placement-specific wording. The recovered image and source do not prove an overwritten saved file.",
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/circuit/Circuit.java:939",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/start/Startup.java:930",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/resources/resources/logisim/strings/circuit/circuit.properties:44"
+      ]
+    },
+    {
+      "id": "components-15",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "group": "export-fidelity",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/33-export-aliasing.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/export-gates.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/export-all/gates.png"
+      ],
+      "reason": "Jagged raster edge verified. Recounted PNGs: 840x649 and 1680x1298, each exactly 3 colours. Export raster Graphics lacks the canvas AA setup. GIF/JPEG share the source path but were not independently exported here; physical printing is unverified.",
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/ExportImage.java:238",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/Canvas.java:550"
+      ]
+    },
+    {
+      "id": "components-16",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "group": "shell-usability",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/27-export-dialog-win.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/34-print-params.png"
+      ],
+      "reason": "Controls are small relative to text and the header field exposes undocumented format tokens. Dialog styling alone is P3. The slider precision, offscreen preselection, native printer placement and platform-specific chooser details were not reverified here.",
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/ExportImage.java:96",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/Print.java:56"
+      ]
+    },
+    {
+      "id": "components-17",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "group": "dot-coordinates",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/31-export-io-mid.png"
+      ],
+      "reason": "Recovered printer-view export shows detached ellipses. drawCircle rescales already absolute x/y; LedBar sets scaleY=3. Standard DotMatrix uses scaleX=scaleY=1, so it does not necessarily exhibit displacement. The live circle-shape path has the same source defect but was not exercised anew.",
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/io/DotMatrixBase.java:353",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/io/DotMatrixBase.java:395",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/io/LedBar.java:119"
+      ]
+    },
+    {
+      "id": "components-18",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "group": "export-fidelity",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/32-export-vga.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/30-export-probe.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/28-export-pins-z.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/30-export-splitter.png"
+      ],
+      "reason": "Confirmed printer-view PNG issues: black VGA status text on a dark strip and tight pin x1 badge geometry. Yellow probe and black framebuffer are visible styling/ink-use concerns, not inherently incorrect. No physical print was inspected. The original SocVgaShape citation targets dynamic appearance and is insufficient to explain the entire normal VGA body.",
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/soc/data/SocBusInfo.java:52",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/wiring/Probe.java:351",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/wiring/Pin.java:865",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/ExportImage.java:64"
+      ]
+    },
+    {
+      "id": "components-19",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "group": "ghost-rendering",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/36-ghost-z.png"
+      ],
+      "reason": "Ghost and placed AND outlines have similar brightness. AbstractGate.paintGhost delegates to paintBase, which overwrites the supplied ghost colour. This does not establish missing collision prevention or invalid circuit placement.",
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/gates/AbstractGate.java:383",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/gates/AbstractGate.java:436",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/canvas/CanvasStyle.java:147"
+      ]
+    },
+    {
+      "id": "components-20",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "group": "design-contract",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/43-pc-alu-100-x2.png"
+      ],
+      "reason": "Bus and symbol colours are similar and buses visually dominate, but widths deliberately encode net width. Source already centralizes rounded stroke construction. Review palette and hierarchy without flattening all widths or changing custom preferences.",
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/prefs/AppPreferences.java:699",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/prefs/AppPreferences.java:796",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/canvas/CanvasStyle.java:59"
+      ]
+    },
+    {
+      "id": "components-21",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "group": "default-contrast",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/23-pin1-x6.png"
+      ],
+      "reason": "White input glyph over bright green has low contrast; Pin explicitly selects Color.WHITE. The numeral is still visible, so this is readability rather than a lost value or broken poke action.",
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/wiring/Pin.java:900",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/prefs/AppPreferences.java:791"
+      ]
+    },
+    {
+      "id": "components-22",
+      "status": "confirmed-runtime",
+      "severity": "P1",
+      "group": "unsupported-reptar",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/reports/verify-components-partial.md"
+      ],
+      "reason": "Runtime evidence is the recovered verifier stack trace, corroborated by the unconditional current propagate throw. This interrupts a propagation attempt for a circuit containing Reptar. Do not claim every other circuit always stops or that the simulator process dies. No new live run was started.",
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/io/ReptarLocalBus.java:171",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/circuit/Simulator.java:551"
+      ],
+      "runtimeEvidence": "/tmp/logisim-qa-recovery-20260924/reports/verify-components-partial.md"
+    },
+    {
+      "id": "components-23",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "group": "design-contract",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/20-ttl-200-chips.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/20-ttl-100-7400.png"
+      ],
+      "reason": "Package view lacks displayed signal names in these images; that is a usability option, not proof of incorrect pin mapping. Preserve physical pin order/notch semantics; optional schematic labels are preferable to removing a meaningful package convention. Small text is already covered by components-02.",
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/ttl/AbstractTtlGate.java:327"
+      ]
+    },
+    {
+      "id": "components-24",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "group": "shell-usability",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/16-arrow-under-pill.png"
+      ],
+      "reason": "The southeast indicator is occluded by the zoom overlay. The screenshot supports overlay layout collision; its aesthetic description is subjective.",
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/Canvas.java:1284",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/util/GraphicsUtil.java:66"
+      ]
+    },
+    {
+      "id": "components-25",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "group": "shell-usability",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/45-palette-wiring-x2.png"
+      ],
+      "reason": "Recovered image visibly clips palette captions. The icon redesign request is P3 and GIF use alone is not a defect. Exact effective scale and present sizing were not freshly measured by this reviewer; follow up with the palette/scaling owner without inferring a binary revision from stale title metadata.",
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/tools/FactoryDescription.java:111"
+      ],
+      "sourceLimitation": "Icon loading confirmed; tile-layout root cause not established in this components-only review."
+    },
+    {
+      "id": "components-26",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "group": "shell-usability",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/25-inspector-z.png"
+      ],
+      "reason": "Truncated names and missing visual gap between Output Value and 0/1 are visible. Neon green is primarily a styling issue; the cell text itself has strong contrast. HdlColorRenderer uses literal GREEN/RED.",
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/fpga/gui/HdlColorRenderer.java:100"
+      ],
+      "sourceLimitation": "AttrTable width/padding is a follow-up target; no exact layout-cause claim."
+    },
+    {
+      "id": "components-27",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "group": "design-contract",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/22-gates.png"
+      ],
+      "reason": "Build ID is visible in the recovered title. Source limits build metadata to non-stable versions and intentionally uses two dirty markers. This is a development-build presentation choice, not a release or save-state defect.",
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/Frame.java:651"
+      ]
+    },
+    {
+      "id": "components-28",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "group": "shell-usability",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/22-gates.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/10-circuits-z.png"
+      ],
+      "reason": "Historical image shows gates tab/canvas with soc selected in the list, and the header clipped to CI.... Current source already registers ACTION_SET_CURRENT and syncSelection, so missing listener is rejected as the root cause. Exact sequence/current-HEAD recurrence remains unverified; retain symptom for a focused navigation test.",
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/CircuitListView.java:146",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/CircuitListView.java:312",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/PanelHeader.java:43",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/proj/Project.java:527"
+      ]
+    },
+    {
+      "id": "components-29",
+      "status": "duplicate",
+      "severity": "P2",
+      "group": "startup-diagnostics",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/47-splash-dialog.png"
+      ],
+      "reason": "Splash occlusion is the same incident as components-14. New artwork is a separate P3 design preference; do not count another startup bug.",
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/start/SplashScreen.java:109"
+      ],
+      "canonicalId": "components-14"
+    },
+    {
+      "id": "components-30",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "group": "design-contract",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/09-gates-200-labels.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/15-plexers-200-row1.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/19-tcl-100.png"
+      ],
+      "reason": "n/a, Decd and French example identifiers are visible. These are content conventions, not failed computation. Improve presentation/documentation, but do not rename existing TCL/HDL port identifiers and break users' scripts.",
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/gates/PlaTable.java:407",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/plexers/Decoder.java:242",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/resources/resources/logisim/tcl/entity.templ:7"
+      ]
+    },
+    {
+      "id": "components-31",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "group": "shell-usability",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/26-filemenu-z.png"
+      ],
+      "reason": "Accelerator text is much smaller in the recovered menu. Startup scales menu component fonts, whereas Main's global font-family replacement retains per-key sizes. The precise FlatLaf accelerator-font resolution and effective scale were not freshly measured. Stale title metadata does not establish which source revision produced the screenshot.",
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/start/Startup.java:1182",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/Main.java:98"
+      ]
+    },
+    {
+      "id": "components-32",
+      "status": "design-recommendation",
+      "severity": "P2",
+      "group": "design-contract",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/components/05-autosave.png"
+      ],
+      "reason": "Recovery wording leaves restore intent unclear. The screenshot proves ambiguous copy only, not broken recovery or data loss. The original harness shared user.home, so provenance of the shown autosave cannot be assumed to be isolated test data.",
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/start/Startup.java:999",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/resources/resources/logisim/strings/gui/gui.properties:1009"
+      ]
+    }
+  ],
+  "newFindings": [],
+  "harnessPlan": {
+    "source": "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/qa.sh",
+    "status": "confirmed-source",
+    "problem": "Original launch isolates Java preferences but not user.home; Loader writes unnamed autosaves there and Startup scans it. shot hardcodes 2560x1600.",
+    "fix": "Before launch patch a scratch harness to mkdir $D/home and pass -Duser.home=$D/home, or create a unique temporary home and use scoped JAVA_TOOL_OPTIONS. Keep prefs/config private, copy fixtures, never remove real autosaves. Derive actual shot dimensions or use win for nondefault sizes. Validate owned PID identities before stopping only that session.",
+    "acceptance": "Disposable unnamed autosave create/restore/discard paths all remain under private QA home; no user-location writes. Nondefault win capture equals actual window size. Session ownership asserted at start/stop.",
+    "sourcePointers": [
+      "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/file/Loader.java:179",
+      "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/start/Startup.java:999"
+    ],
+    "executed": "Read-only audit only; no cx-components launch, no processes stopped, no real autosave inspected or cleared."
+  },
+  "tested": [
+    "Confirmed HEAD/read AGENTS.md. Initial git status showed untracked AGENTS.md; final check also showed untracked docs/qa/ from concurrent work. This reviewer did not create, inspect or modify docs/qa/.",
+    "Read qa.sh completely before considering runtime.",
+    "Read all 32 claims and assigned partial verifier; visually inspected recovered images in dispositions (runtime record for components-22 is separate).",
+    "Cross-checked current source for contrast, labels, geometry, export, simulation, loader version flow and shell hypotheses.",
+    "Measured recovered export PNG dimensions/colour counts: 840x649 and 1680x1298, each 3 colours.",
+    "Compared source revisions 2532c84d and HEAD as source history only. Independently verified current source HEAD and matching QA/fat-JAR SHA-256 hashes; stale displayed metadata is not the binary revision."
+  ],
+  "notTested": [
+    "No new UI session/live reproduction, production edit, commit, push or child agent.",
+    "No save/reopen label-migration experiment or actual data-loss proof.",
+    "No physical printer/PDF, fresh GIF/JPEG/SVG/TikZ export or comprehensive all-component render sweep.",
+    "No real user circuits/preferences opened for writes; custom appearance conclusions use recovered screenshots only.",
+    "No current-HEAD physical-DPI or exact menu/palette scale measurements.",
+    "No rerun of tab/list mismatch sequence; historical visual symptom retained with corrected source hypothesis.",
+    "No exhaustive Reptar effect on other circuits; recovered failure plus current throw site only.",
+    "No live circular LedBar test; shared source and recovered export establish scoped defect.",
+    "No autosave lifecycle executed with the incompletely isolated original harness."
+  ]
+}

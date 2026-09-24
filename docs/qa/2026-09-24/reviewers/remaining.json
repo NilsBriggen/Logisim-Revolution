@@ -1,0 +1,603 @@
+{
+  "reviewer": "remaining",
+  "date": "2026-09-24",
+  "scope": [
+    "inspect-simulation",
+    "inspect-projects",
+    "inspect-hdl",
+    "inspect-keyboard"
+  ],
+  "reviewStatus": "bounded-review-complete",
+  "originalAgentsCompleted": false,
+  "assignedCompletedFindingIds": [],
+  "assignmentNote": "All four assigned original agents are interrupted per index.json. There are no completed finding IDs assigned for exhaustive disposition. New and related registry rows below all have explicit dispositions.",
+  "environment": {
+    "repository": "/home/nilsb/Documents/projects/logisim-revolution",
+    "head": "0a62266649937f3c2cbcb1ef495b6d9be6ba2d5a",
+    "jar": "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/logisim.jar",
+    "jarSha256": "c854edbbea34d6cfc0e53ac9cf70ef5b2a5dcf550a3959ff0ed99d852950d433",
+    "displayedBuildId": "main/2532c84d",
+    "displayedBuildTime": "2026-09-24T16:07:16+0200",
+    "artifactLimit": "Runtime claims concern the supplied jar. Its displayed build ID differs from HEAD; exact full-jar equivalence to HEAD is not established. Principal implicated source files are unchanged in 2532c84d..HEAD, checked with git diff --stat. Do not mark the entire HEAD build visually accepted.",
+    "java": "21.0.12",
+    "theme": "dark",
+    "interfaceScale": 1.6,
+    "display": "2560x1600 private KWin/Xwayland",
+    "session": "cx-remaining",
+    "preferencesRoot": "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/run/cx-remaining/prefs",
+    "javaHomeProperty": "/tmp/logisim-qa-recovery-20260924/remaining-evidence/java-home",
+    "imageViewing": "view_image failed with mountinfo path is not absolute. Images were then actually viewed through node_repl emitImage, forwarded using functions image helper.",
+    "sessionStopped": true,
+    "validatedStoppedPids": [
+      555082,
+      551000,
+      551076,
+      551003
+    ],
+    "productionCodeChanged": false,
+    "committed": false,
+    "pushed": false,
+    "otherSessionsTouched": false
+  },
+  "counts": {
+    "newConfirmedProductRootCauses": 4,
+    "newUnverifiedCandidates": 1,
+    "existingRootCauseEvidenceGroups": 7,
+    "newP0": 0,
+    "newP1": 1,
+    "newP2": 2,
+    "newP3": 1,
+    "harnessItemsExcludedFromProductCount": 1
+  },
+  "newFindings": [
+    {
+      "id": "remaining-hdl-01",
+      "area": "hdl",
+      "title": "HDL-only Execute throws an icon ClassCastException and strands the commander",
+      "severity": "P1",
+      "status": "confirmed-runtime",
+      "verification": "Fresh live reproduction plus current source and recovered log.",
+      "observed": "Generate HDL only > Execute immediately disables the clock, annotation, board and action controls. Progress remains Idle; no visible error is shown. The log records FlatSVGIcon cannot be cast to ProjectAddIcon at FpgaCommander.java:404, before Download is constructed.",
+      "reproduction": [
+        "Open a disposable project.",
+        "FPGA > Synthesize & Download; leave Generate HDL only selected.",
+        "Click Execute; inspect disabled controls and app log."
+      ],
+      "screenshots": [
+        "/tmp/logisim-qa-recovery-20260924/remaining-evidence/17-fpga-before.png",
+        "/tmp/logisim-qa-recovery-20260924/remaining-evidence/18-fpga-after.png"
+      ],
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/remaining-evidence/app.log",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/hdl/app-run1.log"
+      ],
+      "source": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/fpga/gui/FpgaCommander.java:208",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/fpga/gui/FpgaCommander.java:397",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/fpga/gui/FpgaCommander.java:404",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/fpga/gui/FpgaCommander.java:431"
+      ],
+      "rootCause": "StopButton receives an SVG icon, but start, stop and completion still cast it to the removed ProjectAddIcon type. Execute disables controls before the failing cast.",
+      "fix": "Remove all three obsolete casts; express stop state with button enabled/state and the SVG icon API. Restore controls and show an actionable error on every failed start or worker exit.",
+      "acceptance": "With no vendor software installed, Generate HDL only starts the internal generation/DRC path and either produces files in a temporary destination or presents a useful design error. Repeat start, cancel, and retry without a ClassCastException or stranded controls. Run external download checks separately when a board/toolchain exists.",
+      "limits": "External synthesis/programming was not attempted; this failure occurs before any toolchain is invoked."
+    },
+    {
+      "id": "remaining-keyboard-01",
+      "area": "keyboard",
+      "title": "Ctrl+Tab and Ctrl+Shift+Tab do not cycle circuit tabs from the canvas",
+      "severity": "P2",
+      "status": "confirmed-runtime",
+      "verification": "Fresh live forward/reverse checks; Ctrl+W positive control.",
+      "observed": "With main and inv open, canvas focus followed by Ctrl+Tab left main selected. With three tabs open, Ctrl+Shift+Tab from inv left inv selected. Ctrl+W from the same canvas successfully closed inv.",
+      "reproduction": [
+        "Open at least two circuits from the Circuits list.",
+        "Click empty canvas to give it focus.",
+        "Press Ctrl+Tab and Ctrl+Shift+Tab; compare active editor tabs.",
+        "Press Ctrl+W as a positive control."
+      ],
+      "screenshots": [
+        "/tmp/logisim-qa-recovery-20260924/remaining-evidence/13-tab-after-gc-crop.png",
+        "/tmp/logisim-qa-recovery-20260924/remaining-evidence/14-ctrl-tab-crop.png",
+        "/tmp/logisim-qa-recovery-20260924/remaining-evidence/19-reverse-tab.png",
+        "/tmp/logisim-qa-recovery-20260924/remaining-evidence/20-close-tab-crop.png"
+      ],
+      "evidence": [],
+      "source": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/EditorTabs.java:90",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/EditorTabs.java:94",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/EditorTabs.java:98",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/Canvas.java"
+      ],
+      "rootCause": "The shortcuts are installed in the tab strip's WHEN_IN_FOCUSED_WINDOW map. No corresponding focus-traversal override was found on Canvas/EditorTabs. Traversal interception is the likely cause, not yet instrumented; live failure is established.",
+      "fix": "Trace the focus manager's consumed key events and route next/previous-editor actions at the owning root pane/focus boundary, excluding those chords from traversal where necessary. Keep ordinary Tab and text-editor behavior intact.",
+      "acceptance": "At least three circuit/HDL tabs wrap forward and backward from canvas, circuit list, filter, and code editor focus. Ctrl+W still closes one tab; normal Tab traverses controls with visible focus.",
+      "limits": "Window-manager and platform portability beyond the private Linux KWin/Xwayland session is untested."
+    },
+    {
+      "id": "remaining-simulation-01",
+      "area": "simulation",
+      "title": "Oscillation stops propagation without synchronizing the run controls",
+      "severity": "P2",
+      "status": "confirmed-visual",
+      "verification": "Recovered images actually viewed; current source confirms missing state notification. Not freshly reproduced.",
+      "observed": "Recovered osc2 captures show Oscillation apparent and a paused status, while the toolbar still offers Pause and the Simulate menu still checks Auto-Propagate.",
+      "reproduction": [
+        "Use the recovered simtest2.circ oscillator fixture in a fresh disposable copy.",
+        "Open osc2 and poke en to trigger sustained oscillation.",
+        "Compare the canvas/status error with the toolbar and Auto-Propagate menu state."
+      ],
+      "screenshots": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/simulation/95z-combo.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/simulation/94z-menu-after-osc.png"
+      ],
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/reports/inspect-simulation-partial.md"
+      ],
+      "source": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/circuit/Simulator.java:585",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/circuit/Simulator.java:588",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/circuit/Simulator.java:610",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/SimulationToolbarModel.java:94"
+      ],
+      "rootCause": "The oscillation branch clears autoPropagating and autoPropagatingUnsynchronized, but the later fireSimulatorStateChanged call is gated only by clockDied. A propagation-completed notification does not update all run-state controls.",
+      "fix": "Emit a simulator state-change event when oscillation changes automatic propagation, with UI updates dispatched consistently to the EDT. Keep the error visible and make reset/recovery state explicit.",
+      "acceptance": "After a deliberately triggered oscillation, Auto-Propagate is unchecked and the toolbar shows Resume/Run everywhere it appears. Reset clears the error and a subsequent start updates all controls.",
+      "limits": "This is misleading state feedback, not evidence of data loss or incorrect saved circuit data."
+    },
+    {
+      "id": "remaining-hdl-02",
+      "area": "hdl-soc",
+      "title": "SoC transaction dialog identifies the target bus as null",
+      "severity": "P3",
+      "status": "confirmed-visual",
+      "verification": "Recovered native window capture viewed; exact current source cause identified.",
+      "observed": "The dialog title reads Insert a transaction to bus: null, although the memory-map window can identify the bus.",
+      "reproduction": [
+        "In a disposable SoC fixture, right-click a bus.",
+        "Choose Insert a bus transaction.",
+        "Inspect the dialog title."
+      ],
+      "screenshots": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/hdl/83-insert-transaction.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/hdl/82-memory-map.png"
+      ],
+      "evidence": [],
+      "source": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/soc/bus/SocBusMenuProvider.java:71",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/soc/bus/SocBusMenuProvider.java:97",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/soc/bus/SocBusMenuProvider.java:174",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/soc/bus/SocBusMenuProvider.java:262"
+      ],
+      "rootCause": "actionPerformed passes info.getName(), the inherited JMenuItem component name. The constructors call super(label) but never set that name. The resulting null is concatenated into the window title.",
+      "fix": "Carry an explicit bus display name or derive it from the instance label with the existing type@coordinates fallback. Do not use the Swing component name as domain identity.",
+      "acceptance": "Transaction windows for two differently named/unnamed buses show distinct correct names, including a stable fallback for an unlabeled bus. No title contains null.",
+      "limits": "Recovered SoC visuals only; bus execution was not rerun in this review."
+    },
+    {
+      "id": "remaining-hdl-03",
+      "area": "hdl",
+      "title": "Recovered TCL/HDL editor open logs X11 Window must not be zero",
+      "severity": null,
+      "status": "unverified",
+      "verification": "Recovered stack inspected; not reproduced on this session or a normal desktop.",
+      "observed": "app-run3.log contains IllegalArgumentException: Window must not be zero while HdlContentEditor.setVisible calls Dialog.setVisible through an attribute editor.",
+      "reproduction": [
+        "Place a TCL generic component in a disposable project.",
+        "Open its HDL interface/content attribute editor.",
+        "Check modal ownership and whether opening succeeds repeatedly."
+      ],
+      "screenshots": [],
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/hdl/app-run3.log",
+        "/tmp/logisim-qa-recovery-20260924/reports/inspect-hdl-partial.md"
+      ],
+      "source": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/hdl/HdlContentEditor.java:322",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/AttrTable.java:484"
+      ],
+      "rootCause": "Undetermined; stack implicates native X11 transient/modal ownership. A private compositor or disposed owner may contribute. Do not label it a universal production crash.",
+      "fix": "First reproduce with a visible normal desktop and a fresh owner window; then fix owner lifecycle/modal creation only if reproduced. Record JDK/window-manager versions.",
+      "acceptance": "Repeated open/close from a live project works without an X11 exception on supported desktops; a private-rig-only failure is tracked against the harness.",
+      "limits": "No severity assigned until the effect and reproduction boundary are established."
+    }
+  ],
+  "relatedFindings": [
+    {
+      "id": "remaining-shared-01",
+      "area": "simulation-projects",
+      "title": "Drawer and panel resizing snaps back; default timing/test-vector content is unusably short",
+      "severity": "P1",
+      "status": "duplicate",
+      "canonicalId": "shell-03",
+      "alsoRelated": [
+        "inspector-02",
+        "light-02",
+        "palette-06"
+      ],
+      "verification": "Fresh live divider drags and vector run, backed by source.",
+      "observed": "Both tested divider positions remain unchanged after dragging. Timing shows only the ruler; loaded test vectors report 2 passed/2 failed but have no visible result rows at the default drawer height.",
+      "reproduction": [
+        "Open Timing diagram and select clk.",
+        "Drag the drawer divider upward and the Circuits divider rightward.",
+        "Open inv > Test Vector and load the copied inv_test.txt."
+      ],
+      "screenshots": [
+        "/tmp/logisim-qa-recovery-20260924/remaining-evidence/06-drawer-crop.png",
+        "/tmp/logisim-qa-recovery-20260924/remaining-evidence/07-drawer-after-crop.png",
+        "/tmp/logisim-qa-recovery-20260924/remaining-evidence/08-timing-crop.png",
+        "/tmp/logisim-qa-recovery-20260924/remaining-evidence/09-both-dividers.png",
+        "/tmp/logisim-qa-recovery-20260924/remaining-evidence/12-vector-crop.png"
+      ],
+      "source": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/ShellLayout.java:120",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/ShellLayout.java:170",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/ShellLayout.java:202",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/LayoutPrefs.java:26",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/LayoutPrefs.java:79"
+      ],
+      "rootCause": "Continuous split layout reapplies the remembered size before drag release can persist the new size. Drawer migration/minimum is in unscaled pixels, so the existing height is inadequate at 1.6.",
+      "fix": "Apply restored sizes during initialization/explicit relayout only, permit live dragging, and persist the released size. Derive the drawer's initial/minimum useful height from its controls and font metrics; keep body scrolling available.",
+      "acceptance": "At 1.0, 1.6 and 2.0 scales, drag every splitter smoothly, reopen with sizes retained, and inspect a visible waveform plus at least four test rows. A 2-pass/2-fail vector exposes each failed cell and Show/Set actions.",
+      "reason": "Same shared splitter defect as shell-03. Hidden timing/test rows are downstream effects, not two extra bugs."
+    },
+    {
+      "id": "remaining-shared-02",
+      "area": "projects",
+      "title": "Circuit list loses its listener to garbage collection and becomes stale",
+      "severity": "P2",
+      "status": "duplicate",
+      "canonicalId": "dialogs-17",
+      "alsoRelated": [
+        "components-28",
+        "light-19",
+        "shell-08 (stale-list portion only)"
+      ],
+      "verification": "Fresh live GC, tab-switch and F2 rename; source establishes lifetime defect.",
+      "observed": "After jcmd GC.run on the private JVM, main is active while inv remains selected in the list. Renaming osc to osc_qa updates the tab and title while the list still displays osc.",
+      "reproduction": [
+        "Open main and inv from the list.",
+        "Allow GC or request GC only on a disposable QA JVM.",
+        "Click main tab and compare list highlight.",
+        "Select osc, press F2, rename to osc_qa; compare row and tab."
+      ],
+      "screenshots": [
+        "/tmp/logisim-qa-recovery-20260924/remaining-evidence/13-tab-after-gc-crop.png",
+        "/tmp/logisim-qa-recovery-20260924/remaining-evidence/16-fpga-menu.png",
+        "/tmp/logisim-qa-recovery-20260924/remaining-evidence/20-close-tab-crop.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/projects/15z-tab-list-desync.png"
+      ],
+      "source": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/CircuitListView.java:113",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/CircuitListView.java:311",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/proj/Project.java:151",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/file/LogisimFile.java:118"
+      ],
+      "rootCause": "MyListener is a constructor-local variable registered with weak project/library event sources. CircuitListView does not retain it strongly.",
+      "fix": "Retain the listener in a field for the view lifetime, unregister on disposal, and keep current-circuit selection and library mutations synchronized. Guard actions against targets no longer in the project.",
+      "acceptance": "After forced GC, add/rename/delete/reorder/set-main and tab switching update the list immediately. Undo/redo does the same. A deleted row cannot be reopened as a ghost.",
+      "reason": "Unifies add/rename, stale highlight, and recovered deleted-row symptoms. No data-loss claim: ghost editing/saving was not retested."
+    },
+    {
+      "id": "remaining-shared-03",
+      "area": "simulation",
+      "title": "Chronogram ruler baseline clips timestamp and cursor text",
+      "severity": "P2",
+      "status": "duplicate",
+      "canonicalId": "codeaudit-08",
+      "verification": "Fresh ruler crop and recovered populated waveform crop actually viewed; current code checked.",
+      "observed": "The tops of timestamps and the highlighted cursor label disappear above the ruler. This remains visible in recovered images with a taller drawer.",
+      "reproduction": [
+        "Open Timing diagram at 1.6.",
+        "Generate ticks and inspect the ruler at native pixels; enlarge drawer after fixing the splitter."
+      ],
+      "screenshots": [
+        "/tmp/logisim-qa-recovery-20260924/remaining-evidence/08-timing-crop.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/simulation/66z-rows-zoom.png"
+      ],
+      "source": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/chrono/ChronoPanel.java:58",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/chrono/RightPanel.java:812",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/chrono/RightPanel.java:822"
+      ],
+      "rootCause": "Fixed 20-pixel header and h/2 baseline are incompatible with the scaled monospaced font.",
+      "fix": "Compute header/row dimensions and baselines from font ascent/descent and scaled padding. Size signal-name/value columns for useful content.",
+      "acceptance": "Ruler and cursor labels are entirely inside their bounds at all supported scales, with no overlap at minimum and enlarged drawer sizes.",
+      "reason": "Visual corroboration of the existing codeaudit-08 cause; not another drawer-resize bug."
+    },
+    {
+      "id": "remaining-shared-04",
+      "area": "hdl-soc",
+      "title": "Code editor theme resets code to a smaller font than its gutter and surrounding UI",
+      "severity": "P2",
+      "status": "duplicate",
+      "canonicalId": "codeaudit-07",
+      "verification": "Recovered VHDL pixels viewed and EditorTheme code checked; not freshly opened.",
+      "observed": "The VHDL screenshot shows much larger gutter numbers than code, with the surrounding shell using larger scaled text.",
+      "reproduction": [
+        "Create/open VHDL content at 1.6 interface scale.",
+        "Compare code, line numbers, and shell labels; switch editor theme."
+      ],
+      "screenshots": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/hdl/29-vhdl-editor-zoom.png"
+      ],
+      "source": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/EditorTheme.java:69",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/EditorTheme.java:77",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/vhdl/gui/HdlContentView.java:170"
+      ],
+      "rootCause": "Theme.load(input).apply(editor) has no explicit scaled base font; the editor/gutter font contract is inconsistent.",
+      "fix": "Apply the shared scaled mono font to syntax styles and gutter together, retaining it across theme changes. Review assembler and breakpoint editors using the same helper.",
+      "acceptance": "Code and gutter use aligned line metrics at 1.0, 1.6 and 2.0, including after a theme change. Verify actual rendered text, not only font property values.",
+      "reason": "Same EditorTheme root cause as codeaudit-07; no per-editor inflation."
+    },
+    {
+      "id": "remaining-shared-05",
+      "area": "hdl-soc",
+      "title": "SoC memory-map table uses unreadable blue headers and inconsistent row colors",
+      "severity": "P2",
+      "status": "duplicate",
+      "canonicalId": "codeaudit-11",
+      "verification": "Recovered native memory-map screenshot viewed; current renderer code checked.",
+      "observed": "Header text is saturated blue on dark gray; allocated/empty rows use bright accent and light gray backgrounds with black text. The component-name header and values are truncated.",
+      "reproduction": [
+        "Open Show memory map on a SoC bus in dark theme.",
+        "Inspect header contrast and complete component names at 1.6."
+      ],
+      "screenshots": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/hdl/82-memory-map.png"
+      ],
+      "source": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/soc/data/SocMemMapModel.java:41",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/soc/data/SocMemMapModel.java:139",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/soc/data/SocMemMapModel.java:146"
+      ],
+      "rootCause": "Hard-coded primary colors and fixed table presentation bypass the shared dark/light table styling.",
+      "fix": "Use semantic themed table foreground/background and selection colors; reserve warning styling for overlaps and size/scroll columns to retain addresses and component identity.",
+      "acceptance": "Native captures of empty, mapped and overlapping regions remain readable in dark/light themes at 1.0 and 1.6; color is not the only overlap indicator.",
+      "reason": "Corroborates the existing shared FPGA/SoC renderer finding."
+    },
+    {
+      "id": "remaining-shared-06",
+      "area": "keyboard",
+      "title": "Welcome actions are mouse-only panels",
+      "severity": "P2",
+      "status": "duplicate",
+      "canonicalId": "codeaudit-19",
+      "verification": "Source confirmed only in this review; original keyboard notes used as leads.",
+      "observed": "WelcomePanel.action creates JPanel/JLabel rows and only adds a mouseClicked handler; no focusable action/button or keyboard activation is installed.",
+      "reproduction": [
+        "Fresh launch with isolated home and preferences.",
+        "Attempt Tab/Shift+Tab, Enter and Space on New/Open/recent-file rows."
+      ],
+      "screenshots": [],
+      "source": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/WelcomePanel.java:145",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/WelcomePanel.java:169"
+      ],
+      "rootCause": "Actions are represented as passive panels rather than keyboard-accessible controls.",
+      "fix": "Use shared Swing Actions with styled buttons or implement focusability, visible focus, Enter/Space activation and accessible names on each row.",
+      "acceptance": "A keyboard-only user can reach and activate New, Open and recent files with clear focus, with global shortcuts still working.",
+      "reason": "Source-only support for a subcase of codeaudit-19, not a new visual verification."
+    },
+    {
+      "id": "remaining-shared-07",
+      "area": "keyboard-hdl",
+      "title": "Hotkey synchronization races the preferences dispatcher",
+      "severity": "P2",
+      "status": "duplicate",
+      "canonicalId": "shell-31",
+      "alsoRelated": [
+        "critic-26"
+      ],
+      "verification": "Recovered HDL log inspected; not triggered in the current fresh session.",
+      "observed": "The prior HDL session recorded ConcurrentModificationException in AppPreferences.hotkeySync on java.util.prefs' Event Dispatch Thread.",
+      "reproduction": [
+        "Open Preferences and create/close project windows while preferences change.",
+        "Check hotkey updates and app log."
+      ],
+      "screenshots": [],
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/hdl/app-run1.log"
+      ],
+      "source": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/prefs/AppPreferences.java:1712",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/prefs/HotkeyOptions.java:195"
+      ],
+      "rootCause": "The preferences callback iterates a mutable GUI synchronization list off the Swing event thread.",
+      "fix": "Filter preference keys, marshal hotkey changes to the EDT, and manage synchronization listener lifetime safely.",
+      "acceptance": "Window creation/destruction concurrent with relevant preference updates produces no exceptions and updates accelerators exactly once.",
+      "reason": "Same captured exception as shell-31. User-facing failure in this run was not measured, so no P1 escalation."
+    }
+  ],
+  "dispositions": [
+    {
+      "id": "remaining-hdl-01",
+      "status": "confirmed-runtime",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/remaining-evidence/17-fpga-before.png",
+        "/tmp/logisim-qa-recovery-20260924/remaining-evidence/18-fpga-after.png",
+        "/tmp/logisim-qa-recovery-20260924/remaining-evidence/app.log",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/hdl/app-run1.log"
+      ],
+      "reason": "Fresh live reproduction plus current source and recovered log."
+    },
+    {
+      "id": "remaining-keyboard-01",
+      "status": "confirmed-runtime",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/remaining-evidence/13-tab-after-gc-crop.png",
+        "/tmp/logisim-qa-recovery-20260924/remaining-evidence/14-ctrl-tab-crop.png",
+        "/tmp/logisim-qa-recovery-20260924/remaining-evidence/19-reverse-tab.png",
+        "/tmp/logisim-qa-recovery-20260924/remaining-evidence/20-close-tab-crop.png"
+      ],
+      "reason": "Fresh live forward/reverse checks; Ctrl+W positive control."
+    },
+    {
+      "id": "remaining-simulation-01",
+      "status": "confirmed-visual",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/simulation/95z-combo.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/simulation/94z-menu-after-osc.png",
+        "/tmp/logisim-qa-recovery-20260924/reports/inspect-simulation-partial.md"
+      ],
+      "reason": "Recovered images actually viewed; current source confirms missing state notification. Not freshly reproduced."
+    },
+    {
+      "id": "remaining-hdl-02",
+      "status": "confirmed-visual",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/hdl/83-insert-transaction.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/hdl/82-memory-map.png"
+      ],
+      "reason": "Recovered native window capture viewed; exact current source cause identified."
+    },
+    {
+      "id": "remaining-hdl-03",
+      "status": "unverified",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/hdl/app-run3.log",
+        "/tmp/logisim-qa-recovery-20260924/reports/inspect-hdl-partial.md"
+      ],
+      "reason": "Recovered stack inspected; not reproduced on this session or a normal desktop."
+    },
+    {
+      "id": "remaining-shared-01",
+      "status": "duplicate",
+      "canonicalId": "shell-03",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/remaining-evidence/06-drawer-crop.png",
+        "/tmp/logisim-qa-recovery-20260924/remaining-evidence/07-drawer-after-crop.png",
+        "/tmp/logisim-qa-recovery-20260924/remaining-evidence/08-timing-crop.png",
+        "/tmp/logisim-qa-recovery-20260924/remaining-evidence/09-both-dividers.png",
+        "/tmp/logisim-qa-recovery-20260924/remaining-evidence/12-vector-crop.png"
+      ],
+      "reason": "Same shared splitter defect as shell-03. Hidden timing/test rows are downstream effects, not two extra bugs."
+    },
+    {
+      "id": "remaining-shared-02",
+      "status": "duplicate",
+      "canonicalId": "dialogs-17",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/remaining-evidence/13-tab-after-gc-crop.png",
+        "/tmp/logisim-qa-recovery-20260924/remaining-evidence/16-fpga-menu.png",
+        "/tmp/logisim-qa-recovery-20260924/remaining-evidence/20-close-tab-crop.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/projects/15z-tab-list-desync.png"
+      ],
+      "reason": "Unifies add/rename, stale highlight, and recovered deleted-row symptoms. No data-loss claim: ghost editing/saving was not retested."
+    },
+    {
+      "id": "remaining-shared-03",
+      "status": "duplicate",
+      "canonicalId": "codeaudit-08",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/remaining-evidence/08-timing-crop.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/simulation/66z-rows-zoom.png"
+      ],
+      "reason": "Visual corroboration of the existing codeaudit-08 cause; not another drawer-resize bug."
+    },
+    {
+      "id": "remaining-shared-04",
+      "status": "duplicate",
+      "canonicalId": "codeaudit-07",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/hdl/29-vhdl-editor-zoom.png"
+      ],
+      "reason": "Same EditorTheme root cause as codeaudit-07; no per-editor inflation."
+    },
+    {
+      "id": "remaining-shared-05",
+      "status": "duplicate",
+      "canonicalId": "codeaudit-11",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/hdl/82-memory-map.png"
+      ],
+      "reason": "Corroborates the existing shared FPGA/SoC renderer finding."
+    },
+    {
+      "id": "remaining-shared-06",
+      "status": "duplicate",
+      "canonicalId": "codeaudit-19",
+      "evidence": [],
+      "reason": "Source-only support for a subcase of codeaudit-19, not a new visual verification."
+    },
+    {
+      "id": "remaining-shared-07",
+      "status": "duplicate",
+      "canonicalId": "shell-31",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/hdl/app-run1.log"
+      ],
+      "reason": "Same captured exception as shell-31. User-facing failure in this run was not measured, so no P1 escalation."
+    }
+  ],
+  "harnessFindings": [
+    {
+      "id": "remaining-harness-01",
+      "status": "confirmed-source",
+      "title": "Original QA harness isolates preferences but not Java home/autosaves",
+      "source": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/qa.sh:63",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/file/Loader.java:179"
+      ],
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/remaining-evidence/01-initial.png",
+        "/tmp/logisim-qa-recovery-20260924/remaining-evidence/app.log"
+      ],
+      "observed": "Fresh prefs still produced an Autosave found prompt before the app opened. That prompt was not discarded. The corrected launch used a unique fixture basename plus JAVA_TOOL_OPTIONS=-Duser.home=/tmp/logisim-qa-recovery-20260924/remaining-evidence/java-home; jcmd verified both Java home and preference roots.",
+      "fix": "Before starting any app, create a per-session home and pass -Duser.home plus the isolated prefs root; isolate config and known app-data paths too. Add startup assertions and unique fixture names. Keep long-lived process ownership explicit. Derive shot dimensions from the actual display or use win for nondefault sizes. Preserve source and jar hash/build provenance.",
+      "acceptance": "A fresh session cannot discover or create autosaves in the real user home; two sessions cannot see each other's recovery files. Captures match actual window/display bounds. Cleanup validates and stops only the owning session.",
+      "limits": "The original supplied harness itself was not changed. The first launch reached a recovery prompt before isolation was corrected; no original autosave was cleared."
+    }
+  ],
+  "tested": [
+    "Read AGENTS.md, all four corrected assignment scopes and relevant interrupted command/results; no original interrupted report treated as complete.",
+    "Viewed live native/cropped images at 1.6 and selected recovered images; did not infer visual correctness from filenames.",
+    "Loaded a uniquely named disposable copy of simtest.circ; dismissed fixture RAM/ROM name-collision notices.",
+    "Opened timing drawer, selected clk, issued three Ctrl+T half-ticks, inspected ruler, attempted bottom/side divider drags.",
+    "Loaded disposable inv_test.txt in inv circuit; observed expected 2 passed and 2 failed. Result rows obscured at default height.",
+    "Opened main, inv and osc circuits; selected tabs; forced GC only on validated private JVM and reproduced stale list selection; F2 renamed osc to osc_qa and row stayed stale.",
+    "Ctrl+Tab and Ctrl+Shift+Tab failed from canvas; Ctrl+W closed the current editor tab. F2 and Enter worked in rename dialog.",
+    "FPGA Synthesize & Download > Generate HDL only > Execute reproduced ClassCastException and disabled controls; captured before/after and log.",
+    "Reviewed recovered oscillation, HDL editor, SoC memory-map and bus transaction images against source.",
+    "Checked toolchain availability: tclsh found; vivado, quartus_sh, vsim, ghdl and yosys absent from PATH.",
+    "Verified own Java home/prefs roots, jar SHA-256 and JVM version; stopped and verified own processes exited."
+  ],
+  "notTested": [
+    "Full original simulation/projects/HDL/keyboard tours were not repeated; historical command lists do not constitute fresh verification.",
+    "External FPGA synthesis, board programming, Questa/ModelSim execution, HDL simulation correctness, ELF loading or SoC program execution.",
+    "Fresh SoC bus transactions, TCL interface modal crash, full assembler/PLA/joystick/I/O workflows.",
+    "Light theme, other scales, other operating systems and normal visible desktop focus behavior.",
+    "RAM/ROM editing and image persistence, full half-adder construction/save/reopen, project merging/export, deleted-ghost editing and save/reload.",
+    "Full test-vector body interaction (Show/Set/failure tooltip) in this fresh session; drawer blocks the body.",
+    "Fresh oscillation/reset recovery and welcome screen focus tour; recovered images/source provenance is explicit.",
+    "Exact supplied jar equivalence to repository HEAD; no production build or test suite was run because no code change was requested."
+  ],
+  "fixPlan": [
+    {
+      "order": 1,
+      "scope": "QA infrastructure",
+      "action": "Land isolated home/autosave handling and artifact provenance checks before further UI tours."
+    },
+    {
+      "order": 2,
+      "scope": "P1 workflows",
+      "action": "Repair FPGA SVG stop-state casts and shared split-pane drag/restore logic. Verify HDL-only start/retry and visible waveform/test result body."
+    },
+    {
+      "order": 3,
+      "scope": "Project and keyboard state",
+      "action": "Retain CircuitListView listeners and correct editor-tab key routing. Validate mutations after GC and navigation from each focus context."
+    },
+    {
+      "order": 4,
+      "scope": "Simulation feedback and readable tools",
+      "action": "Synchronize oscillation state; correct chrono metrics, editor/gutter fonts and SoC table theme rendering using existing canonical findings."
+    },
+    {
+      "order": 5,
+      "scope": "Minor naming and unresolved native modal issue",
+      "action": "Fix explicit bus display identity; separately reproduce the X11 modal exception before scheduling an implementation."
+    }
+  ]
+}

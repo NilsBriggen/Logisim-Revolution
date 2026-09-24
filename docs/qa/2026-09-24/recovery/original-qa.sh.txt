@@ -1,0 +1,165 @@
+#!/bin/bash
+# QA rig: runs the real Logisim jar inside a private, invisible KWin compositor with its own
+# Xwayland display, drives it with xdotool, and captures what is on that display.
+#
+#   qa.sh start ID [--scale S] [--theme dark|light|system] [--fresh] [--file F.circ] [--size WxH]
+#   qa.sh relaunch ID [--scale S] [--theme T] [--file F]   restart only the app, same display
+#   qa.sh shot ID OUT.png          whole display: every visible window composited in place
+#   qa.sh win ID PATTERN OUT.png   one window whose title matches PATTERN, at native size
+#   qa.sh zoom IN.png X Y W H OUT.png [FACTOR]   crop a region and enlarge it (default x2)
+#   qa.sh windows ID               list visible windows: id, title, geometry
+#   qa.sh x ID <xdotool args...>   e.g. qa.sh x 3 mousemove 100 200 click 1 / key ctrl+z / type hi
+#   qa.sh log ID                   tail of the app's stdout/stderr
+#   qa.sh stop ID
+set -u
+QA=/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa
+JAR=$QA/logisim.jar
+cmd=${1:-}; shift || true
+ID=${1:-}; shift || true
+D=$QA/run/$ID
+
+envload() {
+  if [ ! -f "$D/env" ]; then echo "no display for id $ID (run: qa.sh start $ID)" >&2; exit 2; fi
+  # shellcheck disable=SC1090
+  source "$D/env"
+  export DISPLAY XAUTHORITY
+  unset WAYLAND_DISPLAY
+}
+
+setpref() { # key value
+  local f=$D/prefs/.java/.userPrefs/com/cburch/logisim/prefs.xml
+  mkdir -p "$(dirname "$f")"
+  if [ ! -f "$f" ]; then
+    printf '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n<!DOCTYPE map SYSTEM "http://java.sun.com/dtd/preferences.dtd">\n<map MAP_XML_VERSION="1.0">\n</map>\n' > "$f"
+  fi
+  sed -i "/<entry key=\"$1\" /d" "$f"
+  sed -i "s#</map>#  <entry key=\"$1\" value=\"$2\"/>\n</map>#" "$f"
+}
+
+parseopts() {
+  SCALE=""; THEME=""; FRESH=0; FILE=""; SIZE="2560x1600"
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --scale) SCALE=$2; shift 2 ;;
+      --theme) THEME=$2; shift 2 ;;
+      --fresh) FRESH=1; shift ;;
+      --file) FILE=$2; shift 2 ;;
+      --size) SIZE=$2; shift 2 ;;
+      *) echo "unknown option $1" >&2; exit 2 ;;
+    esac
+  done
+}
+
+launchapp() {
+  envload
+  [ -n "$SCALE" ] && setpref Scale "$SCALE"
+  [ -n "$THEME" ] && setpref theme "$THEME"
+  local arg=()
+  if [ -n "$FILE" ]; then
+    mkdir -p "$D/work"
+    cp "$FILE" "$D/work/" && arg=("$D/work/$(basename "$FILE")")
+  fi
+  ( cd "$D" && exec java -Xmx1500m -Djava.util.prefs.userRoot="$D/prefs" -jar "$JAR" "${arg[@]}" \
+      > "$D/app.log" 2>&1 ) &
+  echo $! > "$D/app.pid"
+  for _ in $(seq 1 80); do
+    if xdotool search --onlyvisible --name "Logisim" >/dev/null 2>&1; then
+      sleep 2; echo "app up on $DISPLAY (id $ID)"; return 0
+    fi
+    sleep 0.5
+  done
+  echo "app window never appeared; log:" >&2; tail -20 "$D/app.log" >&2; return 1
+}
+
+killapp() {
+  if [ -f "$D/app.pid" ]; then
+    local p; p=$(cat "$D/app.pid")
+    kill "$p" 2>/dev/null
+    for _ in $(seq 1 20); do kill -0 "$p" 2>/dev/null || break; sleep 0.25; done
+    kill -9 "$p" 2>/dev/null
+    rm -f "$D/app.pid"
+  fi
+}
+
+case "$cmd" in
+  start)
+    parseopts "$@"
+    [ -f "$D/session.pid" ] && { echo "id $ID already running; stop it first" >&2; exit 2; }
+    rm -rf "$D"; mkdir -p "$D"
+    if [ "$FRESH" = 1 ]; then mkdir -p "$D/prefs"; else cp -r "$QA/prefs-base" "$D/prefs"; fi
+    W=${SIZE%x*}; H=${SIZE#*x}
+    # A private config, so the compositor lets xdotool's synthetic input through without the
+    # "is asking to control input devices" prompt, and nothing touches the real ~/.config/kwinrc.
+    mkdir -p "$D/config"
+    printf '[Xwayland]\nXwaylandEisNoPrompt=true\n' > "$D/config/kwinrc"
+    ( XDG_CONFIG_HOME="$D/config" QA_ENVFILE="$D/env" QA_PIDFILE="$D/session.pid" exec kwin_wayland_wrapper --virtual --xwayland \
+        --width "$W" --height "$H" --socket "qa-$ID" --exit-with-session "$QA/session.sh" \
+        > "$D/kwin.log" 2>&1 ) &
+    echo $! > "$D/wrapper.pid"
+    for _ in $(seq 1 40); do [ -s "$D/env" ] && break; sleep 0.25; done
+    [ -s "$D/env" ] || { echo "compositor did not start" >&2; tail "$D/kwin.log" >&2; exit 1; }
+    launchapp
+    ;;
+  relaunch)
+    parseopts "$@"
+    killapp; sleep 1; launchapp
+    ;;
+  windows)
+    envload
+    for w in $(xdotool search --onlyvisible --name '' 2>/dev/null); do
+      g=$(xdotool getwindowgeometry "$w" 2>/dev/null | tr '\n' ' ' | sed 's/Window [0-9]* *//')
+      echo "$w [$(xdotool getwindowname "$w" 2>/dev/null)] $g"
+    done
+    ;;
+  shot)
+    envload
+    OUT=$1; tmp=$(mktemp -d)
+    W=2560; H=1600
+    list=()
+    for w in $(xdotool search --onlyvisible --name '' 2>/dev/null); do
+      name=$(xdotool getwindowname "$w" 2>/dev/null)
+      [ "$name" = "FocusProxy" ] && continue
+      [ "$name" = "Content window" ] && continue
+      geo=$(xdotool getwindowgeometry --shell "$w" 2>/dev/null) || continue
+      eval "$geo"
+      [ "$WIDTH" -le 2 ] && continue
+      import -window "$w" "$tmp/$w.png" 2>/dev/null || continue
+      list+=("$((WIDTH * HEIGHT)) $w $X $Y")
+    done
+    args=(-size ${W}x${H} xc:black)
+    while read -r _ w x y; do
+      [ -z "${w:-}" ] && continue
+      args+=("$tmp/$w.png" -geometry "+$x+$y" -composite)
+    done < <(printf '%s\n' "${list[@]}" | sort -rn)
+    magick "${args[@]}" "$OUT" && echo "wrote $OUT"
+    rm -rf "$tmp"
+    ;;
+  win)
+    envload
+    PAT=$1; OUT=$2
+    w=$(xdotool search --onlyvisible --name "$PAT" 2>/dev/null | tail -1)
+    [ -z "$w" ] && { echo "no visible window matches '$PAT'" >&2; exit 1; }
+    import -window "$w" "$OUT" && echo "wrote $OUT ($(magick identify -format '%wx%h' "$OUT"))"
+    ;;
+  zoom)
+    IN=$ID; X=$1; Y=$2; WW=$3; HH=$4; OUT=$5; F=${6:-2}
+    magick "$IN" -crop "${WW}x${HH}+${X}+${Y}" +repage -filter point -resize "$((F * 100))%" "$OUT" \
+      && echo "wrote $OUT"
+    ;;
+  x)
+    envload
+    xdotool "$@"
+    ;;
+  log)
+    tail -40 "$D/app.log"
+    ;;
+  stop)
+    killapp
+    # The wrapper restarts a compositor that exits, so it goes first.
+    if [ -f "$D/wrapper.pid" ]; then kill "$(cat "$D/wrapper.pid")" 2>/dev/null; rm -f "$D/wrapper.pid"; fi
+    if [ -f "$D/session.pid" ]; then kill "$(cat "$D/session.pid")" 2>/dev/null; rm -f "$D/session.pid"; fi
+    echo "stopped $ID"
+    ;;
+  *)
+    sed -n '2,16p' "$0"; exit 2 ;;
+esac
