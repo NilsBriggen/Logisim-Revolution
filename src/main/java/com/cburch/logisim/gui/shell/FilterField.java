@@ -76,6 +76,35 @@ public class FilterField extends JTextField {
         WHEN_FOCUSED);
   }
 
+  /**
+   * What Enter and the arrow keys should do.
+   *
+   * <p>A filter with one match left is a question the user has already answered; pressing Enter
+   * used to do nothing at all, and the arrow keys did not reach the list below, so the only way on
+   * was the mouse.
+   *
+   * @param onAccept run on Enter — take the first match
+   * @param onNavigate run on Down or Up with the direction, to move into the list
+   */
+  public void setKeyboardHandoff(Runnable onAccept, java.util.function.IntConsumer onNavigate) {
+    if (onAccept != null) {
+      registerKeyboardAction(
+          event -> onAccept.run(),
+          javax.swing.KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0),
+          WHEN_FOCUSED);
+    }
+    if (onNavigate != null) {
+      registerKeyboardAction(
+          event -> onNavigate.accept(1),
+          javax.swing.KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, 0),
+          WHEN_FOCUSED);
+      registerKeyboardAction(
+          event -> onNavigate.accept(-1),
+          javax.swing.KeyStroke.getKeyStroke(KeyEvent.VK_UP, 0),
+          WHEN_FOCUSED);
+    }
+  }
+
   /** Empties the field and reports the change at once, without waiting for the pause. */
   public void clear() {
     if (getText().isEmpty()) return;

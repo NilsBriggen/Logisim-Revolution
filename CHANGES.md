@@ -3,6 +3,21 @@
 # Changes #
 
 * @dev (????-??-??)
+  * A circuit can be renamed. There was no rename anywhere in the program: the only way was to
+    click empty canvas so the properties panel fell back to the circuit's own properties, then edit
+    the name row. It is now F2 and a Rename item in the Circuits panel, as one undoable step
+    (@YOUR_GITHUB_HANDLE).
+  * The Properties panel and the bottom drawer can be put away again. Their visibility was
+    modelled and remembered between sessions but wired to no control, so once either was on screen
+    it stayed there (@YOUR_GITHUB_HANDLE).
+  * The shell answers the keyboard. The activity bar down the left edge can be focused and used
+    with Enter or Space and announces itself to a screen reader; the editor tabs answer Ctrl+Tab,
+    Ctrl+Shift+Tab and Ctrl+W and offer Close / Close Others / Close All; the Circuits list answers
+    F2 and Delete; and typing in either filter and pressing Enter now takes the first match instead
+    of doing nothing, with Down moving into the list or the grid (@YOUR_GITHUB_HANDLE).
+  * Circuit Statistics and Export Circuit are in the Circuits panel's menu. Exporting a single
+    circuit had been reachable only by switching the component panel back to the old library tree
+    (@YOUR_GITHUB_HANDLE).
   * The last of the 2005 palette is gone from the windows around the canvas. The main toolbar
     filled a solid magenta square behind the tool whose properties were showing -- hiding the icon
     it was meant to point at -- and now tints it the way a palette tile does. The simulator's three

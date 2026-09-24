@@ -89,6 +89,8 @@ public class ComponentPalette extends JPanel implements ProjectListener, Library
               filterText = text == null ? "" : text.trim().toLowerCase(Locale.ROOT);
               rebuild();
             });
+    filter.setKeyboardHandoff(this::chooseFirstVisible, direction -> focusFirstTile());
+
     final var top = new JPanel(new BorderLayout());
     top.setOpaque(false);
     top.setBorder(BorderFactory.createEmptyBorder(0, Spacing.sm(), Spacing.xs(), Spacing.sm()));
@@ -254,6 +256,16 @@ public class ComponentPalette extends JPanel implements ProjectListener, Library
         });
     menu.add(item);
     menu.show(tile, tile.getWidth() / 2, tile.getHeight() / 2);
+  }
+
+  /** Arms the first component the filter left, which is what Enter in a filter means. */
+  private void chooseFirstVisible() {
+    if (!tiles.isEmpty()) choose(tiles.get(0).tool());
+  }
+
+  /** Moves into the grid, where a tile answers Enter and Space itself. */
+  private void focusFirstTile() {
+    if (!tiles.isEmpty()) tiles.get(0).requestFocusInWindow();
   }
 
   /** Selects a component and remembers that it was used. */

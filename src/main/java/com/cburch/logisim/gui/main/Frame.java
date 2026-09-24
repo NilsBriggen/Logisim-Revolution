@@ -366,6 +366,9 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
         new ShellLayout(
             mainToolbar, activityBar, sidePanel, editorArea, inspector, bottomPanel, statusBar);
     shell.setBottomVisible(false);
+    // Both panels could be opened but never shut; their close buttons drive the shell.
+    inspector.setOnClose(() -> shell.setInspectorVisible(false));
+    bottomPanel.setOnClose(() -> shell.setBottomVisible(false));
     getContentPane().add(shell, BorderLayout.CENTER);
 
     localeChanged();

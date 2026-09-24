@@ -9,15 +9,19 @@
 
 package com.cburch.logisim.gui.shell;
 
+import static com.cburch.logisim.gui.Strings.S;
+
 import com.cburch.logisim.gui.shell.EditorTabModel.Kind;
 import com.cburch.logisim.gui.shell.EditorTabModel.Tab;
 import com.cburch.logisim.gui.theme.AppIcons;
 import com.formdev.flatlaf.FlatClientProperties;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.function.Function;
 import javax.swing.JComponent;
 import javax.swing.JTabbedPane;
+import javax.swing.KeyStroke;
 
 /**
  * The strip of tabs above the canvas, one per circuit the user has opened.
@@ -38,6 +42,10 @@ public class EditorTabs extends JTabbedPane {
   /** Set while this class is the one changing the selection, so the change is not sent back. */
   private boolean syncing;
 
+  private static final String NEXT_TAB = "nextEditorTab";
+  private static final String PREVIOUS_TAB = "previousEditorTab";
+  private static final String CLOSE_TAB = "closeEditorTab";
+
   /**
    * @param titler supplies a tab's label; asked again whenever the strip is rebuilt, so renaming
    *     a circuit needs no bookkeeping here
@@ -51,7 +59,8 @@ public class EditorTabs extends JTabbedPane {
     putClientProperty(
         FlatClientProperties.TABBED_PANE_TAB_CLOSE_CALLBACK,
         (java.util.function.IntConsumer) model::close);
-    setFocusable(false);
+    installKeyBindings();
+    installContextMenu();
 
     addChangeListener(
         event -> {
@@ -70,6 +79,95 @@ public class EditorTabs extends JTabbedPane {
 
     model.setListener(ignored -> rebuild());
     rebuild();
+  }
+
+  /**
+   * The keys an editor's tab strip is expected to answer.
+   *
+   * <p>With several circuits open there was no way to switch, cycle or close a tab without the
+   * mouse: Ctrl+Tab and Ctrl+W did nothing, and Ctrl+Shift+W closed the whole project window.
+   */
+  private void installKeyBindings() {
+    final var input = getInputMap(WHEN_IN_FOCUSED_WINDOW);
+    final var actions = getActionMap();
+    final var menuMask = java.awt.Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx();
+    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_TAB, menuMask), NEXT_TAB);
+    input.put(
+        KeyStroke.getKeyStroke(KeyEvent.VK_TAB, menuMask | java.awt.event.InputEvent.SHIFT_DOWN_MASK),
+        PREVIOUS_TAB);
+    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_W, menuMask), CLOSE_TAB);
+    actions.put(NEXT_TAB, action(() -> step(1)));
+    actions.put(PREVIOUS_TAB, action(() -> step(-1)));
+    actions.put(CLOSE_TAB, action(this::closeCurrent));
+  }
+
+  private static javax.swing.Action action(Runnable body) {
+    return new javax.swing.AbstractAction() {
+      private static final long serialVersionUID = 1L;
+
+      @Override
+      public void actionPerformed(java.awt.event.ActionEvent event) {
+        body.run();
+      }
+    };
+  }
+
+  /** Moves to the next or previous tab, wrapping round. */
+  private void step(int delta) {
+    final var count = getTabCount();
+    if (count <= 1) return;
+    model.select(Math.floorMod(getSelectedIndex() + delta, count));
+  }
+
+  private void closeCurrent() {
+    final var index = getSelectedIndex();
+    if (index >= 0) model.close(index);
+  }
+
+  /** Close, Close Others and Close All, on the tab under the pointer. */
+  private void installContextMenu() {
+    addMouseListener(
+        new MouseAdapter() {
+          @Override
+          public void mousePressed(MouseEvent event) {
+            showMenu(event);
+          }
+
+          @Override
+          public void mouseReleased(MouseEvent event) {
+            showMenu(event);
+          }
+
+          private void showMenu(MouseEvent event) {
+            if (!event.isPopupTrigger()) return;
+            final var index = indexAtLocation(event.getX(), event.getY());
+            if (index < 0) return;
+            final var menu = new javax.swing.JPopupMenu();
+            menu.add(item(S.get("editorTabClose"), () -> model.close(index)));
+            menu.add(item(S.get("editorTabCloseOthers"), () -> closeOthers(index)));
+            menu.add(item(S.get("editorTabCloseAll"), () -> closeAll()));
+            menu.show(EditorTabs.this, event.getX(), event.getY());
+          }
+        });
+  }
+
+  private static javax.swing.JMenuItem item(String text, Runnable body) {
+    final var menuItem = new javax.swing.JMenuItem(text);
+    menuItem.addActionListener(event -> body.run());
+    return menuItem;
+  }
+
+  /** Closed from the right so the earlier indexes stay valid as tabs go. */
+  private void closeOthers(int keep) {
+    for (var index = getTabCount() - 1; index >= 0; index--) {
+      if (index != keep) model.close(index);
+    }
+  }
+
+  private void closeAll() {
+    for (var index = getTabCount() - 1; index >= 0; index--) {
+      model.close(index);
+    }
   }
 
   /** Rebuilds the strip from the model. Cheap: the tabs hold a placeholder, not an editor. */

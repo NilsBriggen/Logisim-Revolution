@@ -790,6 +790,22 @@ public final class LogisimFileActions {
     return new MoveCircuit(tool, toIndex);
   }
 
+  /**
+   * Renames a circuit.
+   *
+   * <p>There was no rename anywhere in the program. A circuit could only be renamed by clearing
+   * the selection so the properties panel fell back to the circuit's own properties, then editing
+   * the name row — which meant knowing that the panel does that.
+   *
+   * <p>Built on the same circuit mutation the properties row uses, so it is one undoable step and
+   * the duplicate-name check in {@code LogisimFile.circuitChanged} still applies.
+   */
+  public static Action renameCircuit(Circuit circuit, String name) {
+    final var mutation = new CircuitMutation(circuit);
+    mutation.setForCircuit(CircuitAttributes.NAME_ATTR, name);
+    return mutation.toAction(S.getter("renameCircuitAction"));
+  }
+
   public static Action removeCircuit(Circuit circuit) {
     return new RemoveCircuit(circuit);
   }

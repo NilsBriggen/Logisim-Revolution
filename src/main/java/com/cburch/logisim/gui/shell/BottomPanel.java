@@ -33,7 +33,30 @@ public class BottomPanel extends JTabbedPane {
         FlatClientProperties.TABBED_PANE_TAB_TYPE_CARD);
     putClientProperty(FlatClientProperties.TABBED_PANE_SCROLL_BUTTONS_POLICY,
         FlatClientProperties.TABBED_PANE_POLICY_AS_NEEDED);
+    // The drawer could be opened -- by the VHDL simulator, among others -- but never shut again.
+    putClientProperty(FlatClientProperties.TABBED_PANE_TAB_CLOSABLE, true);
+    putClientProperty(
+        FlatClientProperties.TABBED_PANE_TAB_CLOSE_CALLBACK,
+        (java.util.function.IntConsumer) this::closePanel);
   }
+
+  /**
+   * Called when the user shuts a tab.
+   *
+   * <p>The tab is kept rather than thrown away — the drawer is simply put back down. What is in it
+   * is opened by the program, not by the user, so removing the tab would leave nothing to reopen.
+   */
+  private void closePanel(int index) {
+    if (index < 0 || index >= getTabCount() || onClose == null) return;
+    onClose.run();
+  }
+
+  /** What to do when the user shuts a tab: put the drawer away. */
+  public void setOnClose(Runnable onClose) {
+    this.onClose = onClose;
+  }
+
+  private Runnable onClose;
 
   /** Adds a panel, or replaces the one already registered under {@code id}. */
   public void addPanel(String id, String title, javax.swing.Icon icon, JComponent panel) {

@@ -14,6 +14,9 @@ import static com.cburch.logisim.gui.Strings.S;
 import com.cburch.logisim.circuit.Circuit;
 import com.cburch.logisim.file.LibraryEvent;
 import com.cburch.logisim.file.LibraryListener;
+import com.cburch.logisim.file.LogisimFileActions;
+import com.cburch.logisim.gui.generic.OptionPane;
+import com.cburch.logisim.gui.main.StatisticsDialog;
 import com.cburch.logisim.gui.menu.ProjectCircuitActions;
 import com.cburch.logisim.gui.theme.AppIcons;
 import com.cburch.logisim.gui.theme.Theme;
@@ -26,6 +29,7 @@ import com.cburch.logisim.util.UiFonts;
 import com.cburch.logisim.vhdl.base.VhdlContent;
 import java.awt.BorderLayout;
 import java.awt.Component;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
@@ -34,10 +38,12 @@ import java.util.Locale;
 import javax.swing.BorderFactory;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.DefaultListModel;
+import javax.swing.JComponent;
 import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
+import javax.swing.KeyStroke;
 import javax.swing.ListSelectionModel;
 
 /**
@@ -97,6 +103,9 @@ public class CircuitListView extends JPanel {
             showPopup(event);
           }
         });
+    installKeyBindings();
+    filter.setKeyboardHandoff(this::openFirstMatch, direction -> moveIntoList(direction));
+
     final var scroll = new JScrollPane(list);
     scroll.setBorder(null);
     add(scroll, BorderLayout.CENTER);
@@ -150,6 +159,75 @@ public class CircuitListView extends JPanel {
     }
   }
 
+  /**
+   * The keys a list is expected to answer.
+   *
+   * <p>The panel used to ignore every one of them: renaming meant finding the name row in the
+   * properties panel, and removing meant the context menu or the small button in the heading.
+   */
+  private void installKeyBindings() {
+    final var input = list.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
+    final var actions = list.getActionMap();
+    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_F2, 0), "renameCircuit");
+    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), "removeCircuit");
+    actions.put("renameCircuit", action(this::renameSelected));
+    actions.put("removeCircuit", action(this::removeSelected));
+  }
+
+  private static javax.swing.Action action(Runnable body) {
+    return new javax.swing.AbstractAction() {
+      private static final long serialVersionUID = 1L;
+
+      @Override
+      public void actionPerformed(java.awt.event.ActionEvent event) {
+        body.run();
+      }
+    };
+  }
+
+  /** The circuit the list is pointing at, or {@code null} when it is pointing at something else. */
+  private Circuit selectedCircuit() {
+    final var entry = list.getSelectedValue();
+    return (entry != null && entry.target() instanceof Circuit circuit) ? circuit : null;
+  }
+
+  private void renameSelected() {
+    final var circuit = selectedCircuit();
+    if (circuit == null) return;
+    final var name =
+        OptionPane.showInputDialog(
+            javax.swing.SwingUtilities.getWindowAncestor(this),
+            S.get("circuitRenamePrompt"),
+            S.get("circuitRenameTitle"),
+            OptionPane.QUESTION_MESSAGE,
+            null,
+            null,
+            circuit.getName());
+    if (name == null) return;
+    final var trimmed = name.toString().trim();
+    if (trimmed.isEmpty() || trimmed.equals(circuit.getName())) return;
+    project.doAction(LogisimFileActions.renameCircuit(circuit, trimmed));
+  }
+
+  private void removeSelected() {
+    final var circuit = selectedCircuit();
+    if (circuit != null) ProjectCircuitActions.doRemoveCircuit(project, circuit);
+  }
+
+  /** Opens the only thing the filter left, which is what pressing Enter in a filter means. */
+  private void openFirstMatch() {
+    if (model.isEmpty()) return;
+    list.setSelectedIndex(0);
+    open(model.get(0));
+  }
+
+  private void moveIntoList(int direction) {
+    if (model.isEmpty()) return;
+    final var index = direction > 0 ? 0 : model.size() - 1;
+    list.setSelectedIndex(index);
+    list.requestFocusInWindow();
+  }
+
   private Object currentTarget() {
     final var hdl = project.getCurrentHdl();
     return hdl != null ? hdl : project.getCurrentCircuit();
@@ -173,12 +251,23 @@ public class CircuitListView extends JPanel {
     if (!(entry.target() instanceof Circuit circuit)) return;
 
     final var menu = new JPopupMenu();
-    menu.add(item(S.get("projectAnalyzeCircuitItem"), () ->
-        ProjectCircuitActions.doAnalyze(project, circuit)));
+    menu.add(item(S.get("circuitRenameItem"), this::renameSelected));
     menu.add(item(S.get("projectSetAsMainItem"), () ->
         ProjectCircuitActions.doSetAsMainCircuit(project, circuit)));
-    menu.add(item(S.get("projectRemoveCircuitItem"), () ->
-        ProjectCircuitActions.doRemoveCircuit(project, circuit)));
+    menu.addSeparator();
+    menu.add(item(S.get("projectAnalyzeCircuitItem"), () ->
+        ProjectCircuitActions.doAnalyze(project, circuit)));
+    menu.add(item(S.get("projectGetCircuitStatisticsItem"), () ->
+        StatisticsDialog.show(
+            project.getFrame(),
+            project.getLogisimFile(),
+            circuit)));
+    // Exporting a single circuit used to be reachable only from the library tree, which the
+    // component palette replaced as the default view.
+    menu.add(item(S.get("projectExportCircuitItem"), () ->
+        ProjectCircuitActions.doExportCircuit(project, circuit)));
+    menu.addSeparator();
+    menu.add(item(S.get("projectRemoveCircuitItem"), this::removeSelected));
     menu.show(list, event.getX(), event.getY());
   }
 

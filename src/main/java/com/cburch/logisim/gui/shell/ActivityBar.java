@@ -57,13 +57,65 @@ public class ActivityBar extends JPanel {
     private boolean selected;
     private boolean hovered;
 
+    /**
+     * Named for a screen reader, and announced as the button it behaves like.
+     *
+     * <p>A plain {@link JComponent} has no accessible context of its own, so without this the
+     * strip is invisible to assistive technology even now that it can be focused.
+     */
+    @Override
+    public javax.accessibility.AccessibleContext getAccessibleContext() {
+      if (accessibleContext == null) {
+        accessibleContext =
+            new AccessibleJComponent() {
+              private static final long serialVersionUID = 1L;
+
+              @Override
+              public javax.accessibility.AccessibleRole getAccessibleRole() {
+                return javax.accessibility.AccessibleRole.PUSH_BUTTON;
+              }
+
+              @Override
+              public String getAccessibleName() {
+                return getToolTipText();
+              }
+            };
+      }
+      return accessibleContext;
+    }
+
     Item(String id, AppIcons.Id icon, String tooltip, boolean selectable, Runnable action) {
       this.id = id;
       this.icon = icon;
       this.action = action;
       this.selectable = selectable;
       setToolTipText(tooltip);
+      // The strip is the shell's main navigation and was reachable only with the mouse: tab
+      // traversal skipped it and nothing answered a key.
+      setFocusable(true);
       setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+      addKeyListener(
+          new java.awt.event.KeyAdapter() {
+            @Override
+            public void keyPressed(java.awt.event.KeyEvent event) {
+              if (event.getKeyCode() == java.awt.event.KeyEvent.VK_ENTER
+                  || event.getKeyCode() == java.awt.event.KeyEvent.VK_SPACE) {
+                action.run();
+              }
+            }
+          });
+      addFocusListener(
+          new java.awt.event.FocusAdapter() {
+            @Override
+            public void focusGained(java.awt.event.FocusEvent event) {
+              repaint();
+            }
+
+            @Override
+            public void focusLost(java.awt.event.FocusEvent event) {
+              repaint();
+            }
+          });
       final var size = UiScale.scaled(BUTTON_SIZE);
       setPreferredSize(new Dimension(size, size));
       setMaximumSize(new Dimension(size, size));
@@ -96,7 +148,7 @@ public class ActivityBar extends JPanel {
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         final var width = getWidth();
         final var height = getHeight();
-        if (selected || hovered) {
+        if (selected || hovered || isFocusOwner()) {
           g2.setColor(
               selected ? Tokens.color("Logisim.activityBar.selectedBackground", getBackground())
                   : getBackground());
