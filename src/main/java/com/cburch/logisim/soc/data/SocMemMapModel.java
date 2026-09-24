@@ -13,6 +13,7 @@ import static com.cburch.logisim.soc.Strings.S;
 
 import com.cburch.contracts.BaseMouseListenerContract;
 import com.cburch.logisim.instance.InstanceComponent;
+import com.cburch.logisim.soc.gui.CpuStyle;
 import com.cburch.logisim.util.LocaleListener;
 import com.cburch.logisim.util.LocaleManager;
 import java.awt.Color;
@@ -136,7 +137,7 @@ public class SocMemMapModel extends AbstractTableModel
     public Color getColor() {
       if (slave == null)
         return Color.LIGHT_GRAY;
-      return hasOverlap ? Color.RED : Color.GREEN;
+      return hasOverlap ? CpuStyle.programCounter() : CpuStyle.header();
     }
 
     public Color getTextColor() {

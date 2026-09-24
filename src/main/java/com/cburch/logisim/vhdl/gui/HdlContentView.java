@@ -166,19 +166,13 @@ public class HdlContentView extends JPanel
     this.project = proj;
     this.model = null;
     this.toolbar = new HdlToolbarModel(proj, this);
-    configure("vhdl");
+    configure();
     EditorTheme.install(editor);
   }
 
-  private void configure(String lang) {
-    JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-
+  private void configure() {
     editor = new RSyntaxTextArea(ROWS, COLUMNS);
-    if (lang.equals("vhdl")) {
-      ((RSyntaxDocument) editor.getDocument()).setSyntaxStyle(SyntaxConstants.SYNTAX_STYLE_VHDL);
-    } else {
-      editor.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_DELPHI);
-    }
+    ((RSyntaxDocument) editor.getDocument()).setSyntaxStyle(SyntaxConstants.SYNTAX_STYLE_VHDL);
     editor.setCodeFoldingEnabled(true);
     editor.setAntiAliasingEnabled(true);
     editor.getDocument().addDocumentListener(this);
@@ -186,18 +180,10 @@ public class HdlContentView extends JPanel
     RTextScrollPane sp = new RTextScrollPane(editor);
     sp.setFoldIndicatorEnabled(true);
 
+    // The editor meets the toolbar directly. There used to be an empty FlowLayout panel above it
+    // whose only contribution was its own vertical gap: a band of blank background between the
+    // toolbar and the first line of code, left over from buttons that moved to the toolbar.
     add(sp, BorderLayout.CENTER);
-    add(buttonsPanel, BorderLayout.NORTH);
-
-    // pack();
-
-    Dimension size = getSize();
-    Dimension screen = getToolkit().getScreenSize();
-    if (size.width > screen.width || size.height > screen.height) {
-      size.width = Math.min(size.width, screen.width);
-      size.height = Math.min(size.height, screen.height);
-      setSize(size);
-    }
   }
 
   private File getDefaultExportFile(File defaultFile) {

@@ -22,6 +22,7 @@ import com.cburch.logisim.instance.StdAttr;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.soc.bus.SocBus;
 import com.cburch.logisim.soc.bus.SocBusAttributes;
+import com.cburch.logisim.soc.gui.CpuStyle;
 import com.cburch.logisim.soc.gui.TraceWindowTableModel;
 import com.cburch.logisim.util.CircularArray;
 import com.cburch.logisim.util.GraphicsUtil;
@@ -31,8 +32,8 @@ import com.cburch.logisim.util.StringUtil;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Graphics;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowEvent;
@@ -322,7 +323,7 @@ public class SocBusStateInfo extends JDialog
     int height = nrOfTraces * TRACE_HEIGHT;
     g.setColor(Color.YELLOW);
     g.fillRect(0, 0, TRACE_WIDTH, height);
-    g.setColor(Color.BLACK);
+    g.setColor(CpuStyle.ink());
     g.drawRect(0, 0, TRACE_WIDTH, height);
     if (!visible)
       GraphicsUtil.drawCenteredText(g, S.get("SocHiddenForFasterSimulation"), 320, height / 2);

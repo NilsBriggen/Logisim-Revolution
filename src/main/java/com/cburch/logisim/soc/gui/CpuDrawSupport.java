@@ -20,7 +20,6 @@ import com.cburch.logisim.soc.data.SocUpSimulationState;
 import com.cburch.logisim.soc.data.SocUpStateInterface;
 import com.cburch.logisim.soc.data.TraceInfo;
 import com.cburch.logisim.util.GraphicsUtil;
-import java.awt.Color;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.event.MouseEvent;
@@ -63,33 +62,33 @@ public class CpuDrawSupport {
       blockWidth = AppPreferences.getDownScaled(blockWidth);
       blockX = AppPreferences.getDownScaled(blockX);
     }
-    g2.setColor(Color.YELLOW);
+    g2.setColor(CpuStyle.surface());
     bds = getBounds(0, 0, 160, 495, scale);
     g2.fillRect(bds.getX(), bds.getY(), bds.getWidth(), bds.getHeight());
-    g2.setColor(Color.BLUE);
+    g2.setColor(CpuStyle.header());
     bds = getBounds(0, 0, 160, 15, scale);
     g2.fillRect(bds.getX(), bds.getY(), bds.getWidth(), bds.getHeight());
-    g2.setColor(Color.YELLOW);
+    g2.setColor(CpuStyle.headerText());
     bds = getBounds(80, 6, 0, 0, scale);
     GraphicsUtil.drawCenteredText(g2, S.get("Rv32imRegisterFile"), bds.getX(), bds.getY());
-    g2.setColor(Color.BLACK);
+    g2.setColor(CpuStyle.ink());
     bds = getBounds(0, 0, 160, 495, scale);
     g2.drawRect(bds.getX(), bds.getY(), bds.getWidth(), bds.getHeight());
     for (int i = 0; i < 32; i++) {
       bds = getBounds(20, 21 + i * 15, 0, 0, scale);
       GraphicsUtil.drawCenteredText(g2, cpu.getRegisterNormalName(i), bds.getX(), bds.getY());
-      g2.setColor(i == cpu.getLastRegisterWritten() ? Color.BLUE : Color.WHITE);
+      g2.setColor(i == cpu.getLastRegisterWritten() ? CpuStyle.highlight() : CpuStyle.cell());
       bds = getBounds(blockX, 16 + i * 15, blockWidth, 13, scale);
       g2.fillRect(bds.getX(), bds.getY(), bds.getWidth(), bds.getHeight());
-      g2.setColor(Color.BLACK);
+      g2.setColor(CpuStyle.ink());
       g2.drawRect(bds.getX(), bds.getY(), bds.getWidth(), bds.getHeight());
-      g2.setColor(i == cpu.getLastRegisterWritten() ? Color.WHITE : Color.BLUE);
+      g2.setColor(i == cpu.getLastRegisterWritten() ? CpuStyle.headerText() : CpuStyle.ink());
       bds = getBounds(blockX + blockWidth / 2, 21 + i * 15, 0, 0, scale);
       GraphicsUtil.drawCenteredText(g2, cpu.getRegisterValueHex(i), bds.getX(), bds.getY());
-      g2.setColor(Color.darkGray);
+      g2.setColor(CpuStyle.muted());
       bds = getBounds(140, 21 + i * 15, 0, 0, scale);
       GraphicsUtil.drawCenteredText(g2, cpu.getRegisterAbiName(i), bds.getX(), bds.getY());
-      g2.setColor(Color.BLACK);
+      g2.setColor(CpuStyle.ink());
     }
     g2.dispose();
   }
@@ -103,24 +102,24 @@ public class CpuDrawSupport {
     g2.translate(bds.getX(), bds.getY());
     int blockWidth = getBlockWidth(g2, scale);
     if (scale) blockWidth = AppPreferences.getDownScaled(blockWidth);
-    g2.setColor(Color.YELLOW);
+    g2.setColor(CpuStyle.surface());
     bds = getBounds(0, 0, blockWidth, 30, scale);
     g2.fillRect(bds.getX(), bds.getY(), bds.getWidth(), bds.getHeight());
-    g2.setColor(Color.BLUE);
+    g2.setColor(CpuStyle.header());
     bds = getBounds(0, 0, blockWidth, 15, scale);
     g2.fillRect(bds.getX(), bds.getY(), bds.getWidth(), bds.getHeight());
-    g2.setColor(Color.YELLOW);
+    g2.setColor(CpuStyle.headerText());
     bds = getBounds(blockWidth / 2, 6, 0, 0, scale);
     GraphicsUtil.drawCenteredText(g2, Name, bds.getX(), bds.getY());
-    g2.setColor(Color.BLACK);
+    g2.setColor(CpuStyle.ink());
     bds = getBounds(0, 0, blockWidth, 30, scale);
     g2.drawRect(bds.getX(), bds.getY(), bds.getWidth(), bds.getHeight());
-    g2.setColor(Color.WHITE);
+    g2.setColor(CpuStyle.cell());
     bds = getBounds(1, 16, blockWidth - 2, 13, scale);
     g2.fillRect(bds.getX(), bds.getY(), bds.getWidth(), bds.getHeight());
-    g2.setColor(Color.BLACK);
+    g2.setColor(CpuStyle.ink());
     g2.drawRect(bds.getX(), bds.getY(), bds.getWidth(), bds.getHeight());
-    g2.setColor(Color.MAGENTA);
+    g2.setColor(CpuStyle.programCounter());
     bds = getBounds(blockWidth / 2, 21, 0, 0, scale);
     GraphicsUtil.drawCenteredText(
         g2, valid ? String.format("0x%08X", value) : "??????????", bds.getX(), bds.getY());
@@ -129,14 +128,14 @@ public class CpuDrawSupport {
 
   private static void drawIrq(Graphics2D g, int nr, boolean scale, boolean irq, boolean mask) {
     Bounds block = getBounds(568 - nr * 17, 20, 15, 15, scale);
-    g.setColor(Color.WHITE);
+    g.setColor(CpuStyle.cell());
     g.fillRect(block.getX(), block.getY(), block.getWidth(), block.getHeight());
-    g.setColor(Color.BLACK);
+    g.setColor(CpuStyle.ink());
     g.drawRect(block.getX(), block.getY(), block.getWidth(), block.getHeight());
     block = getBounds(568 - nr * 17, 37, 15, 15, scale);
-    g.setColor(Color.WHITE);
+    g.setColor(CpuStyle.cell());
     g.fillRect(block.getX(), block.getY(), block.getWidth(), block.getHeight());
-    g.setColor(Color.BLACK);
+    g.setColor(CpuStyle.ink());
     g.drawRect(block.getX(), block.getY(), block.getWidth(), block.getHeight());
     block = getBounds(576 - nr * 17, 35, 576 - nr * 17, 37, scale);
     g.drawLine(block.getX(), block.getY(), block.getWidth(), block.getHeight());
@@ -157,9 +156,9 @@ public class CpuDrawSupport {
     bds = getBounds(x, y, 0, 0, scale);
     g2.translate(bds.getX(), bds.getY());
     bds = getBounds(0, 0, 585, 90, scale);
-    g2.setColor(Color.YELLOW);
+    g2.setColor(CpuStyle.surface());
     g2.fillRect(bds.getX(), bds.getY(), bds.getWidth(), bds.getHeight());
-    g2.setColor(Color.BLACK);
+    g2.setColor(CpuStyle.ink());
     g2.drawRect(bds.getX(), bds.getY(), bds.getWidth(), bds.getHeight());
     for (int i = 0; i < nrOfIrqs; i++) {
       drawIrq(g2, i, scale, ((irqs >> i) & 1) != 0, ((irqMask >> i) & 1) != 0);
@@ -173,9 +172,9 @@ public class CpuDrawSupport {
     bds = getBounds(312, 69, 312, 71, scale);
     g2.drawLine(bds.getX(), bds.getY(), bds.getWidth(), bds.getHeight());
     bds = getBounds(304, 71, 15, 15, scale);
-    g2.setColor(Color.WHITE);
+    g2.setColor(CpuStyle.cell());
     g2.fillRect(bds.getX(), bds.getY(), bds.getWidth(), bds.getHeight());
-    g2.setColor(Color.BLACK);
+    g2.setColor(CpuStyle.ink());
     g2.drawRect(bds.getX(), bds.getY(), bds.getWidth(), bds.getHeight());
     GraphicsUtil.drawCenteredText(
         g2, (irqs & irqMask) != 0 ? "1" : "0", bds.getCenterX(), bds.getCenterY());
@@ -190,26 +189,26 @@ public class CpuDrawSupport {
     if (scale) blockWidth = AppPreferences.getDownScaled(blockWidth);
     bds = getBounds(x, y, 0, 0, scale);
     g2.translate(bds.getX(), bds.getY());
-    g2.setColor(Color.YELLOW);
+    g2.setColor(CpuStyle.surface());
     bds = getBounds(0, 0, 415, 455, scale);
     g2.fillRect(bds.getX(), bds.getY(), bds.getWidth(), bds.getHeight());
-    g2.setColor(Color.BLUE);
+    g2.setColor(CpuStyle.header());
     bds = getBounds(0, 0, 415, 15, scale);
     g2.fillRect(bds.getX(), bds.getY(), bds.getWidth(), bds.getHeight());
-    g2.setColor(Color.YELLOW);
+    g2.setColor(CpuStyle.headerText());
     bds = getBounds(207, 6, 0, 0, scale);
     GraphicsUtil.drawCenteredText(g2, S.get("Rv32imExecutionTrace"), bds.getX(), bds.getY());
-    g2.setColor(Color.BLACK);
+    g2.setColor(CpuStyle.ink());
     bds = getBounds(0, 0, 415, 455, scale);
     g2.drawRect(bds.getX(), bds.getY(), bds.getWidth(), bds.getHeight());
-    g2.setColor(Color.WHITE);
+    g2.setColor(CpuStyle.cell());
     bds = getBounds(5, 15, blockWidth, 15, scale);
     g2.fillRect(bds.getX(), bds.getY(), bds.getWidth(), bds.getHeight());
     bds = getBounds(10 + blockWidth, 15, blockWidth, 15, scale);
     g2.fillRect(bds.getX(), bds.getY(), bds.getWidth(), bds.getHeight());
     bds = getBounds(15 + 2 * blockWidth, 15, 395 - 2 * blockWidth, 15, scale);
     g2.fillRect(bds.getX(), bds.getY(), bds.getWidth(), bds.getHeight());
-    g2.setColor(Color.BLACK);
+    g2.setColor(CpuStyle.ink());
     bds = getBounds(5 + blockWidth / 2, 21, 0, 0, scale);
     GraphicsUtil.drawCenteredText(g2, S.get("Rv32imProgramCounter"), bds.getX(), bds.getY());
     bds = getBounds(10 + blockWidth + blockWidth / 2, 21, 0, 0, scale);

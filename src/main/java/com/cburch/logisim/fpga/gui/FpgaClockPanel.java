@@ -49,8 +49,7 @@ public class FpgaClockPanel extends JPanel implements ActionListener, LocaleList
     myProject = proj;
     clockScaling = false;
     setLayout(new BorderLayout());
-    setBorder(BorderFactory.createTitledBorder(
-        BorderFactory.createStrokeBorder(new BasicStroke(2)), S.get("FpgaFreqTitle")));
+    setBorder(BorderFactory.createTitledBorder(S.get("FpgaFreqTitle")));
     clockScalingPane.setLayout(new BorderLayout());
     JPanel pan1 = new JPanel();
     pan1.setLayout(new BorderLayout());

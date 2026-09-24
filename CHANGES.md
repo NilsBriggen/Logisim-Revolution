@@ -3,6 +3,25 @@
 # Changes #
 
 * @dev (????-??-??)
+  * Deleted a second, unreferenced copy of the HDL editor -- 310 lines duplicating the live one,
+    reachable from nowhere (@YOUR_GITHUB_HANDLE).
+  * The Synthesize & Download window can be resized, and its five heavy 2px-outlined boxes with
+    their captions notched into the outline are collapsible sections. Its Stop button wore the
+    "remove circuit" icon with no tooltip (@YOUR_GITHUB_HANDLE).
+  * Fixed: the board-mapping window pinned itself above every other application on the desktop --
+    a browser, a datasheet, the file manager -- until it was closed, and could not be resized to
+    fit the board picture (@YOUR_GITHUB_HANDLE).
+  * The board editor's empty state was six lines of 20pt bold text pinned to absolute pixel rows,
+    so it drifted off the panel once the interface scale was raised. It is now a heading over
+    quieter lines, centred on the panel (@YOUR_GITHUB_HANDLE).
+  * Dropping a RISC-V or Nios2 processor painted a bright yellow slab with a royal-blue header,
+    white cells of blue figures and a magenta program counter straight onto the canvas -- and the
+    attribute that shows it is on by default. The processor's state now follows the theme, and
+    still prints as ink on paper (@YOUR_GITHUB_HANDLE).
+  * The VHDL editor had an empty band of background between its toolbar and the first line of
+    code, left over from buttons that had moved; the VHDL console printed a second, untranslated
+    heading under the tab that already names it, and showed its status only as a coloured dot
+    (@YOUR_GITHUB_HANDLE).
   * The Circuit Analysis window no longer sizes itself with two invisible panels wedged into its
     layout, and its six actions sit at the trailing edge in groups -- change the table, build the
     circuit, export -- instead of a centred strip that re-wrapped onto a second row when the

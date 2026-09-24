@@ -12,14 +12,17 @@ package com.cburch.logisim.fpga.gui;
 import static com.cburch.logisim.fpga.Strings.S;
 
 import com.cburch.logisim.data.Value;
+import com.cburch.logisim.gui.theme.Tokens;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.util.GraphicsUtil;
+import com.cburch.logisim.util.Spacing;
+import com.cburch.logisim.util.UiFonts;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontMetrics;
-import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Graphics;
 
 public class BoardPainter {
 
@@ -30,7 +33,7 @@ public class BoardPainter {
     Font curfont =
         AppPreferences.getScaledFont(new Font(g1.getFont().getFontName(), Font.BOLD, 20));
     g1.setFont(curfont);
-    g1.setColor(Color.red);
+    g1.setColor(Tokens.error());
     GraphicsUtil.drawCenteredText(
         g1, S.get("BoardPainterError"), bm.getWidth() / 2, bm.getHeight() / 2);
   }
@@ -40,31 +43,40 @@ public class BoardPainter {
     final var fg = bm.getForeground();
     g.setColor(bg);
     g.fillRect(0, 0, bm.getWidth(), bm.getHeight());
-    String message;
-    int xpos;
-    Font curfont = AppPreferences.getScaledFont(new Font(g.getFont().getFontName(), Font.BOLD, 20));
+    // The six lines were all 20pt bold and pinned to absolute rows 100 and 200, so the block did
+    // not follow the panel and drifted off it once the interface scale was raised. They are now
+    // one heading over a set of quieter lines, centred on the panel's own height.
+    final var heading = UiFonts.heading();
+    final var body = UiFonts.body();
+    final var lines =
+        new String[] {
+          S.get("BoardPainterMsg2"),
+          S.get("BoardPainterMsg3", BoardManipulator.IMAGE_WIDTH, BoardManipulator.IMAGE_HEIGHT),
+          S.get("BoardPainterMsg4"),
+          S.get("BoardPainterMsg5"),
+          S.get("BoardPainterMsg6", bm.getWidth(), bm.getHeight()),
+        };
+
+    g.setFont(body);
+    final var bodyMetrics = g.getFontMetrics();
+    g.setFont(heading);
+    final var headingMetrics = g.getFontMetrics();
+
+    final var step = bodyMetrics.getHeight();
+    final var blockHeight = headingMetrics.getHeight() + Spacing.md() + lines.length * step;
+    var y = Math.max(headingMetrics.getAscent(), (bm.getHeight() - blockHeight) / 2);
+
     g.setColor(fg);
-    g.setFont(curfont);
-    FontMetrics fm = g.getFontMetrics();
-    message = S.get("BoardPainterMsg1");
-    xpos = (bm.getWidth() - fm.stringWidth(message)) / 2;
-    g.drawString(message, xpos, 100);
-    message = S.get("BoardPainterMsg2");
-    xpos = (bm.getWidth() - fm.stringWidth(message)) / 2;
-    g.drawString(message, xpos, 200);
-    message =
-        S.get("BoardPainterMsg3", BoardManipulator.IMAGE_WIDTH, BoardManipulator.IMAGE_HEIGHT);
-    xpos = (bm.getWidth() - fm.stringWidth(message)) / 2;
-    g.drawString(message, xpos, (200 + (int) (1.5 * fm.getAscent())));
-    message = S.get("BoardPainterMsg4");
-    xpos = (bm.getWidth() - fm.stringWidth(message)) / 2;
-    g.drawString(message, xpos, (200 + (3 * fm.getAscent())));
-    message = S.get("BoardPainterMsg5");
-    xpos = (bm.getWidth() - fm.stringWidth(message)) / 2;
-    g.drawString(message, xpos, (200 + (int) (4.5 * fm.getAscent())));
-    message = S.get("BoardPainterMsg6", bm.getWidth(), bm.getHeight());
-    xpos = (bm.getWidth() - fm.stringWidth(message)) / 2;
-    g.drawString(message, xpos, (200 + (6 * fm.getAscent())));
+    final var title = S.get("BoardPainterMsg1");
+    g.drawString(title, (bm.getWidth() - headingMetrics.stringWidth(title)) / 2, y);
+    y += headingMetrics.getHeight() + Spacing.md();
+
+    g.setFont(body);
+    g.setColor(Tokens.mutedForeground());
+    for (final var line : lines) {
+      g.drawString(line, (bm.getWidth() - bodyMetrics.stringWidth(line)) / 2, y);
+      y += step;
+    }
   }
 
   public static void paintConstantOpenBar(Graphics g, float scale) {

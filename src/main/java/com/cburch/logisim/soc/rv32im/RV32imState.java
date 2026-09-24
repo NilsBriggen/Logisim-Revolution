@@ -37,12 +37,13 @@ import com.cburch.logisim.soc.file.ElfProgramHeader;
 import com.cburch.logisim.soc.file.ElfSectionHeader;
 import com.cburch.logisim.soc.gui.BreakpointPanel;
 import com.cburch.logisim.soc.gui.CpuDrawSupport;
+import com.cburch.logisim.soc.gui.CpuStyle;
 import com.cburch.logisim.soc.util.AssemblerInterface;
 import com.cburch.logisim.util.GraphicsUtil;
 import com.cburch.logisim.util.StringUtil;
 import java.awt.Color;
-import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Graphics;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.util.Arrays;
@@ -607,10 +608,10 @@ public class RV32imState implements SocUpSimulationStateListener, SocProcessorIn
     if (visible && state != null) {
       state.draw(g, false);
     } else {
-      g.setColor(Color.LIGHT_GRAY);
+      g.setColor(CpuStyle.surface());
       g.fillRect(
           0, 0, CpuDrawSupport.upStateBounds.getWidth(), CpuDrawSupport.upStateBounds.getHeight());
-      g.setColor(Color.BLACK);
+      g.setColor(CpuStyle.ink());
       GraphicsUtil.drawCenteredText(
           g,
           S.get("SocHiddenForFasterSimulation"),

@@ -12,6 +12,7 @@ package com.cburch.logisim.soc.data;
 import com.cburch.logisim.data.Bounds;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.soc.gui.CpuDrawSupport;
+import com.cburch.logisim.soc.gui.CpuStyle;
 import com.cburch.logisim.util.GraphicsUtil;
 import java.awt.Color;
 import java.awt.Font;
@@ -42,7 +43,7 @@ public class TraceInfo {
     xOff += blockWidth + 5;
     paintBox(g, xOff, yOffset, instruction, scale, blockWidth);
     xOff += blockWidth + 5;
-    g.setColor(error ? Color.RED : Color.BLACK);
+    g.setColor(error ? CpuStyle.programCounter() : CpuStyle.ink());
     Font f = g.getFont();
     Font myFont =
         scale
@@ -62,7 +63,7 @@ public class TraceInfo {
     g.fillRect(bds.getX(), bds.getY(), bds.getWidth(), bds.getHeight());
     g.setColor(Color.BLACK);
     g.drawRect(bds.getX(), bds.getY(), bds.getWidth(), bds.getHeight());
-    g.setColor(error ? Color.RED : Color.DARK_GRAY);
+    g.setColor(error ? CpuStyle.programCounter() : CpuStyle.muted());
     bds =
         CpuDrawSupport.getBounds(
             x + blockWidth / 2, y + CpuDrawSupport.TRACE_HEIGHT / 2, 0, 0, scale);

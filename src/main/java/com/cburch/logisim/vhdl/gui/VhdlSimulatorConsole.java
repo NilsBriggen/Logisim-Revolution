@@ -9,15 +9,17 @@
 
 package com.cburch.logisim.vhdl.gui;
 
+import com.cburch.logisim.gui.theme.Tokens;
 import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.util.SmartScroller;
+import com.cburch.logisim.util.UiFonts;
 import com.cburch.logisim.vhdl.sim.VhdlSimulatorListener;
 import com.cburch.logisim.vhdl.sim.VhdlSimulatorTop;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Graphics;
 import java.awt.Rectangle;
 import java.awt.geom.Ellipse2D;
 import javax.swing.JLabel;
@@ -61,10 +63,10 @@ public class VhdlSimulatorConsole extends JPanel {
     public void stateChanged() {
       VhdlSimulatorTop vsim = project.getVhdlSimulator();
       switch (vsim.getState()) {
-        case DISABLED -> color = Color.GRAY;
-        case ENABLED -> color = Color.RED;
-        case STARTING -> color = Color.ORANGE;
-        case RUNNING -> color = new Color(40, 180, 40);
+        case DISABLED -> color = Tokens.mutedForeground();
+        case ENABLED -> color = Tokens.error();
+        case STARTING -> color = Tokens.warning();
+        case RUNNING -> color = Tokens.success();
       }
 
       this.repaint();
@@ -72,7 +74,6 @@ public class VhdlSimulatorConsole extends JPanel {
   }
 
   private static final long serialVersionUID = 1L;
-  private final JLabel label = new JLabel();
   private final JScrollPane log = new JScrollPane();
   private final JTextArea logContent = new JTextArea();
   private final VhdlSimState vhdlSimState;
@@ -84,12 +85,12 @@ public class VhdlSimulatorConsole extends JPanel {
 
     this.setLayout(new BorderLayout());
 
-    /* Add title */
-    label.setText("VHDL simulator log");
-    this.add(label, BorderLayout.PAGE_START);
+    // No heading: the drawer's own tab already says "VHDL Console". This printed a second,
+    // untranslated one directly underneath it.
 
     /* Add console log */
     logContent.setEditable(false);
+    logContent.setFont(UiFonts.mono());
     log.setViewportView(logContent);
     new SmartScroller(log);
     this.add(log, BorderLayout.CENTER);

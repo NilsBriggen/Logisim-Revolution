@@ -85,8 +85,9 @@ public class ComponentMapDialog
 
     panel = new JDialog(parentFrame);
     panel.addWindowListener(this);
-    panel.setResizable(false);
-    panel.setAlwaysOnTop(true);
+    // It used to be fixed in size and pinned above every other window on the desktop - a browser,
+    // a datasheet, the file manager - until it was closed.
+    panel.setResizable(true);
     panel.setDefaultCloseOperation(JDialog.HIDE_ON_CLOSE);
 
     GridBagLayout gbl = new GridBagLayout();

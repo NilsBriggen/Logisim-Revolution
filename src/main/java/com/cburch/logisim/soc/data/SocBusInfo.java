@@ -13,6 +13,7 @@ import static com.cburch.logisim.soc.Strings.S;
 
 import com.cburch.logisim.comp.Component;
 import com.cburch.logisim.data.Bounds;
+import com.cburch.logisim.soc.gui.CpuStyle;
 import com.cburch.logisim.util.GraphicsUtil;
 import java.awt.Color;
 import java.awt.Graphics;
@@ -50,7 +51,7 @@ public class SocBusInfo {
 
   public void paint(Graphics g, Bounds b) {
     final var ident = socManager == null ? null : socManager.getSocBusDisplayString(busId);
-    final var color = (ident == null) ? Color.RED : Color.GREEN;
+    final var color = (ident == null) ? CpuStyle.programCounter() : CpuStyle.header();
     g.setColor(color);
     g.fillRect(b.getX(), b.getY(), b.getWidth(), b.getHeight());
     g.setColor(Color.BLACK);

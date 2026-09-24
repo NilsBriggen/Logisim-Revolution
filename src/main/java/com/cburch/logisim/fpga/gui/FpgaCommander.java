@@ -26,6 +26,9 @@ import com.cburch.logisim.fpga.settings.VendorSoftware;
 import com.cburch.logisim.gui.generic.OptionPane;
 import com.cburch.logisim.gui.icons.ProjectAddIcon;
 import com.cburch.logisim.gui.prefs.PreferencesFrame;
+import com.cburch.logisim.gui.shell.SectionPanel;
+import com.cburch.logisim.gui.theme.AppIcons;
+import com.cburch.logisim.gui.theme.Tokens;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.proj.ProjectEvent;
@@ -46,6 +49,7 @@ import java.util.prefs.PreferenceChangeListener;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -143,12 +147,19 @@ public class FpgaCommander
     ReporterGui.clearDrcTrace();
   }
 
+  /**
+   * A named group.
+   *
+   * <p>These were the last five 2px-stroked titled boxes in the program: a heavy rectangle with
+   * its caption cut into the top edge, stacked five deep, which is what the window looked like.
+   */
+  private static SectionPanel group(String title, JComponent content) {
+    return new SectionPanel(title, content, true);
+  }
+
   private void rebuildBoardSelectionPanel() {
     BoardSelectionPanel.removeAll();
     BoardSelectionPanel.setLayout(new GridBagLayout());
-    BoardSelectionPanel.setBorder(
-        BorderFactory.createTitledBorder(
-            BorderFactory.createStrokeBorder(new BasicStroke(2)), S.get("FpgaGuiBoardSelect")));
     GridBagConstraints gbc = new GridBagConstraints();
     gbc.gridx = 0;
     gbc.gridy = 0;
@@ -186,31 +197,23 @@ public class FpgaCommander
     ToolPath.setEnabled(enabled);
   }
 
-  private JPanel getProgressBar() {
+  private JComponent getProgressBar() {
     JPanel pan = new JPanel();
     pan.setLayout(new BorderLayout());
-    pan.setBorder(
-        BorderFactory.createTitledBorder(
-            BorderFactory.createStrokeBorder(new BasicStroke(2)), S.get("FpgaGuiProgress")));
     Progress.setStringPainted(true);
     pan.add(Progress, BorderLayout.CENTER);
     StopButton.setEnabled(false);
     StopButton.setActionCommand(STOP_REQUESTED);
     StopButton.addActionListener(this);
-    ProjectAddIcon bi = new ProjectAddIcon(true);
-    bi.setDeselect(true);
-    StopButton.setIcon(bi);
+    StopButton.setIcon(AppIcons.colored(AppIcons.Id.CLOSE, AppIcons.SIZE, Tokens.error()));
+    StopButton.setToolTipText(S.get("FpgaGuiStopTip"));
     pan.add(StopButton, BorderLayout.EAST);
-    return pan;
+    return group(S.get("FpgaGuiProgress"), pan);
   }
 
-  private JPanel getAnnotationWindow() {
+  private JComponent getAnnotationWindow() {
     JPanel pan = new JPanel();
     pan.setLayout(new BorderLayout());
-    pan.setBorder(
-        BorderFactory.createTitledBorder(
-            BorderFactory.createStrokeBorder(new BasicStroke(2)),
-            S.get("FpgaGuiAnnotationMethod")));
     annotationList.addItem(S.getter("FpgaGuiRelabelAll"));
     annotationList.addItem(S.getter("FpgaGuiRelabelEmpty"));
     annotationList.setSelectedIndex(1);
@@ -218,7 +221,7 @@ public class FpgaCommander
     annotateButton.setActionCommand("annotate");
     annotateButton.addActionListener(this);
     pan.add(annotateButton, BorderLayout.CENTER);
-    return pan;
+    return group(S.get("FpgaGuiAnnotationMethod"), pan);
   }
 
   private void setAnnotationWindowEnabled(boolean enabled) {
@@ -226,12 +229,9 @@ public class FpgaCommander
     annotateButton.setEnabled(enabled);
   }
 
-  private JPanel getExecuteWindow() {
+  private JComponent getExecuteWindow() {
     JPanel pan = new JPanel();
     pan.setLayout(new BorderLayout());
-    pan.setBorder(
-        BorderFactory.createTitledBorder(
-            BorderFactory.createStrokeBorder(new BasicStroke(2)), S.get("FpgaGuiExecution")));
     JPanel pan1 = new JPanel();
     pan1.setLayout(new BorderLayout());
     pan1.add(textMainCircuit, BorderLayout.WEST);
@@ -246,7 +246,7 @@ public class FpgaCommander
     validateButton.addActionListener(this);
     pan.add(actionCommands, BorderLayout.CENTER);
     pan.add(validateButton, BorderLayout.SOUTH);
-    return pan;
+    return group(S.get("FpgaGuiExecution"), pan);
   }
 
   private void setExecuteWindowEnabled(boolean enabled) {
@@ -278,7 +278,6 @@ public class FpgaCommander
     rebuildBoardSelectionPanel();
 
     panel = new JFrame();
-    panel.setResizable(false);
     panel.setAlwaysOnTop(false);
     panel.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
     panel.addWindowListener(this);
@@ -305,7 +304,7 @@ public class FpgaCommander
     gbc.gridx = 1;
     gbc.gridy = 0;
     gbc.gridheight = 3;
-    pan1.add(BoardSelectionPanel, BorderLayout.SOUTH);
+    pan1.add(group(S.get("FpgaGuiBoardSelect"), BoardSelectionPanel), BorderLayout.SOUTH);
     // Settings
     Settings.setActionCommand("Settings");
     Settings.addActionListener(this);
