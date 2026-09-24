@@ -34,7 +34,7 @@ emulation is slower than a native ARM machine; the job timeout is four hours.
 
 The public mirror's `.github/workflows/platforms.yml` uses standard `windows-2022`,
 `macos-15-intel`, and `macos-15` runners. Windows Server 2022 includes WiX Toolset 3; the
-workflow adds it to `PATH` for `jpackage`. Each job checks that the mirrored commit matches the
+workflow adds it to `PATH` for `jpackage`. Each job checks that the snapshot's Git tree matches the
 Gitea manual run, builds its native package, and uploads a one-day GitHub Actions artifact.
 The Gitea workflow downloads these artifacts into a draft Gitea release. The macOS DMGs are
 development packages without Apple notarization.
@@ -49,7 +49,7 @@ In Gitea **Repository Settings → Actions → General**, enable Actions and per
 **Code: read** and **Releases: write**. The workflow uses its built-in `GITEA_TOKEN` for draft
 creation and attachment uploads. Store a GitHub token in the Gitea repository Actions secret
 `GH_TOKEN`. It needs access only to the public `NilsBriggen/Logisim-Revolution` mirror with
-**Contents: read and write** and **Actions: read and write**. It pushes the exact Gitea commit
+**Contents: read and write** and **Actions: read and write**. It pushes a history-free snapshot of the Gitea source tree
 to GitHub `main`, dispatches the hosted workflow, checks its result, and downloads its artifacts.
 The GitHub workflow receives no Gitea credential.
 

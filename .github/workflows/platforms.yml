@@ -5,7 +5,10 @@ on:
   workflow_dispatch:
     inputs:
       source_sha:
-        description: Commit mirrored from Gitea main
+        description: Gitea main commit represented by this source snapshot
+        required: true
+      source_tree:
+        description: Git tree SHA from the Gitea commit
         required: true
       release_tag:
         description: Unique Gitea draft release tag
@@ -25,12 +28,12 @@ jobs:
           distribution: temurin
           java-version: '21'
           architecture: x64
-      - name: Verify the mirrored commit and build MSI and portable ZIP
+      - name: Verify the mirrored source tree and build MSI and portable ZIP
         shell: pwsh
         env:
-          SOURCE_SHA: ${{ inputs.source_sha }}
+          SOURCE_TREE: ${{ inputs.source_tree }}
         run: |
-          if ($env:GITHUB_SHA -ne $env:SOURCE_SHA) { throw 'GitHub mirror is not at the requested Gitea commit.' }
+          if ((git rev-parse 'HEAD^{tree}') -ne $env:SOURCE_TREE) { throw 'GitHub source tree differs from Gitea.' }
           if ($env:PROCESSOR_ARCHITECTURE -ne 'AMD64') { throw 'An x86_64 Windows runner is required.' }
           $wix = 'C:\Program Files (x86)\WiX Toolset v3.14\bin'
           if (!(Test-Path "$wix\candle.exe") -or !(Test-Path "$wix\light.exe")) {
@@ -59,11 +62,11 @@ jobs:
           distribution: temurin
           java-version: '21'
           architecture: x64
-      - name: Verify the mirrored commit and build Intel DMG
+      - name: Verify the mirrored source tree and build Intel DMG
         env:
-          SOURCE_SHA: ${{ inputs.source_sha }}
+          SOURCE_TREE: ${{ inputs.source_tree }}
         run: |
-          test "$GITHUB_SHA" = "$SOURCE_SHA"
+          test "$(git rev-parse HEAD^{tree})" = "$SOURCE_TREE"
           test "$(uname -m)" = x86_64
           ./gradlew clean createDmg --no-daemon --console=plain
       - uses: actions/upload-artifact@v4
@@ -84,11 +87,11 @@ jobs:
           distribution: temurin
           java-version: '21'
           architecture: aarch64
-      - name: Verify the mirrored commit and build Apple Silicon DMG
+      - name: Verify the mirrored source tree and build Apple Silicon DMG
         env:
-          SOURCE_SHA: ${{ inputs.source_sha }}
+          SOURCE_TREE: ${{ inputs.source_tree }}
         run: |
-          test "$GITHUB_SHA" = "$SOURCE_SHA"
+          test "$(git rev-parse HEAD^{tree})" = "$SOURCE_TREE"
           test "$(uname -m)" = arm64
           ./gradlew clean createDmg --no-daemon --console=plain
       - uses: actions/upload-artifact@v4

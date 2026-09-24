@@ -46,12 +46,39 @@ def git(*args, env=None):
     subprocess.run(["git", *args], check=True, env=env)
 
 
+def git_output(*args):
+    return subprocess.check_output(["git", *args], text=True).strip()
+
+
 def mirror_and_dispatch():
     sha = os.environ["GITEA_SHA"]
-    if subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip() != sha:
+    if git_output("rev-parse", "HEAD") != sha:
         raise ValueError("Gitea checkout does not match the dispatched commit.")
+    source_tree = git_output("rev-parse", "HEAD^{tree}")
     tag = os.environ["RELEASE_TAG"]
     with tempfile.TemporaryDirectory() as temporary:
+        # GitHub contains source snapshots, never the inherited Gitea history.
+        mirror = Path(temporary) / "mirror"
+        git("clone", "--depth=1", f"https://github.com/{GITHUB_REPOSITORY}.git", str(mirror))
+        for path in mirror.iterdir():
+            if path.name != ".git":
+                if path.is_dir() and not path.is_symlink():
+                    shutil.rmtree(path)
+                else:
+                    path.unlink()
+        archive = Path(temporary) / "source.tar"
+        with archive.open("wb") as output:
+            subprocess.run(["git", "archive", "--format=tar", sha], stdout=output, check=True)
+        subprocess.run(["tar", "-xf", str(archive), "-C", str(mirror)], check=True)
+        git("-C", str(mirror), "switch", "-C", "main")
+        git("-C", str(mirror), "add", "-A")
+        if git_output("-C", str(mirror), "write-tree") != source_tree:
+            raise ValueError("GitHub snapshot does not match the Gitea source tree.")
+        if subprocess.run(["git", "-C", str(mirror), "diff", "--cached", "--quiet"]).returncode:
+            git("-C", str(mirror), "-c", "user.name=Logisim Revolution CI",
+                "-c", "user.email=ci@users.noreply.github.com", "commit",
+                "-m", f"Build snapshot of Gitea {sha}")
+        mirror_sha = git_output("-C", str(mirror), "rev-parse", "HEAD")
         askpass = Path(temporary) / "askpass.sh"
         askpass.write_text(
             '#!/bin/sh\ncase "$1" in *Username*) printf "x-access-token";; '
@@ -62,18 +89,21 @@ def mirror_and_dispatch():
         env = os.environ.copy()
         env.update({"GIT_ASKPASS": str(askpass), "GIT_TERMINAL_PROMPT": "0"})
         git(
-            "-c", "credential.helper=", "push",
+            "-C", str(mirror), "-c", "credential.helper=", "push",
             f"https://github.com/{GITHUB_REPOSITORY}.git",
-            f"{sha}:refs/heads/main", env=env,
+            "HEAD:refs/heads/main", env=env,
         )
-    mirror_sha = github_api("git/ref/heads/main")["object"]["sha"]
-    if mirror_sha != sha:
-        raise ValueError(f"GitHub mirror is at {mirror_sha}, expected {sha}.")
+    if github_api("git/ref/heads/main")["object"]["sha"] != mirror_sha:
+        raise ValueError("GitHub mirror did not advance to the source snapshot.")
+    if github_api(f"git/commits/{mirror_sha}")["tree"]["sha"] != source_tree:
+        raise ValueError("GitHub mirror tree differs from the Gitea source tree.")
     github_api(
         f"actions/workflows/{GITHUB_WORKFLOW}/dispatches", "POST",
-        {"ref": "main", "inputs": {"source_sha": sha, "release_tag": tag}},
+        {"ref": "main", "inputs": {
+            "source_sha": sha, "source_tree": source_tree, "release_tag": tag,
+        }},
     )
-    print(f"Dispatched GitHub Windows and macOS builds for {tag} ({sha}).")
+    print(f"Dispatched GitHub Windows and macOS builds for {tag} (source {sha}).")
 
 
 def matching_run(tag):
@@ -83,9 +113,15 @@ def matching_run(tag):
     matches = [
         run for run in result["workflow_runs"]
         if run["display_title"] == f"Gitea build {tag}"
-        and run["head_sha"] == os.environ["GITEA_SHA"]
     ]
-    return max(matches, key=lambda run: run["id"]) if matches else None
+    if not matches:
+        return None
+    run = max(matches, key=lambda candidate: candidate["id"])
+    source_tree = git_output("rev-parse", "HEAD^{tree}")
+    mirror_tree = github_api(f"git/commits/{run['head_sha']}")["tree"]["sha"]
+    if mirror_tree != source_tree:
+        raise ValueError("GitHub workflow source tree differs from the Gitea release commit.")
+    return run
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
