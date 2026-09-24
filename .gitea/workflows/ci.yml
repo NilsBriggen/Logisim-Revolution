@@ -15,8 +15,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: https://gitea.com/actions/checkout@v4
-      - uses: https://gitea.com/actions/setup-java@v4
+      - uses: https://github.com/actions/checkout@v4
+      - uses: https://github.com/actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
@@ -40,7 +40,7 @@ jobs:
     if: gitea.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: https://gitea.com/actions/checkout@v4
+      - uses: https://github.com/actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Fetch main for pull request comparisons
@@ -58,10 +58,10 @@ jobs:
   markdown:
     runs-on: ubuntu-latest
     steps:
-      - uses: https://gitea.com/actions/checkout@v4
+      - uses: https://github.com/actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: https://gitea.com/actions/setup-node@v4
+      - uses: https://github.com/actions/setup-node@v4
         with:
           node-version: '22'
       - name: Fetch main for pull request comparisons

@@ -14,7 +14,7 @@ jobs:
     outputs:
       release_id: ${{ steps.draft.outputs.release_id }}
     steps:
-      - uses: https://gitea.com/actions/checkout@v4
+      - uses: https://github.com/actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Create a draft release for this run
@@ -39,8 +39,8 @@ jobs:
     runs-on: linux-amd64
     timeout-minutes: 120
     steps:
-      - uses: https://gitea.com/actions/checkout@v4
-      - uses: https://gitea.com/actions/setup-java@v4
+      - uses: https://github.com/actions/checkout@v4
+      - uses: https://github.com/actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
@@ -120,7 +120,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 210
     steps:
-      - uses: https://gitea.com/actions/checkout@v4
+      - uses: https://github.com/actions/checkout@v4
       - name: Collect successful Windows and Mac packages from GitHub
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
@@ -136,7 +136,7 @@ jobs:
     needs: [prepare, linux_amd64, linux_arm64, collect_github]
     runs-on: ubuntu-latest
     steps:
-      - uses: https://gitea.com/actions/checkout@v4
+      - uses: https://github.com/actions/checkout@v4
       - name: Verify all assets and publish the release
         env:
           GITEA_API_URL: ${{ gitea.api_url }}

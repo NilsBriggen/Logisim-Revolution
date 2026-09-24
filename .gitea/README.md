@@ -4,7 +4,7 @@ Gitea runs CI, pull request checks, translation reports, and the manual release 
 `.gitea/workflows`. Gitea reads that directory before `.github/workflows`. The one workflow in
 `.github/workflows` runs hosted Windows and macOS packaging jobs on the public
 [GitHub mirror](https://github.com/NilsBriggen/Logisim-Revolution). The inherited upstream
-GitHub workflows are removed. Gitea actions are fetched from `gitea.com/actions`.
+GitHub workflows are removed. The Gitea runner fetches the standard helper actions from `github.com/actions`.
 
 ## Gitea runner
 
