@@ -7,291 +7,291 @@
     second operating-system window with its own menu bar and taskbar entry, placed under the main
     window from the raw screen size. Watching a waveform beside the circuit no longer means tiling
     two windows by hand, and the test view's own "Close Window" button -- which sat inside the
-    thing it closed -- is gone (@YOUR_GITHUB_HANDLE).
+    thing it closed -- is gone (@NilsBriggen).
   * Deleted a second, unreferenced copy of the HDL editor -- 310 lines duplicating the live one,
-    reachable from nowhere (@YOUR_GITHUB_HANDLE).
+    reachable from nowhere (@NilsBriggen).
   * The Synthesize & Download window can be resized, and its five heavy 2px-outlined boxes with
     their captions notched into the outline are collapsible sections. Its Stop button wore the
-    "remove circuit" icon with no tooltip (@YOUR_GITHUB_HANDLE).
+    "remove circuit" icon with no tooltip (@NilsBriggen).
   * Fixed: the board-mapping window pinned itself above every other application on the desktop --
     a browser, a datasheet, the file manager -- until it was closed, and could not be resized to
-    fit the board picture (@YOUR_GITHUB_HANDLE).
+    fit the board picture (@NilsBriggen).
   * The board editor's empty state was six lines of 20pt bold text pinned to absolute pixel rows,
     so it drifted off the panel once the interface scale was raised. It is now a heading over
-    quieter lines, centred on the panel (@YOUR_GITHUB_HANDLE).
+    quieter lines, centred on the panel (@NilsBriggen).
   * Dropping a RISC-V or Nios2 processor painted a bright yellow slab with a royal-blue header,
     white cells of blue figures and a magenta program counter straight onto the canvas -- and the
     attribute that shows it is on by default. The processor's state now follows the theme, and
-    still prints as ink on paper (@YOUR_GITHUB_HANDLE).
+    still prints as ink on paper (@NilsBriggen).
   * The VHDL editor had an empty band of background between its toolbar and the first line of
     code, left over from buttons that had moved; the VHDL console printed a second, untranslated
     heading under the tab that already names it, and showed its status only as a coloured dot
-    (@YOUR_GITHUB_HANDLE).
+    (@NilsBriggen).
   * The Circuit Analysis window no longer sizes itself with two invisible panels wedged into its
     layout, and its six actions sit at the trailing edge in groups -- change the table, build the
     circuit, export -- instead of a centred strip that re-wrapped onto a second row when the
-    window narrowed. Building the circuit is the default action (@YOUR_GITHUB_HANDLE).
+    window narrowed. Building the circuit is the default action (@NilsBriggen).
   * Fixed: the Karnaugh map's sixteen cover colours had no dark set, so dark mode faked one by
     blending every colour 45% toward white -- which pushed them together in the one place telling
     them apart is the point. Each now has a colour per theme. Two of the light ones, a pale pink
     and a pale peach, were barely distinguishable from each other; a test now holds both sets to a
-    minimum separation (@YOUR_GITHUB_HANDLE).
+    minimum separation (@NilsBriggen).
   * Three scroll panes in the analysis window forced a scrollbar to be visible whether or not
     there was anything to scroll; its inline validation was raw red in one tab and uncoloured in
     another; its CSV import preview was a grid of white panels with black rules whatever the
     theme; and the simplifier's progress log was a white-on-black terminal inside a themed window
-    (@YOUR_GITHUB_HANDLE).
+    (@NilsBriggen).
   * Project Options is a page list like the preferences window instead of four tabs fixed at
     450x300, and "Reset All Settings" -- which was a whole tab holding one button -- is a footer
-    control that now says what it is about to throw away before doing it (@YOUR_GITHUB_HANDLE).
+    control that now says what it is about to throw away before doing it (@NilsBriggen).
   * Every preferences and options page has carried a sentence explaining what it is for, written
     and translated into twelve languages, that nothing has ever rendered. It is now shown under
-    the page title (@YOUR_GITHUB_HANDLE).
+    the page title (@NilsBriggen).
   * Dialogs put OK and Cancel at the trailing edge instead of floating them in the middle with
     glue on both sides, and Enter confirms -- there had been no default button
-    (@YOUR_GITHUB_HANDLE).
+    (@NilsBriggen).
   * The FPGA board error dialog was hand-built out of a grid bag, chose its icon by comparing the
     caller's string against the English literal "Warning", used that same untranslated string as
     its title, and forced itself always-on-top. It now uses the shared message dialog and takes a
-    severity rather than a string (@YOUR_GITHUB_HANDLE).
+    severity rather than a string (@NilsBriggen).
   * Fixed: the mouse-mapping page silently replaced a combination that was already in use, so the
     displaced binding was only noticed later by the tool no longer appearing. It now asks. Its
     drop target reads as one -- a dashed outline rather than an etched box -- and its text follows
-    the theme instead of being hardcoded black and grey (@YOUR_GITHUB_HANDLE).
+    the theme instead of being hardcoded black and grey (@NilsBriggen).
   * Fixed: the Hotkey preferences page started a 200ms timer that polled its own width for ever,
     in every open preferences window, to set a size the layout works out for itself
-    (@YOUR_GITHUB_HANDLE).
+    (@NilsBriggen).
   * The FPGA preferences page's four etched titled boxes are collapsible sections, the Software
     page's six raw rules take the divider colour, the Template page's invisible fifty-pixel
     spacer is a scaled indent, and a colour swatch is a rounded chip with an outline so a white
-    or near-black one is still visible (@YOUR_GITHUB_HANDLE).
+    or near-black one is still visible (@NilsBriggen).
   * Descending into a subcircuit now leaves a trail. The status bar shows the chain of circuits
     you went through, each one clickable to go back up. Before this the bar showed only the
     subcircuit's name -- identical to opening that circuit on its own -- so nothing said you were
     inside one particular instance, and the only way back was a submenu of the Simulate menu
-    (@YOUR_GITHUB_HANDLE).
+    (@NilsBriggen).
   * The circuit analysis window was missed by the wording pass and has been brought in line: it is
     "Circuit Analysis" rather than "Combinational Analysis", its tabs are Signals and Simplified,
     and "Optimize minterms" / "Optimize maxterms" now name the form you get
-    (@YOUR_GITHUB_HANDLE).
+    (@NilsBriggen).
   * Fixed: the hex editor drew its dump in the proportional interface font, because nothing had
     ever given it one, so the byte columns did not line up. It now uses the monospaced face, and
     the address ruler is upright and quieter instead of italic in the same colour as the data
-    (@YOUR_GITHUB_HANDLE).
+    (@NilsBriggen).
   * Fixed: the generated circuit appearance asked for "Courier 10 Pitch", a face that exists only
     on Linux, so on Windows and macOS the circuit name and port labels silently fell back to a
-    proportional font and no longer lined up (@YOUR_GITHUB_HANDLE).
+    proportional font and no longer lined up (@NilsBriggen).
   * Fixed: three of the five choices under "Toolbar location" did nothing -- the toolbar is always
     across the top -- and the whole "Main canvas location" control had no reader anywhere in the
     program. The toolbar control is now Shown or Hidden, which is what it does
-    (@YOUR_GITHUB_HANDLE).
+    (@NilsBriggen).
   * Fixed: the four tabs in the Synthesize & Download window read "Infos (0)", "Warnings (0)",
     "Errors (0)" and "Console" in every language; "Undo VHDL edits" stayed English in the Edit
     menu; the HDL editor opened in the top-left corner of the screen instead of over the window
     that opened it; and one Preferences label kept the previous language until restart
-    (@YOUR_GITHUB_HANDLE).
+    (@NilsBriggen).
   * A circuit can be renamed. There was no rename anywhere in the program: the only way was to
     click empty canvas so the properties panel fell back to the circuit's own properties, then edit
     the name row. It is now F2 and a Rename item in the Circuits panel, as one undoable step
-    (@YOUR_GITHUB_HANDLE).
+    (@NilsBriggen).
   * The Properties panel and the bottom drawer can be put away again. Their visibility was
     modelled and remembered between sessions but wired to no control, so once either was on screen
-    it stayed there (@YOUR_GITHUB_HANDLE).
+    it stayed there (@NilsBriggen).
   * The shell answers the keyboard. The activity bar down the left edge can be focused and used
     with Enter or Space and announces itself to a screen reader; the editor tabs answer Ctrl+Tab,
     Ctrl+Shift+Tab and Ctrl+W and offer Close / Close Others / Close All; the Circuits list answers
     F2 and Delete; and typing in either filter and pressing Enter now takes the first match instead
-    of doing nothing, with Down moving into the list or the grid (@YOUR_GITHUB_HANDLE).
+    of doing nothing, with Down moving into the list or the grid (@NilsBriggen).
   * Circuit Statistics and Export Circuit are in the Circuits panel's menu. Exporting a single
     circuit had been reachable only by switching the component panel back to the old library tree
-    (@YOUR_GITHUB_HANDLE).
+    (@NilsBriggen).
   * The last of the 2005 palette is gone from the windows around the canvas. The main toolbar
     filled a solid magenta square behind the tool whose properties were showing -- hiding the icon
     it was meant to point at -- and now tints it the way a palette tile does. The simulator's three
     canvas markers were raw red, blue and magenta, the last with the original author's "fixme"
     beside it; they are now error, accent and warning from the design system, and become plain ink
     when printing. The off-screen-content arrows were a 36%-alpha navy still named after the tick
-    rate (@YOUR_GITHUB_HANDLE).
+    rate (@NilsBriggen).
   * The timing diagram was the only part of the program still asking for a serif face: italic Serif
     for its messages and for the whole time ruler, at a size that ignored the interface scale. It
     now uses the interface font, and the ruler the monospaced one so its figures line up. Its ruler
     drew in black and its cursor was a red hairline with a yellow badge; both follow the theme
-    (@YOUR_GITHUB_HANDLE).
+    (@NilsBriggen).
   * Fixed: the Test Vector table drew every value, heading and rule in black, so on a dark window
     it was black on black. Its three status colours were pastels chosen by colour name -- pink,
-    mint, lavender -- and are now error, success and the badge colour (@YOUR_GITHUB_HANDLE).
+    mint, lavender -- and are now error, success and the badge colour (@NilsBriggen).
   * K-map entries were drawn in pure blue, the original Logisim colour; the truth table's rules
     were hardcoded grey next to a themed selection; the timing signal tree hand-drew its own blue
     disclosure triangle outlined in black; a sub-signal was a magenta placeholder square positioned
     with its x coordinate passed for y; and the HDL toolbar's three buttons were hand-painted white
     pages with a red tick and a magenta arrow. All now come from the design system
-    (@YOUR_GITHUB_HANDLE).
+    (@NilsBriggen).
   * Removed a magenta-on-black debug marker that was still live in the FPGA report list, colouring
-    any row whose text happened to contain "BUG" (@YOUR_GITHUB_HANDLE).
+    any row whose text happened to contain "BUG" (@NilsBriggen).
   * Fixed: turning the mouse wheel over a numeric property wrote every value it passed through, so
     spinning a bit width from 1 to 16 left fifteen separate entries in the undo history and asked
     the circuit to re-fit its wires fifteen times. The number now moves as the wheel turns and is
-    written once, when the wheel stops (@YOUR_GITHUB_HANDLE).
+    written once, when the wheel stops (@NilsBriggen).
   * Fixed: the wheel decided whether a property could go below one by looking for the word "width"
     in the property's *translated* name. It therefore did nothing in any language but English, and
     clamped unrelated properties whose translated name happened to contain that word. Properties
-    that have limits now say so, through the new `BoundedAttribute` (@YOUR_GITHUB_HANDLE).
+    that have limits now say so, through the new `BoundedAttribute` (@NilsBriggen).
   * Fixed: a value the component refused during a wheel change was discarded silently and the
-    number simply snapped back. It now says why (@YOUR_GITHUB_HANDLE).
+    number simply snapped back. It now says why (@NilsBriggen).
   * Selecting several rows and setting them together used to work only for a splitter's bit rows.
     It now works for any rows offering the same choices -- eight pins' data widths, four gates'
-    facing (@YOUR_GITHUB_HANDLE).
+    facing (@NilsBriggen).
   * When several selected components disagree about a property, the panel says "(various)" instead
     of showing an empty cell, which was indistinguishable from a property with no value
-    (@YOUR_GITHUB_HANDLE).
+    (@NilsBriggen).
   * Fixed: twenty-seven places in the component painters drew in pure black whatever the theme, so
     on a dark canvas a register's contents, a counter's mode labels, a RAM's cells, the value on a
     poked memory or register, a probe's reading, a constant's value and the TTL chips' captions
     were black on black. They now use the theme's component colour, as the shared drawing code
     already did. Components that fill a surface of their own first -- the video screen, the
     oscilloscope's white trace area, the PLA editor, a keypad's coloured keys -- still draw in
-    black on it, which is correct (@YOUR_GITHUB_HANDLE).
+    black on it, which is correct (@NilsBriggen).
   * The English wording has been rewritten to use words people already know instead of words this
     program invented: Poke is Interact, Toolbox is Components, Plexers are Multiplexers, Radix is
     Number base, Attributes are Properties, "Add Circuit" is "New Circuit", and "Raise To Top" is
     "Bring to Front". `docs/glossary.md` lists every change so course material can be brought up
     to date. No key was renamed and no identifier changed, so the twelve translations keep
     working and fall back to English for the text they have not been given yet
-    (@YOUR_GITHUB_HANDLE).
+    (@NilsBriggen).
   * Fixed: six pieces of text were asked for under a name no bundle had, so the program showed the
     name itself where a sentence should be — among them the LED Bar's name in the appearance
     editor and the caption on the Real Time Clock. A test now checks every one of the several
-    thousand lookups in the program (@YOUR_GITHUB_HANDLE).
+    thousand lookups in the program (@NilsBriggen).
   * The component library is now a palette of tiles showing each component's own symbol, grouped
     by what the components are for -- Logic, Wiring & routing, Arithmetic, Memory, Input & output,
     Displays, Chips & TTL, Advanced -- instead of a folder tree of several hundred identical rows
     grouped by the part of the program they live in. Components can be pinned to the top, and the
     ones used most recently appear there on their own. The library tree is still available from a
     button in the panel's heading, since it is where a library is unloaded or reordered
-    (@YOUR_GITHUB_HANDLE).
+    (@NilsBriggen).
   * The grouping is a presentation layer only: library identifiers, the contents of a `.circ` file
     and the structure of the built-in libraries are unchanged, and a library the palette does not
-    recognise keeps all of its components under its own name (@YOUR_GITHUB_HANDLE).
+    recognise keeps all of its components under its own name (@NilsBriggen).
   * The buttons for adding, reordering and removing a circuit have moved from the component panel,
     where they had nothing to do with what was below them, to the heading of the Circuits panel
-    (@YOUR_GITHUB_HANDLE).
+    (@NilsBriggen).
   * The circuit canvas has been redrawn. Lines end and meet in rounded joins, component bodies
     have rounded corners, selection handles are filled discs in the accent colour instead of
     white squares with a black outline that were invisible on a dark canvas, the magenta
     rotated ellipse marking the component whose properties are shown is now a soft accent glow,
     and the grid has two levels so distance across the sheet can be judged at a glance
-    (@YOUR_GITHUB_HANDLE).
+    (@NilsBriggen).
   * Highlighting a wire no longer redraws it thicker and dashed, which made it look like a
     different kind of wire; a halo is drawn around it instead, so its apparent weight keeps
     meaning what it means. A bus is now clearly heavier than a wire rather than one pixel
-    heavier (@YOUR_GITHUB_HANDLE).
+    heavier (@NilsBriggen).
   * The canvas palette has been retuned for both themes, replacing the pure-green, pure-magenta
-    and pure-black values (@YOUR_GITHUB_HANDLE).
+    and pure-black values (@NilsBriggen).
   * Fixed: printing and image export used the theme's colours for signal values, so a circuit
     exported while the dark theme was showing was drawn in near-white ink on a white page.
     Printing now uses its own palette, every colour of which is tested for contrast against
-    white (@YOUR_GITHUB_HANDLE).
+    white (@NilsBriggen).
   * Fixed: a change announced by the preference store was recorded as a colour the user had
     chosen. Since such a notification carries no value, the colour recorded was the default the
     monitor was built with, which for the drawing colours is the light one: the dark theme
     ended up storing the light theme's ink and kept it through every later release
-    (@YOUR_GITHUB_HANDLE).
+    (@NilsBriggen).
   * Fixed: a junction dot shrank while a wire was being dragged, because the size factor was
-    applied twice in one of the two places that draw it (@YOUR_GITHUB_HANDLE).
+    applied twice in one of the two places that draw it (@NilsBriggen).
   * The floating auto-zoom button painted into the canvas corner has been removed; the zoom
-    controls already float over the canvas (@YOUR_GITHUB_HANDLE).
+    controls already float over the canvas (@NilsBriggen).
   * The splash and about windows follow the theme instead of being white with a two-pixel
     black frame, and the about panel uses a real layout rather than fixed positions
-    (@YOUR_GITHUB_HANDLE).
+    (@NilsBriggen).
   * The preferences window has a list of pages with a filter instead of ten tabs whose names
-    did not fit (@YOUR_GITHUB_HANDLE).
+    did not fit (@NilsBriggen).
   * Starting without a file now opens a welcome screen offering a new project, a file to open
-    and the projects you had open recently, instead of an empty grid (@YOUR_GITHUB_HANDLE).
+    and the projects you had open recently, instead of an empty grid (@NilsBriggen).
   * The zoom controls float over the corner of the canvas instead of taking a strip of the
     side panel, and the properties panel no longer hides the state readout behind a tab
-    (@YOUR_GITHUB_HANDLE).
+    (@NilsBriggen).
   * The clock rate and the single-step message are shown in the status bar rather than painted
-    over the circuit, the clock rate in 28-point monospace (@YOUR_GITHUB_HANDLE).
+    over the circuit, the clock rate in 28-point monospace (@NilsBriggen).
   * The side panel now has a Circuits view listing only what you have made, with a filter, so
     moving between circuits no longer means finding one in a tree that also holds every
     component library. Libraries and the running simulation are separate views
-    (@YOUR_GITHUB_HANDLE).
+    (@NilsBriggen).
   * Library folders are drawn as a plain outline in the interface colour instead of a yellow
-    manila folder with a shadow (@YOUR_GITHUB_HANDLE).
+    manila folder with a shadow (@NilsBriggen).
   * The main window has been rebuilt. An activity bar chooses what the side panel shows, the
     circuits you open get tabs above the canvas, properties have their own panel on the right
     instead of sharing the left column, and a status bar reports the circuit, the zoom and what
     the simulation is doing. The simulation controls sit at the end of the toolbar, in one fixed
-    place (@YOUR_GITHUB_HANDLE).
+    place (@NilsBriggen).
   * Panel sizes are remembered in pixels rather than as a share of the window, so the side panel
-    no longer grows to a quarter of a wide screen (@YOUR_GITHUB_HANDLE).
+    no longer grows to a quarter of a wide screen (@NilsBriggen).
   * The interface has two themes of its own, a light one and a dark one, and follows the
     desktop's light or dark setting by default. They replace the list of installed look and
     feels, which meant nothing the application drew itself could be designed to match. Menu,
     toolbar and panel icons are now drawn from a vector set, so they stay sharp at any size and
-    take their colour from the theme (@YOUR_GITHUB_HANDLE).
+    take their colour from the theme (@NilsBriggen).
   * A colour picked in the preferences is no longer thrown away when the theme changes. Each
     theme keeps its own set, so switching away and back brings your colours back
-    (@YOUR_GITHUB_HANDLE).
+    (@NilsBriggen).
   * Fixed the application refusing to start when run from a build directory: a class path entry
     that does not exist was opened as an archive while looking for FPGA boards
-    (@YOUR_GITHUB_HANDLE).
+    (@NilsBriggen).
   * The canvas auto-zoom button, the grid toggle icon, the hex editor selection, the FPGA
     settings borders and the FPGA report font now follow the look and feel and the interface
     scale. Several fonts requested the non-existent "Sans Serif" family and silently fell
-    back to the default (@YOUR_GITHUB_HANDLE).
+    back to the default (@NilsBriggen).
   * Dialogs now close on Escape and accept Enter for their OK button, the menu bar can be
     opened from the keyboard through Alt with a letter of each menu title in any language,
     toolbar buttons announce their name to screen readers, and an attribute value that is
-    too long for its column is shown in full as a tooltip (@YOUR_GITHUB_HANDLE).
+    too long for its column is shown in full as a tooltip (@NilsBriggen).
   * Every menu shortcut can now be changed in the hotkey settings, including New, Open,
     Save, Cut, Copy, Paste and the others that used to be fixed. Preferences, Add Circuit,
     Analyze Circuit, Circuit Statistics and Project Options gained shortcuts. Reset to
     defaults also no longer changes Close Window from Shift+Ctrl+W to Ctrl+W
-    (@YOUR_GITHUB_HANDLE).
+    (@NilsBriggen).
   * The Find Action search now also lists the circuits and VHDL entities of the project,
     the tabs of the preferences window and the recently opened files, so a circuit can
     be shown, a preference page opened or a recent project reopened by typing its name
-    (@YOUR_GITHUB_HANDLE).
+    (@NilsBriggen).
   * Logging to a file now reports when the file cannot be written instead of silently
     switching itself off. Failed attribute edits, an unreadable log file and a crashed
     simulator are reported with a title and the reason, a crash while opening a window
     shows a short message with the stack trace behind Details instead of the trace
     itself, and the pointer shows busy while a project is loaded or saved
-    (@YOUR_GITHUB_HANDLE).
+    (@NilsBriggen).
   * Errors are now reported with a title, an error icon and, where there is one, the
     underlying exception behind a Details button, instead of a bare message with no
     indication of what failed. A dialog with no parent window no longer opens behind the
-    application (@YOUR_GITHUB_HANDLE).
+    application (@NilsBriggen).
   * Fixed the interface being scaled twice on high-DPI displays. The default scale was the
     screen height divided by a thousand, applied on top of the scaling the operating
     system already performs. It now defers to the platform, and a stored scale that the
     old formula chose is corrected once, leaving a scale you picked yourself alone
-    (@YOUR_GITHUB_HANDLE).
+    (@NilsBriggen).
   * Gave the preferences and project options panels consistent padding, so their contents no
-    longer sit flush against the dialog edge (@YOUR_GITHUB_HANDLE).
+    longer sit flush against the dialog edge (@NilsBriggen).
   * The timing diagram now follows the active theme. Waveforms, bus value labels, row
     backgrounds and the signal name column were drawn in hardcoded black on white, which
     left the chronogram unreadable in a dark look and feel. Exported images keep the
-    light palette so they still suit a printed document (@YOUR_GITHUB_HANDLE).
+    light palette so they still suit a printed document (@NilsBriggen).
   * Improved canvas zooming and scrolling with a trackpad, which now follows the gesture
     smoothly instead of jumping a fixed step, and stopped the scroll position snapping
-    back to the start at the end of its range [#1262] (@YOUR_GITHUB_HANDLE).
+    back to the start at the end of its range [#1262] (@NilsBriggen).
   * Fixed stray black strokes left on a dark canvas where the painter reset its colour
-    to black rather than to the themed component colour (@YOUR_GITHUB_HANDLE).
+    to black rather than to the themed component colour (@NilsBriggen).
   * Polished the main window chrome: the split pane divider is now visible at rest and its
     grab area follows the interface scale, and the docked tab strips use the shared
-    typographic scale instead of a fixed nine point font (@YOUR_GITHUB_HANDLE).
+    typographic scale instead of a fixed nine point font (@NilsBriggen).
   * Toolbar items now respond to the pointer, with hover, pressed and selected states drawn
     from the active theme instead of a hardcoded grey rectangle, and separators follow the
-    theme's separator colour (@YOUR_GITHUB_HANDLE).
+    theme's separator colour (@NilsBriggen).
   * Replaced the fixed size Serif and monospaced fonts in the log tables, truth table,
     assembler and FPGA windows with a shared typographic scale that follows the look and
-    feel and the interface scale preference (@YOUR_GITHUB_HANDLE).
+    feel and the interface scale preference (@NilsBriggen).
   * Fixed the Design/Simulate tab labels ignoring the UI scale preference, which left them
-    unreadably small on high-DPI displays (@YOUR_GITHUB_HANDLE).
+    unreadably small on high-DPI displays (@NilsBriggen).
   * Made the split pane drag indicator follow the active theme so it stays visible in dark
-    look and feels (@YOUR_GITHUB_HANDLE).
+    look and feels (@NilsBriggen).
   * Fixed loss of custom appearance when merging circuits into a project (@V-Zemlyakov).
 
 * v5.0.0 (2026-09-12)
