@@ -19,7 +19,7 @@ import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.prefs.PrefMonitorBoolean;
 import com.cburch.logisim.prefs.Template;
 import com.cburch.logisim.util.JFileChoosers;
-import java.awt.Dimension;
+import com.cburch.logisim.util.Spacing;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.event.ActionEvent;
@@ -83,12 +83,8 @@ class TemplateOptions extends OptionsPanel {
     gbc.gridwidth = 1;
     gbc.gridy = 3;
     gbc.gridx = GridBagConstraints.RELATIVE;
-    final var strut = new JPanel();
-    strut.setMinimumSize(new Dimension(50, 1));
-    strut.setPreferredSize(new Dimension(50, 1));
-    gbc.weightx = 0.0;
-    gridbag.setConstraints(strut, gbc);
-    add(strut);
+    // An indent, expressed as one, rather than an invisible fifty-pixel panel that never scaled.
+    gbc.insets = new java.awt.Insets(0, Spacing.xl(), 0, 0);
     gbc.weightx = 1.0;
     gridbag.setConstraints(templateField, gbc);
     add(templateField);

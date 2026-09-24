@@ -14,16 +14,20 @@ import static com.cburch.logisim.gui.Strings.S;
 import com.cburch.contracts.BaseMouseListenerContract;
 import com.cburch.logisim.file.MouseMappings;
 import com.cburch.logisim.gui.generic.AttrTable;
+import com.cburch.logisim.gui.generic.OptionPane;
 import com.cburch.logisim.gui.generic.ProjectExplorer;
 import com.cburch.logisim.gui.generic.ProjectExplorerToolNode;
 import com.cburch.logisim.gui.main.AttrTableToolModel;
+import com.cburch.logisim.gui.theme.Tokens;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.tools.Tool;
 import com.cburch.logisim.util.InputEventUtil;
+import com.cburch.logisim.util.Spacing;
+import com.cburch.logisim.util.UiScale;
 import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Graphics;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
@@ -152,11 +156,11 @@ class MouseOptions extends OptionsPanel {
     private static final long serialVersionUID = 1L;
 
     public AddArea() {
-      setPreferredSize(new Dimension(75, 60));
-      setMinimumSize(new Dimension(75, 60));
-      setBorder(
-          BorderFactory.createCompoundBorder(
-              BorderFactory.createEmptyBorder(10, 10, 10, 10), BorderFactory.createEtchedBorder()));
+      final var width = UiScale.scaled(150);
+      final var height = UiScale.scaled(72);
+      setPreferredSize(new Dimension(width, height));
+      setMinimumSize(new Dimension(width, height));
+      setBorder(Spacing.panelBorder());
     }
 
     @Override
@@ -168,15 +172,36 @@ class MouseOptions extends OptionsPanel {
       }
       super.paintComponent(g);
       final var sz = getSize();
+
+      // A dashed outline says "drop something here"; it used to be an etched box, indistinguishable
+      // from any other sunken panel, with nothing saying it was a target at all.
+      final var outline = (Graphics2D) g.create();
+      try {
+        outline.setColor(Tokens.divider());
+        outline.setStroke(
+            new java.awt.BasicStroke(
+                1f,
+                java.awt.BasicStroke.CAP_ROUND,
+                java.awt.BasicStroke.JOIN_ROUND,
+                1f,
+                new float[] {4f, 4f},
+                0f));
+        final var inset = Spacing.xs();
+        outline.drawRoundRect(
+            inset, inset, sz.width - 2 * inset - 1, sz.height - 2 * inset - 1, 6, 6);
+      } finally {
+        outline.dispose();
+      }
+
       g.setFont(remove.getFont());
       String label1;
       String label2;
       if (curTool == null) {
-        g.setColor(Color.GRAY);
+        g.setColor(Tokens.mutedForeground());
         label1 = S.get("mouseMapNone");
         label2 = null;
       } else {
-        g.setColor(Color.BLACK);
+        g.setColor(getForeground());
         label1 = S.get("mouseMapText");
         label2 = S.get("mouseMapText2", curTool.getDisplayName());
       }
@@ -292,6 +317,18 @@ class MouseOptions extends OptionsPanel {
       if (e.getSource() == addArea && curTool != null) {
         final var t = curTool.cloneTool();
         Integer mods = e.getModifiersEx();
+        // A combination already in use was replaced without a word, and the binding it displaced
+        // was only noticeable later, by the tool no longer appearing.
+        final var displaced = getOptions().getMouseMappings().getToolFor(mods);
+        if (displaced != null) {
+          final var answer =
+              OptionPane.showConfirmDialog(
+                  MouseOptions.this,
+                  S.get("mouseMapReplacePrompt", displaced.getDisplayName(), t.getDisplayName()),
+                  S.get("mouseMapReplaceTitle"),
+                  OptionPane.YES_NO_OPTION);
+          if (answer != OptionPane.YES_OPTION) return;
+        }
         getProject().doAction(OptionsActions.setMapping(getOptions().getMouseMappings(), mods, t));
         setSelectedRow(model.getRow(mods));
       }

@@ -11,6 +11,7 @@ package com.cburch.logisim.gui.prefs;
 
 import com.bric.colorpicker.ColorPickerDialog;
 import com.cburch.logisim.gui.icons.BaseIcon;
+import com.cburch.logisim.gui.theme.Tokens;
 import com.cburch.logisim.prefs.PrefMonitor;
 import java.awt.Color;
 import java.awt.Frame;
@@ -53,8 +54,17 @@ public class ColorChooserButton extends JButton implements PropertyChangeListene
   private class ColorIcon extends BaseIcon {
     @Override
     protected void paintIcon(Graphics2D g2) {
+      // A rounded swatch with a thin outline. It used to be a bare filled rectangle, so a white
+      // swatch vanished into a light window and a near-black one into a dark window - the two
+      // cases where knowing the colour matters most.
+      g2.setRenderingHint(
+          java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+      final var width = getIconWidth();
+      final var height = getIconHeight();
       g2.setColor(new Color(myMonitor.get()));
-      g2.fillRect(0, 0, this.getIconWidth(), this.getIconHeight());
+      g2.fillRoundRect(0, 0, width, height, 4, 4);
+      g2.setColor(Tokens.divider());
+      g2.drawRoundRect(0, 0, width - 1, height - 1, 4, 4);
     }
 
     public void update(Frame frame) {

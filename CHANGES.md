@@ -3,6 +3,30 @@
 # Changes #
 
 * @dev (????-??-??)
+  * Project Options is a page list like the preferences window instead of four tabs fixed at
+    450x300, and "Reset All Settings" -- which was a whole tab holding one button -- is a footer
+    control that now says what it is about to throw away before doing it (@YOUR_GITHUB_HANDLE).
+  * Every preferences and options page has carried a sentence explaining what it is for, written
+    and translated into twelve languages, that nothing has ever rendered. It is now shown under
+    the page title (@YOUR_GITHUB_HANDLE).
+  * Dialogs put OK and Cancel at the trailing edge instead of floating them in the middle with
+    glue on both sides, and Enter confirms -- there had been no default button
+    (@YOUR_GITHUB_HANDLE).
+  * The FPGA board error dialog was hand-built out of a grid bag, chose its icon by comparing the
+    caller's string against the English literal "Warning", used that same untranslated string as
+    its title, and forced itself always-on-top. It now uses the shared message dialog and takes a
+    severity rather than a string (@YOUR_GITHUB_HANDLE).
+  * Fixed: the mouse-mapping page silently replaced a combination that was already in use, so the
+    displaced binding was only noticed later by the tool no longer appearing. It now asks. Its
+    drop target reads as one -- a dashed outline rather than an etched box -- and its text follows
+    the theme instead of being hardcoded black and grey (@YOUR_GITHUB_HANDLE).
+  * Fixed: the Hotkey preferences page started a 200ms timer that polled its own width for ever,
+    in every open preferences window, to set a size the layout works out for itself
+    (@YOUR_GITHUB_HANDLE).
+  * The FPGA preferences page's four etched titled boxes are collapsible sections, the Software
+    page's six raw rules take the divider colour, the Template page's invisible fifty-pixel
+    spacer is a scaled indent, and a colour swatch is a rounded chip with an outline so a white
+    or near-black one is still visible (@YOUR_GITHUB_HANDLE).
   * Descending into a subcircuit now leaves a trail. The status bar shows the chain of circuits
     you went through, each one clickable to go back up. Before this the bar showed only the
     subcircuit's name -- identical to opening that circuit on its own -- so nothing said you were

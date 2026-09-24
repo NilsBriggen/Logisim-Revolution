@@ -303,7 +303,7 @@ public class BoardManipulator extends JPanel implements BaseMouseListenerContrac
      * abort the action.
      */
     if (ioComps.hasOverlap(rect)) {
-      DialogNotification.showDialogNotification(ioComps.getParentFrame(), "Error", S.get("FpgaBoardOverlap"));
+      DialogNotification.showDialogNotification(ioComps.getParentFrame(), DialogNotification.Severity.ERROR, S.get("FpgaBoardOverlap"));
       if (comp != null) ioComps.addComponent(comp, scale);
       return;
     }

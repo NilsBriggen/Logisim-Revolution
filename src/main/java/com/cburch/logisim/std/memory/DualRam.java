@@ -120,7 +120,7 @@ public class DualRam extends Ram {
     final var writeEnabledB = weB && edgeB;
     final var writeCollision = (addrA == addrB) && writeEnabledA && writeEnabledB;
     if (writeCollision) {
-      DialogNotification.showDialogNotification(null, "Warning",
+      DialogNotification.showDialogNotification(null, DialogNotification.Severity.WARNING,
           S.get("dualWriteCollision", Long.toHexString(addrA)));
     }
     if (attrs.getValue(Mem.ENABLES_ATTR).equals(Mem.USELINEENABLES)) {

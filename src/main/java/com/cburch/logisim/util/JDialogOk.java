@@ -79,19 +79,23 @@ public abstract class JDialogOk extends JDialog {
     ok.addActionListener(listener);
     cancel.addActionListener(listener);
 
+    // Glue on the leading side only, so the pair sits at the trailing edge the way every other
+    // dialog on the platform does; it used to float in the middle with glue on both sides.
     final var buttons = Box.createHorizontalBox();
-    buttons.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+    buttons.setBorder(Spacing.panelBorder());
     buttons.add(Box.createHorizontalGlue());
-    buttons.add(ok);
     if (withCancel) {
-      buttons.add(Box.createHorizontalStrut(10));
       buttons.add(cancel);
+      buttons.add(Box.createHorizontalStrut(Spacing.sm()));
     }
-    buttons.add(Box.createHorizontalGlue());
+    buttons.add(ok);
 
     final var pane = super.getContentPane();
     pane.add(contents, BorderLayout.CENTER);
     pane.add(buttons, BorderLayout.SOUTH);
+
+    // Enter confirms. There was no default button at all, so Enter did nothing.
+    getRootPane().setDefaultButton(ok);
 
     getRootPane()
         .registerKeyboardAction(

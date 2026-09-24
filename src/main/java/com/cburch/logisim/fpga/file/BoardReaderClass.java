@@ -253,7 +253,10 @@ public class BoardReaderClass {
 
   private static void showBoardFileError(String messageKey) {
     DialogNotification.showDialogNotification(
-        null, S.get("BoardReaderErrorTitle"), S.get(messageKey));
+        null,
+        DialogNotification.Severity.ERROR,
+        S.get("BoardReaderErrorTitle"),
+        S.get(messageKey));
   }
 
   private void processComponentList(NodeList compList, BoardInformation board) {

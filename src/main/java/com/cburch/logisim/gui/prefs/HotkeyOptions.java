@@ -26,7 +26,6 @@ import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.KeyStroke;
-import javax.swing.Timer;
 
 class HotkeyOptions extends OptionsPanel {
   private static final long serialVersionUID = 1L;
@@ -65,7 +64,6 @@ class HotkeyOptions extends OptionsPanel {
   private final JLabel orientEastLabel;
   private final JLabel orientSouthLabel;
   private final JLabel orientWestLabel;
-  private boolean preferredWidthSet = false;
 
   public HotkeyOptions(PreferencesFrame window) {
     super(window);
@@ -190,21 +188,8 @@ class HotkeyOptions extends OptionsPanel {
     panelRight.add(eastBtn);
     normalKeyPanel.add(panelRight);
 
-    var that = this;
-    /* this timer deals with the preferred width and the theme changing problem */
-    new Timer(200, e -> {
-      int menuWidth = menuKeyPanel.getWidth();
-      int normalWidth = normalKeyPanel.getWidth();
-      if (normalWidth > 0 && normalWidth < that.getWidth() * 0.8 && !preferredWidthSet) {
-        menuKeyScrollPane.preferredWidth = menuWidth + 40;
-        menuKeyPanel.setPreferredSize(new Dimension(menuKeyPanel.getSize().width,
-            menuKeyPanel.getPreferredSize().height));
-        normalKeyScrollPane.preferredWidth = normalWidth + 40;
-        normalKeyPanel.setPreferredSize(new Dimension(normalKeyPanel.getSize().width,
-            normalKeyPanel.getPreferredSize().height));
-        preferredWidthSet = true;
-      }
-    }).start();
+    // A 200ms timer used to poll this panel's own width for ever, to set a preferred size the
+    // layout can work out for itself. It never stopped, in every open preferences window.
 
     AppPreferences.getPrefs().addPreferenceChangeListener(evt -> {
       AppPreferences.hotkeySync();

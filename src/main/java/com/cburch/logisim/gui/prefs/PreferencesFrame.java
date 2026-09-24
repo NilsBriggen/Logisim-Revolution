@@ -121,6 +121,7 @@ public class PreferencesFrame extends LFrame.Dialog {
     selectedIndex = index;
     pages.show(pageHolder, String.valueOf(index));
     pageHeader.setTitle(panels[index].getTitle());
+    pageHeader.setSubtitle(panels[index].getHelpText());
     nav.setSelectedIndex(index);
   }
 
@@ -197,6 +198,7 @@ public class PreferencesFrame extends LFrame.Dialog {
       nav.setTitles(getTabTitles());
       if (selectedIndex >= 0) {
         pageHeader.setTitle(panels[selectedIndex].getTitle());
+        pageHeader.setSubtitle(panels[selectedIndex].getHelpText());
         nav.setSelectedIndex(selectedIndex);
       }
     }

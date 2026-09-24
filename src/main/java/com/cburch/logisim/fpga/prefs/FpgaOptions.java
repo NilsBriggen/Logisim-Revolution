@@ -18,6 +18,7 @@ import com.cburch.logisim.gui.prefs.OptionsPanel;
 import com.cburch.logisim.gui.prefs.PrefOption;
 import com.cburch.logisim.gui.prefs.PrefOptionList;
 import com.cburch.logisim.gui.prefs.PreferencesFrame;
+import com.cburch.logisim.gui.shell.SectionPanel;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.prefs.PrefMonitorBoolean;
 import java.awt.Component;
@@ -87,6 +88,19 @@ public class FpgaOptions extends OptionsPanel {
   private JPanel mapPan;
   private JPanel ReportPan;
   private JPanel vhdlPan;
+
+  /**
+   * The four groups on this page.
+   *
+   * <p>They were etched titled boxes -- a line drawn round a group, which adds a rule without
+   * saying anything -- inside a window whose other pages had already moved to the shell's
+   * collapsible sections.
+   */
+  private SectionPanel vhdlSection;
+
+  private SectionPanel reportSection;
+  private SectionPanel editSection;
+  private SectionPanel mapSection;
   private JCheckBox SuppressGated;
   private JCheckBox SuppressOpen;
   private JCheckBox vhdlKeywordUpperCase;
@@ -143,15 +157,19 @@ public class FpgaOptions extends OptionsPanel {
     gbc.gridx = 0;
     gbc.gridy = 3;
     gbc.gridwidth = 3;
-    add(getVhdlOptions(), gbc);
+    vhdlSection = new SectionPanel(S.get("VhdlOptions"), getVhdlOptions(), true);
+    add(vhdlSection, gbc);
     gbc.gridy++;
     add(AppPreferences.Boards.addRemovePanel(), gbc);
     gbc.gridy++;
-    add(getReporterOptions(), gbc);
+    reportSection = new SectionPanel(S.get("ReporterOptions"), getReporterOptions(), true);
+    add(reportSection, gbc);
     gbc.gridy++;
-    add(getEditCols(), gbc);
+    editSection = new SectionPanel(S.get("EditColors"), getEditCols(), true);
+    add(editSection, gbc);
     gbc.gridy++;
-    add(getMapCols(), gbc);
+    mapSection = new SectionPanel(S.get("MapColors"), getMapCols(), true);
+    add(mapSection, gbc);
     localeChanged();
   }
 
@@ -271,10 +289,10 @@ public class FpgaOptions extends OptionsPanel {
     SuppressGated.setText(S.get("SuppressGatedClock"));
     SuppressOpen.setText(S.get("SuppressOpenInput"));
     vhdlKeywordUpperCase.setText(S.get("VhdlKeywordUpperCase"));
-    editPan.setBorder(BorderFactory.createTitledBorder(S.get("EditColors")));
-    mapPan.setBorder(BorderFactory.createTitledBorder(S.get("MapColors")));
-    ReportPan.setBorder(BorderFactory.createTitledBorder(S.get("ReporterOptions")));
-    vhdlPan.setBorder(BorderFactory.createTitledBorder(S.get("VhdlOptions")));
+    if (editSection != null) editSection.setTitle(S.get("EditColors"));
+    if (mapSection != null) mapSection.setTitle(S.get("MapColors"));
+    if (reportSection != null) reportSection.setTitle(S.get("ReporterOptions"));
+    if (vhdlSection != null) vhdlSection.setTitle(S.get("VhdlOptions"));
     HDL_Used.getJLabel().setText(S.get("HDLLanguageUsed"));
     AppPreferences.Boards.localeChanged();
   }

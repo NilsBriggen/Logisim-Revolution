@@ -11,49 +11,44 @@ package com.cburch.logisim.fpga.gui;
 
 import static com.cburch.logisim.fpga.Strings.S;
 
-import com.cburch.logisim.gui.icons.ErrorIcon;
-import com.cburch.logisim.gui.icons.WarningIcon;
-import java.awt.Frame;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.event.ActionListener;
-import javax.swing.JButton;
-import javax.swing.JDialog;
-import javax.swing.JLabel;
+import com.cburch.logisim.gui.generic.OptionPane;
+import java.awt.Component;
 
-public class DialogNotification {
+/**
+ * Reports a problem found while working with a board or a pin mapping.
+ *
+ * <p>This used to build its own modal out of a grid bag, decide which icon to draw by comparing
+ * the caller's string against the English literal "Warning", put that same untranslated string in
+ * the title bar, and force itself always-on-top. It now says the same thing through the shared
+ * message dialog, so it looks and behaves like every other message in the program.
+ */
+public final class DialogNotification {
 
-  public static void showDialogNotification(Frame parent, String type, String string) {
-    JDialog dialog = new JDialog(parent, type, true);
-    JLabel pic = new JLabel();
-    if (type.equals("Warning")) {
-      pic.setIcon(new WarningIcon());
+  /** How bad the news is. Was a string compared against "Warning", which no translation matched. */
+  public enum Severity {
+    WARNING,
+    ERROR
+  }
+
+  private DialogNotification() {
+    throw new UnsupportedOperationException("Utility class, do not instantiate.");
+  }
+
+  public static void showDialogNotification(Component parent, Severity severity, String message) {
+    showDialogNotification(
+        parent,
+        severity,
+        S.get(severity == Severity.WARNING ? "FpgaNotificationWarning" : "FpgaNotificationError"),
+        message);
+  }
+
+  /** The same, for the one caller that has a more specific heading of its own. */
+  public static void showDialogNotification(
+      Component parent, Severity severity, String title, String message) {
+    if (severity == Severity.WARNING) {
+      OptionPane.showMessageDialog(parent, message, title, OptionPane.WARNING_MESSAGE);
     } else {
-      pic.setIcon(new ErrorIcon());
+      OptionPane.showError(parent, title, message);
     }
-    GridBagLayout dialogLayout = new GridBagLayout();
-    dialog.setLayout(dialogLayout);
-    GridBagConstraints gbc = new GridBagConstraints();
-    JLabel message = new JLabel(string);
-    JButton close = new JButton(S.get("FpgaBoardClose"));
-    ActionListener actionListener = e -> dialog.dispose();
-    close.addActionListener(actionListener);
-
-    gbc.gridx = 0;
-    gbc.gridy = 0;
-    gbc.ipadx = 20;
-    dialog.add(pic, gbc);
-
-    gbc.gridx = 1;
-    gbc.gridy = 0;
-    dialog.add(message, gbc);
-
-    gbc.gridx = 1;
-    gbc.gridy = 1;
-    dialog.add(close, gbc);
-    dialog.pack();
-    dialog.setLocationRelativeTo(parent);
-    dialog.setAlwaysOnTop(true);
-    dialog.setVisible(true);
   }
 }

@@ -1101,6 +1101,13 @@ tasks.register<JavaExec>("uiSnapshot") {
   systemProperty("snapshot.side", project.findProperty("side") ?: "")
 }
 
+tasks.register<JavaExec>("optionsProbe") {
+  group = "verification"
+  classpath = sourceSets["test"].runtimeClasspath
+  mainClass.set("com.cburch.logisim.gui.OptionsProbe")
+  args(project.findProperty("file")?.toString() ?: "")
+}
+
 tasks.register<JavaExec>("themeProbe") {
   group = "verification"
   classpath = sourceSets["test"].runtimeClasspath

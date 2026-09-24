@@ -719,7 +719,7 @@ public class FpgaIoInformationSettingsDialog {
             correct = false;
             DialogNotification.showDialogNotification(
                 IOcomps.getParentFrame(),
-                "Error",
+                DialogNotification.Severity.ERROR,
                 S.get("FpgaIoPinLoc", IoComponentTypes.getInputLabel(nrOfPins.get(INPUT_ID), i, myType)));
             break;
           }
@@ -730,7 +730,7 @@ public class FpgaIoInformationSettingsDialog {
             correct = false;
             DialogNotification.showDialogNotification(
                 IOcomps.getParentFrame(),
-                "Error",
+                DialogNotification.Severity.ERROR,
                 S.get("FpgaIoPinLoc",
                     IoComponentTypes.getOutputLabel(nrOfPins.get(INPUT_ID), 0, 0, i, myType)));
             break;
@@ -742,7 +742,7 @@ public class FpgaIoInformationSettingsDialog {
             correct = false;
             DialogNotification.showDialogNotification(
                 IOcomps.getParentFrame(),
-                "Error",
+                DialogNotification.Severity.ERROR,
                 S.get("FpgaIoPinLoc",
                     IoComponentTypes.getIoLabel(nrOfPins.get(INPUT_ID), i, myType)));
             break;
@@ -764,7 +764,7 @@ public class FpgaIoInformationSettingsDialog {
                 };
                 DialogNotification.showDialogNotification(
                         // FIXME: hardcoded string
-                        IOcomps.getParentFrame(), "Error", S.get("FpgaIoIntError", S.get(msgKey), rectLocations.get(i).getText()));
+                        IOcomps.getParentFrame(), DialogNotification.Severity.ERROR, S.get("FpgaIoIntError", S.get(msgKey), rectLocations.get(i).getText()));
               }
             }
             if (!correct) continue;
@@ -776,27 +776,27 @@ public class FpgaIoInformationSettingsDialog {
               if (IOcomps.hasOverlap(MyRectangle, new BoardRectangle(update))) {
                 // FIXME: hardcoded string
                 DialogNotification.showDialogNotification(
-                    IOcomps.getParentFrame(), "Error", S.get("FpgaIoRectError"));
+                    IOcomps.getParentFrame(), DialogNotification.Severity.ERROR, S.get("FpgaIoRectError"));
                 continue;
               } else if (update.getX() + update.getWidth() >= BoardManipulator.IMAGE_WIDTH) {
                 // FIXME: hardcoded string
                 DialogNotification.showDialogNotification(
-                    IOcomps.getParentFrame(), "Error", S.get("FpgaIoRectTWide"));
+                    IOcomps.getParentFrame(), DialogNotification.Severity.ERROR, S.get("FpgaIoRectTWide"));
                 continue;
               } else if (update.getY() + update.getHeight() >= BoardManipulator.IMAGE_HEIGHT) {
                 // FIXME: hardcoded string
                 DialogNotification.showDialogNotification(
-                    IOcomps.getParentFrame(), "Error", S.get("FpgaIoRectTHeigt"));
+                    IOcomps.getParentFrame(), DialogNotification.Severity.ERROR, S.get("FpgaIoRectTHeigt"));
                 continue;
               } else if (update.getWidth() < 2) {
                 // FIXME: hardcoded string
                 DialogNotification.showDialogNotification(
-                    IOcomps.getParentFrame(), "Error", S.get("FpgaIoRectWNLE"));
+                    IOcomps.getParentFrame(), DialogNotification.Severity.ERROR, S.get("FpgaIoRectWNLE"));
                 continue;
               } else if (update.getHeight() < 2) {
                 // FIXME: hardcoded string
                 DialogNotification.showDialogNotification(
-                    IOcomps.getParentFrame(), "Error", S.get("FpgaIoRectHNLE"));
+                    IOcomps.getParentFrame(), DialogNotification.Severity.ERROR, S.get("FpgaIoRectHNLE"));
                 continue;
               } else {
                 MyRectangle.updateRectangle(update);
@@ -1104,38 +1104,38 @@ public class FpgaIoInformationSettingsDialog {
             getFrequency(FreqInput.getText(), StandardInput.getSelectedItem().toString())) {
           case -2 -> {
             saveSettings = false;
-            DialogNotification.showDialogNotification(panel, "Error", S.get("FpgaBoardFreqError"));
+            DialogNotification.showDialogNotification(panel, DialogNotification.Severity.ERROR, S.get("FpgaBoardFreqError"));
           }
           case -1 -> {
             saveSettings = false;
-            DialogNotification.showDialogNotification(panel, "Error", S.get("FpgaBoardFracError"));
+            DialogNotification.showDialogNotification(panel, DialogNotification.Severity.ERROR, S.get("FpgaBoardFracError"));
           }
           case 0 -> {
             saveSettings = false;
-            DialogNotification.showDialogNotification(panel, "Error", S.get("FpgaBoardClkReq"));
+            DialogNotification.showDialogNotification(panel, DialogNotification.Severity.ERROR, S.get("FpgaBoardClkReq"));
           }
           default -> {
           }
         }
         if (saveSettings && LocInput.getText().isEmpty()) {
           saveSettings = false;
-          DialogNotification.showDialogNotification(panel, "Error", S.get("FpgaBoardClkPin"));
+          DialogNotification.showDialogNotification(panel, DialogNotification.Severity.ERROR, S.get("FpgaBoardClkPin"));
         }
         if (saveSettings && familyInput.getText().isEmpty()) {
           saveSettings = false;
-          DialogNotification.showDialogNotification(panel, "Error", S.get("FpgaBoardFpgaFamMis"));
+          DialogNotification.showDialogNotification(panel, DialogNotification.Severity.ERROR, S.get("FpgaBoardFpgaFamMis"));
         }
         if (saveSettings && partInput.getText().isEmpty()) {
           saveSettings = false;
-          DialogNotification.showDialogNotification(panel, "Error", S.get("FpgaBoardFpgaPartMis"));
+          DialogNotification.showDialogNotification(panel, DialogNotification.Severity.ERROR, S.get("FpgaBoardFpgaPartMis"));
         }
         if (saveSettings && boxInput.getText().isEmpty()) {
           saveSettings = false;
-          DialogNotification.showDialogNotification(panel, "Error", S.get("FpgaBoardFpgaPacMis"));
+          DialogNotification.showDialogNotification(panel, DialogNotification.Severity.ERROR, S.get("FpgaBoardFpgaPacMis"));
         }
         if (saveSettings && speedInput.getText().isEmpty()) {
           saveSettings = false;
-          DialogNotification.showDialogNotification(panel, "Error", S.get("FpgaBoardFpgaSpeedMis"));
+          DialogNotification.showDialogNotification(panel, DialogNotification.Severity.ERROR, S.get("FpgaBoardFpgaSpeedMis"));
         }
         if (saveSettings) {
           TheBoard.fpga.set(

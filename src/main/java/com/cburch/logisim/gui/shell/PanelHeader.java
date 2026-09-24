@@ -33,6 +33,7 @@ public class PanelHeader extends JPanel {
   private static final long serialVersionUID = 1L;
 
   private final JLabel titleLabel = new JLabel();
+  private final JLabel subtitleLabel = new JLabel();
   private final JPanel actions = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 0, 0));
 
   public PanelHeader(String title) {
@@ -40,7 +41,15 @@ public class PanelHeader extends JPanel {
     setOpaque(false);
     setBorder(BorderFactory.createEmptyBorder(Spacing.xs(), Spacing.sm(), Spacing.xs(), Spacing.xs()));
     actions.setOpaque(false);
-    add(titleLabel, BorderLayout.CENTER);
+    final var titles = new JPanel();
+    titles.setOpaque(false);
+    titles.setLayout(new javax.swing.BoxLayout(titles, javax.swing.BoxLayout.Y_AXIS));
+    titleLabel.setAlignmentX(LEFT_ALIGNMENT);
+    subtitleLabel.setAlignmentX(LEFT_ALIGNMENT);
+    subtitleLabel.setVisible(false);
+    titles.add(titleLabel);
+    titles.add(subtitleLabel);
+    add(titles, BorderLayout.CENTER);
     add(actions, BorderLayout.LINE_END);
     setTitle(title);
     applyTheme();
@@ -50,11 +59,26 @@ public class PanelHeader extends JPanel {
   private void applyTheme() {
     titleLabel.setFont(UiFonts.small());
     titleLabel.setForeground(Tokens.sidePanelHeaderForeground());
+    subtitleLabel.setFont(UiFonts.small());
+    subtitleLabel.setForeground(Tokens.mutedForeground());
   }
 
   /** Sets the heading. Shown in capitals, so that it reads as a label and not as content. */
   public final void setTitle(String title) {
     titleLabel.setText(title == null ? "" : title.toUpperCase(Locale.getDefault()));
+  }
+
+  /**
+   * A sentence under the heading saying what the page is for.
+   *
+   * <p>Every preferences and options page has carried one of these, written and translated into
+   * twelve languages, and nothing has ever rendered it.
+   */
+  public void setSubtitle(String subtitle) {
+    final var text = subtitle == null ? "" : subtitle.trim();
+    subtitleLabel.setText(text);
+    subtitleLabel.setVisible(!text.isEmpty());
+    revalidate();
   }
 
   /** Replaces the buttons shown at the end of the heading. */

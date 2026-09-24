@@ -16,20 +16,30 @@ import com.cburch.logisim.file.LibraryListener;
 import com.cburch.logisim.file.LogisimFileActions;
 import com.cburch.logisim.file.Options;
 import com.cburch.logisim.gui.generic.LFrame;
+import com.cburch.logisim.gui.generic.OptionPane;
+import com.cburch.logisim.gui.shell.PanelHeader;
+import com.cburch.logisim.gui.shell.SettingsNav;
+import com.cburch.logisim.gui.theme.AppIcons;
+import com.cburch.logisim.gui.theme.Tokens;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.proj.ProjectEvent;
 import com.cburch.logisim.util.LocaleListener;
 import com.cburch.logisim.util.LocaleManager;
+import com.cburch.logisim.util.Spacing;
 import com.cburch.logisim.util.TableLayout;
 import com.cburch.logisim.util.WindowMenuItemManager;
 import java.awt.BorderLayout;
+import java.awt.CardLayout;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JSplitPane;
 import javax.swing.JTabbedPane;
 
 public class OptionsFrame extends LFrame.Dialog {
@@ -37,7 +47,15 @@ public class OptionsFrame extends LFrame.Dialog {
   private final MyListener myListener = new MyListener();
   private final WindowMenuManager windowManager = new WindowMenuManager();
   private final OptionsPanel[] panels;
-  private final JTabbedPane tabbedPane;
+  private final CardLayout pages = new CardLayout();
+  private final JPanel pageHolder = new JPanel(pages);
+  private final PanelHeader pageHeader = new PanelHeader("");
+  private final JButton revertButton = new JButton();
+  private SettingsNav nav;
+  private int selectedIndex = -1;
+
+  /** Unscaled width of the page list, matching the preferences window. */
+  private static final int NAV_WIDTH = 190;
 
   public OptionsFrame(Project project) {
     super(project);
@@ -49,27 +67,86 @@ public class OptionsFrame extends LFrame.Dialog {
             computeTitle();
           }
         });
+    // A page list, as the preferences window already has. It was four tabs, the fourth of which
+    // held a single button, in a window fixed at 450x300 whose tab names did not fit.
     panels =
         new OptionsPanel[] {
-          new SimulateOptions(this),
-          new ToolbarOptions(this),
-          new MouseOptions(this),
-          new RevertPanel(this)
+          new SimulateOptions(this), new ToolbarOptions(this), new MouseOptions(this)
         };
-    tabbedPane = new JTabbedPane();
-    for (final var panel : panels) {
-      tabbedPane.addTab(panel.getTitle(), null, panel, panel.getToolTipText());
+    for (var index = 0; index < panels.length; index++) {
+      pageHolder.add(new JScrollPane(panels[index]), String.valueOf(index));
     }
 
-    final var contents = getContentPane();
-    tabbedPane.setPreferredSize(
-        new Dimension(AppPreferences.getScaled(450), AppPreferences.getScaled(300)));
-    contents.add(tabbedPane, BorderLayout.CENTER);
+    nav = new SettingsNav(S.get("preferencesFilterHint"), this::showPage);
+    final var navWidth = AppPreferences.getScaled(NAV_WIDTH);
+    nav.setPreferredSize(new Dimension(navWidth, 0));
+    nav.setMinimumSize(new Dimension(navWidth, 0));
+
+    final var page = new JPanel(new BorderLayout());
+    page.add(pageHeader, BorderLayout.NORTH);
+    page.add(pageHolder, BorderLayout.CENTER);
+    page.add(revertFooter(), BorderLayout.SOUTH);
+
+    final var split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, true, nav, page);
+    split.setBorder(null);
+    split.setDividerSize(1);
+    split.setResizeWeight(0.0);
+
+    getContentPane().add(split, BorderLayout.CENTER);
+    setPreferredSize(
+        new Dimension(AppPreferences.getScaled(720), AppPreferences.getScaled(460)));
 
     LocaleManager.addLocaleListener(myListener);
     myListener.localeChanged();
+    showPage(0);
     pack();
+    // After packing: a split pane clamps a divider position to its own width, which it does not
+    // have until the window has been laid out.
+    split.setDividerLocation(navWidth);
     setLocationRelativeTo(project.getFrame());
+  }
+
+  /**
+   * The reset control, in a footer rather than a page of its own.
+   *
+   * <p>It throws away every setting in the project at once, so it now says so before doing it.
+   */
+  private JComponent revertFooter() {
+    final var footer = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.TRAILING, 0, 0));
+    footer.setBorder(Spacing.panelBorder());
+    revertButton.setIcon(
+        AppIcons.colored(AppIcons.Id.RESET, AppIcons.SIZE, Tokens.error()));
+    revertButton.addActionListener(
+        event -> {
+          final var answer =
+              OptionPane.showConfirmDialog(
+                  this,
+                  S.get("revertConfirmPrompt"),
+                  S.get("revertConfirmTitle"),
+                  OptionPane.YES_NO_OPTION);
+          if (answer == OptionPane.YES_OPTION) {
+            project.doAction(LogisimFileActions.revertDefaults());
+          }
+        });
+    footer.add(revertButton);
+    return footer;
+  }
+
+  private void showPage(int index) {
+    if (index < 0 || index >= panels.length) return;
+    selectedIndex = index;
+    pages.show(pageHolder, String.valueOf(index));
+    pageHeader.setTitle(panels[index].getTitle());
+    pageHeader.setSubtitle(panels[index].getHelpText());
+    nav.setSelectedIndex(index);
+  }
+
+  private java.util.List<String> pageTitles() {
+    final var titles = new java.util.ArrayList<String>(panels.length);
+    for (final var panel : panels) {
+      titles.add(panel.getTitle());
+    }
+    return titles;
   }
 
   private void computeTitle() {
@@ -95,46 +172,6 @@ public class OptionsFrame extends LFrame.Dialog {
     super.setVisible(value);
   }
 
-  static class RevertPanel extends OptionsPanel {
-    private static final long serialVersionUID = 1L;
-    private final MyListener myListener = new MyListener();
-    private final JButton revert = new JButton();
-
-    public RevertPanel(OptionsFrame window) {
-      super(window);
-      setLayout(new TableLayout(1));
-      final var buttonPanel = new JPanel();
-      buttonPanel.add(revert);
-      revert.addActionListener(myListener);
-      add(buttonPanel);
-    }
-
-    @Override
-    public String getHelpText() {
-      return S.get("revertHelp");
-    }
-
-    @Override
-    public String getTitle() {
-      return S.get("revertTitle");
-    }
-
-    @Override
-    public void localeChanged() {
-      revert.setText(S.get("revertButton"));
-    }
-
-    private class MyListener implements ActionListener {
-      @Override
-      public void actionPerformed(ActionEvent event) {
-        final var src = event.getSource();
-        if (src == revert) {
-          getProject().doAction(LogisimFileActions.revertDefaults());
-        }
-      }
-    }
-  }
-
   private class MyListener implements LibraryListener, LocaleListener {
     @Override
     public void libraryChanged(LibraryEvent event) {
@@ -147,10 +184,16 @@ public class OptionsFrame extends LFrame.Dialog {
     @Override
     public void localeChanged() {
       computeTitle();
-      for (var i = 0; i < panels.length; i++) {
-        tabbedPane.setTitleAt(i, panels[i].getTitle());
-        tabbedPane.setToolTipTextAt(i, panels[i].getToolTipText());
-        panels[i].localeChanged();
+      for (final var panel : panels) {
+        panel.localeChanged();
+      }
+      revertButton.setText(S.get("revertButton"));
+      nav.setFilterHint(S.get("preferencesFilterHint"));
+      nav.setTitles(pageTitles());
+      if (selectedIndex >= 0) {
+        pageHeader.setTitle(panels[selectedIndex].getTitle());
+        pageHeader.setSubtitle(panels[selectedIndex].getHelpText());
+        nav.setSelectedIndex(selectedIndex);
       }
       windowManager.localeChanged();
     }

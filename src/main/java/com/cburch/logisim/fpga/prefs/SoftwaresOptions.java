@@ -17,6 +17,7 @@ import com.cburch.logisim.gui.prefs.OptionsPanel;
 import com.cburch.logisim.gui.prefs.PrefOption;
 import com.cburch.logisim.gui.prefs.PrefOptionList;
 import com.cburch.logisim.gui.prefs.PreferencesFrame;
+import com.cburch.logisim.gui.theme.Tokens;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.util.Softwares;
 import com.cburch.logisim.util.StringGetter;
@@ -106,6 +107,14 @@ public class SoftwaresOptions extends OptionsPanel {
   private final JTextField openfpgaPathField = new JTextField(40);
   private final JButton openfpgaPathButton = new JButton();
 
+  /** A one-pixel rule in the shell's divider colour, rather than the look and feel's raised one. */
+  private static JSeparator dividerRule() {
+    final var rule = new JSeparator(JSeparator.HORIZONTAL);
+    rule.setForeground(Tokens.divider());
+    rule.setBackground(Tokens.divider());
+    return rule;
+  }
+
   public SoftwaresOptions(PreferencesFrame window) {
     super(window);
 
@@ -117,7 +126,7 @@ public class SoftwaresOptions extends OptionsPanel {
     openfpgaPathButton.addActionListener(myListener);
     AppPreferences.getPrefs().addPreferenceChangeListener(myListener);
 
-    final var sep = new JSeparator(JSeparator.HORIZONTAL);
+    final var sep = dividerRule();
     final var gbl = new GridBagLayout();
     final var gbc = new GridBagConstraints();
     setLayout(gbl);
@@ -131,7 +140,7 @@ public class SoftwaresOptions extends OptionsPanel {
     gbc.gridwidth = 4;
     gbc.weightx = 1.0;
     gbc.fill = GridBagConstraints.HORIZONTAL;
-    add(new JSeparator(JSeparator.HORIZONTAL), gbc);
+    add(dividerRule(), gbc);
 
     gbc.gridx = 0;
     gbc.gridy = gridY++;
@@ -177,7 +186,7 @@ public class SoftwaresOptions extends OptionsPanel {
     gbc.gridwidth = 4;
     gbc.weightx = 1.0;
     gbc.fill = GridBagConstraints.HORIZONTAL;
-    add(new JSeparator(JSeparator.HORIZONTAL), gbc);
+    add(dividerRule(), gbc);
 
     gbc.gridx = 0;
     gbc.gridy = gridY++;
@@ -202,7 +211,7 @@ public class SoftwaresOptions extends OptionsPanel {
     gbc.gridwidth = 4;
     gbc.weightx = 1.0;
     gbc.fill = GridBagConstraints.HORIZONTAL;
-    add(new JSeparator(JSeparator.HORIZONTAL), gbc);
+    add(dividerRule(), gbc);
 
     gbc.gridx = 0;
     gbc.gridy = gridY++;
@@ -227,7 +236,7 @@ public class SoftwaresOptions extends OptionsPanel {
     gbc.gridwidth = 4;
     gbc.weightx = 1.0;
     gbc.fill = GridBagConstraints.HORIZONTAL;
-    add(new JSeparator(JSeparator.HORIZONTAL), gbc);
+    add(dividerRule(), gbc);
 
     gbc.gridx = 0;
     gbc.gridy = gridY++;
@@ -253,7 +262,7 @@ public class SoftwaresOptions extends OptionsPanel {
     gbc.gridwidth = 4;
     gbc.weightx = 1.0;
     gbc.fill = GridBagConstraints.HORIZONTAL;
-    add(new JSeparator(JSeparator.HORIZONTAL), gbc);
+    add(dividerRule(), gbc);
 
     gbc.gridx = 0;
     gbc.gridy = gridY++;
