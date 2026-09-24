@@ -77,6 +77,10 @@ public final class ThemeColorPrefs {
    */
   private static final int PALETTE_VERSION = 7;
 
+  static int shippedPaletteVersion() {
+    return PALETTE_VERSION;
+  }
+
   private static final String PALETTE_VERSION_KEY = "canvasPaletteVersion";
 
   /**

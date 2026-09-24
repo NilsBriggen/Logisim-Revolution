@@ -23,16 +23,14 @@ import com.cburch.logisim.comp.ComponentUserEvent;
 import com.cburch.logisim.data.AttributeSet;
 import com.cburch.logisim.data.Location;
 import com.cburch.logisim.gui.main.Canvas;
+import com.cburch.logisim.gui.theme.AppIcons;
 import com.cburch.logisim.prefs.AppPreferences;
-import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Graphics;
-import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
-import java.awt.geom.GeneralPath;
 
 public class PokeTool extends Tool {
   /**
@@ -273,31 +271,8 @@ public class PokeTool extends Tool {
 
   @Override
   public void paintIcon(ComponentDrawContext c, int x, int y) {
-    final var g2 = (Graphics2D) c.getGraphics().create();
-    g2.translate(x, y);
-    g2.setStroke(new BasicStroke(AppPreferences.getScaled(1)));
-    final var p = new GeneralPath();
-    p.moveTo(scale(6), scale(15));
-    p.quadTo(scale(5), scale(10), scale(1), scale(7));
-    p.quadTo(scale(2.5), scale(4), scale(4), scale(7));
-    p.quadTo(scale(6), scale(6), scale(6), scale(10));
-    p.lineTo(scale(6), scale(1));
-    p.quadTo(scale(7), scale(-1), scale(8), scale(1));
-    p.lineTo(scale(8), scale(8));
-    p.quadTo(scale(9), scale(2), scale(10), scale(8));
-    p.quadTo(scale(11), scale(2), scale(12), scale(8));
-    p.lineTo(scale(12), scale(9));
-    p.quadTo(scale(13), scale(4), scale(14), scale(9));
-    p.quadTo(scale(12), scale(11), scale(13), scale(15));
-    g2.setColor(new Color(240, 184, 160));
-    g2.fill(p);
-    g2.setColor(Color.BLACK);
-    g2.draw(p);
-    g2.dispose();
-  }
-
-  private static double scale(double s) {
-    return AppPreferences.getScaled(s);
+    AppIcons.get(AppIcons.Id.HAND, AppPreferences.IconSize)
+        .paintIcon(c.getDestination(), c.getGraphics(), x, y);
   }
 
   private void removeCaret(boolean normal) {

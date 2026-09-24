@@ -71,7 +71,8 @@ class AboutCredits extends JComponent {
     lines = new Lines();
     lines
         .title(BuildInfo.displayName)
-        .h2(String.format("Copyright © 2001-%s %s developers", BuildInfo.year, BuildInfo.name))
+        .h2(S.get("creditsRevolutionCopyright"))
+        .tiny(S.get("creditsUpstreamCopyright", BuildInfo.year))
         .url(BuildInfo.url)
         .space()
         .h1(S.get("creditsDevelopedBy"))

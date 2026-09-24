@@ -14,10 +14,8 @@ import static com.cburch.logisim.gui.Strings.S;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.prefs.PrefMonitor;
 import com.cburch.logisim.prefs.PrefMonitorKeyStroke;
-import com.cburch.logisim.util.JAdjustableScroll;
 import com.cburch.logisim.util.JHotkeyInput;
 import com.cburch.logisim.util.TableLayout;
-import java.awt.Dimension;
 import java.awt.event.InputEvent;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -49,7 +47,7 @@ class HotkeyOptions extends OptionsPanel {
    * when it collides with one of them; see AppPreferences.hotkeyCheckConflict.
    *
    * */
-  protected static List<PrefMonitor<KeyStroke>> hotkeys = new ArrayList<>();
+  private final List<PrefMonitor<KeyStroke>> hotkeys = new ArrayList<>();
   private final List<JHotkeyInput> keyInputList;
   private final List<JLabel> keyLabels;
   private final JLabel menuKeyHeaderLabel;
@@ -79,20 +77,16 @@ class HotkeyOptions extends OptionsPanel {
     add(menuKeyHeaderLabel);
     add(new JLabel(" "));
     JPanel menuKeyPanel = new JPanel();
-    JAdjustableScroll menuKeyScrollPane = new JAdjustableScroll(menuKeyPanel);
-    add(menuKeyScrollPane);
+    add(menuKeyPanel);
 
     add(new JLabel(" "));
     normalKeyHeaderLabel = new JLabel();
     add(normalKeyHeaderLabel);
     add(new JLabel(" "));
     JPanel normalKeyPanel = new JPanel();
-    JAdjustableScroll normalKeyScrollPane = new JAdjustableScroll(normalKeyPanel);
-    add(normalKeyScrollPane);
+    add(normalKeyPanel);
 
-    menuKeyPanel.setMaximumSize(new Dimension(400, 400));
     menuKeyPanel.setLayout(new TableLayout(2));
-    normalKeyPanel.setMaximumSize(new Dimension(400, 400));
     normalKeyPanel.setLayout(new TableLayout(2));
 
     /* bind up the hotkeys */
@@ -164,29 +158,18 @@ class HotkeyOptions extends OptionsPanel {
     orientDescLabel = new JLabel();
     normalKeyPanel.add(orientDescLabel);
     normalKeyPanel.add(new JLabel(" "));
-    JPanel panelLeft = new JPanel();
-    JPanel panelRight = new JPanel();
-    panelLeft.setLayout(new TableLayout(3));
-    panelRight.setLayout(new TableLayout(3));
-
     orientEastLabel = new JLabel();
     orientNorthLabel = new JLabel();
     orientSouthLabel = new JLabel();
     orientWestLabel = new JLabel();
-    panelLeft.add(new JLabel(" "));
-    panelLeft.add(orientNorthLabel);
-    panelLeft.add(new JLabel(" "));
-    panelLeft.add(orientWestLabel);
-    panelLeft.add(orientSouthLabel);
-    panelLeft.add(orientEastLabel);
-    normalKeyPanel.add(panelLeft);
-    panelRight.add(new JLabel(" "));
-    panelRight.add(northBtn);
-    panelRight.add(new JLabel(" "));
-    panelRight.add(westBtn);
-    panelRight.add(southBtn);
-    panelRight.add(eastBtn);
-    normalKeyPanel.add(panelRight);
+    normalKeyPanel.add(orientNorthLabel);
+    normalKeyPanel.add(northBtn);
+    normalKeyPanel.add(orientEastLabel);
+    normalKeyPanel.add(eastBtn);
+    normalKeyPanel.add(orientSouthLabel);
+    normalKeyPanel.add(southBtn);
+    normalKeyPanel.add(orientWestLabel);
+    normalKeyPanel.add(westBtn);
 
     // A 200ms timer used to poll this panel's own width for ever, to set a preferred size the
     // layout can work out for itself. It never stopped, in every open preferences window.

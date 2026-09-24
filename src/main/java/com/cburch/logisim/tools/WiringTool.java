@@ -16,18 +16,16 @@ import com.cburch.logisim.circuit.Wire;
 import com.cburch.logisim.comp.Component;
 import com.cburch.logisim.comp.ComponentDrawContext;
 import com.cburch.logisim.data.Location;
-import com.cburch.logisim.data.Value;
 import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.gui.main.Canvas;
+import com.cburch.logisim.gui.theme.AppIcons;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.proj.Action;
 import com.cburch.logisim.util.GraphicsUtil;
 import com.cburch.logisim.util.StringGetter;
-import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Graphics;
-import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
@@ -338,22 +336,8 @@ public class WiringTool extends Tool {
 
   @Override
   public void paintIcon(ComponentDrawContext c, int x, int y) {
-    final var g2 = (Graphics2D) c.getGraphics().create();
-    g2.translate(x, y);
-    final int[] points = {3, 13, 8, 13, 8, 3, 13, 3};
-    g2.setStroke(new BasicStroke(AppPreferences.getScaled(2)));
-    for (var i = 0; i < points.length - 2; i += 2)
-      g2.drawLine(
-          AppPreferences.getScaled(points[i]),
-          AppPreferences.getScaled(points[i + 1]),
-          AppPreferences.getScaled(points[i + 2]),
-          AppPreferences.getScaled(points[i + 3]));
-    g2.setColor(Value.trueColor());
-    final var wh = AppPreferences.getScaled(5);
-    g2.fillOval(AppPreferences.getScaled(1), AppPreferences.getScaled(11), wh, wh);
-    g2.setColor(Value.unknownColor());
-    g2.fillOval(AppPreferences.getScaled(11), AppPreferences.getScaled(1), wh, wh);
-    g2.dispose();
+    AppIcons.get(AppIcons.Id.WIRE, AppPreferences.IconSize)
+        .paintIcon(c.getDestination(), c.getGraphics(), x, y);
   }
 
   private boolean performShortening(Canvas canvas, Location drag0, Location drag1) {

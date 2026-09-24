@@ -44,7 +44,8 @@ public class About {
   static final int LOGO_HEIGHT = 200;
   static final int SCROLLER_HEIGHT = 200;
 
-  private static final String LOGO_IMG = "resources/logisim/img/logisim-evolution-logo.png";
+  private static final String LOGO_IMG = "resources/logisim/img/logisim-revolution-logo.png";
+  private static JDialog activeDialog;
 
   private About() {}
 
@@ -56,7 +57,13 @@ public class About {
     if (!Main.hasGui()) {
       return;
     }
-    createAboutDialog(owner).setVisible(true);
+    if (activeDialog != null && activeDialog.isDisplayable()) {
+      activeDialog.toFront();
+      activeDialog.requestFocus();
+      return;
+    }
+    activeDialog = createAboutDialog(owner);
+    activeDialog.setVisible(true);
   }
 
   static JDialog createAboutDialog(JFrame owner) {
@@ -64,7 +71,9 @@ public class About {
     content.add(new AboutPanel(true));
     content.setBorder(BorderFactory.createLineBorder(Tokens.divider(), 1));
 
-    final var dialog = new JDialog(owner, S.get("aboutDialogTitle"), true);
+    // A modal transient dialog crashes on some Xwayland/KWin combinations while blocking its
+    // owner. About has no transaction to protect, so a single modeless window is sufficient.
+    final var dialog = new JDialog(owner, S.get("aboutDialogTitle"), false);
     dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
     Dialogs.installEscapeToClose(dialog);
     final var optionPane = new JOptionPane(content, JOptionPane.PLAIN_MESSAGE);

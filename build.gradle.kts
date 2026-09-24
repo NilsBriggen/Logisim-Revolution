@@ -31,8 +31,7 @@ repositories {
 
 sonar {
   properties {
-    property("sonar.projectKey", "logisim-evolution_logisim-evolution")
-    property("sonar.organization", "logisim-evolution")
+    property("sonar.projectKey", "dev_briggen_logisim_revolution")
   }
 }
 
@@ -141,7 +140,7 @@ extra.apply {
   set(SUPPORT_DIR, supportDir)
 
   // Project name with uppercase first letter
-  val uppercaseProjectName = project.name.replaceFirstChar { it.uppercase() }.trim()
+  val uppercaseProjectName = "Logisim Revolution"
   set(UPPERCASE_PROJECT_NAME, uppercaseProjectName)
 
   // Base name of produced artifacts. Suffixes will be added later by relevant tasks.
@@ -168,7 +167,7 @@ extra.apply {
   set(JDEPS_FILE, jdepsFile)
 
   // Copyrights note.
-  val copyrights = "Copyright ©2001–${SimpleDateFormat("yyyy").format(Date())} ${project.name} developers"
+  val copyrights = "Copyright ©2001–${SimpleDateFormat("yyyy").format(Date())} Logisim-evolution and Logisim Revolution contributors"
 
   // Platform-agnostic jpackage parameters shared across all the builds.
   var params = listOf(
@@ -182,7 +181,7 @@ extra.apply {
       "--java-options", "--enable-native-access=ALL-UNNAMED",
       "--copyright", copyrights,
       "--description", "Digital logic design tool and simulator",
-      "--vendor", "${project.name} developers",
+      "--vendor", "Logisim Revolution contributors",
   )
   if (logger.isDebugEnabled()) {
     params += listOf("--verbose")
@@ -195,7 +194,7 @@ extra.apply {
       "--dest", targetDir,
       "--app-version", appVersion,
       "--file-associations", "${supportDir}/linux/file.jpackage",
-      "--icon", "${supportDir}/linux/logisim-icon-128.png",
+      "--icon", "${supportDir}/linux/logisim-revolution-icon-128.png",
       "--install-dir", "/opt",
       "--linux-shortcut"
   )
@@ -662,7 +661,7 @@ tasks.register("createMsi") {
         "--name", projectName,
         "--dest", targetDir,
         "--file-associations", "${supportDir}/windows/file.jpackage",
-        "--icon", "${supportDir}/windows/Logisim-evolution.ico",
+        "--icon", "${supportDir}/windows/Logisim-Revolution.ico",
         "--win-menu-group", projectName,
         "--win-shortcut",
         "--win-dir-chooser",
@@ -719,7 +718,7 @@ tasks.register("createExe") {
     val params = sharedParams + func.getNeededModules(jdepsFile) + listOf(
         "--name", projectName,
         "--dest", dest,
-        "--icon", "${supportDir}/windows/Logisim-evolution.ico",
+        "--icon", "${supportDir}/windows/Logisim-Revolution.ico",
         "--type", "app-image",
         // we MUST use short version form (without any suffix like "-dev", as it is not allowed in MSI package:
         // https://docs.microsoft.com/en-us/windows/win32/msi/productversion?redirectedfrom=MSDN
@@ -791,7 +790,7 @@ tasks.register("createApp") {
         "--dest", dest,
         "--name", projectName,
         "--file-associations", "${supportDir}/macos/file.jpackage",
-        "--icon", "${supportDir}/macos/Logisim-evolution.icns",
+        "--icon", "${supportDir}/macos/Logisim-Revolution.icns",
         // app versioning is strictly checked for macOS. No suffix allowed for `app-image` type.
         "--app-version", appVersion,
         "--type", "app-image",
@@ -1115,6 +1114,8 @@ tasks.register<JavaExec>("uiSnapshot") {
   systemProperty("snapshot.page", project.findProperty("page") ?: "-1")
   systemProperty("snapshot.file", project.findProperty("file") ?: "")
   systemProperty("snapshot.print", project.findProperty("print") ?: "false")
+  systemProperty("snapshot.select", project.findProperty("select") ?: "")
+  systemProperty("snapshot.canvasZoom", project.findProperty("canvasZoom") ?: "0")
   systemProperty("snapshot.side", project.findProperty("side") ?: "")
 }
 
@@ -1138,9 +1139,20 @@ tasks.register<JavaExec>("themeProbe") {
   args(project.findProperty("theme")?.toString() ?: "light")
 }
 
+tasks.register<JavaExec>("splashSnapshot") {
+  group = "verification"
+  description = "Renders the loading splash to a PNG."
+  classpath = sourceSets["test"].runtimeClasspath
+  mainClass.set("com.cburch.logisim.gui.start.SplashSnapshot")
+  systemProperty("snapshot.theme", project.findProperty("theme") ?: "dark")
+  systemProperty("snapshot.scale", project.findProperty("scale") ?: "1.0")
+  systemProperty("snapshot.stage", project.findProperty("stage") ?: "progressLibraries")
+  systemProperty("snapshot.out", project.findProperty("out") ?: "build/splash-snapshot.png")
+}
+
 // Development probes must never read/write the developer's real settings or recovery files.
 tasks.withType<JavaExec>().configureEach {
-  if (name in setOf("uiSnapshot", "optionsProbe", "scaleProbe", "themeProbe")) {
+  if (name in setOf("uiSnapshot", "splashSnapshot", "optionsProbe", "scaleProbe", "themeProbe")) {
     doFirst {
       val isolated = Files.createTempDirectory("logisim-${name}-").toFile()
       systemProperty("user.home", File(isolated, "home").apply { mkdirs() }.path)

@@ -35,6 +35,6 @@ public class LogisimLightLaf extends FlatLightLaf {
 
   @Override
   public String getDescription() {
-    return "Logisim-evolution light theme";
+    return "Logisim Revolution light theme";
   }
 }

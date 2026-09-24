@@ -1,8 +1,12 @@
-[![Logisim-evolution](docs/img/logisim-evolution-logo.png)](https://github.com/logisim-evolution/logisim-evolution)
+[![Logisim Revolution](artwork/logisim-revolution-wordmark.svg)](https://git.briggen.dev/NilsBriggen/Logisim-Revolution)
 
 # Changes #
 
 * @dev (????-??-??)
+  * Gave Revolution its own application identity, loading splash, vector icon family, readable
+    component captions and isolated settings and recovery paths. Refreshed Help and Preferences,
+    and rewrote the README around the new interface and verified source-build path
+    (@NilsBriggen).
   * Preserve the last valid project and recovery file when serialization fails; Save As dismissal
     never chooses an extension implicitly. Timing and vector drawers safely suspend for HDL
     editors, and constrained layouts retain usable editor space without losing saved pane sizes

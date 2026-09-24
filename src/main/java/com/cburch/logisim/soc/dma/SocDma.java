@@ -19,6 +19,7 @@ import com.cburch.logisim.data.Location;
 import com.cburch.logisim.data.Value;
 import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.gui.icons.ArithmeticIcon;
+import com.cburch.logisim.instance.ComponentCaption;
 import com.cburch.logisim.instance.Instance;
 import com.cburch.logisim.instance.InstancePainter;
 import com.cburch.logisim.instance.InstanceState;
@@ -31,10 +32,10 @@ import com.cburch.logisim.soc.data.SocBusSnifferInterface;
 import com.cburch.logisim.soc.data.SocInstanceFactory;
 import com.cburch.logisim.soc.data.SocProcessorInterface;
 import com.cburch.logisim.soc.data.SocSimulationManager;
+import com.cburch.logisim.tools.ToolTipMaker;
 import com.cburch.logisim.util.GraphicsUtil;
 
 import java.awt.Color;
-import java.awt.Font;
 import java.awt.Graphics2D;
 
 /**
@@ -157,35 +158,24 @@ public class SocDma extends SocInstanceFactory {
     int x = loc.getX();
     int y = loc.getY();
 
-    Font f = g2.getFont();
-    g2.setFont(StdAttr.DEFAULT_LABEL_FONT);
-    GraphicsUtil.drawCenteredText(g2, "SOC DMA Engine", x + WIDTH / 2, y + 10);
-    g2.setFont(f);
+    ComponentCaption.draw(g2, "SOC DMA Engine", Bounds.create(x + 5, y + 2, WIDTH - 10, 18),
+        ComponentCaption.FONT.deriveFont(java.awt.Font.BOLD));
 
     // Show base address and burst size
     int baseAddr = painter.getAttributeValue(DmaAttributes.START_ADDRESS);
     int burst = painter.getAttributeValue(DmaAttributes.BURST_SIZE);
-    GraphicsUtil.drawCenteredText(g2,
+    ComponentCaption.draw(g2,
         S.get("SocDmaBaseLabel") + String.format("0x%08X", baseAddr),
-        x + WIDTH / 4, y + 30);
-    GraphicsUtil.drawCenteredText(g2,
+        Bounds.create(x + 5, y + 23, 150, 16), ComponentCaption.FONT);
+    ComponentCaption.draw(g2,
         S.get("SocDmaBurstLabel") + burst + " words/tick",
-        x + 3 * WIDTH / 4, y + 30);
+        Bounds.create(x + 165, y + 23, 150, 16), ComponentCaption.FONT);
 
     // Show runtime status if available
     DmaState.DmaRegState data = (DmaState.DmaRegState) painter.getData();
     if (data != null) {
-      String statusStr;
-      if (data.busy) {
-        int pct = data.length > 0 ? (data.bytesDone * 100 / data.length) : 0;
-        statusStr = S.get("SocDmaStatusBusy") + " " + pct + "%"
-            + " (" + data.bytesDone + "/" + data.length + " bytes)";
-      } else if (data.done) {
-        statusStr = S.get("SocDmaStatusDone");
-      } else {
-        statusStr = S.get("SocDmaStatusIdle");
-      }
-      GraphicsUtil.drawCenteredText(g2, statusStr, x + WIDTH / 2, y + 50);
+      ComponentCaption.draw(g2, statusCaption(data),
+          Bounds.create(x + 5, y + 43, WIDTH - 10, 18), ComponentCaption.FONT);
     }
 
     if (painter.isPrintView()) return;
@@ -202,9 +192,38 @@ public class SocDma extends SocInstanceFactory {
 
     // Bus connection labels
     g2.setColor(CanvasStyle.componentColor());
-    GraphicsUtil.drawCenteredText(g2, "CTRL", x + 55, y + 85);
-    GraphicsUtil.drawCenteredText(g2, "SRC", x + 160, y + 85);
-    GraphicsUtil.drawCenteredText(g2, "DST", x + 265, y + 85);
+    ComponentCaption.draw(g2, "CTRL", Bounds.create(x + 5, y + 82, 100, 15), ComponentCaption.FONT);
+    ComponentCaption.draw(g2, "SRC", Bounds.create(x + 110, y + 82, 100, 15), ComponentCaption.FONT);
+    ComponentCaption.draw(g2, "DST", Bounds.create(x + 215, y + 82, 100, 15), ComponentCaption.FONT);
+  }
+
+  private static String statusCaption(DmaState.DmaRegState data) {
+    if (data.busy) {
+      final var pct = data.length > 0 ? (data.bytesDone * 100L / data.length) : 0;
+      return S.get("SocDmaStatusBusy") + " " + pct + "%"
+          + " (" + data.bytesDone + "/" + data.length + " bytes)";
+    }
+    return S.get(data.done ? "SocDmaStatusDone" : "SocDmaStatusIdle");
+  }
+
+  @Override
+  protected Object getInstanceFeature(Instance instance, Object key) {
+    final var inherited = super.getInstanceFeature(instance, key);
+    if (key != ToolTipMaker.class) return inherited;
+    return (ToolTipMaker) event -> {
+      final var ports = instance.getComponent().getToolTip(event);
+      if (ports != null) return ports;
+      final var attrs = instance.getAttributeSet();
+      var text = S.get("SocDmaBaseLabel")
+          + String.format("0x%08X", attrs.getValue(DmaAttributes.START_ADDRESS)) + "; "
+          + S.get("SocDmaBurstLabel") + attrs.getValue(DmaAttributes.BURST_SIZE) + " words/tick";
+      final var state = event.getCircuitState();
+      if (state != null && instance.getData(state) instanceof DmaState.DmaRegState data) {
+        text += "; " + statusCaption(data);
+      }
+      final var buses = ((ToolTipMaker) inherited).getToolTip(event);
+      return buses == null ? text : text + "; " + buses;
+    };
   }
 
   @Override

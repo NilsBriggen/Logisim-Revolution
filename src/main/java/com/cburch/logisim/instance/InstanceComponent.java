@@ -43,6 +43,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 public final class InstanceComponent implements Component, AttributeListener, ToolTipMaker {
   private EventSourceWeakSupport<ComponentListener> listeners;
@@ -465,6 +466,10 @@ public final class InstanceComponent implements Component, AttributeListener, To
   void setTextField(
       Attribute<String> labelAttr, Attribute<Font> fontAttr, int x, int y, int halign, int valign) {
     setTextField(labelAttr, fontAttr, x, y, halign, valign, false);
+  }
+
+  void setLabelSafeInterior(Supplier<Bounds> safeInterior) {
+    if (textField != null) textField.setSafeInterior(safeInterior);
   }
 
   void setTextField(

@@ -10,9 +10,11 @@
 package com.cburch.logisim.soc.data;
 
 import com.cburch.logisim.data.AttributeSet;
+import com.cburch.logisim.instance.Instance;
 import com.cburch.logisim.instance.InstanceFactory;
 import com.cburch.logisim.instance.InstancePainter;
 import com.cburch.logisim.instance.InstanceState;
+import com.cburch.logisim.tools.ToolTipMaker;
 import com.cburch.logisim.util.StringGetter;
 
 public abstract class SocInstanceFactory extends InstanceFactory {
@@ -47,6 +49,24 @@ public abstract class SocInstanceFactory extends InstanceFactory {
 
   public int getSocType() {
     return myType;
+  }
+
+  @Override
+  protected Object getInstanceFeature(Instance instance, Object key) {
+    if (key != ToolTipMaker.class) return super.getInstanceFeature(instance, key);
+    return (ToolTipMaker) event -> {
+      final var portTip = instance.getComponent().getToolTip(event);
+      if (portTip != null) return portTip;
+      final var text = new StringBuilder();
+      final var attrs = instance.getAttributeSet();
+      for (final var attr : attrs.getAttributes()) {
+        if (attrs.getValue(attr) instanceof SocBusInfo bus) {
+          if (!text.isEmpty()) text.append("; ");
+          text.append(attr.getDisplayName()).append(": ").append(bus.getDisplayName());
+        }
+      }
+      return text.isEmpty() ? null : text.toString();
+    };
   }
 
   public boolean isSocSlave() {

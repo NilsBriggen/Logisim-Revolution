@@ -110,8 +110,15 @@ abstract class AbstractGate extends InstanceFactory {
       cx = loc.getX() - axis;
       cy = loc.getY() + perp;
     }
-    instance.setTextField(
-        StdAttr.LABEL, StdAttr.LABEL_FONT, cx, cy, TextField.H_CENTER, TextField.V_CENTER);
+    // The central quarter stays clear of the curved outline and input/output bubbles.
+    instance.setAutoLabelTextField(cx, cy, TextField.H_CENTER, TextField.V_CENTER, () -> {
+      if (AppPreferences.GATE_SHAPE.get().equals(AppPreferences.SHAPE_RECTANGULAR)) {
+        return Bounds.EMPTY_BOUNDS; // Do not cover the IEC function glyph.
+      }
+      final var body = instance.getBounds();
+      return Bounds.create(body.getX() + body.getWidth() / 4, body.getY() + body.getHeight() / 4,
+          body.getWidth() / 2, body.getHeight() / 2);
+    });
   }
 
   protected abstract Value computeOutput(Value[] inputs, int numInputs, InstanceState state);
@@ -354,6 +361,7 @@ abstract class AbstractGate extends InstanceFactory {
     } else if (attr == GateAttributes.ATTR_INPUTS || attr instanceof NegateAttribute) {
       instance.recomputeBounds();
       computePorts(instance);
+      computeLabel(instance);
     } else if (attr == GateAttributes.ATTR_XOR) {
       instance.fireInvalidated();
     }

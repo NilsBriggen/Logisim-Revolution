@@ -31,6 +31,6 @@ public class LogisimDarkLaf extends FlatDarkLaf {
 
   @Override
   public String getDescription() {
-    return "Logisim-evolution dark theme";
+    return "Logisim Revolution dark theme";
   }
 }

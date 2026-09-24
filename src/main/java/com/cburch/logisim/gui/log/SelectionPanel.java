@@ -12,18 +12,22 @@ package com.cburch.logisim.gui.log;
 import static com.cburch.logisim.gui.Strings.S;
 
 import com.cburch.logisim.data.Direction;
+import com.cburch.logisim.gui.generic.ScrollableForm;
 import com.cburch.logisim.gui.icons.FatArrowIcon;
-import com.cburch.logisim.prefs.AppPreferences;
+import com.cburch.logisim.gui.theme.Theme;
+import com.cburch.logisim.gui.theme.Tokens;
 import com.cburch.logisim.util.JDialogOk;
+import com.cburch.logisim.util.UiScale;
+import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
-import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JLabel;
+import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.ScrollPaneConstants;
 
@@ -34,6 +38,8 @@ public class SelectionPanel extends LogPanel {
   private final JLabel selectDesc;
   private final JLabel exploreLabel;
   private final JLabel listLabel;
+  private final JLabel emptyLabel = new JLabel();
+  private final TransferControls controls;
 
   public SelectionPanel(LogFrame window) {
     super(window);
@@ -58,7 +64,7 @@ public class SelectionPanel extends LogPanel {
 
     gbc.fill = GridBagConstraints.HORIZONTAL;
     gbc.weightx = gbc.weighty = 0.0;
-    gbc.insets = new Insets(15, 10, 0, 10);
+    gbc.insets = new Insets(UiScale.scaled(12), UiScale.scaled(10), 0, UiScale.scaled(10));
 
     gbc.gridx = 0;
     gbc.gridy = 0;
@@ -71,62 +77,72 @@ public class SelectionPanel extends LogPanel {
     gbc.gridx = 0;
     gbc.gridy = 1;
     exploreLabel = new JLabel();
+    exploreLabel.setLabelFor(selector);
     gridbag.setConstraints(exploreLabel, gbc);
     add(exploreLabel);
 
     gbc.gridx = 2;
     gbc.gridy = 1;
     listLabel = new JLabel();
+    listLabel.setLabelFor(list);
     gridbag.setConstraints(listLabel, gbc);
     add(listLabel);
 
     gbc.fill = GridBagConstraints.BOTH;
     gbc.weightx = gbc.weighty = 1.0;
-    gbc.insets = new Insets(10, 10, 10, 10);
+    final var gap = UiScale.scaled(10);
+    gbc.insets = new Insets(gap, gap, gap, gap);
     gbc.gridx = 0;
     gbc.gridy = 2;
     gridbag.setConstraints(explorerPane, gbc);
     add(explorerPane);
-    explorerPane.setPreferredSize(new Dimension(120, 200));
+    explorerPane.setPreferredSize(new Dimension(UiScale.scaled(220), UiScale.scaled(240)));
 
-    final var addArrow = new JButton(new FatArrowIcon(Direction.EAST));
-    final var delArrow = new JButton(new FatArrowIcon(Direction.WEST));
-    addArrow.setBorder(BorderFactory.createEmptyBorder());
-    delArrow.setBorder(BorderFactory.createEmptyBorder());
-    addArrow.setContentAreaFilled(false);
-    delArrow.setContentAreaFilled(false);
-    addArrow.setEnabled(false);
-    delArrow.setEnabled(false);
+    controls = new TransferControls(
+        () -> list.add(selector.getSelectedItems()), list::removeSelected);
     selector
         .getSelectionModel()
         .addListSelectionListener(
-            e -> addArrow.setEnabled(!selector.getSelectionModel().isSelectionEmpty()));
+            e -> controls.addButton.setEnabled(!selector.getSelectionModel().isSelectionEmpty()));
     list.getSelectionModel()
         .addListSelectionListener(
-            e -> delArrow.setEnabled(!list.getSelectionModel().isSelectionEmpty()));
-    addArrow.addActionListener(e -> list.add(selector.getSelectedItems()));
-    delArrow.addActionListener(e -> list.removeSelected());
+            e -> controls.removeButton.setEnabled(!list.getSelectionModel().isSelectionEmpty()));
+    list.getModel().addTableModelListener(event -> updateEmptyState());
 
-    final var arrowBox = new Box(BoxLayout.Y_AXIS);
-    arrowBox.add(addArrow);
-    arrowBox.add(delArrow);
     gbc.fill = GridBagConstraints.NONE;
     gbc.weightx = gbc.weighty = 0.0;
     gbc.insets = new Insets(0, 0, 0, 0);
     gbc.gridx = 1;
     gbc.gridy = 2;
-    gridbag.setConstraints(arrowBox, gbc);
-    add(arrowBox);
+    gridbag.setConstraints(controls, gbc);
+    add(controls);
 
     gbc.fill = GridBagConstraints.BOTH;
     gbc.weightx = gbc.weighty = 1.0;
-    gbc.insets = new Insets(10, 10, 10, 10);
+    gbc.insets = new Insets(gap, gap, gap, gap);
     gbc.gridx = 2;
     gbc.gridy = 2;
-    gridbag.setConstraints(listPane, gbc);
-    add(listPane);
+    final var selectedPanel = new JPanel(new BorderLayout(0, UiScale.scaled(8)));
+    selectedPanel.add(listPane, BorderLayout.CENTER);
+    selectedPanel.add(emptyLabel, BorderLayout.SOUTH);
+    gridbag.setConstraints(selectedPanel, gbc);
+    add(selectedPanel);
     listPane.setPreferredSize(
-        new Dimension(AppPreferences.getScaled(180), AppPreferences.getScaled(200)));
+        new Dimension(UiScale.scaled(240), UiScale.scaled(240)));
+    updateMetrics();
+    updateEmptyState();
+    Theme.addListener(this, this::updateMetrics);
+    localeChanged();
+  }
+
+  private void updateMetrics() {
+    list.setRowHeight(list.getFontMetrics(list.getFont()).getHeight() + UiScale.scaled(10));
+    emptyLabel.setForeground(Tokens.mutedForeground());
+    revalidate();
+  }
+
+  private void updateEmptyState() {
+    emptyLabel.setVisible(list.getRowCount() == 0);
   }
 
   @Override
@@ -144,6 +160,8 @@ public class SelectionPanel extends LogPanel {
     selectDesc.setText(S.get("selectionDesc"));
     exploreLabel.setText(S.get("exploreLabel"));
     listLabel.setText(S.get("listLabel"));
+    emptyLabel.setText(S.get("selectionEmpty"));
+    controls.localeChanged();
     selector.localeChanged();
     list.localeChanged();
   }
@@ -152,6 +170,32 @@ public class SelectionPanel extends LogPanel {
   public void modelChanged(Model oldModel, Model newModel) {
     selector.setRootCircuit(newModel.getCircuit());
     list.setLogModel(newModel);
+    updateEmptyState();
+  }
+
+  static class TransferControls extends JPanel {
+    private static final long serialVersionUID = 1L;
+    final JButton addButton = new JButton(new FatArrowIcon(Direction.EAST));
+    final JButton removeButton = new JButton(new FatArrowIcon(Direction.WEST));
+
+    TransferControls(Runnable addSelection, Runnable removeSelection) {
+      setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
+      addButton.setEnabled(false);
+      removeButton.setEnabled(false);
+      addButton.addActionListener(event -> addSelection.run());
+      removeButton.addActionListener(event -> removeSelection.run());
+      add(addButton);
+      add(Box.createVerticalStrut(UiScale.scaled(8)));
+      add(removeButton);
+      localeChanged();
+    }
+
+    void localeChanged() {
+      addButton.setText(S.get("selectionAdd"));
+      removeButton.setText(S.get("selectionRemove"));
+      addButton.setToolTipText(S.get("selectionAddTip"));
+      removeButton.setToolTipText(S.get("selectionRemoveTip"));
+    }
   }
 
   static class SelectionDialog extends JDialogOk {
@@ -159,13 +203,12 @@ public class SelectionPanel extends LogPanel {
     final SelectionPanel selPanel;
 
     SelectionDialog(LogFrame logFrame) {
-      super("Signal Selection", false);
+      super(S.get("selectionDialogTitle"), false);
       selPanel = new SelectionPanel(logFrame);
       selPanel.localeChanged();
       getContentPane().add(selPanel);
-      setMinimumSize(new Dimension(350, 300));
-      setSize(400, 400);
-      pack();
+      ok.setText(S.get("statsCloseButton"));
+      ScrollableForm.sizeWindow(this, new Dimension(680, 420), new Dimension(480, 300), true);
     }
 
     @Override

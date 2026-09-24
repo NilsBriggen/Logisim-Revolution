@@ -10,6 +10,7 @@
 package com.cburch.logisim.tools;
 
 import com.cburch.logisim.comp.ComponentFactory;
+import com.cburch.logisim.gui.icons.ComponentIcons;
 import com.cburch.logisim.util.IconsUtil;
 import com.cburch.logisim.util.LibraryUtil;
 import com.cburch.logisim.util.StringGetter;
@@ -33,6 +34,8 @@ public class FactoryDescription {
   private String iconName;
   private boolean iconLoadAttempted;
   private Icon icon;
+  private final Icon builtinIcon;
+  private boolean explicitIcon;
   private final Class<? extends ComponentFactory> factoryClass;
   private boolean factoryLoadAttempted;
   private ComponentFactory factory;
@@ -41,6 +44,11 @@ public class FactoryDescription {
   public FactoryDescription(
       Class<? extends ComponentFactory> factoryClass, StringGetter displayName, Icon icon) {
     this(factoryClass, displayName);
+    if (icon != null) {
+      this.icon = icon;
+      this.iconLoadAttempted = true;
+      this.explicitIcon = true;
+    }
   }
 
   public FactoryDescription(
@@ -54,8 +62,9 @@ public class FactoryDescription {
   public FactoryDescription(
       Class<? extends ComponentFactory> factoryClass, StringGetter displayName) {
     this.displayName = displayName;
+    this.builtinIcon = ComponentIcons.forFactory(factoryClass);
     this.iconName = "???";
-    this.iconLoadAttempted = true;
+    this.iconLoadAttempted = builtinIcon == null;
     this.icon = null;
     this.factoryClass = factoryClass;
     this.factoryLoadAttempted = false;
@@ -111,11 +120,16 @@ public class FactoryDescription {
   public Icon getIcon() {
     var ret = icon;
     if (ret == null && !iconLoadAttempted) {
-      ret = IconsUtil.getIcon(iconName);
+      ret = builtinIcon != null ? builtinIcon : IconsUtil.getIcon(iconName);
       icon = ret;
       iconLoadAttempted = true;
     }
     return ret;
+  }
+
+  /** Explicit extension icons and built-in miniatures must not change after lazy factory load. */
+  boolean hasPersistentIcon() {
+    return explicitIcon || builtinIcon != null;
   }
 
   /**

@@ -25,8 +25,8 @@ import javax.swing.JFrame;
 
 public class LFrame extends JFrame implements WindowClosable {
   private static final long serialVersionUID = 1L;
-  private static final String pathBasePart = "resources/logisim/img/logisim-icon-";
-  private static final int[] sizes = {16, 32, 48, 64, 128};
+  private static final String pathBasePart = "resources/logisim/img/logisim-revolution-icon-";
+  private static final int[] sizes = {16, 32, 48, 64, 128, 256};
   private static final int defaultSize = 48;
   private static List<Image> allIcons = null;
   private static Image defaultIcon = null;

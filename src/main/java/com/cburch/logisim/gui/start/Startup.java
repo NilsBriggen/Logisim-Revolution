@@ -906,13 +906,15 @@ public class Startup implements AWTEventListener {
       System.exit(exitCode);
     }
 
-    // kick off the progress monitor
-    // (The values used for progress values are based on a single run where
-    // I loaded a large file.)
+    // Create and show Swing windows on the EDT before loading libraries on this thread.
     if (showSplash) {
       try {
-        monitor = new SplashScreen();
-        monitor.setVisible(true);
+        final var openSplash = (Runnable) () -> {
+          monitor = new SplashScreen();
+          monitor.setVisible(true);
+        };
+        if (javax.swing.SwingUtilities.isEventDispatchThread()) openSplash.run();
+        else javax.swing.SwingUtilities.invokeAndWait(openSplash);
       } catch (Exception t) {
         monitor = null;
         showSplash = false;
@@ -979,7 +981,7 @@ public class Startup implements AWTEventListener {
     // Check for unnamed autosaves here and allow to save them and/or open them again
     if (testVector == null && testCircPathInput == null) {
       // get list of all unnamed autosave files
-      final var autosaves = new File(System.getProperty("user.home")).listFiles(
+      final var autosaves = Loader.getUnnamedAutosaveDirectory().listFiles(
             new FilenameFilter() {
               @Override
               public boolean accept(File dir, String name) {
@@ -990,7 +992,7 @@ public class Startup implements AWTEventListener {
           );
 
       // Go over all autosaves to select what to do with each
-      for (final var autosave : autosaves) {
+      for (final var autosave : autosaves == null ? new File[0] : autosaves) {
         boolean retry = false;
         do {
           retry = false;

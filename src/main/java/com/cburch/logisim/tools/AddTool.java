@@ -26,6 +26,7 @@ import com.cburch.logisim.data.Bounds;
 import com.cburch.logisim.data.Direction;
 import com.cburch.logisim.data.Location;
 import com.cburch.logisim.gui.generic.OptionPane;
+import com.cburch.logisim.gui.icons.ComponentIcons;
 import com.cburch.logisim.gui.main.Canvas;
 import com.cburch.logisim.gui.main.SelectionActions;
 import com.cburch.logisim.gui.main.ToolAttributeAction;
@@ -656,7 +657,7 @@ public class AddTool extends Tool implements Transferable, PropertyChangeListene
   @Override
   public void paintIcon(ComponentDrawContext c, int x, int y) {
     final var desc = description;
-    if (desc != null && !desc.isFactoryLoaded()) {
+    if (desc != null && (!desc.isFactoryLoaded() || desc.hasPersistentIcon())) {
       final var icon = desc.getIcon();
       if (icon != null) {
         icon.paintIcon(c.getDestination(), c.getGraphics(), x + 2, y + 2);
@@ -666,6 +667,11 @@ public class AddTool extends Tool implements Transferable, PropertyChangeListene
 
     ComponentFactory source = getFactory();
     if (source != null) {
+      final var icon = ComponentIcons.forFactory(source.getClass());
+      if (icon != null) {
+        icon.paintIcon(c.getDestination(), c.getGraphics(), x + 2, y + 2);
+        return;
+      }
       final var base = getBaseAttributes();
       source.paintIcon(c, x, y, base);
     }

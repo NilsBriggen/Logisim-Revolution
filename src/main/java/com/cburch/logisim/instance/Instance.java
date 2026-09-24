@@ -19,6 +19,7 @@ import com.cburch.logisim.data.Location;
 import com.cburch.logisim.util.GraphicsUtil;
 import java.awt.Font;
 import java.util.List;
+import java.util.function.Supplier;
 
 public final class Instance implements Location.At {
 
@@ -116,6 +117,22 @@ public final class Instance implements Location.At {
       int vAlign,
       boolean multiline) {
     comp.setTextField(labelAttr, fontAttr, x, y, hAlign, vAlign, multiline);
+  }
+
+  /**
+   * Opts a factory-controlled label into measured placement, without adding document attributes.
+   * Explicit label-location attributes and custom appearance text must use {@link #setTextField}.
+   * The safe interior is in circuit coordinates; an empty interior always keeps text outside.
+   */
+  public void setAutoLabelTextField(int x, int y, int hAlign, int vAlign, Bounds safeInterior) {
+    setAutoLabelTextField(x, y, hAlign, vAlign, () -> safeInterior);
+  }
+
+  /** Supplies a current safe interior when a factory's painting style can change independently. */
+  public void setAutoLabelTextField(
+      int x, int y, int hAlign, int vAlign, Supplier<Bounds> safeInterior) {
+    comp.setTextField(StdAttr.LABEL, StdAttr.LABEL_FONT, x, y, hAlign, vAlign);
+    comp.setLabelSafeInterior(safeInterior);
   }
 
   public static final int AVOID_TOP = 1;

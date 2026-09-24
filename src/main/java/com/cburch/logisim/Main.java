@@ -13,6 +13,7 @@ import com.cburch.logisim.generated.BuildInfo;
 import com.cburch.logisim.gui.generic.OptionPane;
 import com.cburch.logisim.gui.start.Startup;
 import com.cburch.logisim.gui.theme.Theme;
+import com.cburch.logisim.prefs.PreferenceBootstrap;
 import java.awt.GraphicsEnvironment;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -31,6 +32,7 @@ public class Main {
     // System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", "debug");
 
     System.setProperty("apple.awt.application.name", BuildInfo.name);
+    PreferenceBootstrap.offerImportIfInteractive(args);
     try {
       if (!GraphicsEnvironment.isHeadless()) {
         SwingUtilities.invokeAndWait(Theme::install);
@@ -56,8 +58,8 @@ public class Main {
 
   public static boolean headless = false;
 
-  // FloppyDisk unicode character: https://charbase.com/1f4be-unicode-floppy-disk
-  public static final String DIRTY_MARKER = "\ud83d\udcbe";
+  /** Uncommitted document marker in the window title. */
+  public static final String DIRTY_MARKER = "●";
 
   public static boolean hasGui() {
     return !headless;

@@ -17,8 +17,8 @@ import com.cburch.logisim.data.AttributeSet;
 import com.cburch.logisim.data.Attributes;
 import com.cburch.logisim.data.BitWidth;
 import com.cburch.logisim.data.Bounds;
-import com.cburch.logisim.data.Direction;
 import com.cburch.logisim.data.Value;
+import com.cburch.logisim.instance.ComponentCaption;
 import com.cburch.logisim.instance.Instance;
 import com.cburch.logisim.instance.InstanceFactory;
 import com.cburch.logisim.instance.InstancePainter;
@@ -26,12 +26,11 @@ import com.cburch.logisim.instance.InstanceState;
 import com.cburch.logisim.instance.Port;
 import com.cburch.logisim.instance.StdAttr;
 import com.cburch.logisim.prefs.AppPreferences;
+import com.cburch.logisim.tools.ToolTipMaker;
 import com.cburch.logisim.tools.key.BitWidthConfigurator;
 import com.cburch.logisim.tools.key.JoinedConfigurator;
-import com.cburch.logisim.util.GraphicsUtil;
 import java.awt.Color;
-import java.awt.FontMetrics;
-import java.awt.Graphics;
+import java.awt.Font;
 
 public class BitExtender extends InstanceFactory {
   /**
@@ -58,6 +57,7 @@ public class BitExtender extends InstanceFactory {
           });
 
   public static final BitExtender FACTORY = new BitExtender();
+  private static final Font CAPTION_FONT = ComponentCaption.FONT.deriveFont(10f);
 
   public BitExtender() {
     super(_ID, S.getter("extenderComponent"), new BitExtenderHdlGeneratorFactory());
@@ -98,6 +98,30 @@ public class BitExtender extends InstanceFactory {
     return (String) topt.getValue();
   }
 
+  private String modeCaption(AttributeSet attrs) {
+    return switch (getType(attrs)) {
+      case "zero" -> S.get("extenderZeroLabel");
+      case "one" -> S.get("extenderOneLabel");
+      case "sign" -> S.get("extenderSignLabel");
+      case "input" -> S.get("extenderInputLabel");
+      default -> "???";
+    };
+  }
+
+  private String widthCaption(AttributeSet attrs) {
+    return attrs.getValue(ATTR_IN_WIDTH).getWidth() + "→"
+        + attrs.getValue(ATTR_OUT_WIDTH).getWidth();
+  }
+
+  @Override
+  protected Object getInstanceFeature(Instance instance, Object key) {
+    if (key == ToolTipMaker.class) {
+      return (ToolTipMaker) event -> modeCaption(instance.getAttributeSet()) + " "
+          + S.get("extenderMainLabel") + " " + widthCaption(instance.getAttributeSet());
+    }
+    return super.getInstanceFeature(instance, key);
+  }
+
   @Override
   protected void instanceAttributeChanged(Instance instance, Attribute<?> attr) {
     if (attr == ATTR_TYPE) {
@@ -111,35 +135,17 @@ public class BitExtender extends InstanceFactory {
   //
   @Override
   public void paintInstance(InstancePainter painter) {
-    Graphics g = painter.getGraphics();
-    FontMetrics fm = g.getFontMetrics();
-    int asc = fm.getAscent();
-
+    final var g = painter.getGraphics();
     g.setColor(new Color(AppPreferences.COMPONENT_COLOR.get()));
     painter.drawBounds();
-
-    String s0;
-    String type = getType(painter.getAttributeSet());
-    s0 = switch (type) {
-      case "zero" -> S.get("extenderZeroLabel");
-      case "one" -> S.get("extenderOneLabel");
-      case "sign" -> S.get("extenderSignLabel");
-      case "input" -> S.get("extenderInputLabel");
-      default -> "???"; // should never happen
-    };
-    String s1 = S.get("extenderMainLabel");
-    Bounds bds = painter.getBounds();
-    int x = bds.getX() + bds.getWidth() / 2;
-    int y0 = bds.getY() + (bds.getHeight() / 2 + asc) / 2;
-    int y1 = bds.getY() + (3 * bds.getHeight() / 2 + asc) / 2;
-    GraphicsUtil.drawText(g, s0, x, y0, GraphicsUtil.H_CENTER, GraphicsUtil.V_BASELINE);
-    GraphicsUtil.drawText(g, s1, x, y1, GraphicsUtil.H_CENTER, GraphicsUtil.V_BASELINE);
-
-    BitWidth w0 = painter.getAttributeValue(ATTR_OUT_WIDTH);
-    BitWidth w1 = painter.getAttributeValue(ATTR_IN_WIDTH);
-    painter.drawPort(0, "" + w0.getWidth(), Direction.WEST);
-    painter.drawPort(1, "" + w1.getWidth(), Direction.EAST);
-    if (type.equals("input")) painter.drawPort(2);
+    final var b = painter.getBounds();
+    // Two rows leave room for the top control port and side pin markers. The arrow expresses
+    // input/output width without three competing text rows in the unchanged 40-unit body.
+    ComponentCaption.draw(g, modeCaption(painter.getAttributeSet()),
+        Bounds.create(b.getX() + 3, b.getY() + 6, 34, 13), CAPTION_FONT);
+    ComponentCaption.draw(g, widthCaption(painter.getAttributeSet()),
+        Bounds.create(b.getX() + 1, b.getY() + 24, 38, 13), CAPTION_FONT);
+    painter.drawPorts();
   }
 
   @Override

@@ -20,11 +20,11 @@ import javax.swing.Icon;
  * colour from the theme.
  *
  * <p>These are the icons of the interface itself: menus, toolbars, panels, the status bar. The
- * icons that stand for circuit components are a different matter and keep being painted by
- * {@code gui.icons.BaseIcon}, because they are miniature drawings of the components themselves.
+ * icons that stand for circuit components use semantic vectors in {@code gui.icons.ComponentIcons}
+ * or their own attribute-dependent painters.
  *
- * <p>Glyphs are from the Lucide icon set (ISC licence); see {@code LICENSE-lucide.txt} beside the
- * files.
+ * <p>Glyphs use the Lucide icon set (ISC licence) and application-specific line drawings;
+ * see {@code LICENSE-lucide.txt} and the individual SVG notices beside the files.
  */
 public final class AppIcons {
 
@@ -97,7 +97,26 @@ public final class AppIcons {
     STAR("star"),
     HISTORY("history"),
     LIST_FILTER("list-filter"),
-    MORE("more");
+    MORE("more"),
+    POINTER("pointer"),
+    HAND("hand"),
+    TYPE("type"),
+    IMAGE("image"),
+    COMPILE("compile"),
+    HOME("home"),
+    ARROW_RIGHT("arrow-right"),
+    ARROW_LEFT("arrow-left"),
+    ARROW_UP("arrow-up"),
+    ARROW_DOWN("arrow-down"),
+    EYE("eye"),
+    DRAW_LINE("draw-line"),
+    DRAW_CURVE("draw-curve"),
+    DRAW_POLYLINE("draw-polyline"),
+    DRAW_POLYGON("draw-polygon"),
+    DRAW_RECTANGLE("draw-rectangle"),
+    DRAW_ROUNDED_RECTANGLE("draw-rounded-rectangle"),
+    DRAW_ELLIPSE("draw-ellipse"),
+    WIRE("wire");
 
     private final String fileName;
 

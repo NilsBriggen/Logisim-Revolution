@@ -5,8 +5,8 @@
    JavaHelp TOC Version 2.0//EN"
   "http://java.sun.com/products/javahelp/toc_2_0.dtd">
 <toc version="2.0" categoryclosedimage="chapter" topicimage="topic">
-  <tocitem image="toplevelfolder" target="top" text="Logisim References">
-	<tocitem target="guide" text="Guide to Being a Logisim User">
+  <tocitem image="toplevelfolder" target="top" text="Logisim Revolution Help">
+	<tocitem target="guide" text="User Guide">
 		<tocitem target="tutorial" text="Beginner's tutorial">
 			<tocitem target="tutorial_orient" text="Step 0: Orienting yourself" />
 			<tocitem target="tutorial_gates" text="Step 1: Adding gates" />
@@ -15,7 +15,7 @@
 			<tocitem target="tutorial_test" text="Step 4: Testing your circuit" />
 			<tocitem target="tutorial_step" text="Step 5: Step by step mode"/>
 		</tocitem>
-		<tocitem target="gui" text="The graphical interfaces">
+		<tocitem target="gui" text="The editor">
 			<tocitem target="gui_canvas" text="The canvas"/>
 			<tocitem target="gui_menu" text="The menus"/>
 			<tocitem target="gui_explore" text="The explorer pane" />

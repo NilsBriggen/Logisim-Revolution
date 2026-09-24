@@ -14,6 +14,7 @@ import static com.cburch.logisim.gui.Strings.S;
 import com.cburch.logisim.generated.BuildInfo;
 import com.cburch.logisim.gui.generic.LFrame;
 import com.cburch.logisim.gui.generic.OptionPane;
+import com.cburch.logisim.gui.generic.ScrollableForm;
 import com.cburch.logisim.gui.search.OmniSearchDialog;
 import com.cburch.logisim.gui.search.SearchContext;
 import com.cburch.logisim.gui.search.providers.MenuSearchProvider;
@@ -23,7 +24,6 @@ import com.cburch.logisim.prefs.PrefMonitorKeyStroke;
 import com.cburch.logisim.util.MacCompatibility;
 import java.awt.Desktop;
 import java.awt.Dimension;
-import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.net.URI;
@@ -134,15 +134,15 @@ class MenuHelp extends Menu implements ActionListener {
         helpSetUrl = resolved.path();
         helpSet = new HelpSet(null, resolved.url());
         helpComponent = new JHelp(helpSet);
+        HelpPresentation.install(helpComponent.getContentViewer());
+        HelpPresentation.installNavigation(helpComponent);
         if (helpFrame == null) {
           helpFrame = new LFrame.Dialog(null);
           helpFrame.setTitle(S.get("helpWindowTitle"));
           helpFrame.getContentPane().add(helpComponent);
-          helpFrame.setPreferredSize(
-              new Dimension(
-                  (int) Toolkit.getDefaultToolkit().getScreenSize().getWidth() >> 1,
-                  (int) Toolkit.getDefaultToolkit().getScreenSize().getHeight() >> 1));
-          helpFrame.pack();
+          ScrollableForm.sizeWindow(
+              helpFrame, new Dimension(900, 640), new Dimension(480, 320), true);
+          helpFrame.setLocationRelativeTo(menubar.getParentFrame());
         } else {
           helpFrame.getContentPane().removeAll();
           helpFrame.getContentPane().add(helpComponent);

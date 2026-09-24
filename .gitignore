@@ -291,4 +291,8 @@ gradle-app.setting
 .vscode
 
 # python代码
+
+# Sources for the Revolution brand and its Snap launch command.
+!/snap/local/usr/bin/
 *.py
+!/artwork/generate_revolution_assets.py

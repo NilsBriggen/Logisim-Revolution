@@ -1,17 +1,17 @@
 #
-# Control file to build SNAP package of LSe
-# https://github.com/logisim-evolution/logisim-evolution
+# Control file to build the Logisim Revolution Snap package
+# https://git.briggen.dev/NilsBriggen/Logisim-Revolution
 # https://snapcraft.io/
 #
 # Marcin Orlowski
 #
 
-name: logisim-evolution
-title: Logisim Evolution
+name: logisim-revolution
+title: Logisim Revolution
 summary: Digital logic design tool and simulator
 description: |
- Logisim-evolution is educational software for designing and simulating digital logic circuits.
- Logisim-evolution is free, open-source, and cross-platform.
+ Logisim Revolution is educational software for designing and simulating digital logic circuits.
+ Logisim Revolution is free, open-source, and cross-platform.
 
  Project highlights:
   * easy to use circuit designer,
@@ -23,13 +23,13 @@ description: |
   * huge library of components (LEDs, TTLs, switches, SoCs),
   * supports multiple languages,
   * and more!
-website: https://github.com/logisim-evolution/logisim-evolution
-contact: https://github.com/logisim-evolution/logisim-evolution/issues
-issues: https://github.com/logisim-evolution/logisim-evolution/issues
-source-code: https://github.com/logisim-evolution/logisim-evolution
+website: https://git.briggen.dev/NilsBriggen/Logisim-Revolution
+contact: https://git.briggen.dev/NilsBriggen/Logisim-Revolution/issues
+issues: https://git.briggen.dev/NilsBriggen/Logisim-Revolution/issues
+source-code: https://git.briggen.dev/NilsBriggen/Logisim-Revolution
 license: GPL-3.0
-adopt-info: logisim-evolution
-icon: snap/gui/logisim-icon-128.png
+adopt-info: logisim-revolution
+icon: snap/gui/logisim-revolution-icon-128.png
 
 base: core24
 grade: stable
@@ -41,9 +41,9 @@ platforms:
   arm64:
 
 apps:
-  logisim-evolution:
+  logisim-revolution:
     extensions: [gnome]
-    command: usr/bin/logisim-evolution-wrapper
+    command: usr/bin/logisim-revolution-wrapper
     plugs:
       - desktop
       - desktop-legacy
@@ -56,7 +56,7 @@ apps:
       - removable-media
 
 parts:
-  logisim-evolution:
+  logisim-revolution:
     plugin: gradle
     source: .
     gradle-task: shadowJar
@@ -66,15 +66,15 @@ parts:
       - --console=plain
     override-pull: |
       craftctl default
-      LSE_VERSION="$(cat gradle.properties | grep '^version\s*=.*' | awk '{print $3}')"
-      craftctl set version="${LSE_VERSION}"
+      REVOLUTION_VERSION="$(cat gradle.properties | grep '^version\s*=.*' | awk '{print $3}')"
+      craftctl set version="${REVOLUTION_VERSION}"
     build-packages:
       - gradle
       - openjdk-21-jdk
     stage-packages:
       - openjdk-21-jre
     organize:
-      jar/logisim-evolution-*-all.jar: jar/logisim-evolution.jar
+      jar/logisim-revolution-*-all.jar: jar/logisim-revolution.jar
 
   local-parts:
     plugin: dump

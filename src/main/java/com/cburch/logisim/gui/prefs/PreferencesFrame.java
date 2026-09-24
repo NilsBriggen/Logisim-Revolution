@@ -109,7 +109,7 @@ public class PreferencesFrame extends LFrame.Dialog {
   }
 
   /** Unscaled width of the page list. */
-  private static final int NAV_WIDTH = 190;
+  private static final int NAV_WIDTH = 220;
 
   /** Unscaled size the window opens at. */
   private static final int WINDOW_WIDTH = 820;

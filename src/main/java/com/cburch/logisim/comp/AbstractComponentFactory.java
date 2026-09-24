@@ -19,15 +19,15 @@ import com.cburch.logisim.data.Value;
 import com.cburch.logisim.fpga.designrulecheck.CorrectLabel;
 import com.cburch.logisim.fpga.designrulecheck.netlistComponent;
 import com.cburch.logisim.fpga.hdlgenerator.HdlGeneratorFactory;
+import com.cburch.logisim.gui.icons.ComponentIcons;
 import com.cburch.logisim.util.GraphicsUtil;
-import com.cburch.logisim.util.IconsUtil;
 import com.cburch.logisim.util.StringGetter;
 import com.cburch.logisim.util.StringUtil;
 import java.awt.Color;
 import javax.swing.Icon;
 
 public abstract class AbstractComponentFactory implements ComponentFactory {
-  private static final Icon toolIcon = IconsUtil.getIcon("subcirc.gif");
+  private static final Icon toolIcon = ComponentIcons.module();
 
   private AttributeSet defaultSet;
   private final HdlGeneratorFactory myHDLGenerator;

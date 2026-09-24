@@ -1,154 +1,52 @@
-[![Logisim-evolution](img/logisim-evolution-logo.png)](https://github.com/logisim-evolution/logisim-evolution)
+![Logisim Revolution wordmark](../artwork/logisim-revolution-wordmark.svg)
 
----
+# Developing Logisim Revolution
 
-# Developers #
+[Back to the project overview](../README.md).
 
-* [« Go back](../README.md)
-* **Developer's corner**
-  * [Requirements](#requirements)
-  * [Gradle](#gradle)
-  * [Import project into IDE](#import-project-into-ide)
-    * [Eclipse](#import-project-into-ide)
-    * [InteliJ IDEA](#import-project-into-ide)
-  * [Building from sources](#building-from-sources)
-  * [Testing development code](#testing-development-code)
-  * [Code style](style.md)
-    * [Checking code style with InteliJ IDEA](style.md#checking-code-style-with-intelij-idea)
-    * [Using Gradle plugin](style.md#using-gradle-plugin)
-    * [Using `pre-commit`](style.md#using-pre-commit-hooks)
-  * [Translations](localization.md)
-    * [Updating existing translation](localization.md#updating-existing-translation)
-    * [Adding new translation](localization.md#adding-new-translation)
-    * [Using trans-tool](localization.md#using-trans-tool)
-  * [Implementing TTL components](implementing_ttl_components.md)
-  * [How to contribute](#how-to-contribute)
+## Prerequisites
 
----
+Use **JDK 21 or newer**. The repository includes Gradle wrapper scripts, so no separate Gradle installation is required. Set `JAVA_HOME` to your JDK when your environment does not pick it automatically.
 
-## Requirements ##
+## Build and run
 
-`Logisim-evolution` is written in Java 21. To build it from sources you need JDK
-(or equivalent, e.g. [OpenJDK](https://adoptopenjdk.net/)) version 21 or newer.
-
-**NOTE:** Ensure your `$JAVA_HOME` environment variable points to the proper JDK version.
-
-## Gradle ##
-
-`Logisim-evolution` uses the [Gradle](https://gradle.org) build system, which means it can be easily imported into modern IDEs
-that support it, including [Eclipse](https://www.eclipse.org) and [IntelliJ IDEA](https://www.jetbrains.com/idea/).
-
-## Import project into IDE ##
-
-How to import a Gradle project:
-
-* [How to import Gradle project into Eclipse](https://www.eclipse.org/community/eclipse_newsletter/2018/february/buildship.php),
-* [How to import Gradle project into IntelliJ IDEA](https://www.jetbrains.com/help/idea/gradle.html) (section "Importing a project
-  from a Gradle model").
-
-**Note for Eclipse users:**
-
-To successfully import the project in Eclipse, the complete project structure must be present,
-including Java source files built by Gradle.
-You can do this by running Gradle task `genFiles` before importing the project.
-See [Building from sources](#building-from-sources) for how to run Gradle.
-
-To run the task within Eclipse after importing the Logisim-evolution project:
-
-* Bring up the `Gradle Tasks` view, if it is not already showing, by selecting the menu `Window/Show View/Other...`
-  and selecting `Gradle Tasks` under Gradle.
-* In the `Gradle Tasks` view, double-click on `logisim-evolution/build/genFiles`.
-  Check the `Console View` to see when it finishes.
-* Right-click on the Logisim-evolution project in the Project Explorer and select `Gradle/Refresh Gradle Project`.
-* You may then need to right-click on the Logisim-evolution project and select `Refresh`.
-
-## Building from sources ##
-
-To build and run the `Logisim-evolution` application, invoke the `Gradle` build system and pass a task name as an argument.
-`Logisim-evolution` comes with a Gradle wrapper script, which can be invoked as `./gradlew <ARGS>` on Linux or macOS, and
-`gradlew <ARGS>` on Windows.
-
-To build and run on Linux and macOS:
+From the repository root on Linux or macOS:
 
 ```bash
 ./gradlew run
+./gradlew build
 ```
 
-or on Windows:
+On Windows, use `gradlew.bat` in place of `./gradlew`. Useful focused tasks:
+
+| Command | Result |
+| --- | --- |
+| `./gradlew test` | Run the JUnit suite. |
+| `./gradlew checkstyleMain checkstyleTest` | Check Java source style. |
+| `./gradlew shadowJar` | Build `build/libs/logisim-revolution-<version>-all.jar`. |
+| `./gradlew genFiles` | Generate build metadata before an Eclipse import. |
+| `./gradlew createAll` | Build installers for the current host platform. |
+
+The application mark, document icon, and wordmark have editable SVG masters in [artwork](../artwork). To regenerate their runtime and installer assets, run `./artwork/update_assets.sh` with Python 3, `rsvg-convert`, and ImageMagick installed.
+
+The current development JAR is `build/libs/logisim-revolution-5.1.0dev-all.jar`. Run it with `java -jar`; the filename changes when [gradle.properties](../gradle.properties) changes.
+
+Gradle generates `com.cburch.logisim.generated.BuildInfo` under `build/generated/logisim/java`. Edit the version and project URL in `gradle.properties`, not the generated class. Platform packages use the JDK's `jpackage` and may require host-specific packaging tools.
+
+## Working on the project
+
+The simulator and circuit format still use the original `com.cburch.logisim` Java packages and serialized component/library IDs. Keep those IDs stable so existing `.circ` projects continue to open. Application UI code lives under `gui/`; the component libraries and simulation engine remain separate.
+
+Tests are JUnit 5 under `src/test/java`. Run a focused class with:
 
 ```bash
-gradlew run
+./gradlew test --tests com.cburch.logisim.std.ttl.Ttl7493Test
 ```
 
-If you wish to create a Java JAR package, which can then be run without [Gradle](https://gradle.org), execute:
+Use the existing style and localization mechanisms. Start with the [style guide](style.md), [localization guide](localization.md), and [TTL component checklist](implementing_ttl_components.md) where relevant. User-visible strings belong in the English base bundle and should be localized through the package `Strings.S`.
 
-```bash
-./gradlew shadowJar
-```
+Before proposing a change, run tests and style checks relevant to it and inspect rendered UI changes at more than one scale. Record user-facing changes in the top `@dev` section of [CHANGES.md](../CHANGES.md), crediting the author. The repository's CI workflows are the source of truth for contribution gates.
 
-which will create `logisim-evolution-<version>-all.jar` in `build/libs/`.
-To run it with JRE/JDK 21 or higher, type:
+## Reporting and attribution
 
-```bash
-java -jar logisim-evolution-<version>-all.jar
-```
-
-for example:
-
-```bash
-java -jar logisim-evolution-3.6.0-all.jar
-```
-
-You can also generate a platform-specific installer, which gets saved in `build/dist`.
-Packages can be built by running the `createAll` task:
-
-```bash
-./gradlew createAll
-```
-
-> **NOTE:** `jpackage` creates the installer for the platform that builds it. Building cross-platform installers is not supported
-> by Java's `jpackage` utility. You may also need to install additional developer tools for the platform in order to build the
-> installer. See Java's [jpackage documentation](https://docs.oracle.com/en/java/javase/21/jpackage/packaging-overview.html)
-> for more details of tool requirements.
-
-To see all available tasks run: `./gradlew tasks --all`
-
-## Testing development code ##
-
-`Logisim-evolution` is often updated.
-The [branch `main`](https://github.com/logisim-evolution/logisim-evolution/tree/main)
-is the place where all the work on next release happens.
-Once the code reaches the point it is ready, the next public release will be created from `main`.
-
-If you want to contribute, or even just see what we are currently working on, checkout the `main` branch
-and build `Logisim-evolution` from source as described above.
-
-**If you see any issues or have any ideas for improvement, please
-[create a ticket](https://github.com/logisim-evolution/logisim-evolution/issues) to make `Logisim-evolution` better!**
-
----
-
-## How to contribute ##
-
-If you want to contribute to Logisim-evolution, this is how to do it:
-
-* Make a local *fork* of `Logisim-evolution` by clicking the *Fork* button on the
-  [project GitHub page](https://github.com/logisim-evolution/logisim-evolution). This will create
-  a copy of the `Logisim-evolution` repository on your own GitHub account.
-* As all the development happens on [`main` branch](https://github.com/logisim-evolution/logisim-evolution/tree/main),
-  ensure you checkout [`main` branch](https://github.com/logisim-evolution/logisim-evolution/tree/main) before you
-  create your own branch.
-* Fix the bugs you want to fix on your local fork of the
-  [`main` branch](https://github.com/logisim-evolution/logisim-evolution/tree/main).
-* Add the features you want to add on your local fork.
-* Add/modify the documentation/language support on your local fork.
-
-Once it is running without bugs on your local fork, request a *Pull request* by:
-
-* Go to the *Pull request*-tab and click the button *New pull request*.
-* Click on *compare across forks*.
-* On the right-hand side select your fork, for example: *head repository: BFH-ktt1/logisim-evolution*
-* On the right-hand side select your branch, for example: *base: bugfixes*
-* On the left-hand side select the main branch *base: main* (**Important:** All pull requests **MUST**
-  be made against [that branch](https://github.com/logisim-evolution/logisim-evolution/tree/main).
-* Make sure that there are no conflicts reported.
+Use the [Logisim Revolution repository](https://git.briggen.dev/NilsBriggen/Logisim-Revolution) for this fork's source and issue reporting. For the history and people behind the original Logisim and Logisim-evolution projects, see the [credits](credits.md).

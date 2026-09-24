@@ -12,19 +12,18 @@ package com.cburch.logisim.gui.start;
 import static com.cburch.logisim.gui.Strings.S;
 
 import com.cburch.logisim.generated.BuildInfo;
-import com.cburch.logisim.gui.theme.Tokens;
-import java.awt.BorderLayout;
-import java.awt.Color;
-import javax.swing.BorderFactory;
-import javax.swing.JPanel;
-import javax.swing.JProgressBar;
+import java.awt.GraphicsConfiguration;
+import java.awt.Insets;
+import java.awt.MouseInfo;
+import java.awt.Rectangle;
+import java.awt.Toolkit;
+import java.lang.reflect.InvocationTargetException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import javax.swing.JWindow;
 import javax.swing.SwingUtilities;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+/** Lightweight loading window with honest startup stages and no historical timing weights. */
 public class SplashScreen extends JWindow {
-
   public static final int LIBRARIES = 0;
   public static final int TEMPLATE_CREATE = 1;
   public static final int TEMPLATE_OPEN = 2;
@@ -35,95 +34,82 @@ public class SplashScreen extends JWindow {
   public static final int FILE_LOAD = 7;
   public static final int PROJECT_CREATE = 8;
   public static final int FRAME_CREATE = 9;
-  static final Logger logger = LoggerFactory.getLogger(SplashScreen.class);
   private static final long serialVersionUID = 1L;
-  private static final int PROGRESS_MAX = 3568;
-  private static final boolean PRINT_TIMES = false;
-  Marker[] markers =
-      new Marker[] {
-        new Marker(377, S.get("progressLibraries")),
-        new Marker(990, S.get("progressTemplateCreate")),
-        new Marker(1002, S.get("progressTemplateOpen")),
-        new Marker(1002, S.get("progressTemplateLoad")),
-        new Marker(1470, S.get("progressTemplateClose")),
-        new Marker(1478, S.get("progressGuiInitialize")),
-        new Marker(2114, S.get("progressFileCreate")),
-        new Marker(2114, S.get("progressFileLoad")),
-        new Marker(2383, S.get("progressProjectCreate")),
-        new Marker(2519, S.get("progressFrameCreate")),
-      };
-  boolean inClose = false; // for avoiding mutual recursion
-  final JProgressBar progress = new JProgressBar(0, PROGRESS_MAX);
-  final long startTime = System.currentTimeMillis();
+
+  private static final String[] STAGES = {
+      "progressLibraries", "progressTemplateCreate", "progressTemplateOpen",
+      "progressTemplateLoad", "progressTemplateClose", "progressGuiInitialize",
+      "progressFileCreate", "progressFileLoad", "progressProjectCreate",
+      "progressFrameCreate"
+  };
+
+  private final AtomicBoolean closed = new AtomicBoolean();
+  private final SplashPanel panel = new SplashPanel();
 
   public SplashScreen() {
     setName(BuildInfo.displayName);
-    JPanel imagePanel = About.getImagePanel();
-    imagePanel.setBorder(null);
-
-    progress.setStringPainted(true);
-
-    JPanel contents = new JPanel(new BorderLayout());
-    contents.add(imagePanel, BorderLayout.NORTH);
-    contents.add(progress, BorderLayout.SOUTH);
-    // A thin line in the theme's own divider colour rather than a two-pixel black frame, which
-    // read as a border drawn around the window by the application itself.
-    contents.setBorder(BorderFactory.createLineBorder(Tokens.divider(), 1));
-
-    final var bg = imagePanel.getBackground();
-    contents.setBackground(bg);
-    setBackground(bg);
-    setContentPane(contents);
+    setContentPane(panel);
+    setBackground(panel.getBackground());
   }
 
+  /** Ignores callbacks that were queued before the window finished closing. */
   public void close() {
-    if (inClose) return;
-    inClose = true;
-    setVisible(false);
-    inClose = false;
-    if (PRINT_TIMES) {
-      logger.info("{} closed", System.currentTimeMillis() - startTime);
-    }
-    markers = null;
+    if (!closed.compareAndSet(false, true)) return;
+    onEdt(() -> {
+      super.setVisible(false);
+      dispose();
+    });
   }
 
+  /** Existing startup callers report an actual stage, not a guessed percentage. */
   public void setProgress(int markerId) {
-    final Marker marker = markers == null ? null : markers[markerId];
-    if (marker != null) {
-      SwingUtilities.invokeLater(
-          () -> {
-            progress.setString(marker.message);
-            progress.setValue(marker.count);
-          });
-      if (PRINT_TIMES) {
-        logger.info("{} {}", System.currentTimeMillis() - startTime, marker.message);
-      }
-    } else {
-      if (PRINT_TIMES) {
-        logger.info("{} ??", System.currentTimeMillis() - startTime);
-      }
-    }
+    if (closed.get() || markerId < 0 || markerId >= STAGES.length) return;
+    final var key = STAGES[markerId];
+    onEdt(() -> {
+      if (!closed.get()) panel.setStage(S.get(key));
+    });
   }
 
   @Override
   public void setVisible(boolean value) {
-    if (value) {
-      pack();
-      final var dim = getToolkit().getScreenSize();
-      final var x = (int) (dim.getWidth() - getWidth()) / 2;
-      final var y = (int) (dim.getHeight() - getHeight()) / 2;
-      setLocation(x, y);
+    if (!SwingUtilities.isEventDispatchThread()) {
+      try {
+        SwingUtilities.invokeAndWait(() -> setVisible(value));
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new IllegalStateException("Interrupted opening splash", e);
+      } catch (InvocationTargetException e) {
+        throw new IllegalStateException("Could not open splash", e.getCause());
+      }
+      return;
     }
-    super.setVisible(value);
+    if (value && !closed.get()) {
+      pack();
+      centerOnActiveMonitor();
+      super.setVisible(true);
+    } else if (!value) {
+      super.setVisible(false);
+    }
   }
 
-  private static class Marker {
-    final int count;
-    final String message;
+  private void centerOnActiveMonitor() {
+    final var pointer = MouseInfo.getPointerInfo();
+    final GraphicsConfiguration config = pointer == null
+        ? getGraphicsConfiguration() : pointer.getDevice().getDefaultConfiguration();
+    final Rectangle available = new Rectangle(config.getBounds());
+    final Insets insets = Toolkit.getDefaultToolkit().getScreenInsets(config);
+    available.x += insets.left;
+    available.y += insets.top;
+    available.width -= insets.left + insets.right;
+    available.height -= insets.top + insets.bottom;
+    setSize(Math.min(getWidth(), available.width), Math.min(getHeight(), available.height));
+    setLocation(
+        available.x + (available.width - getWidth()) / 2,
+        available.y + (available.height - getHeight()) / 2);
+  }
 
-    Marker(int count, String message) {
-      this.count = count;
-      this.message = message;
-    }
+  private static void onEdt(Runnable action) {
+    if (SwingUtilities.isEventDispatchThread()) action.run();
+    else SwingUtilities.invokeLater(action);
   }
 }

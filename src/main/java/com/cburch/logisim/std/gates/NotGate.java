@@ -66,7 +66,7 @@ class NotGate extends InstanceFactory {
         halign = TextField.H_CENTER;
       }
     }
-    instance.setTextField(StdAttr.LABEL, StdAttr.LABEL_FONT, x, y, halign, TextField.V_BASELINE);
+    instance.setAutoLabelTextField(x, y, halign, TextField.V_BASELINE, Bounds.EMPTY_BOUNDS);
   }
 
   public static final AttributeOption SIZE_NARROW =

@@ -21,8 +21,7 @@ import javax.swing.JOptionPane;
 import com.cburch.draw.canvas.Canvas;
 import com.cburch.draw.toolbar.ToolbarClickableItem;
 import com.cburch.logisim.gui.generic.OptionPane;
-import com.cburch.logisim.gui.icons.ArithmeticIcon;
-import com.cburch.logisim.gui.icons.CircuitIcon;
+import com.cburch.logisim.gui.theme.AppIcons;
 
 public class ResetAppearanceTool implements ToolbarClickableItem {
 
@@ -33,7 +32,7 @@ public class ResetAppearanceTool implements ToolbarClickableItem {
   public ResetAppearanceTool(Canvas canvas, boolean isClear) {
     this.canvas = (canvas instanceof AppearanceCanvas appearanceCanvas) ? appearanceCanvas : null;
     this.isClear = isClear;
-    icon = isClear ? new ArithmeticIcon("RST", 3) : new CircuitIcon();
+    icon = AppIcons.get(isClear ? AppIcons.Id.RESET : AppIcons.Id.CIRCUIT);
   }
 
   @Override

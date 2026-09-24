@@ -11,7 +11,7 @@ package com.cburch.logisim.prefs;
 
 import static com.cburch.logisim.gui.Strings.S;
 
-import com.cburch.logisim.Main;
+import com.cburch.logisim.AppIdentity;
 import com.cburch.logisim.circuit.RadixOption;
 import com.cburch.logisim.data.AttributeOption;
 import com.cburch.logisim.data.Direction;
@@ -287,7 +287,7 @@ public class AppPreferences {
     if (prefs == null) {
       synchronized (AppPreferences.class) {
         if (prefs == null) {
-          final var p = Preferences.userNodeForPackage(Main.class);
+          final var p = Preferences.userRoot().node(AppIdentity.PREFERENCES_PATH);
           if (shouldClear) {
             try {
               p.clear();

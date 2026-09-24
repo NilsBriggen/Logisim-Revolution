@@ -1,242 +1,228 @@
+/*
+ * Logisim-evolution - digital logic design tool and simulator
+ * Copyright by the Logisim-evolution developers
+ *
+ * https://github.com/logisim-evolution/
+ *
+ * This is free software released under GNU GPLv3 license
+ */
+
 package com.cburch.logisim.util;
 
 import static com.cburch.logisim.gui.Strings.S;
 
 import com.cburch.logisim.gui.generic.OptionPane;
 import com.cburch.logisim.gui.theme.AppIcons;
-import com.cburch.logisim.gui.theme.Tokens;
+import com.cburch.logisim.gui.theme.Theme;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.prefs.PrefMonitorKeyStroke;
-import java.awt.Color;
+import java.awt.BorderLayout;
 import java.awt.Dimension;
-import java.awt.FlowLayout;
-import java.awt.Font;
-import java.awt.Insets;
+import java.awt.GridLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
-import java.awt.event.FocusListener;
 import java.awt.event.InputEvent;
+import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Locale;
 import java.util.prefs.BackingStoreException;
-import javax.swing.BorderFactory;
-import javax.swing.Icon;
+import javax.swing.AbstractAction;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
 import javax.swing.SwingConstants;
-import javax.swing.Timer;
-import javax.swing.UIManager;
-import javax.swing.text.AbstractDocument;
-import javax.swing.text.AttributeSet;
-import javax.swing.text.BadLocationException;
-import javax.swing.text.DocumentFilter;
+import javax.swing.SwingUtilities;
 
+/** A shortcut draft is applied explicitly; leaving the editor never changes the binding. */
 public class JHotkeyInput extends JPanel {
-  private static JFrame topFrame = null;
+  private static final long serialVersionUID = 1L;
   private final JButton resetButton = new JButton();
   private final JButton applyButton = new JButton();
-  private static final String os = System.getProperty("os.name").toLowerCase();
-  private static final String lookAndFeel = UIManager.getLookAndFeel().getName();
-  private int fieldVerticalBias;
-  private int fieldHorizonalBias;
+  private final JPanel actions = new JPanel(new GridLayout(1, 2));
   public final JTextField hotkeyInputField;
-  private transient PrefMonitorKeyStroke boundKeyStroke = null;
-  private final transient HotkeyInputKeyListener hotkeyListener;
-  private boolean focusableEnabled = false;
-  private static int layoutOptimizedDelay = 4;
-  private static boolean globalLayoutOptimized = false;
-  private boolean needUpdate = false;
-  private static boolean activeHotkeyInputUpdated = false;
-  private static String activeHotkeyInputName = "";
+  private transient PrefMonitorKeyStroke boundKeyStroke;
+  private KeyStroke draft;
+  private boolean clearRequested;
+  private boolean editing;
   private String previousData;
-  private static final List<JHotkeyInput> JHotkeyInputList = new ArrayList<>();
-  private static final Timer optimizeTimer = new Timer(80, e -> {
-    if (topFrame == null) {
-      return;
-    }
-    for (var com : JHotkeyInputList) {
-      int height = com.getHeight();
-      int width = com.getWidth();
-      if (!globalLayoutOptimized && width > 0 && layoutOptimizedDelay-- > 0) {
-        /* run only once */
-        com.setPreferredSize(new Dimension(width + 18 + 18, height));
-        globalLayoutOptimized = true;
-        com.repaint();
-        com.updateUI();
-      }
-      if (!com.focusableEnabled && globalLayoutOptimized) {
-        /* run on every component's load */
-        Dimension preferredSize = com.hotkeyInputField.getPreferredSize();
-        if (preferredSize.height + com.fieldVerticalBias >= com.getHeight()) {
-          com.setPreferredSize(new Dimension(width, preferredSize.height + com.fieldVerticalBias));
-        }
-        com.exitEditMode();
-        com.hotkeyInputField.setFocusable(true);
-        com.focusableEnabled = true;
-      }
-      if (com.needUpdate && com.boundKeyStroke != null
-          && activeHotkeyInputUpdated
-          && !activeHotkeyInputName.equals(com.boundKeyStroke.getName())) {
-        com.needUpdate = false;
-        com.exitEditMode();
-      }
-    }
-  });
-
 
   public JHotkeyInput(JFrame frame, String text) {
-    if (topFrame == null) {
-      topFrame = frame;
-    }
-    hotkeyListener = new HotkeyInputKeyListener(this);
-    hotkeyInputField = new JTextField(text.toUpperCase());
-    previousData = text;
-
-    setLayout(new FlowLayout(FlowLayout.CENTER, 0, 0));
-    Insets insets = hotkeyInputField.getBorder().getBorderInsets(hotkeyInputField);
-    fieldVerticalBias = insets.top + insets.bottom;
-    fieldHorizonalBias = insets.left + insets.right;
-
-    /* adaption for different look and feels in different platforms by tests */
-    if (os.contains("linux") && !lookAndFeel.contains("Flat")) {
-      fieldVerticalBias += 2;
-    }
-
-    setBorder(BorderFactory.createCompoundBorder(
-        hotkeyInputField.getBorder(),
-        BorderFactory.createEmptyBorder(2, 4, 2, 4)
-    ));
-    setPreferredSize(new Dimension(170, 28));
-
-    ((AbstractDocument) hotkeyInputField.getDocument())
-        .setDocumentFilter(new KeyboardInputFilter());
+    super(new BorderLayout());
+    previousData = text.toUpperCase(Locale.ROOT);
+    hotkeyInputField = new JTextField(previousData, 12);
     hotkeyInputField.setHorizontalAlignment(SwingConstants.CENTER);
-    /* Sometimes the look and feel will override our settings
-     *  Then it will look strange
-     *  Especially for the theme Nimbus
-     *  So we have to do the belows to make Nimbus happy
-     *  */
-    if (lookAndFeel.contains("Nimbus")) {
-      hotkeyInputField.setBackground(new Color(0, 0, 0, 0));
-    } else {
-      hotkeyInputField.setBackground(topFrame.getBackground());
-    }
-    hotkeyInputField.setBorder(BorderFactory.createEmptyBorder());
-    hotkeyInputField.addKeyListener(hotkeyListener);
-    hotkeyInputField.addFocusListener(new FocusListener() {
+    // The key listener owns the draft, not JTextField's ordinary text editing bindings.
+    hotkeyInputField.setEditable(false);
+    hotkeyInputField.addFocusListener(new FocusAdapter() {
       @Override
-      public void focusGained(FocusEvent e) {
+      public void focusGained(FocusEvent event) {
         enterEditMode();
       }
 
       @Override
-      public void focusLost(FocusEvent e) {
-        needUpdate = true;
+      public void focusLost(FocusEvent event) {
+        final var next = event.getOppositeComponent();
+        if (!event.isTemporary() && next != null
+            && !SwingUtilities.isDescendingFrom(next, JHotkeyInput.this)) {
+          exitEditModeWithoutRefresh();
+        }
       }
     });
+    hotkeyInputField.addKeyListener(new KeyAdapter() {
+      @Override
+      public void keyPressed(KeyEvent event) {
+        // Consume before validation or window-level Escape bindings can handle this key.
+        event.consume();
+        if (event.getKeyCode() == KeyEvent.VK_ESCAPE) {
+          exitEditModeWithoutRefresh();
+          return;
+        }
+        enterEditMode();
+        capture(event);
+      }
 
-    applyButton.setIcon(AppIcons.colored(AppIcons.Id.CHECK, AppIcons.SIZE, Tokens.success()));
-    resetButton.setIcon(AppIcons.colored(AppIcons.Id.CLOSE, AppIcons.SIZE, Tokens.error()));
-    applyButton.setBorder(BorderFactory.createEmptyBorder());
-    applyButton.setVisible(false);
-    resetButton.setBorder(BorderFactory.createEmptyBorder());
-    resetButton.setVisible(false);
-    resetButton.addActionListener(e -> exitEditMode());
-    applyButton.addActionListener(e -> applyChanges());
-    Font font = resetButton.getFont();
-    applyButton.setFont(new Font(font.getFontName(), Font.PLAIN, 8));
-    applyButton.setPreferredSize(new Dimension(18, 18));
-    resetButton.setFont(new Font(font.getFontName(), Font.PLAIN, 8));
-    resetButton.setPreferredSize(new Dimension(18, 18));
+      @Override
+      public void keyReleased(KeyEvent event) {
+        // In particular, Escape's release must not erase the restored binding.
+        event.consume();
+      }
 
-    hotkeyInputField.setFocusable(false);
-    add(hotkeyInputField);
-    add(applyButton);
-    add(resetButton);
+      @Override
+      public void keyTyped(KeyEvent event) {
+        event.consume();
+      }
+    });
+    getInputMap(WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
+        .put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "cancelCapture");
+    getActionMap().put("cancelCapture", new AbstractAction() {
+      @Override
+      public void actionPerformed(ActionEvent event) {
+        exitEditModeWithoutRefresh();
+      }
+    });
+    applyButton.addActionListener(event -> applyChanges());
+    resetButton.addActionListener(event -> exitEditMode());
+    actions.add(applyButton);
+    actions.add(resetButton);
+    actions.setVisible(false);
+    add(hotkeyInputField, BorderLayout.CENTER);
+    add(actions, BorderLayout.LINE_END);
+    refreshPresentation();
+    Theme.addListener(this, this::refreshPresentation);
+  }
 
-    if (!optimizeTimer.isRunning()) {
-      optimizeTimer.start();
-    }
+  private void refreshPresentation() {
+    applyButton.setIcon(AppIcons.get(AppIcons.Id.CHECK));
+    resetButton.setIcon(AppIcons.get(AppIcons.Id.CLOSE));
+    applyButton.setToolTipText(S.get("hotkeyApply"));
+    resetButton.setToolTipText(S.get("hotkeyCancel"));
+    applyButton.getAccessibleContext().setAccessibleName(S.get("hotkeyApply"));
+    resetButton.getAccessibleContext().setAccessibleName(S.get("hotkeyCancel"));
+    hotkeyInputField.setToolTipText(S.get("hotkeyCaptureHelp"));
+    revalidate();
+    repaint();
+  }
+
+  @Override
+  public Dimension getPreferredSize() {
+    final var size = super.getPreferredSize();
+    // Reserve action space even outside capture, so neighbouring controls never jump.
+    if (actions != null && !actions.isVisible()) size.width += actions.getPreferredSize().width;
+    return size;
   }
 
   private void enterEditMode() {
-    activeHotkeyInputName = boundKeyStroke.getName();
-    activeHotkeyInputUpdated = true;
-    if (hotkeyListener.rewritable()) {
-      previousData = hotkeyInputField.getText();
-    }
-    hotkeyListener.clearStatus();
+    if (editing || boundKeyStroke == null || !isEnabled()) return;
+    editing = true;
+    clearDraft();
     hotkeyInputField.setText("");
-    resetButton.setVisible(true);
-    applyButton.setVisible(true);
-    int height = hotkeyInputField.getHeight();
-    int width = getWidth() - 18 - 18 - 8 - 8 - 6 - fieldHorizonalBias;
-    hotkeyInputField.setPreferredSize(new Dimension(width, height));
+    actions.setVisible(true);
+    revalidate();
+  }
+
+  private void clearDraft() {
+    draft = null;
+    clearRequested = false;
     applyButton.setEnabled(false);
   }
 
+  private void capture(KeyEvent event) {
+    if (!editing) return;
+    final var code = event.getKeyCode();
+    if (code == KeyEvent.VK_CONTROL || code == KeyEvent.VK_ALT
+        || code == KeyEvent.VK_ALT_GRAPH || code == KeyEvent.VK_SHIFT
+        || code == KeyEvent.VK_META || code == KeyEvent.VK_UNDEFINED) return;
+    clearDraft();
+    if (code == KeyEvent.VK_BACK_SPACE || code == KeyEvent.VK_DELETE) {
+      clearRequested = true;
+      hotkeyInputField.setText("");
+      applyButton.setEnabled(true);
+      return;
+    }
+    final var modifiers = event.getModifiersEx();
+    if (!boundKeyStroke.metaCheckPass(modifiers)) {
+      showError(S.get("hotkeyErrMeta",
+          InputEvent.getModifiersExText(AppPreferences.hotkeyMenuMask)));
+      return;
+    }
+    final var conflict =
+        AppPreferences.hotkeyCheckConflict(boundKeyStroke.getName(), code, modifiers);
+    if (!conflict.isEmpty()) {
+      showError(conflict);
+      return;
+    }
+    draft = KeyStroke.getKeyStroke(code, modifiers);
+    final var prefix = InputEvent.getModifiersExText(modifiers);
+    setText((prefix.isEmpty() ? "" : prefix + "+") + KeyEvent.getKeyText(code));
+    applyButton.setEnabled(true);
+  }
+
+  private void showError(String message) {
+    hotkeyInputField.setText("");
+    OptionPane.showMessageDialog(this, message, S.get("hotkeyOptTitle"), OptionPane.ERROR_MESSAGE);
+  }
+
   public void exitEditModeWithoutRefresh() {
-    activeHotkeyInputUpdated = false;
-    applyButton.setVisible(false);
-    resetButton.setVisible(false);
+    editing = false;
+    clearDraft();
+    actions.setVisible(false);
     hotkeyInputField.setText(previousData);
+    revalidate();
+    repaint();
   }
 
   public void exitEditMode() {
     exitEditModeWithoutRefresh();
-    int height = hotkeyInputField.getHeight();
-    int width = getWidth() - 12;
-    hotkeyInputField.setPreferredSize(new Dimension(width, height));
-    repaint();
-    updateUI();
-    topFrame.requestFocus();
   }
 
   private void applyChanges() {
-    var changed = false;
-    if (hotkeyListener.clearRequested) {
-      boundKeyStroke.set((KeyStroke) null);
-      previousData = "";
-      changed = true;
-    } else if (hotkeyListener.code != 0) {
-      boundKeyStroke.set(KeyStroke.getKeyStroke(hotkeyListener.code, hotkeyListener.modifier));
-      previousData = hotkeyListener.getHotkeyString();
-      changed = true;
+    if (boundKeyStroke == null || (!clearRequested && draft == null)) return;
+    boundKeyStroke.set(clearRequested ? null : draft);
+    previousData = hotkeyInputField.getText();
+    try {
+      AppPreferences.getPrefs().flush();
+      AppPreferences.hotkeySync();
+    } catch (BackingStoreException exception) {
+      throw new RuntimeException(exception);
     }
-    if (changed) {
-      try {
-        AppPreferences.getPrefs().flush();
-        AppPreferences.hotkeySync();
-      } catch (BackingStoreException ex) {
-        throw new RuntimeException(ex);
-      }
-    }
-    applyButton.setVisible(false);
-    resetButton.setVisible(false);
-    int height = hotkeyInputField.getHeight();
-    int width = getWidth() - 12;
-    hotkeyInputField.setPreferredSize(new Dimension(width, height));
-    repaint();
-    updateUI();
-    topFrame.requestFocus();
+    exitEditModeWithoutRefresh();
   }
 
-  public void setText(String s) {
-    hotkeyInputField.setText(s.toUpperCase());
+  public void setText(String text) {
+    hotkeyInputField.setText(text.toUpperCase(Locale.ROOT));
   }
 
-  public void resetText(String s) {
-    hotkeyInputField.setText(s.toUpperCase());
-    previousData = s.toUpperCase();
+  public void resetText(String text) {
+    previousData = text.toUpperCase(Locale.ROOT);
+    exitEditModeWithoutRefresh();
   }
 
   public void setBoundKeyStroke(PrefMonitorKeyStroke keyStroke) {
     boundKeyStroke = keyStroke;
-    JHotkeyInputList.add(this);
+    hotkeyInputField.getAccessibleContext().setAccessibleName(S.get(keyStroke.getName()));
   }
 
   public PrefMonitorKeyStroke getBoundKeyStroke() {
@@ -245,114 +231,12 @@ public class JHotkeyInput extends JPanel {
 
   @Override
   public void setEnabled(boolean enabled) {
-    hotkeyInputField.setEnabled(enabled);
+    super.setEnabled(enabled);
+    if (hotkeyInputField != null) hotkeyInputField.setEnabled(enabled);
+    if (!enabled && actions != null) exitEditModeWithoutRefresh();
   }
 
   public void setApplyEnabled(boolean enabled) {
     applyButton.setEnabled(enabled);
-  }
-
-  private class HotkeyInputKeyListener implements KeyListener {
-    private final JHotkeyInput hotkeyInput;
-    private int modifier = 0;
-    private int code = 0;
-    private boolean clearRequested = false;
-    private boolean rewriteFlag = true;
-    private String hotkeyString = "";
-
-    public HotkeyInputKeyListener(JHotkeyInput hotkeyInput) {
-      this.hotkeyInput = hotkeyInput;
-    }
-
-    public void clearStatus() {
-      code = 0;
-      modifier = 0;
-      hotkeyString = "";
-      clearRequested = false;
-      rewriteFlag = false;
-    }
-
-    public boolean rewritable() {
-      return rewriteFlag;
-    }
-
-    public String getHotkeyString() {
-      return hotkeyString;
-    }
-
-    @Override
-    public void keyTyped(KeyEvent e) {
-      /* not-used */
-    }
-
-    @Override
-    public void keyPressed(KeyEvent e) {
-      modifier = e.getModifiersEx();
-      code = e.getKeyCode();
-      if (code == KeyEvent.VK_BACK_SPACE || code == KeyEvent.VK_DELETE) {
-        clearStatus();
-        clearRequested = true;
-        hotkeyInput.setText("");
-        hotkeyInput.setApplyEnabled(true);
-        return;
-      }
-      clearRequested = false;
-      if (code == 0
-          || code == KeyEvent.VK_CONTROL
-          || code == KeyEvent.VK_ALT
-          || code == KeyEvent.VK_SHIFT
-          || code == KeyEvent.VK_META) {
-        clearStatus();
-        return;
-      }
-      String modifierString = InputEvent.getModifiersExText(modifier);
-      if (modifierString.isEmpty()) {
-        hotkeyString = KeyEvent.getKeyText(code);
-      } else {
-        hotkeyString = InputEvent.getModifiersExText(modifier) + "+" + KeyEvent.getKeyText(code);
-      }
-      if (!(hotkeyInput.getBoundKeyStroke().metaCheckPass(modifier))) {
-        OptionPane.showMessageDialog(null, S.get("hotkeyErrMeta",
-                InputEvent.getModifiersExText(AppPreferences.hotkeyMenuMask)),
-            S.get("hotkeyOptTitle"),
-            OptionPane.ERROR_MESSAGE);
-        clearStatus();
-        return;
-      }
-      String checkPass = AppPreferences.hotkeyCheckConflict(hotkeyInput.boundKeyStroke.getName(),
-          code, modifier);
-      if (!checkPass.isEmpty()) {
-        OptionPane.showMessageDialog(null,
-            checkPass,
-            S.get("hotkeyOptTitle"),
-            OptionPane.ERROR_MESSAGE);
-        clearStatus();
-        return;
-      }
-      hotkeyInput.setText("");
-    }
-
-    @Override
-    public void keyReleased(KeyEvent e) {
-      hotkeyInput.setText(hotkeyString);
-      hotkeyInput.setApplyEnabled(clearRequested || !hotkeyString.isEmpty());
-      if (!hotkeyString.isEmpty()) {
-        rewriteFlag = true;
-      }
-    }
-  }
-
-  private class KeyboardInputFilter extends DocumentFilter {
-    @Override
-    public void insertString(DocumentFilter.FilterBypass fb, int offset,
-                             String text, AttributeSet attr) throws BadLocationException {
-      fb.insertString(offset, text.toUpperCase(), attr);
-    }
-
-    @Override
-    public void replace(DocumentFilter.FilterBypass fb, int offset, int length,
-                        String text, AttributeSet attrs) throws BadLocationException {
-      fb.replace(offset, length, text.toUpperCase(), attrs);
-    }
   }
 }

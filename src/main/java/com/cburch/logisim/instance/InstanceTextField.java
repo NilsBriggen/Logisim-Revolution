@@ -23,6 +23,7 @@ import com.cburch.logisim.data.AttributeEvent;
 import com.cburch.logisim.data.AttributeListener;
 import com.cburch.logisim.data.AttributeSet;
 import com.cburch.logisim.data.Bounds;
+import com.cburch.logisim.data.Direction;
 import com.cburch.logisim.gui.main.Canvas;
 import com.cburch.logisim.proj.Action;
 import com.cburch.logisim.tools.Caret;
@@ -31,7 +32,9 @@ import com.cburch.logisim.tools.TextEditable;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics;
+import java.awt.Rectangle;
 import java.util.Objects;
+import java.util.function.Supplier;
 
 public class InstanceTextField implements AttributeListener, TextFieldListener, TextEditable {
   private Canvas canvas;
@@ -46,6 +49,7 @@ public class InstanceTextField implements AttributeListener, TextFieldListener, 
   private int halign;
   private int valign;
   private boolean multiline;
+  private Supplier<Bounds> safeInterior;
 
   InstanceTextField(InstanceComponent comp) {
     this.comp = comp;
@@ -79,6 +83,7 @@ public class InstanceTextField implements AttributeListener, TextFieldListener, 
   void draw(Component comp, ComponentDrawContext context) {
     if (field != null && isLabelVisible) {
       final var gfx = context.getGraphics().create();
+      resolveLayout(gfx);
       final var currentColor = gfx.getColor();
       if (!context.isPrintView())
         gfx.setColor(fontColor == null ? StdAttr.getDefaultLabelColor() : fontColor);
@@ -89,7 +94,46 @@ public class InstanceTextField implements AttributeListener, TextFieldListener, 
   }
 
   Bounds getBounds(Graphics g) {
+    resolveLayout(g);
     return field == null || !isLabelVisible ? Bounds.EMPTY_BOUNDS : field.getBounds(g);
+  }
+
+  void setSafeInterior(Supplier<Bounds> bounds) {
+    safeInterior = bounds;
+  }
+
+  private static Rectangle rectangle(Bounds bounds) {
+    return new Rectangle(bounds.getX(), bounds.getY(), bounds.getWidth(), bounds.getHeight());
+  }
+
+  // Resolve the same TextField for paint, hit bounds, export bounds and caret acquisition.
+  // This never changes a label attribute, font, component bounds or electrical endpoint.
+  private void resolveLayout(Graphics g) {
+    if (safeInterior == null || field == null || g == null) return;
+    field.setLocation(fieldX, fieldY, halign, valign);
+    final var text = rectangle(field.getBounds(g));
+    final var body = rectangle(comp.getBounds());
+    final var envelope = new Rectangle(body);
+    var hitsPort = false;
+    for (final var end : comp.getEnds()) {
+      final var p = end.getLocation();
+      final var reserved = new Rectangle(p.getX() - 6, p.getY() - 6, 12, 12);
+      hitsPort |= reserved.intersects(text);
+      envelope.add(reserved);
+    }
+    if (!hitsPort && (rectangle(safeInterior.get()).contains(text) || !body.intersects(text))) return;
+
+    final var facing = comp.getAttributeSet().getValue(StdAttr.FACING);
+    final int targetX;
+    final int targetY;
+    if (facing == Direction.NORTH || facing == Direction.SOUTH) {
+      targetX = envelope.x + envelope.width + 4;
+      targetY = body.y + (body.height - text.height) / 2;
+    } else {
+      targetX = body.x + (body.width - text.width) / 2;
+      targetY = envelope.y - 4 - text.height;
+    }
+    field.setLocation(fieldX + targetX - text.x, fieldY + targetY - text.y, halign, valign);
   }
 
   @Override
@@ -109,6 +153,7 @@ public class InstanceTextField implements AttributeListener, TextFieldListener, 
     // if field is absent, create it empty
     // and if it is empty, just return a caret at its beginning
     if (field == null) createField(comp.getAttributeSet(), "");
+    resolveLayout(gfx);
     final var text = field.getText();
     if (text == null || text.equals("")) return field.getCaret(gfx, 0);
 
@@ -149,6 +194,7 @@ public class InstanceTextField implements AttributeListener, TextFieldListener, 
       int halign,
       int valign,
       boolean multiline) {
+    safeInterior = null;
     final var wasReg = shouldRegister();
     this.labelAttr = labelAttr;
     this.fontAttr = fontAttr;

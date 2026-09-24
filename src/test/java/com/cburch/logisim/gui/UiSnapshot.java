@@ -171,6 +171,21 @@ public final class UiSnapshot {
     final var frame = project.getFrame();
     if (frame == null) throw new IllegalStateException("the project window was never created");
 
+    final var selectionName = System.getProperty("snapshot.select", "");
+    if (!selectionName.isBlank()) {
+      final var component = project.getCurrentCircuit().getComponents().stream()
+          .filter(item -> selectionName.equals(item.getFactory().getName()))
+          .findFirst()
+          .orElseThrow(() -> new IllegalArgumentException(
+              "No component named " + selectionName + " in the current circuit"));
+      SwingUtilities.invokeAndWait(() -> project.getSelection().add(component));
+    }
+
+    final var canvasZoom = Double.parseDouble(System.getProperty("snapshot.canvasZoom", "0"));
+    if (canvasZoom > 0) {
+      SwingUtilities.invokeAndWait(() -> frame.getZoomModel().setZoomFactor(canvasZoom));
+    }
+
     if (Boolean.getBoolean("snapshot.print")) {
       capturePrintView(project, output);
       System.exit(0);

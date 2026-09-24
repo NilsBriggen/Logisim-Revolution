@@ -10,6 +10,7 @@
 package com.cburch.logisim.file;
 
 import static com.cburch.logisim.file.Strings.S;
+import com.cburch.logisim.AppIdentity;
 import com.cburch.logisim.gui.generic.OptionPane;
 import com.cburch.logisim.std.Builtin;
 import com.cburch.logisim.tools.Library;
@@ -28,8 +29,7 @@ import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+import java.util.UUID;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -137,8 +137,12 @@ public class Loader implements LibraryLoader {
   public static final String LOGISIM_PROJECT_BUNDLE_INFO_FILE = "LogisimEvolutionBundle.info";
   public static final String LOGISIM_LIBRARY_DIR = "library";
   public static final String LOGISIM_CIRCUIT_DIR = "circuit";
-  public static final String LOGISIM_UNNAMED_AUTOSAVE_PREFIX = ".logisim-unnamed-autosave_";
+  public static final String LOGISIM_UNNAMED_AUTOSAVE_PREFIX = "unnamed-";
   public static final String LOGISIM_UNNAMED_AUTOSAVE_SUFFIX = ".circ.autosave";
+
+  public static File getUnnamedAutosaveDirectory() {
+    return AppIdentity.unnamedRecoveryDirectory();
+  }
   public static final FileFilter LOGISIM_FILTER = new LogisimFileFilter();
   public static final FileFilter LOGISIM_BUNDLE_FILTER = new LogisimProjectBundleFilter();
   public static final FileFilter LOGISIM_DIRECTORY = new LogisimDirectoryFilter();
@@ -175,21 +179,16 @@ public class Loader implements LibraryLoader {
     return null;
   }
 
-  // Determine the autosave file name for any .circ file as .<basename>.circ.autosave
+  // Revolution sidecars cannot be mistaken for Evolution recovery of the same .circ file.
   private static File determineAutosaveName(File base) {
     if (base == null) {
-      String timestamp =
-          DateTimeFormatter.ofPattern("yyyyMMddHHmmss").format(LocalDateTime.now());
-      final var candidate = new File(System.getProperty("user.home") + File.separator
-          + LOGISIM_UNNAMED_AUTOSAVE_PREFIX + timestamp + LOGISIM_UNNAMED_AUTOSAVE_SUFFIX);
-      if (!candidate.exists()) return candidate;
-      return null;
+      return new File(getUnnamedAutosaveDirectory(),
+          LOGISIM_UNNAMED_AUTOSAVE_PREFIX + UUID.randomUUID()
+              + LOGISIM_UNNAMED_AUTOSAVE_SUFFIX);
     }
-    var extension = ".autosave";
-    if (!base.getName().endsWith(LOGISIM_EXTENSION)) extension = ".circ.autosave";
-    final var dir = base.getParentFile();
-    final var name = "." + base.getName() + extension;
-    return new File(dir, name);
+    final var extension = base.getName().endsWith(LOGISIM_EXTENSION)
+        ? ".revolution.autosave" : ".circ.revolution.autosave";
+    return new File(base.getParentFile(), "." + base.getName() + extension);
   }
 
   static Optional<File> findAutosaveFile(File base) {
@@ -533,6 +532,7 @@ public class Loader implements LibraryLoader {
     }
     Path staged = null;
     try {
+      if (mainFile == null) Files.createDirectories(destination.toPath().getParent());
       staged = stageWrite(file, destination);
       publishWrite(staged, destination.toPath());
       staged = null;

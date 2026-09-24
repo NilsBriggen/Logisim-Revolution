@@ -15,12 +15,17 @@ import com.cburch.logisim.circuit.Circuit;
 import com.cburch.logisim.file.FileStatistics;
 import com.cburch.logisim.file.LogisimFile;
 import com.cburch.logisim.gui.generic.Dialogs;
+import com.cburch.logisim.gui.generic.ScrollableForm;
 import com.cburch.logisim.tools.Library;
 import com.cburch.logisim.util.TableSorter;
+import com.cburch.logisim.util.UiScale;
 import java.awt.BorderLayout;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.Comparator;
+import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
@@ -43,27 +48,24 @@ public class StatisticsDialog extends JDialog implements ActionListener {
         new CompareString("", S.get("statsTotalWithout"), S.get("statsTotalWith"));
     mySorter.setColumnComparator(String.class, comp);
     table.setModel(mySorter);
+    table.updateMetrics();
     final var tablePane = new JScrollPane(table);
 
     var button = new JButton(S.get("statsCloseButton"));
     button.addActionListener(this);
     getRootPane().setDefaultButton(button);
     Dialogs.installEscapeToClose(this);
-    var buttonPanel = new JPanel();
+    var buttonPanel = new JPanel(new FlowLayout(FlowLayout.TRAILING));
     buttonPanel.add(button);
 
     var contents = this.getContentPane();
-    contents.setLayout(new BorderLayout());
+    contents.setLayout(new BorderLayout(0, UiScale.scaled(12)));
+    final var gap = UiScale.scaled(12);
+    ((JPanel) contents).setBorder(BorderFactory.createEmptyBorder(gap, gap, gap, gap));
     contents.add(tablePane, BorderLayout.CENTER);
     contents.add(buttonPanel, BorderLayout.PAGE_END);
-    this.pack();
-
-    var pref = contents.getPreferredSize();
-    if (pref.width > 750 || pref.height > 550) {
-      if (pref.width > 750) pref.width = 750;
-      if (pref.height > 550) pref.height = 550;
-      this.setSize(pref);
-    }
+    ScrollableForm.sizeWindow(this, new Dimension(750, 500), new Dimension(420, 280), true);
+    setLocationRelativeTo(parent);
   }
 
   public static void show(JFrame parent, LogisimFile file, Circuit circuit) {
@@ -96,27 +98,35 @@ public class StatisticsDialog extends JDialog implements ActionListener {
     }
   }
 
-  private static class StatisticsTable extends JTable {
+  static class StatisticsTable extends JTable {
     private static final long serialVersionUID = 1L;
 
-    @Override
-    public void setBounds(int x, int y, int width, int height) {
-      super.setBounds(x, y, width, height);
-      setPreferredColumnWidths(new double[] {0.45, 0.25, 0.1, 0.1, 0.1});
+    StatisticsTable() {
+      setAutoResizeMode(AUTO_RESIZE_OFF);
+      setFillsViewportHeight(true);
+      getTableHeader().setReorderingAllowed(false);
     }
 
-    protected void setPreferredColumnWidths(double[] percentages) {
-      final var tableDim = getPreferredSize();
+    @Override
+    public void updateUI() {
+      super.updateUI();
+      updateMetrics();
+    }
 
-      double total = 0;
-      for (int i = 0; i < getColumnModel().getColumnCount(); i++) {
-        total += percentages[i];
-      }
-
-      for (int i = 0; i < getColumnModel().getColumnCount(); i++) {
+    void updateMetrics() {
+      if (getFont() == null || getTableHeader() == null) return;
+      final var padding = UiScale.scaled(24);
+      setRowHeight(getFontMetrics(getFont()).getHeight() + UiScale.scaled(10));
+      getTableHeader().setFont(getFont());
+      for (var i = 0; i < getColumnCount(); i++) {
         final var column = getColumnModel().getColumn(i);
-        final var width = tableDim.width * (percentages[i] / total);
-        column.setPreferredWidth((int) width);
+        var width = getFontMetrics(getFont()).stringWidth(getColumnName(i)) + padding;
+        column.setMinWidth(width);
+        for (var row = 0; row < getRowCount(); row++) {
+          final var cell = prepareRenderer(getCellRenderer(row, i), row, i);
+          width = Math.max(width, cell.getPreferredSize().width + padding);
+        }
+        column.setPreferredWidth(width);
       }
     }
   }

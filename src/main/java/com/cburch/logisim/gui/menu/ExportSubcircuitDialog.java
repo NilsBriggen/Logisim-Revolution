@@ -14,6 +14,8 @@ import static com.cburch.logisim.gui.Strings.S;
 import com.cburch.logisim.circuit.Circuit;
 import com.cburch.logisim.gui.generic.Dialogs;
 import com.cburch.logisim.gui.generic.OptionPane;
+import com.cburch.logisim.gui.generic.ScrollableForm;
+import com.cburch.logisim.util.UiScale;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -25,8 +27,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import javax.swing.BorderFactory;
-import javax.swing.Box;
-import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JDialog;
@@ -35,6 +35,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.table.AbstractTableModel;
+import javax.swing.table.TableModel;
 
 public class ExportSubcircuitDialog extends JDialog implements ActionListener {
   private static final long serialVersionUID = 1L;
@@ -58,84 +59,49 @@ public class ExportSubcircuitDialog extends JDialog implements ActionListener {
     }
 
     setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-    setLayout(new BorderLayout(8, 8));
+    final var gap = UiScale.scaled(12);
+    setLayout(new BorderLayout(gap, gap));
 
-    final var topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 8));
+    final var topPanel = new JPanel(new BorderLayout());
     final var headerLabel = new JLabel(S.get("exportSubcircuitDependenciesHeader"));
     topPanel.add(headerLabel);
 
     tableModel = new DependentsTableModel();
-    table = new JTable(tableModel);
-    table.setRowHeight(24);
-
-    final var tableHeader = table.getTableHeader();
-    tableHeader.setReorderingAllowed(false);
-    tableHeader.setFont(table.getFont());
-    final var baseRenderer = tableHeader.getDefaultRenderer();
-    tableHeader.setDefaultRenderer(
-        (tbl, val, isSel, hasFocus, row, col) -> {
-          final var comp = baseRenderer.getTableCellRendererComponent(tbl, val, isSel, hasFocus, row, col);
-          comp.setFont(tbl.getFont());
-          return comp;
-        });
-
-    final int rowCount = dependentCircuits.size();
-    final int visibleRows = Math.min(Math.max(rowCount, 2), 8);
-    final int headerH = table.getTableHeader().getPreferredSize().height;
-    final int tableH = (visibleRows * table.getRowHeight()) + (headerH > 0 ? headerH : 24);
-    table.setPreferredScrollableViewportSize(new Dimension(520, tableH));
+    table = new DependencyTable(tableModel);
+    headerLabel.setLabelFor(table);
+    table.getAccessibleContext().setAccessibleName(S.get("exportSubcircuitDependenciesHeader"));
 
     final var scrollPane = new JScrollPane(table);
-    scrollPane.setBorder(BorderFactory.createEmptyBorder(0, 12, 0, 12));
 
     autoPrefixCheckBox = new JCheckBox(S.get("exportSubcircuitAutoPrefix"), true);
     autoPrefixCheckBox.addActionListener(this);
 
-    final var infoLabel =
-        new JLabel(
-            "<html><body style='width: 480px;'>"
-                + S.get("exportSubcircuitExplanation")
-                + "</body></html>");
-    infoLabel.setForeground(java.awt.Color.DARK_GRAY);
-
     final var okButton = new JButton(S.get("exportSubcircuitFileSelect"));
     okButton.setActionCommand("OK");
     okButton.addActionListener(this);
-    okButton.setMargin(new java.awt.Insets(4, 16, 4, 16));
     getRootPane().setDefaultButton(okButton);
     Dialogs.installEscapeToClose(this);
 
     final var cancelButton = new JButton(S.get("showStateDialogCancelButton"));
     cancelButton.setActionCommand("CANCEL");
     cancelButton.addActionListener(this);
-    cancelButton.setMargin(new java.awt.Insets(4, 16, 4, 16));
 
-    final var buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 0));
-    buttonPanel.add(okButton);
+    final var buttonPanel = new JPanel(new FlowLayout(FlowLayout.TRAILING, gap, 0));
+    buttonPanel.setBorder(BorderFactory.createEmptyBorder(0, gap, gap, gap));
     buttonPanel.add(cancelButton);
+    buttonPanel.add(okButton);
 
-    final var bottomPanel = new JPanel();
-    bottomPanel.setLayout(new BoxLayout(bottomPanel, BoxLayout.Y_AXIS));
-    bottomPanel.setBorder(BorderFactory.createEmptyBorder(6, 12, 12, 12));
+    final var form = new JPanel(new BorderLayout(gap, gap));
+    form.setBorder(BorderFactory.createEmptyBorder(0, gap, gap, gap));
+    form.add(topPanel, BorderLayout.NORTH);
+    form.add(scrollPane, BorderLayout.CENTER);
+    form.add(autoPrefixCheckBox, BorderLayout.SOUTH);
+    final var viewport = new ScrollableForm(form);
+    viewport.setHelpText(S.get("exportSubcircuitExplanation"));
+    add(viewport.createScrollPane(), BorderLayout.CENTER);
+    add(buttonPanel, BorderLayout.SOUTH);
 
-    final var cbPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-    cbPanel.add(autoPrefixCheckBox);
-    bottomPanel.add(cbPanel);
-    bottomPanel.add(Box.createVerticalStrut(6));
-
-    final var infoPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-    infoPanel.add(infoLabel);
-    bottomPanel.add(infoPanel);
-    bottomPanel.add(Box.createVerticalStrut(10));
-
-    bottomPanel.add(buttonPanel);
-
-    add(topPanel, BorderLayout.NORTH);
-    add(scrollPane, BorderLayout.CENTER);
-    add(bottomPanel, BorderLayout.SOUTH);
-
-    pack();
-    setMinimumSize(new Dimension(540, getPreferredSize().height));
+    ScrollableForm.sizeWindow(this, new Dimension(620, 440), new Dimension(420, 280), true);
     setLocationRelativeTo(parent);
   }
 
@@ -165,9 +131,7 @@ public class ExportSubcircuitDialog extends JDialog implements ActionListener {
       }
       tableModel.fireTableDataChanged();
     } else if ("OK".equals(e.getActionCommand())) {
-      if (table.isEditing()) {
-        table.getCellEditor().stopCellEditing();
-      }
+      if (table.isEditing() && !table.getCellEditor().stopCellEditing()) return;
       if (validateNames()) {
         isApproved = true;
         dispose();
@@ -200,6 +164,41 @@ public class ExportSubcircuitDialog extends JDialog implements ActionListener {
 
   private void showError(String msg) {
     OptionPane.showMessageDialog(this, msg, S.get("exportSubcircuitTitle", mainCircuit.getName()), OptionPane.ERROR_MESSAGE);
+  }
+
+  static class DependencyTable extends JTable {
+    private static final long serialVersionUID = 1L;
+
+    DependencyTable(TableModel model) {
+      super(model);
+      getTableHeader().setReorderingAllowed(false);
+      setFillsViewportHeight(true);
+      updateMetrics();
+    }
+
+    @Override
+    public void updateUI() {
+      super.updateUI();
+      updateMetrics();
+    }
+
+    private void updateMetrics() {
+      if (getFont() == null || getTableHeader() == null) return;
+      setRowHeight(getFontMetrics(getFont()).getHeight() + UiScale.scaled(10));
+      getTableHeader().setFont(getFont());
+      for (var i = 0; i < getColumnCount(); i++) {
+        final var column = getColumnModel().getColumn(i);
+        final var labelWidth = getFontMetrics(getFont()).stringWidth(getColumnName(i));
+        column.setMinWidth(labelWidth + UiScale.scaled(24));
+        column.setPreferredWidth(Math.max(column.getMinWidth(), UiScale.scaled(250)));
+      }
+    }
+
+    @Override
+    public Dimension getPreferredScrollableViewportSize() {
+      return new Dimension(UiScale.scaled(520), Math.min(Math.max(getRowCount(), 2), 8)
+          * getRowHeight());
+    }
   }
 
   private class DependentsTableModel extends AbstractTableModel {

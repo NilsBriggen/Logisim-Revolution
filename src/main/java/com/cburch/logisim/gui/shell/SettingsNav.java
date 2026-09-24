@@ -103,6 +103,7 @@ public class SettingsNav extends JPanel {
           }
         });
     final var scroll = new JScrollPane(list);
+    scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
     scroll.setBorder(null);
     add(scroll, BorderLayout.CENTER);
 

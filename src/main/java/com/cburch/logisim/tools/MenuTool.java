@@ -18,9 +18,10 @@ import com.cburch.logisim.comp.ComponentDrawContext;
 import com.cburch.logisim.data.Location;
 import com.cburch.logisim.gui.main.Canvas;
 import com.cburch.logisim.gui.main.SelectionActions;
+import com.cburch.logisim.gui.theme.AppIcons;
 import com.cburch.logisim.instance.StdAttr;
+import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.proj.Project;
-import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -195,13 +196,7 @@ public class MenuTool extends Tool {
 
   @Override
   public void paintIcon(ComponentDrawContext c, int x, int y) {
-    final var g = c.getGraphics();
-    g.fillRect(x + 2, y + 1, 9, 2);
-    g.drawRect(x + 2, y + 3, 15, 12);
-    g.setColor(Color.lightGray);
-    g.drawLine(x + 4, y + 2, x + 8, y + 2);
-    for (int y_offs = y + 6; y_offs < y + 15; y_offs += 3) {
-      g.drawLine(x + 4, y_offs, x + 14, y_offs);
-    }
+    AppIcons.get(AppIcons.Id.MORE, AppPreferences.IconSize)
+        .paintIcon(c.getDestination(), c.getGraphics(), x, y);
   }
 }
