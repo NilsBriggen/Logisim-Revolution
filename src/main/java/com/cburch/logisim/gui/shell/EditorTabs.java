@@ -15,6 +15,10 @@ import com.cburch.logisim.gui.shell.EditorTabModel.Kind;
 import com.cburch.logisim.gui.shell.EditorTabModel.Tab;
 import com.cburch.logisim.gui.theme.AppIcons;
 import com.formdev.flatlaf.FlatClientProperties;
+import java.awt.GraphicsEnvironment;
+import java.awt.KeyEventDispatcher;
+import java.awt.KeyboardFocusManager;
+import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -22,6 +26,7 @@ import java.util.function.Function;
 import javax.swing.JComponent;
 import javax.swing.JTabbedPane;
 import javax.swing.KeyStroke;
+import javax.swing.SwingUtilities;
 
 /**
  * The strip of tabs above the canvas, one per circuit the user has opened.
@@ -38,6 +43,7 @@ public class EditorTabs extends JTabbedPane {
 
   private final EditorTabModel model;
   private final Function<Tab, String> titler;
+  private final KeyEventDispatcher tabDispatcher = this::dispatchTabKey;
 
   /** Set while this class is the one changing the selection, so the change is not sent back. */
   private boolean syncing;
@@ -53,6 +59,7 @@ public class EditorTabs extends JTabbedPane {
   public EditorTabs(EditorTabModel model, Function<Tab, String> titler) {
     this.model = model;
     this.titler = titler;
+    setTabLayoutPolicy(SCROLL_TAB_LAYOUT);
     putClientProperty(FlatClientProperties.TABBED_PANE_TAB_CLOSABLE, true);
     putClientProperty(FlatClientProperties.TABBED_PANE_SCROLL_BUTTONS_POLICY,
         FlatClientProperties.TABBED_PANE_POLICY_AS_NEEDED);
@@ -90,15 +97,51 @@ public class EditorTabs extends JTabbedPane {
   private void installKeyBindings() {
     final var input = getInputMap(WHEN_IN_FOCUSED_WINDOW);
     final var actions = getActionMap();
-    final var menuMask = java.awt.Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx();
-    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_TAB, menuMask), NEXT_TAB);
+    final var menuMask = GraphicsEnvironment.isHeadless() ? InputEvent.CTRL_DOWN_MASK
+        : java.awt.Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx();
+    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_TAB, InputEvent.CTRL_DOWN_MASK), NEXT_TAB);
     input.put(
-        KeyStroke.getKeyStroke(KeyEvent.VK_TAB, menuMask | java.awt.event.InputEvent.SHIFT_DOWN_MASK),
+        KeyStroke.getKeyStroke(KeyEvent.VK_TAB,
+            InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK),
         PREVIOUS_TAB);
     input.put(KeyStroke.getKeyStroke(KeyEvent.VK_W, menuMask), CLOSE_TAB);
     actions.put(NEXT_TAB, action(() -> step(1)));
     actions.put(PREVIOUS_TAB, action(() -> step(-1)));
     actions.put(CLOSE_TAB, action(this::closeCurrent));
+  }
+
+  @Override
+  public void addNotify() {
+    super.addNotify();
+    KeyboardFocusManager.getCurrentKeyboardFocusManager()
+        .addKeyEventDispatcher(tabDispatcher);
+  }
+
+  @Override
+  public void removeNotify() {
+    KeyboardFocusManager.getCurrentKeyboardFocusManager()
+        .removeKeyEventDispatcher(tabDispatcher);
+    super.removeNotify();
+  }
+
+  /** Routes editor cycling before Swing consumes Ctrl+Tab as a focus-traversal key. */
+  boolean dispatchTabKey(KeyEvent event) {
+    final var tabKey = event.getKeyCode() == KeyEvent.VK_TAB
+        || (event.getID() == KeyEvent.KEY_TYPED && event.getKeyChar() == '\t');
+    if (event.isConsumed() || !tabKey || !event.isControlDown()
+        || event.isAltDown() || event.isMetaDown() || !isVisible() || model.count() == 0) {
+      return false;
+    }
+    final var root = getRootPane();
+    if (root == null || event.getComponent() == null
+        || SwingUtilities.getRootPane(event.getComponent()) != root) return false;
+    if (event.getID() == KeyEvent.KEY_PRESSED) {
+      final var key = event.isShiftDown() ? PREVIOUS_TAB : NEXT_TAB;
+      getActionMap().get(key).actionPerformed(
+          new java.awt.event.ActionEvent(this, java.awt.event.ActionEvent.ACTION_PERFORMED, key));
+    }
+    event.consume();
+    return true;
   }
 
   private static javax.swing.Action action(Runnable body) {
@@ -159,6 +202,7 @@ public class EditorTabs extends JTabbedPane {
 
   /** Closed from the right so the earlier indexes stay valid as tabs go. */
   private void closeOthers(int keep) {
+    model.select(keep);
     for (var index = getTabCount() - 1; index >= 0; index--) {
       if (index != keep) model.close(index);
     }
@@ -174,10 +218,19 @@ public class EditorTabs extends JTabbedPane {
   private void rebuild() {
     syncing = true;
     try {
-      removeAll();
-      for (final var tab : model.tabs()) {
+      final var tabs = model.tabs();
+      while (getTabCount() > tabs.size()) removeTabAt(getTabCount() - 1);
+      for (var index = 0; index < tabs.size(); index++) {
+        final var tab = tabs.get(index);
         final var prefix = model.isDirty(tab) ? DIRTY_MARK : "";
-        addTab(prefix + titler.apply(tab), iconFor(tab), null, tooltipFor(tab));
+        final var title = prefix + titler.apply(tab);
+        if (index == getTabCount()) {
+          addTab(title, iconFor(tab), null, tooltipFor(tab));
+        } else {
+          setTitleAt(index, title);
+          setIconAt(index, iconFor(tab));
+          setToolTipTextAt(index, tooltipFor(tab));
+        }
       }
       final var selected = model.selectedIndex();
       if (selected >= 0 && selected < getTabCount()) setSelectedIndex(selected);

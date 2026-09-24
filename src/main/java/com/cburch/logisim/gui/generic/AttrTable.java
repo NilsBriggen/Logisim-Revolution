@@ -12,16 +12,18 @@ package com.cburch.logisim.gui.generic;
 import static com.cburch.logisim.gui.Strings.S;
 
 import com.cburch.logisim.fpga.gui.HdlColorRenderer;
-import com.cburch.logisim.prefs.AppPreferences;
+import com.cburch.logisim.gui.theme.Theme;
 import com.cburch.logisim.util.JDialogOk;
 import com.cburch.logisim.util.JInputComponent;
 import com.cburch.logisim.util.JInputDialog;
 import com.cburch.logisim.util.LocaleListener;
 import com.cburch.logisim.util.LocaleManager;
+import com.cburch.logisim.util.Spacing;
+import com.cburch.logisim.util.UiFonts;
+import com.cburch.logisim.util.UiScale;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
-import java.awt.Font;
 import java.awt.Point;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
@@ -34,6 +36,8 @@ import java.awt.event.MouseWheelEvent;
 import java.util.ArrayList;
 import java.util.EventObject;
 import java.util.LinkedList;
+import java.util.List;
+import java.util.Objects;
 import javax.swing.BorderFactory;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
@@ -42,8 +46,10 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
+import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.event.CellEditorListener;
 import javax.swing.event.ChangeEvent;
@@ -59,10 +65,12 @@ import javax.swing.table.TableModel;
  * Shows detailed attributes of the selected element.
  */
 public class AttrTable extends JPanel implements LocaleListener {
-
   private static final AttrTableModel NULL_ATTR_MODEL = new NullAttrModel();
   private final Window parent;
   private final JLabel title;
+  private final JLabel editError = new JLabel();
+  private final JTextArea emptyProperties = new JTextArea();
+  private final JScrollPane tableScroll;
   private final JTable table;
   private final TableModelAdapter tableModel;
   private final CellEditor editor = new CellEditor();
@@ -77,36 +85,68 @@ public class AttrTable extends JPanel implements LocaleListener {
     title.setHorizontalAlignment(SwingConstants.CENTER);
     title.setVerticalAlignment(SwingConstants.CENTER);
     tableModel = new TableModelAdapter(parent, NULL_ATTR_MODEL);
-    table =
-        new JTable(tableModel) {
-          private static final long serialVersionUID = 1L;
+    table = new JTable(tableModel) {
+      private static final long serialVersionUID = 1L;
 
-          @Override
-          public String getToolTipText(MouseEvent event) {
-            return elidedCellText(this, event.getPoint());
-          }
-        };
+      @Override
+      public String getToolTipText(MouseEvent event) {
+        return elidedCellText(this, event.getPoint());
+      }
+
+      @Override
+      public void editingStopped(ChangeEvent event) {
+        // CellEditor commits its captured transaction before notifying JTable.
+        removeEditor();
+      }
+    };
     table.setDefaultEditor(Object.class, editor);
     table.setTableHeader(null);
-    table.setRowHeight(AppPreferences.getScaled(AppPreferences.BOX_SIZE));
-
-    final var baseFont = title.getFont();
-    final var titleSize = Math.round(baseFont.getSize() * 1.2F);
-    final var titleFont = baseFont.deriveFont(AppPreferences.getScaled((float) titleSize)).deriveFont(Font.BOLD);
-    title.setFont(titleFont);
     table.setDefaultRenderer(String.class, new HdlColorRenderer());
     table.addMouseWheelListener(this::handleMouseWheel);
 
     final var propPanel = new JPanel(new BorderLayout(0, 0));
-    final var tableScroll = new JScrollPane(table);
+    tableScroll = new JScrollPane(table);
+    emptyProperties.setEditable(false);
+    emptyProperties.setFocusable(false);
+    emptyProperties.setOpaque(false);
+    emptyProperties.setLineWrap(true);
+    emptyProperties.setWrapStyleWord(true);
 
     propPanel.add(title, BorderLayout.PAGE_START);
     propPanel.add(tableScroll, BorderLayout.CENTER);
+    editError.setVisible(false);
+    propPanel.add(editError, BorderLayout.SOUTH);
 
     this.add(propPanel, BorderLayout.CENTER);
 
     LocaleManager.addLocaleListener(this);
     localeChanged();
+    refreshUiMetrics();
+    Theme.addListener(this, this::refreshUiMetrics);
+  }
+
+  @Override
+  public void updateUI() {
+    super.updateUI();
+    refreshUiMetrics();
+  }
+
+  private void refreshUiMetrics() {
+    // JPanel invokes updateUI before this class has constructed its child components.
+    if (title == null || table == null || editError == null) return;
+    final var font = UiFonts.body();
+    title.setFont(UiFonts.heading());
+    table.setFont(font);
+    editError.setFont(UiFonts.small());
+    emptyProperties.setFont(font);
+    emptyProperties.setBorder(Spacing.border(Spacing.SM));
+    if (table.getDefaultRenderer(String.class) instanceof Component renderer) {
+      renderer.setFont(font);
+    }
+    table.setRowHeight(Math.max(UiScale.iconSize(),
+        table.getFontMetrics(font).getHeight() + 2 * Spacing.xs()));
+    revalidate();
+    repaint();
   }
 
   /**
@@ -119,58 +159,72 @@ public class AttrTable extends JPanel implements LocaleListener {
    */
   private AttrTableModelRow pendingRow = null;
 
-  private String pendingValue = null;
+  private Object pendingValue = null;
+  private String pendingDisplay = null;
+  private AttrTableModelRow.Edit pendingEdit = null;
   private Timer pendingTimer = null;
-  private long lastWheelTime = 0;
-  private static final long WHEEL_THROTTLE_MS = 40;
+  private AttrTableModelRow wheelRow = null;
+  private double wheelRemainder = 0;
 
   /** How long the wheel must be still before the value is written to the circuit. */
   private static final int WHEEL_SETTLE_MS = 350;
 
   /** The value to paint for a row: the one being spun, if this is that row. */
   String displayValueOf(AttrTableModelRow row) {
-    return (row == pendingRow && pendingValue != null) ? pendingValue : row.getValue();
+    return (row == pendingRow && pendingDisplay != null) ? pendingDisplay : row.getValue();
   }
 
   private void handleMouseWheel(MouseWheelEvent e) {
+    // Alt + wheel is an explicit edit gesture. Ordinary scrolling never edits a property.
+    if (!e.isAltDown()) {
+      forwardWheel(e);
+      return;
+    }
     final var rowIdx = table.rowAtPoint(e.getPoint());
     final var colIdx = table.columnAtPoint(e.getPoint());
-    if (colIdx != 1 || rowIdx < 0) return;
+    if (colIdx != 1 || rowIdx < 0) {
+      forwardWheel(e);
+      return;
+    }
 
     final var attrModel = tableModel.attrModel;
     if (attrModel == null) return;
     final var row = attrModel.getRow(rowIdx);
-    if (row == null || !row.isValueEditable()) return;
-
-    final var rotation = Integer.signum(e.getWheelRotation());
+    if (row == null || !row.isValueEditable()) {
+      forwardWheel(e);
+      return;
+    }
+    if (table.isEditing() && !editor.stopCellEditing()) return;
+    if (wheelRow != row) {
+      commitPendingNudge();
+      wheelRow = row;
+      wheelRemainder = 0;
+    }
+    wheelRemainder += e.getPreciseWheelRotation();
+    final var rotation = (int) wheelRemainder;
+    wheelRemainder -= rotation;
+    e.consume();
     if (rotation == 0) return;
-
-    final var now = System.currentTimeMillis();
-    if (now - lastWheelTime < WHEEL_THROTTLE_MS) return;
-    lastWheelTime = now;
 
     // A list of choices has no arithmetic to do: step through the options instead.
     final var editorComp = row.getEditor(parent);
     if (editorComp instanceof JComboBox<?> box && !box.isEditable()) {
-      commitPendingNudge();
       final var count = box.getItemCount();
+      if (pendingRow == row) box.setSelectedItem(pendingValue);
       final var currentIdx = box.getSelectedIndex();
       if (count <= 1 || currentIdx < 0) return;
-      final var newIdx = Math.max(0, Math.min(count - 1, currentIdx + rotation));
+      final var newIdx = (int) Math.max(0, Math.min(count - 1L, (long) currentIdx - rotation));
       if (newIdx == currentIdx) return;
-      applyValue(row, box.getItemAt(newIdx));
-      table.repaint();
-      return;
+      pendingValue = box.getItemAt(newIdx);
+      pendingDisplay = row.displayValue(pendingValue);
+    } else {
+      final var nudged = AttrWheelNudge.nudge(displayValueOf(row), rotation, row.getAttribute());
+      if (nudged.isEmpty()) return;
+      pendingValue = nudged.get();
+      pendingDisplay = nudged.get();
     }
-
-    if (pendingRow != null && pendingRow != row) commitPendingNudge();
-
-    final var shown = (pendingRow == row && pendingValue != null) ? pendingValue : row.getValue();
-    final var nudged = AttrWheelNudge.nudge(shown, rotation, row.getAttribute());
-    if (nudged.isEmpty()) return;
-
+    if (pendingEdit == null) pendingEdit = row.captureEdit(parent, List.of(row));
     pendingRow = row;
-    pendingValue = nudged.get();
 
     if (pendingTimer == null) {
       pendingTimer = new Timer(WHEEL_SETTLE_MS, evt -> commitPendingNudge());
@@ -180,15 +234,30 @@ public class AttrTable extends JPanel implements LocaleListener {
     table.repaint();
   }
 
+  private void forwardWheel(MouseWheelEvent event) {
+    final var scroll = (JScrollPane) SwingUtilities.getAncestorOfClass(JScrollPane.class, table);
+    if (scroll == null) return;
+    final var point = SwingUtilities.convertPoint(table, event.getPoint(), scroll);
+    scroll.dispatchEvent(new MouseWheelEvent(scroll, event.getID(), event.getWhen(),
+        event.getModifiersEx(), point.x, point.y, event.getXOnScreen(), event.getYOnScreen(),
+        event.getClickCount(), event.isPopupTrigger(), event.getScrollType(),
+        event.getScrollAmount(), event.getWheelRotation(), event.getPreciseWheelRotation()));
+    event.consume();
+  }
+
   /** Writes the value the wheel arrived at, as a single change. */
   private void commitPendingNudge() {
     if (pendingTimer != null) pendingTimer.stop();
-    final var row = pendingRow;
+    final var edit = pendingEdit;
     final var value = pendingValue;
     pendingRow = null;
     pendingValue = null;
-    if (row == null || value == null) return;
-    applyValue(row, value);
+    pendingDisplay = null;
+    pendingEdit = null;
+    wheelRow = null;
+    wheelRemainder = 0;
+    if (edit == null || value == null) return;
+    applyValue(edit, value);
     table.repaint();
   }
 
@@ -198,15 +267,12 @@ public class AttrTable extends JPanel implements LocaleListener {
    * <p>Both wheel paths used to discard the exception, so a value the component would not accept
    * simply snapped back with no explanation.
    */
-  private void applyValue(AttrTableModelRow row, Object value) {
+  private void applyValue(AttrTableModelRow.Edit edit, Object value) {
     try {
-      row.setValue(parent, value);
+      edit.commit(value);
     } catch (AttrTableSetException refused) {
-      OptionPane.showMessageDialog(
-          parent,
-          refused.getMessage(),
-          S.get("attributeChangeInvalidTitle"),
-          OptionPane.WARNING_MESSAGE);
+      OptionPane.showMessageDialog(parent, refused.getMessage(),
+          S.get("attributeChangeInvalidTitle"), OptionPane.WARNING_MESSAGE);
     }
   }
 
@@ -218,7 +284,7 @@ public class AttrTable extends JPanel implements LocaleListener {
     // Whatever the wheel was spinning belongs to the thing being shown now, not the next one.
     commitPendingNudge();
     final var editor = table.getCellEditor();
-    if (editor != null) table.getCellEditor().cancelCellEditing();
+    if (editor != null && !editor.stopCellEditing()) return;
     tableModel.setAttrTableModel(value == null ? NULL_ATTR_MODEL : value);
     updateTitle();
   }
@@ -234,6 +300,8 @@ public class AttrTable extends JPanel implements LocaleListener {
 
   @Override
   public void localeChanged() {
+    emptyProperties.setText(S.get("propertiesEmptyHint"));
+    emptyProperties.getAccessibleContext().setAccessibleName(S.get("propertiesTab"));
     updateTitle();
     tableModel.fireTableChanged();
   }
@@ -263,7 +331,7 @@ public class AttrTable extends JPanel implements LocaleListener {
 
     private void configure(JInputComponent input) {
       this.input = input;
-      this.value = input.getValue();
+      this.value = null;
 
       // Thanks to Christophe Jacquet, who contributed a fix to this
       // so that when the dialog is resized, the component within it
@@ -307,7 +375,6 @@ public class AttrTable extends JPanel implements LocaleListener {
   }
 
   private static class NullAttrModel implements AttrTableModel {
-
     @Override
     public void addAttrTableModelListener(AttrTableModelListener listener) {
       // Do nothing.
@@ -335,7 +402,6 @@ public class AttrTable extends JPanel implements LocaleListener {
   }
 
   private static class TitleLabel extends JLabel {
-
     @Override
     public Dimension getMinimumSize() {
       Dimension ret = super.getMinimumSize();
@@ -344,12 +410,13 @@ public class AttrTable extends JPanel implements LocaleListener {
   }
 
   private class CellEditor implements TableCellEditor, FocusListener, ActionListener {
-
     final LinkedList<CellEditorListener> listeners = new LinkedList<>();
     AttrTableModelRow currentRow;
     AttrTableModelRow[] currentRows;
-    int[] currentRowIndexes;
+    AttrTableModelRow.Edit currentEdit;
     Component currentEditor;
+    Object initialValue;
+    boolean choiceChanged;
     boolean multiEditActive = false;
     boolean stoppedCellEditing = false;
 
@@ -358,6 +425,8 @@ public class AttrTable extends JPanel implements LocaleListener {
     //
     @Override
     public void actionPerformed(ActionEvent e) {
+      if (e.getSource() != currentEditor) return;
+      choiceChanged = true;
       stopCellEditing();
     }
 
@@ -382,18 +451,27 @@ public class AttrTable extends JPanel implements LocaleListener {
     }
 
     public void fireEditingCanceled() {
-      final var col = table.getEditingColumn();
+      if (stoppedCellEditing) return;
+      clearEdit();
       final var e = new ChangeEvent(AttrTable.this);
       for (final var l : new ArrayList<>(listeners)) {
         l.editingCanceled(e);
       }
-      if (multiEditActive) {
-        final var value = getCellEditorValue();
-        for (final var r : currentRowIndexes) {
-          if (r == table.getEditingRow()) continue;
-          table.setValueAt(value, r, col);
-        }
-      }
+    }
+
+    private void clearEdit() {
+      if (currentEditor != null) currentEditor.removeFocusListener(this);
+      if (currentEditor instanceof JComboBox<?> box) box.removeActionListener(this);
+      if (currentEditor instanceof JTextField field) field.removeActionListener(this);
+      editError.setVisible(false);
+      editError.setText("");
+      currentRow = null;
+      currentRows = null;
+      currentEdit = null;
+      currentEditor = null;
+      initialValue = null;
+      multiEditActive = false;
+      choiceChanged = false;
     }
 
     public void fireEditingStopped() {
@@ -413,6 +491,7 @@ public class AttrTable extends JPanel implements LocaleListener {
     //
     @Override
     public void focusLost(FocusEvent e) {
+      if (e.getSource() != currentEditor) return;
       final var dst = e.getOppositeComponent();
       if (dst != null) {
         var p = dst;
@@ -443,8 +522,10 @@ public class AttrTable extends JPanel implements LocaleListener {
     }
 
     @Override
-    public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int rowIndex, int columnIndex) {
+    public Component getTableCellEditorComponent(
+        JTable table, Object value, boolean isSelected, int rowIndex, int columnIndex) {
       final var attrModel = tableModel.attrModel;
+      commitPendingNudge();
       final var row = attrModel.getRow(rowIndex);
       AttrTableModelRow[] rows = null;
       int[] rowIndexes = null;
@@ -454,23 +535,21 @@ public class AttrTable extends JPanel implements LocaleListener {
         return new JLabel(row.getLabel());
       }
 
-      if (currentEditor != null) {
-        currentEditor.transferFocus();
-      }
-
       var editor = row.getEditor(parent);
+      currentEdit = row.captureEdit(parent, List.of(row));
       if (editor instanceof JComboBox box) {
         box.addActionListener(this);
         editor.addFocusListener(this);
         rowIndexes = table.getSelectedRows();
-        if (isSelected && rowIndexes.length > 1) {
+        if (isSelected && row.supportsMultiEdit() && rowIndexes.length > 1) {
           multiEditActive = true;
           rows = new AttrTableModelRow[rowIndexes.length];
           for (var i = 0; i < rowIndexes.length; i++) {
             rows[i] = attrModel.getRow(rowIndexes[i]);
             // The model gets first say, then the general rule: same choices, same edit.
-            if (!row.multiEditCompatible(rows[i])
-                && !AttrMultiEdit.sameChoices(box, rows[i].getEditor(parent))) {
+            if (!rows[i].isValueEditable()
+                || (!row.multiEditCompatible(rows[i])
+                    && !AttrMultiEdit.sameChoices(box, rows[i].getEditor(parent)))) {
               multiEditActive = false;
               rowIndexes = null;
               rows = null;
@@ -484,12 +563,9 @@ public class AttrTable extends JPanel implements LocaleListener {
         dlog.setVisible(true);
         final var retVal = dlog.getValue();
         try {
-          row.setValue(parent, retVal);
+          currentEdit.commit(retVal);
         } catch (AttrTableSetException e) {
-          OptionPane.showMessageDialog(
-              parent,
-              e.getMessage(),
-              S.get("attributeChangeInvalidTitle"),
+          OptionPane.showMessageDialog(parent, e.getMessage(), S.get("attributeChangeInvalidTitle"),
               OptionPane.WARNING_MESSAGE);
         }
         editor = null;
@@ -498,40 +574,46 @@ public class AttrTable extends JPanel implements LocaleListener {
         dialog.setVisible(true);
         final var retVal = dialog.getValue();
         try {
-          row.setValue(parent, retVal);
+          currentEdit.commit(retVal);
         } catch (AttrTableSetException e) {
-          OptionPane.showMessageDialog(
-              parent,
-              e.getMessage(),
-              S.get("attributeChangeInvalidTitle"),
+          OptionPane.showMessageDialog(parent, e.getMessage(), S.get("attributeChangeInvalidTitle"),
               OptionPane.WARNING_MESSAGE);
         }
         editor = null;
       } else {
         editor.addFocusListener(this);
+        if (editor instanceof JTextField field) field.addActionListener(this);
       }
 
       currentRow = row;
       currentRows = rows;
-      currentRowIndexes = rowIndexes;
+      if (rows != null) currentEdit = row.captureEdit(parent, List.of(rows));
       currentEditor = editor;
+      initialValue = getCellEditorValue();
+      choiceChanged = false;
       return editor;
     }
 
     public boolean isEditing(AttrTableModelRow row) {
       if (currentRow == row) return true;
       if (currentRows == null) return false;
-      for (AttrTableModelRow r : currentRows) if (r == row) return true;
+      for (AttrTableModelRow r : currentRows)
+        if (r == row) return true;
       return false;
     }
 
     @Override
     public boolean isCellEditable(EventObject anEvent) {
-      if (anEvent instanceof KeyEvent) {
-        if (((KeyEvent) anEvent).getKeyCode() == KeyEvent.VK_SPACE) {
-          return true;
-        }
-        return false;
+      if (anEvent instanceof KeyEvent key) {
+        if (key.isMetaDown() || ((key.isControlDown() || key.isAltDown())
+            && !key.isAltGraphDown())) return false;
+        final var printable = key.getKeyChar() != KeyEvent.CHAR_UNDEFINED
+            && !Character.isISOControl(key.getKeyChar());
+        if (key.getID() == KeyEvent.KEY_TYPED) return printable;
+        // JTable starts automatic editing on KEY_PRESSED, then forwards KEY_TYPED to the editor.
+        return key.getID() == KeyEvent.KEY_PRESSED
+            && (printable || key.getKeyCode() == KeyEvent.VK_SPACE
+                || key.getKeyCode() == KeyEvent.VK_F2);
       }
       if (anEvent instanceof MouseEvent) {
         return ((MouseEvent) anEvent).getClickCount() >= 1;
@@ -556,18 +638,33 @@ public class AttrTable extends JPanel implements LocaleListener {
     public boolean stopCellEditing() {
       // Tells the editor to stop editing and accept any partially
       // edited value as the value of the editor.
-      if (stoppedCellEditing) {
-        return false;
-      }
+      if (stoppedCellEditing) return false;
+      if (currentEdit == null || currentEditor == null) return true;
       stoppedCellEditing = true;
-      fireEditingStopped();
-      stoppedCellEditing = false;
-      return true;
+      try {
+        final var value = getCellEditorValue();
+        if (choiceChanged || !Objects.equals(initialValue, value)) currentEdit.commit(value);
+        fireEditingStopped();
+        clearEdit();
+        tableModel.fireTableChanged();
+        return true;
+      } catch (AttrTableSetException ex) {
+        // Keep the invalid draft and its captured target available for correction or Escape.
+        editError.setText(currentRow.getLabel() + ": " + ex.getMessage());
+        editError.setVisible(true);
+        if (currentEditor instanceof JComponent component) {
+          component.setToolTipText(ex.getMessage());
+          component.getAccessibleContext().setAccessibleDescription(ex.getMessage());
+          component.requestFocusInWindow();
+        }
+        return false;
+      } finally {
+        stoppedCellEditing = false;
+      }
     }
   }
 
   private class TableModelAdapter implements TableModel, AttrTableModelListener {
-
     final Window parent;
     final LinkedList<TableModelListener> listeners;
     AttrTableModel attrModel;
@@ -590,9 +687,9 @@ public class AttrTable extends JPanel implements LocaleListener {
         return;
       }
       final var ed = table.getCellEditor();
-      if (ed != null) {
-        ed.cancelCellEditing();
-      }
+      if (editor.stoppedCellEditing) return;
+      if (ed != null && !ed.stopCellEditing()) return;
+      commitPendingNudge();
       fireTableChanged();
     }
 
@@ -614,15 +711,12 @@ public class AttrTable extends JPanel implements LocaleListener {
         attrModel.removeAttrTableModelListener(this);
         return;
       }
-      int row = e.getRowIndex();
-
-      final var ed = table.getCellEditor();
-      if (row >= 0
-          && ed instanceof AttrTable.CellEditor cellEd
-          && cellEd.isEditing(attrModel.getRow(row))) {
-        ed.cancelCellEditing();
+      // A selection model can change underneath the editor before Frame switches it. Keep
+      // the captured edit alive until focus/model transfer resolves it.
+      if (table.isEditing() || editor.stoppedCellEditing) {
+        table.repaint();
+        return;
       }
-
       fireTableChanged();
     }
 
@@ -631,6 +725,8 @@ public class AttrTable extends JPanel implements LocaleListener {
       for (final var l : new ArrayList<>(listeners)) {
         l.tableChanged(e);
       }
+      final Component view = getRowCount() == 0 ? emptyProperties : table;
+      if (tableScroll.getViewport().getView() != view) tableScroll.setViewportView(view);
     }
 
     @Override
@@ -645,9 +741,7 @@ public class AttrTable extends JPanel implements LocaleListener {
 
     @Override
     public String getColumnName(int columnIndex) {
-      return (columnIndex == 0)
-             ? "Attribute"
-             : "Value";
+      return (columnIndex == 0) ? "Attribute" : "Value";
     }
 
     @Override
@@ -686,10 +780,7 @@ public class AttrTable extends JPanel implements LocaleListener {
         try {
           attrModel.getRow(rowIndex).setValue(parent, value);
         } catch (AttrTableSetException e) {
-          OptionPane.showMessageDialog(
-              parent,
-              e.getMessage(),
-              S.get("attributeChangeInvalidTitle"),
+          OptionPane.showMessageDialog(parent, e.getMessage(), S.get("attributeChangeInvalidTitle"),
               OptionPane.WARNING_MESSAGE);
         }
       }

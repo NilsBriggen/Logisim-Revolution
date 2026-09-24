@@ -14,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.cburch.logisim.gui.menu.Menu;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.lang.reflect.Modifier;
@@ -22,12 +23,53 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import javax.swing.KeyStroke;
+import javax.swing.SwingUtilities;
 import org.junit.jupiter.api.Test;
 
 class AppPreferencesHotkeyTest {
   private static final int MENU = AppPreferences.hotkeyMenuMask;
   private static final int SHIFT_MENU = InputEvent.SHIFT_DOWN_MASK | MENU;
+
+  @Test
+  void hotkeyUpdatesUseEdtAndAllowRegistrationChangesDuringNotification() throws Exception {
+    final var called = new CountDownLatch(2);
+    final var offEdt = new AtomicBoolean();
+    final Menu first = new Menu() {
+      @Override
+      protected void computeEnabled() {}
+
+      @Override
+      public void hotkeyUpdate() {
+        if (!SwingUtilities.isEventDispatchThread()) offEdt.set(true);
+        AppPreferences.gui_sync_objects.remove(this);
+        called.countDown();
+      }
+    };
+    final Menu second = new Menu() {
+      @Override
+      protected void computeEnabled() {}
+
+      @Override
+      public void hotkeyUpdate() {
+        if (!SwingUtilities.isEventDispatchThread()) offEdt.set(true);
+        called.countDown();
+      }
+    };
+    AppPreferences.gui_sync_objects.add(first);
+    AppPreferences.gui_sync_objects.add(second);
+    try {
+      AppPreferences.hotkeySync();
+      assertTrue(called.await(2, TimeUnit.SECONDS));
+      assertFalse(offEdt.get());
+    } finally {
+      AppPreferences.gui_sync_objects.remove(first);
+      AppPreferences.gui_sync_objects.remove(second);
+    }
+  }
 
   @Test
   void rejectsSwingShowToolTipShortcut() {

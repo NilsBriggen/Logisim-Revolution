@@ -20,12 +20,9 @@ import com.cburch.logisim.util.Spacing;
 import com.cburch.logisim.util.UiFonts;
 import java.awt.BorderLayout;
 import java.awt.Component;
-import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.io.File;
 import java.util.List;
 import java.util.function.Consumer;
@@ -33,6 +30,7 @@ import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JComponent;
+import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 
@@ -93,17 +91,20 @@ public class WelcomePanel extends JPanel {
 
     final var constraints = new GridBagConstraints();
     constraints.anchor = GridBagConstraints.CENTER;
+    constraints.fill = GridBagConstraints.HORIZONTAL;
+    constraints.weightx = 1;
+    constraints.insets = Spacing.formGaps();
     add(column, constraints);
 
     refresh();
-    Theme.addListener(this::refresh);
+    Theme.addListener(this, this::refresh);
   }
 
   /** Rebuilds the contents, after a change of theme, language, or recent files. */
   public final void refresh() {
     setBackground(Tokens.color("Logisim.sidePanel.background", getBackground()));
-    titleLabel.setText(BuildInfo.displayName);
-    titleLabel.setFont(UiFonts.body().deriveFont(java.awt.Font.BOLD, UiFonts.body().getSize() * 2f));
+    titleLabel.setText(BuildInfo.name);
+    titleLabel.setFont(UiFonts.heading());
     subtitleLabel.setText(S.get("welcomeSubtitle"));
     subtitleLabel.setFont(UiFonts.body());
     subtitleLabel.setForeground(Tokens.mutedForeground());
@@ -141,38 +142,32 @@ public class WelcomePanel extends JPanel {
     return kept;
   }
 
-  /** One clickable row: an icon, a name, and a quieter line of explanation beside it. */
+  /** A native keyboard-accessible action with its explanation on a separate line. */
   private JComponent action(AppIcons.Id icon, String title, String hint, Runnable onClick) {
-    final var row = new JPanel(new BorderLayout(Spacing.sm(), 0));
+    final var row = new JPanel(new BorderLayout(0, Spacing.xs()));
     row.setOpaque(false);
     row.setAlignmentX(LEFT_ALIGNMENT);
-    row.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     row.setBorder(
         BorderFactory.createEmptyBorder(Spacing.xs(), Spacing.xs(), Spacing.xs(), Spacing.xs()));
 
-    row.add(new JLabel(AppIcons.colored(icon, AppIcons.SIZE, Tokens.accent())), BorderLayout.LINE_START);
-
-    final var text = new JPanel(new BorderLayout(Spacing.sm(), 0));
-    text.setOpaque(false);
-    final var name = new JLabel(title);
+    final var name = new JButton(title, AppIcons.colored(icon, AppIcons.SIZE, Tokens.accent()));
     name.setFont(UiFonts.body());
     name.setForeground(Tokens.accent());
-    text.add(name, BorderLayout.LINE_START);
+    name.setHorizontalAlignment(JButton.LEADING);
+    name.setToolTipText(hint);
+    name.setBorderPainted(false);
+    name.putClientProperty(com.formdev.flatlaf.FlatClientProperties.BUTTON_TYPE,
+        com.formdev.flatlaf.FlatClientProperties.BUTTON_TYPE_TOOLBAR_BUTTON);
+    name.addActionListener(event -> onClick.run());
+    name.getAccessibleContext().setAccessibleDescription(hint);
+    row.add(name, BorderLayout.NORTH);
     if (hint != null && !hint.isEmpty()) {
       final var hintLabel = new JLabel(hint);
       hintLabel.setFont(UiFonts.small());
       hintLabel.setForeground(Tokens.mutedForeground());
-      text.add(hintLabel, BorderLayout.CENTER);
+      hintLabel.setToolTipText(hint);
+      row.add(hintLabel, BorderLayout.CENTER);
     }
-    row.add(text, BorderLayout.CENTER);
-
-    row.addMouseListener(
-        new MouseAdapter() {
-          @Override
-          public void mouseClicked(MouseEvent event) {
-            onClick.run();
-          }
-        });
     row.setMaximumSize(new Dimension(Integer.MAX_VALUE, row.getPreferredSize().height));
     return row;
   }

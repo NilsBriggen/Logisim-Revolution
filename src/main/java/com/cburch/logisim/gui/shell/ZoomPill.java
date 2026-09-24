@@ -17,19 +17,16 @@ import com.cburch.logisim.gui.theme.AppIcons;
 import com.cburch.logisim.gui.theme.Theme;
 import com.cburch.logisim.gui.theme.Tokens;
 import com.cburch.logisim.util.Spacing;
-import com.cburch.logisim.util.UiFonts;
-import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.beans.PropertyChangeListener;
-import javax.swing.BorderFactory;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.function.Consumer;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
-import javax.swing.JLabel;
 import javax.swing.JPanel;
 
 /**
@@ -50,10 +47,17 @@ public class ZoomPill extends JPanel {
   public static final int MARGIN = 12;
 
   private final ZoomControl control;
-  private final JLabel percent = new JLabel();
+  private final JButton percent = new JButton();
   private final JButton gridButton;
 
+  private record ButtonSpec(AppIcons.Id icon, String tooltipKey) {}
+
+  private final Map<JButton, ButtonSpec> buttons = new LinkedHashMap<>();
+
   private ZoomModel model;
+  private boolean listening;
+  private Consumer<String> zoomTextListener = text -> {};
+  private String lastZoomText;
   private final PropertyChangeListener zoomListener = event -> refresh();
   private final PropertyChangeListener gridListener = event -> refresh();
 
@@ -61,57 +65,70 @@ public class ZoomPill extends JPanel {
     this.control = control;
     setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
     setOpaque(false);
-    setBorder(
-        BorderFactory.createEmptyBorder(Spacing.xs(), Spacing.sm(), Spacing.xs(), Spacing.sm()));
-
-    add(button(AppIcons.Id.ZOOM_OUT, S.get("zoomOutTip"), control::zoomOut));
-    percent.setFont(UiFonts.small());
-    percent.setHorizontalAlignment(JLabel.CENTER);
-    percent.setBorder(
-        BorderFactory.createEmptyBorder(0, Spacing.xs(), 0, Spacing.xs()));
-    percent.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-    percent.setToolTipText(S.get("zoomResetTip"));
-    percent.addMouseListener(
-        new MouseAdapter() {
-          @Override
-          public void mouseClicked(MouseEvent event) {
-            if (ZoomPill.this.model != null) ZoomPill.this.model.setZoomFactorCenter(1.0);
-          }
-        });
+    add(button(AppIcons.Id.ZOOM_OUT, "zoomOutTip", control::zoomOut));
+    percent.addActionListener(event -> {
+      if (ZoomPill.this.model != null) ZoomPill.this.model.setZoomFactorCenter(1.0);
+    });
     add(percent);
-    add(button(AppIcons.Id.ZOOM_IN, S.get("zoomInTip"), control::zoomIn));
-    add(button(AppIcons.Id.ZOOM_FIT, S.get("zoomAuto"), this::fit));
-    gridButton = button(AppIcons.Id.GRID, S.get("zoomGridTip"), this::toggleGrid);
+    add(button(AppIcons.Id.ZOOM_IN, "zoomInTip", control::zoomIn));
+    add(button(AppIcons.Id.ZOOM_FIT, "zoomAuto", this::fit));
+    gridButton = button(AppIcons.Id.GRID, "zoomGridTip", this::toggleGrid);
     add(gridButton);
 
     setModel(model);
-    Theme.addListener(this::refresh);
+    Theme.addListener(this, this::refresh);
   }
 
-  private JButton button(AppIcons.Id icon, String tooltip, Runnable action) {
+  private JButton button(AppIcons.Id icon, String tooltipKey, Runnable action) {
     final var button = new JButton(AppIcons.get(icon, 14));
-    button.setToolTipText(tooltip);
-    button.setFocusable(false);
-    button.setBorderPainted(false);
-    button.setContentAreaFilled(false);
-    button.setBorder(BorderFactory.createEmptyBorder(Spacing.xs(), Spacing.xs(), Spacing.xs(), Spacing.xs()));
+    buttons.put(button, new ButtonSpec(icon, tooltipKey));
+    PanelHeader.configureChromeButton(button, S.get(tooltipKey));
     button.addActionListener(event -> action.run());
     return button;
   }
 
   /** Points the controls at another zoom model, when the editor changes. */
   public final void setModel(ZoomModel model) {
-    if (this.model != null) {
+    detachModelListeners();
+    this.model = model;
+    if (isDisplayable()) attachModelListeners();
+    setVisible(model != null);
+    refresh();
+  }
+
+  /** A status readout bound to the active model, including appearance and the no-model state. */
+  public void setZoomTextListener(Consumer<String> listener) {
+    zoomTextListener = listener == null ? text -> {} : listener;
+    zoomTextListener.accept(zoomText());
+  }
+
+  @Override
+  public void addNotify() {
+    super.addNotify();
+    attachModelListeners();
+    refresh();
+  }
+
+  @Override
+  public void removeNotify() {
+    detachModelListeners();
+    super.removeNotify();
+  }
+
+  private void detachModelListeners() {
+    if (listening && model != null) {
       this.model.removePropertyChangeListener(ZoomModel.ZOOM, zoomListener);
       this.model.removePropertyChangeListener(ZoomModel.SHOW_GRID, gridListener);
     }
-    this.model = model;
-    if (model != null) {
+    listening = false;
+  }
+
+  private void attachModelListeners() {
+    if (!listening && model != null) {
       model.addPropertyChangeListener(ZoomModel.ZOOM, zoomListener);
       model.addPropertyChangeListener(ZoomModel.SHOW_GRID, gridListener);
+      listening = true;
     }
-    setVisible(model != null);
-    refresh();
   }
 
   private void fit() {
@@ -124,14 +141,34 @@ public class ZoomPill extends JPanel {
 
   /** Re-reads the zoom level and the grid state. */
   public final void refresh() {
-    if (model == null) return;
-    percent.setText(Math.round(model.getZoomFactor() * 100) + "%");
+    setBorder(Spacing.border(Spacing.XS, Spacing.SM, Spacing.XS, Spacing.SM));
+    for (final var entry : buttons.entrySet()) {
+      final var button = entry.getKey();
+      final var spec = entry.getValue();
+      PanelHeader.configureChromeButton(button, S.get(spec.tooltipKey()));
+      button.setIcon(AppIcons.get(spec.icon(), 14));
+      button.setEnabled(model != null);
+    }
+    PanelHeader.configureChromeButton(percent, S.get("zoomResetTip"));
+    percent.setEnabled(model != null);
+    final var text = zoomText();
+    percent.setText(text);
     percent.setForeground(Tokens.statusBarForeground());
     gridButton.setIcon(
         AppIcons.colored(
-            AppIcons.Id.GRID, 14, model.getShowGrid() ? Tokens.accent() : Tokens.iconForeground()));
+            AppIcons.Id.GRID, 14,
+            model != null && model.getShowGrid() ? Tokens.accent() : Tokens.iconForeground()));
+    gridButton.setSelected(model != null && model.getShowGrid());
+    if (!text.equals(lastZoomText)) {
+      lastZoomText = text;
+      zoomTextListener.accept(text);
+    }
     revalidate();
     repaint();
+  }
+
+  private String zoomText() {
+    return model == null ? "" : Math.round(model.getZoomFactor() * 100) + "%";
   }
 
   @Override

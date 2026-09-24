@@ -12,6 +12,8 @@ package com.cburch.logisim.gui.shell;
 import static com.cburch.logisim.gui.Strings.S;
 
 import com.cburch.logisim.circuit.Circuit;
+import com.cburch.logisim.circuit.CircuitEvent;
+import com.cburch.logisim.circuit.CircuitListener;
 import com.cburch.logisim.file.LibraryEvent;
 import com.cburch.logisim.file.LibraryListener;
 import com.cburch.logisim.file.LogisimFileActions;
@@ -33,8 +35,10 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
-import java.util.List;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.Locale;
+import java.util.Set;
 import javax.swing.BorderFactory;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.DefaultListModel;
@@ -61,11 +65,18 @@ public class CircuitListView extends JPanel {
   private record Entry(Object target, String name, boolean main) {}
 
   private final Project project;
+  // Both event sources keep weak references; the view owns this listener's lifetime.
+  private final MyListener listener = new MyListener();
+  private final Set<Circuit> observedCircuits =
+      Collections.newSetFromMap(new IdentityHashMap<>());
+  private boolean listening;
   private final DefaultListModel<Entry> model = new DefaultListModel<>();
   private final JList<Entry> list = new JList<>(model);
+  private final Runnable themeListener = list::repaint;
   private final FilterField filter;
 
   private String filterText = "";
+  private Runnable onOpen = () -> {};
 
   /** Set while this panel is the one changing the project, so the change is not sent back. */
   private boolean selecting;
@@ -102,6 +113,15 @@ public class CircuitListView extends JPanel {
           public void mouseReleased(MouseEvent event) {
             showPopup(event);
           }
+
+          @Override
+          public void mouseClicked(MouseEvent event) {
+            if (!javax.swing.SwingUtilities.isLeftMouseButton(event)) return;
+            final var index = list.locationToIndex(event.getPoint());
+            if (index >= 0 && list.getCellBounds(index, index).contains(event.getPoint())) {
+              open(model.get(index));
+            }
+          }
         });
     installKeyBindings();
     filter.setKeyboardHandoff(this::openFirstMatch, direction -> moveIntoList(direction));
@@ -110,16 +130,51 @@ public class CircuitListView extends JPanel {
     scroll.setBorder(null);
     add(scroll, BorderLayout.CENTER);
 
-    final var listener = new MyListener();
+    attachListeners();
+    rebuild();
+  }
+
+  private void attachListeners() {
+    if (listening) return;
     project.addProjectListener(listener);
     project.addLibraryListener(listener);
-    Theme.addListener(list::repaint);
+    Theme.addListener(themeListener);
+    listening = true;
+  }
+
+  @Override
+  public void addNotify() {
+    super.addNotify();
+    attachListeners();
     rebuild();
+  }
+
+  @Override
+  public void removeNotify() {
+    project.removeProjectListener(listener);
+    project.removeLibraryListener(listener);
+    for (final var circuit : observedCircuits) circuit.removeCircuitListener(listener);
+    observedCircuits.clear();
+    Theme.removeListener(themeListener);
+    listening = false;
+    super.removeNotify();
   }
 
   /** Rebuilds the rows from the project, keeping whatever the filter allows. */
   private void rebuild() {
     final var file = project.getLogisimFile();
+    if (listening) {
+      final var current = Collections.newSetFromMap(new IdentityHashMap<Circuit, Boolean>());
+      if (file != null) current.addAll(file.getCircuits());
+      for (final var circuit : observedCircuits) {
+        if (!current.contains(circuit)) circuit.removeCircuitListener(listener);
+      }
+      for (final var circuit : current) {
+        if (!observedCircuits.contains(circuit)) circuit.addCircuitListener(listener);
+      }
+      observedCircuits.clear();
+      observedCircuits.addAll(current);
+    }
     final var entries = new ArrayList<Entry>();
     if (file != null) {
       final var main = file.getMainCircuit();
@@ -130,9 +185,14 @@ public class CircuitListView extends JPanel {
         entries.add(new Entry(vhdl, vhdl.getName(), false));
       }
     }
-    model.clear();
-    for (final var entry : entries) {
-      if (matches(entry)) model.addElement(entry);
+    selecting = true;
+    try {
+      model.clear();
+      for (final var entry : entries) {
+        if (matches(entry)) model.addElement(entry);
+      }
+    } finally {
+      selecting = false;
     }
     syncSelection();
   }
@@ -188,7 +248,8 @@ public class CircuitListView extends JPanel {
   /** The circuit the list is pointing at, or {@code null} when it is pointing at something else. */
   private Circuit selectedCircuit() {
     final var entry = list.getSelectedValue();
-    return (entry != null && entry.target() instanceof Circuit circuit) ? circuit : null;
+    return (entry != null && containsTarget(entry.target())
+        && entry.target() instanceof Circuit circuit) ? circuit : null;
   }
 
   private void renameSelected() {
@@ -203,7 +264,7 @@ public class CircuitListView extends JPanel {
             null,
             null,
             circuit.getName());
-    if (name == null) return;
+    if (name == null || !containsTarget(circuit)) return;
     final var trimmed = name.toString().trim();
     if (trimmed.isEmpty() || trimmed.equals(circuit.getName())) return;
     project.doAction(LogisimFileActions.renameCircuit(circuit, trimmed));
@@ -233,13 +294,36 @@ public class CircuitListView extends JPanel {
     return hdl != null ? hdl : project.getCurrentCircuit();
   }
 
+  /** Reopens an editor after its last tab closed, including when opening the current circuit. */
+  public void setOnOpen(Runnable onOpen) {
+    this.onOpen = onOpen == null ? () -> {} : onOpen;
+  }
+
+  /** Clears only the visible selection; the project's circuit instance remains unchanged. */
+  public void clearEditorSelection() {
+    selecting = true;
+    try {
+      list.clearSelection();
+    } finally {
+      selecting = false;
+    }
+  }
+
   private void open(Entry entry) {
-    if (entry == null) return;
+    if (entry == null || !containsTarget(entry.target())) return;
     if (entry.target() instanceof Circuit circuit) {
       if (project.getCurrentCircuit() != circuit) project.setCurrentCircuit(circuit);
     } else if (entry.target() instanceof VhdlContent vhdl) {
       project.setCurrentHdlModel(vhdl);
     }
+    onOpen.run();
+  }
+
+  private boolean containsTarget(Object target) {
+    final var file = project.getLogisimFile();
+    if (file == null) return false;
+    return file.getCircuits().stream().anyMatch(circuit -> circuit == target)
+        || file.getVhdlContents().stream().anyMatch(hdl -> hdl == target);
   }
 
   private void showPopup(MouseEvent event) {
@@ -248,7 +332,7 @@ public class CircuitListView extends JPanel {
     if (index < 0) return;
     list.setSelectedIndex(index);
     final var entry = model.get(index);
-    if (!(entry.target() instanceof Circuit circuit)) return;
+    if (!(entry.target() instanceof Circuit circuit) || !containsTarget(circuit)) return;
 
     final var menu = new JPopupMenu();
     menu.add(item(S.get("circuitRenameItem"), this::renameSelected));
@@ -271,9 +355,12 @@ public class CircuitListView extends JPanel {
     menu.show(list, event.getX(), event.getY());
   }
 
-  private static javax.swing.JMenuItem item(String text, Runnable action) {
+  private javax.swing.JMenuItem item(String text, Runnable action) {
     final var menuItem = new javax.swing.JMenuItem(text);
-    menuItem.addActionListener(event -> action.run());
+    final var target = selectedCircuit();
+    menuItem.addActionListener(event -> {
+      if (target != null && containsTarget(target)) action.run();
+    });
     return menuItem;
   }
 
@@ -308,7 +395,12 @@ public class CircuitListView extends JPanel {
   }
 
   /** Keeps the list in step with the project. */
-  private final class MyListener implements ProjectListener, LibraryListener {
+  private final class MyListener implements ProjectListener, LibraryListener, CircuitListener {
+    @Override
+    public void circuitChanged(CircuitEvent event) {
+      if (event.getAction() == CircuitEvent.ACTION_SET_NAME) rebuild();
+    }
+
     @Override
     public void projectChanged(ProjectEvent event) {
       final var action = event.getAction();

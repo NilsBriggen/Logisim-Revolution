@@ -159,7 +159,7 @@ public class RealTimeClock extends InstanceFactory {
     int width =  bds.getWidth();
     int height = bds.getHeight();
     GraphicsUtil.switchToWidth(g, 2);
-    g.setColor(Color.WHITE);
+    g.setColor(CanvasStyle.dataBackground());
     g.fillRect(x, y, width, height);
     g.setColor(new Color(AppPreferences.COMPONENT_COLOR.get()));
     g.drawRect(x, y, width, height);
@@ -183,7 +183,7 @@ public class RealTimeClock extends InstanceFactory {
 
     Graphics2D g2 = (Graphics2D) g;
     var oldStroke = g2.getStroke();
-    g.setColor(Color.darkGray);
+    g.setColor(CanvasStyle.dataForeground());
     g2.setStroke(new BasicStroke(1.5f));
     g.drawArc(xCenter, yCenter, circleDiameter, circleDiameter, 0, 360);
 
@@ -199,7 +199,7 @@ public class RealTimeClock extends InstanceFactory {
     g.drawLine(xCenter, yCenter, x2, y2);
 
     g2.setStroke(oldStroke);
-    g.setColor(CanvasStyle.componentColor());
+    g.setColor(CanvasStyle.dataForeground());
     String txt = S.get("realTimeClockTimeLabel");
     g.drawString(txt, x + 2, y + offset - 1);
     painter.drawPorts();

@@ -89,8 +89,10 @@ public class GridPainter implements PropertyChangeListener {
         model.addPropertyChangeListener(ZoomModel.ZOOM, listener);
         model.addPropertyChangeListener(ZoomModel.SHOW_GRID, listener);
       }
-      setShowGrid(model.getShowGrid());
-      setZoomFactor(model.getZoomFactor());
+      if (model != null) {
+        setShowGrid(model.getShowGrid());
+        setZoomFactor(model.getZoomFactor());
+      }
       destination.repaint();
     }
   }
@@ -125,6 +127,9 @@ public class GridPainter implements PropertyChangeListener {
    * is not dominated by the per-tile cost.
    */
   static int tileWidth(int size, double f) {
+    if (size <= 0 || !Double.isFinite(f) || f <= 0) {
+      throw new IllegalArgumentException("Grid size and zoom must be finite and positive");
+    }
     var ww = f * size * 5;
     while (2 * ww < 150) ww *= 2;
     return (int) Math.round(ww);
@@ -135,66 +140,23 @@ public class GridPainter implements PropertyChangeListener {
     final var pix = new int[w * w];
     Arrays.fill(pix, AppPreferences.GRID_BG_COLOR.get());
 
-    if (f == 1.0) {
-      // Two levels: a faint dot on every grid step and a stronger one every fifth, so the eye can
-      // judge distance across the sheet instead of counting an even field of identical dots.
-      final var minorColor = AppPreferences.GRID_ZOOMED_DOT_COLOR.get();
-      final var majorColor = AppPreferences.GRID_DOT_COLOR.get();
-      final var lineStep = size * w;
-      var row = 0;
-      for (var j = 0; j < pix.length; j += lineStep) {
-        final var majorRow = (row % 5) == 0;
-        var column = 0;
-        for (var i = 0; i < w; i += size) {
-          final var major = majorRow && (column % 5) == 0;
-          pix[i + j] = major ? majorColor : minorColor;
-          column++;
-        }
-        row++;
-      }
-    } else {
-      int off0 = 0;
-      int off1 = 1;
-      if (f >= 2.0) { // we'll draw several pixels for each grid point
-        int num = (int) (f + 0.001);
-        off0 = -(num / 2);
-        off1 = off0 + num;
-      }
-
-      final var dotColor =
-          f <= 0.5
-              ? AppPreferences.GRID_ZOOMED_DOT_COLOR.get()
-              : AppPreferences.GRID_DOT_COLOR.get();
-      for (int j = 0; true; j += size) {
-        int y = (int) Math.round(f * j);
-        if (y + off0 >= w) break;
-
-        for (int yo = y + off0; yo < y + off1; yo++) {
-          if (yo >= 0 && yo < w) {
-            int base = yo * w;
-            for (int i = 0; true; i += size) {
-              int x = (int) Math.round(f * i);
-              if (x + off0 >= w) break;
-              for (int xo = x + off0; xo < x + off1; xo++) {
-                if (xo >= 0 && xo < w) {
-                  pix[base + xo] = dotColor;
-                }
-              }
-            }
-          }
-        }
-      }
-      if (f <= 0.5) { // repaint over every 5th pixel so it is darker
-        int size5 = size * 5;
-        for (int j = 0; true; j += size5) {
-          int y = (int) Math.round(f * j);
-          if (y >= w) break;
-          y *= w;
-
-          for (int i = 0; true; i += size5) {
-            int x = (int) Math.round(f * i);
-            if (x >= w) break;
-            pix[y + x] = AppPreferences.GRID_DOT_COLOR.get();
+    // The same document-space hierarchy at every zoom. Suppress minor points when they
+    // become too dense, without changing snapping or circuit coordinates.
+    final var step = size * f;
+    final var dotSize = Math.max(1, (int) f);
+    final var offset = -(dotSize / 2);
+    for (var row = 0; Math.round(row * step) < w; row++) {
+      final var y = (int) Math.round(row * step);
+      for (var column = 0; Math.round(column * step) < w; column++) {
+        final var major = row % 5 == 0 && column % 5 == 0;
+        if (!major && step < 4) continue;
+        final var color = major ? AppPreferences.GRID_DOT_COLOR.get()
+            : AppPreferences.GRID_ZOOMED_DOT_COLOR.get();
+        final var x = (int) Math.round(column * step);
+        for (var dy = 0; dy < dotSize; dy++) {
+          for (var dx = 0; dx < dotSize; dx++) {
+            // Wrap the point on a tile edge so adjacent tiles retain a complete dot.
+            pix[Math.floorMod(y + offset + dy, w) * w + Math.floorMod(x + offset + dx, w)] = color;
           }
         }
       }
@@ -208,6 +170,7 @@ public class GridPainter implements PropertyChangeListener {
         || AppPreferences.GRID_DOT_COLOR.isSource(event)
         || AppPreferences.GRID_ZOOMED_DOT_COLOR.isSource(event)) {
       createGridImage(gridSize, zoomFactor);
+      destination.repaint();
     }
   }
 

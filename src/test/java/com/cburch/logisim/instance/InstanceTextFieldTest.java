@@ -24,7 +24,7 @@ import com.cburch.logisim.data.AttributeSet;
 import com.cburch.logisim.data.Location;
 import com.cburch.logisim.file.Loader;
 import com.cburch.logisim.file.LogisimFile;
-import com.cburch.logisim.prefs.AppPreferences;
+import com.cburch.logisim.gui.theme.Theme;
 import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.std.base.Text;
 import com.cburch.logisim.std.io.Led;
@@ -33,6 +33,7 @@ import com.cburch.logisim.util.GraphicsUtil;
 import java.awt.Color;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
+import javax.swing.SwingUtilities;
 import org.junit.jupiter.api.Test;
 
 public class InstanceTextFieldTest {
@@ -114,8 +115,8 @@ public class InstanceTextFieldTest {
   }
 
   @Test
-  public void componentWithoutLabelColorTracksThemeChanges() {
-    final var originalTheme = AppPreferences.THEME_MODE.get();
+  public void componentWithoutLabelColorTracksThemeChanges() throws Exception {
+    final var originalTheme = Theme.isDark() ? Theme.Mode.DARK : Theme.Mode.LIGHT;
     final var comp = mock(InstanceComponent.class);
     final var attrs = mock(AttributeSet.class);
     final var textField = new InstanceTextField(comp);
@@ -133,17 +134,19 @@ public class InstanceTextFieldTest {
         GraphicsUtil.H_CENTER,
         GraphicsUtil.V_CENTER);
 
-    try {
-      AppPreferences.THEME_MODE.set(AppPreferences.THEME_LIGHT);
-      final var lightGraphics = draw(textField, comp);
-      verify(lightGraphics).setColor(Color.BLUE);
+    SwingUtilities.invokeAndWait(() -> {
+      try {
+        Theme.apply(Theme.Mode.LIGHT);
+        final var lightGraphics = draw(textField, comp);
+        verify(lightGraphics).setColor(Color.BLUE);
 
-      AppPreferences.THEME_MODE.set(AppPreferences.THEME_DARK);
-      final var darkGraphics = draw(textField, comp);
-      verify(darkGraphics).setColor(new Color(0x6C, 0xB6, 0xFF));
-    } finally {
-      AppPreferences.THEME_MODE.set(originalTheme);
-    }
+        Theme.apply(Theme.Mode.DARK);
+        final var darkGraphics = draw(textField, comp);
+        verify(darkGraphics).setColor(new Color(0x6C, 0xB6, 0xFF));
+      } finally {
+        Theme.apply(originalTheme);
+      }
+    });
   }
 
   private static Graphics draw(InstanceTextField textField, InstanceComponent comp) {

@@ -24,6 +24,10 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -412,10 +416,17 @@ public class Loader implements LibraryLoader {
   }
 
   public boolean export(LogisimFile file, ZipOutputStream zipFile, String mainFileName) {
+    final var previous = this.zipFile;
     this.zipFile = zipFile;
-    file.write(zipFile, this, mainFileName);
-    this.zipFile = null;
-    return true;
+    try {
+      file.write(zipFile, this, mainFileName);
+      return true;
+    } catch (IOException e) {
+      showError(e.getMessage());
+      return false;
+    } finally {
+      this.zipFile = previous;
+    }
   }
 
   public boolean export(LogisimFile file, String homeDirectory) {
@@ -426,8 +437,9 @@ public class Loader implements LibraryLoader {
               homeDirectory, File.separator, LOGISIM_CIRCUIT_DIR, getMainFile().getName());
       final var libraryHome =
           String.format("%s%s%s", homeDirectory, File.separator, LOGISIM_LIBRARY_DIR);
-      final var fwrite = new FileOutputStream(mainCircFile);
-      file.write(fwrite, this, libraryHome);
+      try (final var fwrite = new FileOutputStream(mainCircFile)) {
+        file.write(fwrite, this, libraryHome);
+      }
     } catch (IOException e) {
       // TODO: give an error message to the user #1136
       System.err.println("Unable to export file");
@@ -456,65 +468,45 @@ public class Loader implements LibraryLoader {
       return false;
     }
 
-    final var backup = determineBackupName(dest);
-    final var backupCreated = (backup != null) && dest.renameTo(backup);
-
-    FileOutputStream fwrite = null;
     final var oldFile = getMainFile();
+    File backup = null;
+    var backupCreated = false;
+    var publishing = false;
+    Path staged = null;
     try {
       setMainFile(dest);
-      fwrite = new FileOutputStream(dest);
-      file.write(fwrite, this, dest, null);
-      file.setName(toProjectName(dest));
-      LibraryManager.instance.fileSaved(this, dest, oldFile, file);
+      staged = stageWrite(file, dest);
+      if (dest.exists()) {
+        backup = determineBackupName(dest);
+        if (backup == null) throw new IOException("No available backup filename");
+        Files.copy(dest.toPath(), backup.toPath());
+        backupCreated = true;
+      }
+      publishing = true;
+      publishWrite(staged, dest.toPath());
+      staged = null;
     } catch (IOException e) {
       setMainFile(oldFile);
-      if (backupCreated) recoverBackup(backup, dest);
-      if (dest.exists() && dest.length() == 0) {
-        // FIXME: delete can fail. Ensure we will not have snowball effect here!
-        dest.delete();
-      }
-      OptionPane.showMessageDialog(
-          parent,
-          S.get("fileSaveError", e.toString()),
-          S.get("fileSaveErrorTitle"),
-          OptionPane.ERROR_MESSAGE);
-      return false;
-    } finally {
-      if (fwrite != null) {
+      if (publishing) {
         try {
-          fwrite.close();
-        } catch (IOException e) {
-          if (backupCreated) recoverBackup(backup, dest);
-          if (dest.exists() && dest.length() == 0) {
-            // FIXME: delete can fail. Ensure we will not have snowball effect here!
-            dest.delete();
+          if (backupCreated) {
+            // Keep the backup as well if publication failed; never discard the last good copy.
+            Files.copy(backup.toPath(), dest.toPath(), StandardCopyOption.REPLACE_EXISTING);
+          } else {
+            Files.deleteIfExists(dest.toPath());
           }
-          OptionPane.showMessageDialog(
-              parent,
-              S.get("fileSaveCloseError", e.toString()),
-              S.get("fileSaveErrorTitle"),
-              OptionPane.ERROR_MESSAGE);
-          return false;
+        } catch (IOException recoveryError) {
+          e.addSuppressed(recoveryError);
         }
       }
-    }
-
-    if (!dest.exists() || dest.length() == 0) {
-      if (backupCreated && backup.exists()) {
-        recoverBackup(backup, dest);
-      } else {
-        // FIXME: delete can fail. Ensure we will not have snowball effect here!
-        dest.delete();
-      }
-      OptionPane.showMessageDialog(
-          parent,
-          S.get("fileSaveZeroError"),
-          S.get("fileSaveErrorTitle"),
-          OptionPane.ERROR_MESSAGE);
+      showError(S.get("fileSaveError", e.toString()));
       return false;
+    } finally {
+      discardStagedWrite(staged);
     }
 
+    file.setName(toProjectName(dest));
+    LibraryManager.instance.fileSaved(this, dest, oldFile, file);
     if (backupCreated && backup.exists()) {
       // FIXME: delete can fail. Ensure we will not have snowball effect here!
       backup.delete();
@@ -535,22 +527,60 @@ public class Loader implements LibraryLoader {
    */
   public boolean autosave(LogisimFile file) {
     final var oldAutosave = autosaveFile;
-    autosaveFile = determineAutosaveName(mainFile);
-    if (autosaveFile == null) {
+    final var destination = determineAutosaveName(mainFile);
+    if (destination == null) {
       return false;
     }
-    FileOutputStream fwrite = null;
+    Path staged = null;
     try {
-      fwrite = new FileOutputStream(autosaveFile);
-      file.write(fwrite, this, autosaveFile, null);
-      fwrite.close();
+      staged = stageWrite(file, destination);
+      publishWrite(staged, destination.toPath());
+      staged = null;
     } catch (IOException e) {
       return false;
+    } finally {
+      discardStagedWrite(staged);
     }
+    autosaveFile = destination;
     if (oldAutosave != null && !oldAutosave.equals(autosaveFile)) {
       oldAutosave.delete();
     }
     return true;
+  }
+
+  private Path stageWrite(LogisimFile file, File destination) throws IOException {
+    final var directory = destination.toPath().toAbsolutePath().getParent();
+    final var staged = Files.createTempFile(directory, ".logisim-save-", ".tmp");
+    var complete = false;
+    try {
+      try (final var output = Files.newOutputStream(staged)) {
+        // Relative library paths describe the final file, not its staging filename.
+        file.write(output, this, destination, null);
+      }
+      if (Files.size(staged) == 0) throw new IOException(S.get("fileSaveZeroError"));
+      complete = true;
+      return staged;
+    } finally {
+      if (!complete) discardStagedWrite(staged);
+    }
+  }
+
+  private static void publishWrite(Path staged, Path destination) throws IOException {
+    try {
+      Files.move(staged, destination,
+          StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+    } catch (AtomicMoveNotSupportedException e) {
+      Files.move(staged, destination, StandardCopyOption.REPLACE_EXISTING);
+    }
+  }
+
+  private static void discardStagedWrite(Path staged) {
+    if (staged == null) return;
+    try {
+      Files.deleteIfExists(staged);
+    } catch (IOException e) {
+      org.slf4j.LoggerFactory.getLogger(Loader.class).warn("Unable to remove staged save {}", staged, e);
+    }
   }
 
   /**

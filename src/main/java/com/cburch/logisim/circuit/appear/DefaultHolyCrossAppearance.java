@@ -16,12 +16,11 @@ import com.cburch.draw.shapes.Text;
 import com.cburch.draw.util.EditableLabel;
 import com.cburch.logisim.data.Direction;
 import com.cburch.logisim.data.Location;
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.instance.Instance;
 import com.cburch.logisim.instance.StdAttr;
-import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.std.wiring.Pin;
 import java.awt.Canvas;
-import java.awt.Color;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -174,6 +173,7 @@ public class DefaultHolyCrossAppearance {
 
     final var rect = new Rectangle(rx, ry, width, height);
     rect.setValue(DrawAttr.STROKE_WIDTH, 2);
+    rect.setValue(DrawAttr.STROKE_COLOR, CanvasStyle.componentColor());
     final var ret = new ArrayList<CanvasObject>();
     ret.add(rect);
 
@@ -184,7 +184,7 @@ public class DefaultHolyCrossAppearance {
       final var label = new Text(rx + width / 2, ry + TOP_TEXT_MARGIN, name);
       label.getLabel().setHorizontalAlignment(EditableLabel.CENTER);
       label.getLabel().setVerticalAlignment(EditableLabel.TOP);
-      label.getLabel().setColor(new Color(AppPreferences.COMPONENT_COLOR.get()));
+      label.getLabel().setColor(CanvasStyle.componentColor());
       ret.add(label);
     }
 
@@ -205,7 +205,7 @@ public class DefaultHolyCrossAppearance {
       int dy,
       boolean isLeftSide) {
     int hAlign;
-    final var color = new Color(AppPreferences.COMPONENT_COLOR.get());
+    final var color = CanvasStyle.componentColor();
     int ldx;
     for (final var pin : pins) {
       dest.add(new AppearancePort(Location.create(x, y, true), pin));

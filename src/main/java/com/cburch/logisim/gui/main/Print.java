@@ -14,6 +14,7 @@ import static com.cburch.logisim.gui.Strings.S;
 import com.cburch.logisim.circuit.Circuit;
 import com.cburch.logisim.comp.Component;
 import com.cburch.logisim.comp.ComponentDrawContext;
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.gui.generic.OptionPane;
 import com.cburch.logisim.proj.Project;
 
@@ -108,7 +109,7 @@ public class Print {
     return ret.toString();
   }
 
-  private static class MyPrintable implements Printable {
+  static final class MyPrintable implements Printable {
     final Project proj;
     final List<Circuit> circuits;
     final String header;
@@ -135,6 +136,7 @@ public class Print {
       final var circState = proj.getCircuitState(circ);
       final var g = base.create();
       final var g2 = g instanceof Graphics2D ? (Graphics2D) g : null;
+      final var headerFont = g.getFont();
       final var fm = g.getFontMetrics();
       final var head =
           (header != null && !header.isEmpty())
@@ -148,6 +150,7 @@ public class Print {
 
       // Correct coordinate system for page, including
       // translation and possible rotation.
+      g.setFont(CanvasStyle.documentFont());
       final var bds = circ.getBounds(g).expand(4);
       var scale = Math.min(imWidth / bds.getWidth(), (imHeight - headHeight) / bds.getHeight());
       if (g2 != null) {
@@ -173,12 +176,14 @@ public class Print {
 
       // Draw the header line if appropriate
       if (head != null) {
+        g.setFont(headerFont);
         g.drawString(head, (int) Math.round((imWidth - fm.stringWidth(head)) / 2), fm.getAscent());
         if (g2 != null) {
           imHeight -= headHeight;
           g2.translate(0, headHeight);
         }
       }
+      g.setFont(CanvasStyle.documentFont());
 
       // Now change coordinate system for circuit, including
       // translation and possible scaling

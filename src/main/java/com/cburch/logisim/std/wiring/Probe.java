@@ -209,10 +209,11 @@ public class Probe extends InstanceFactory implements DynamicElementProvider {
         int x = bds.getX();
         int y = bds.getY();
         if (!IsOutput) {
-          g.setColor(value.get(0).getColor());
+          final var fill = value.get(0).getColor();
+          g.setColor(fill);
           g.fillOval(x + 5, y + 4, 11, 13);
+          g.setColor(CanvasStyle.contrastInk(fill));
         }
-        if (!IsOutput) g.setColor(Color.WHITE);
         GraphicsUtil.drawCenteredText(g, value.get(0).toDisplayString(), x + 10, y + 9);
       } else paintOldStyleValue(painter, value);
       return;
@@ -220,7 +221,7 @@ public class Probe extends InstanceFactory implements DynamicElementProvider {
     RadixOption radix = painter.getAttributeValue(RadixOption.ATTRIBUTE);
     int LabelValueXOffset = 15;
     if (radix != null && radix != RadixOption.RADIX_2) LabelValueXOffset += 3;
-    g.setColor(Color.BLUE);
+    g.setColor(CanvasStyle.componentColor());
     g2.scale(0.7, 0.7);
     g2.drawString(
         radix.getIndexChar(),

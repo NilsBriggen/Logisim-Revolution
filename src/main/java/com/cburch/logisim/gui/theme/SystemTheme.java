@@ -9,14 +9,13 @@
 
 package com.cburch.logisim.gui.theme;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -30,6 +29,7 @@ public final class SystemTheme {
 
   /** How long any one probe may take before it is abandoned. */
   private static final long TIMEOUT_SECONDS = 2;
+  private static final int MAX_OUTPUT_BYTES = 16_384;
 
   private SystemTheme() {
     throw new UnsupportedOperationException("Utility class, do not instantiate.");
@@ -156,27 +156,52 @@ public final class SystemTheme {
     return result.trim();
   }
 
+  /** Reads X server resources with the same bounded output/deadline as theme probes, off the EDT. */
+  public static String queryXResources() {
+    if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+      throw new IllegalStateException("Desktop resource probes must run off the EDT");
+    }
+    return run("xrdb", "-query");
+  }
+
   /**
    * Runs a probe, returning its output, or {@code null} if it fails, times out, or is not
    * installed. Probes only ever read a setting, so a failure is never worth reporting.
    */
-  private static String run(String... command) {
-    Process process = null;
+  static String run(String... command) {
     try {
-      process = new ProcessBuilder(command).redirectErrorStream(false).start();
-      final var output = new StringBuilder();
-      try (final var reader =
-          new BufferedReader(
-              new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
-        String line;
-        while ((line = reader.readLine()) != null) output.append(line).append('\n');
+      final var process =
+          new ProcessBuilder(command).redirectError(ProcessBuilder.Redirect.DISCARD).start();
+      return readProbe(process, TimeUnit.SECONDS.toMillis(TIMEOUT_SECONDS));
+    } catch (Exception ignored) {
+      return null;
+    }
+  }
+
+  /** Bounds both process execution and pipe consumption, including a child retaining stdout. */
+  static String readProbe(Process process, long timeoutMillis) {
+    final var deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMillis);
+    final var output =
+        new FutureTask<String>(() -> {
+          try (final var stream = process.getInputStream()) {
+            final var bytes = stream.readNBytes(MAX_OUTPUT_BYTES + 1);
+            return bytes.length > MAX_OUTPUT_BYTES ? null : new String(bytes, StandardCharsets.UTF_8);
+          }
+        });
+    Thread.ofVirtual().name("system-theme-output").start(output);
+    try {
+      if (!process.waitFor(timeoutMillis, TimeUnit.MILLISECONDS) || process.exitValue() != 0) {
+        return null;
       }
-      if (!process.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS)) return null;
-      return process.exitValue() == 0 ? output.toString() : null;
+      return output.get(Math.max(1, deadline - System.nanoTime()), TimeUnit.NANOSECONDS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      return null;
     } catch (Exception ignored) {
       return null;
     } finally {
-      if (process != null && process.isAlive()) process.destroyForcibly();
+      if (process.isAlive()) process.destroyForcibly();
+      output.cancel(true);
     }
   }
 }

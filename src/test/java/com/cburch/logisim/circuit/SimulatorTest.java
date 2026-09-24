@@ -10,11 +10,13 @@
 package com.cburch.logisim.circuit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.cburch.logisim.comp.Component;
 import com.cburch.logisim.comp.ComponentDrawContext;
@@ -29,6 +31,8 @@ import com.cburch.logisim.std.wiring.Pin;
 import java.awt.Graphics2D;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import javax.swing.SwingUtilities;
 import org.junit.jupiter.api.Test;
 
 class SimulatorTest {
@@ -36,7 +40,7 @@ class SimulatorTest {
   private static final String PROPAGATE_ERROR = "propagation stopped with useful context";
 
   @Test
-  void recordsPropagationExceptionMessage() throws InterruptedException {
+  void recordsPropagationExceptionMessageAndNotifiesPausedStateOnEdt() throws Exception {
     final var file = LogisimFile.createNew(new Loader(null), null);
     final var project = new Project(file);
     final var circuit = file.getMainCircuit();
@@ -49,6 +53,8 @@ class SimulatorTest {
     final var simulator = project.getSimulator();
     try {
       final var propagated = new CountDownLatch(1);
+      final var stopped = new CountDownLatch(1);
+      final var stoppedOnEdt = new AtomicBoolean();
       simulator.addSimulatorListener(
           new Simulator.Listener() {
             @Override
@@ -60,14 +66,78 @@ class SimulatorTest {
             public void simulatorReset(Simulator.Event e) {}
 
             @Override
-            public void simulatorStateChanged(Simulator.Event e) {}
+            public void simulatorStateChanged(Simulator.Event e) {
+              if (simulator.isExceptionEncountered() && !simulator.isAutoPropagating()) {
+                stoppedOnEdt.set(SwingUtilities.isEventDispatchThread());
+                stopped.countDown();
+              }
+            }
           });
       simulator.setCircuitState(CircuitState.createRootState(project, circuit));
+      SwingUtilities.invokeAndWait(() -> {});
 
       assertTrue(simulator.nudge());
       assertTrue(propagated.await(2, TimeUnit.SECONDS));
+      assertTrue(stopped.await(2, TimeUnit.SECONDS));
+      assertTrue(stoppedOnEdt.get());
+      assertFalse(simulator.isAutoPropagating());
       assertTrue(simulator.isExceptionEncountered());
       assertEquals(PROPAGATE_ERROR, simulator.getExceptionMessage());
+    } finally {
+      simulator.shutDown();
+    }
+  }
+
+  @Test
+  void oscillationNotifiesPausedStateOnEdtAndCanRecover() throws Exception {
+    final var fixture = new PendingInputFixture();
+    final var simulator = fixture.simulator;
+    try {
+      final var propagator = mock(Propagator.class);
+      final var state = mock(CircuitState.class);
+      when(state.getPropagator()).thenReturn(propagator);
+      when(propagator.getRootState()).thenReturn(fixture.state);
+      when(propagator.isOscillating()).thenReturn(true);
+      simulator.setCircuitState(state);
+      simulator.setAutoPropagation(true);
+      SwingUtilities.invokeAndWait(() -> {});
+
+      final var stopped = new CountDownLatch(1);
+      final var recovered = new CountDownLatch(1);
+      final var stoppedOnEdt = new AtomicBoolean();
+      simulator.addSimulatorListener(
+          new Simulator.Listener() {
+            @Override
+            public void simulatorStateChanged(Simulator.Event e) {
+              if (simulator.isOscillating() && !simulator.isAutoPropagating()) {
+                stoppedOnEdt.set(SwingUtilities.isEventDispatchThread());
+                stopped.countDown();
+              }
+            }
+
+            @Override
+            public void simulatorReset(Simulator.Event e) {}
+
+            @Override
+            public void propagationCompleted(Simulator.Event e) {
+              if (!simulator.isOscillating()) recovered.countDown();
+            }
+          });
+
+      assertTrue(simulator.nudge());
+      assertTrue(stopped.await(2, TimeUnit.SECONDS));
+      assertTrue(stoppedOnEdt.get());
+      assertFalse(simulator.isAutoPropagating());
+      assertTrue(simulator.isOscillating());
+
+      when(propagator.isOscillating()).thenReturn(false);
+      simulator.reset();
+      simulator.setAutoPropagation(true);
+      assertTrue(simulator.nudge());
+      assertTrue(recovered.await(2, TimeUnit.SECONDS));
+      assertTrue(simulator.isAutoPropagating());
+      assertFalse(simulator.isOscillating());
+      verify(propagator).reset();
     } finally {
       simulator.shutDown();
     }

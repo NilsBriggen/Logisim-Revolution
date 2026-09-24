@@ -9,6 +9,8 @@
 
 package com.cburch.logisim.gui.shell;
 
+import com.cburch.logisim.util.UiFonts;
+import com.cburch.logisim.util.UiScale;
 import java.awt.BorderLayout;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
@@ -81,12 +83,12 @@ public class ShellLayout extends JPanel {
         LayoutPrefs::sideWidth,
         LayoutPrefs::setSideWidth);
     sideSplit.setResizeWeight(0.0);
+    sideSplit.beforeAllocation = this::allocateHorizontalSpace;
 
     // Minimum sizes keep a panel from being dragged away to nothing; the stored sizes are applied
     // on the first layout, once the split panes have a width to place a divider within.
-    sidePanel.setMinimumSize(new java.awt.Dimension(LayoutPrefs.MIN_PANEL, 0));
-    inspector.setMinimumSize(new java.awt.Dimension(LayoutPrefs.MIN_PANEL, 0));
-    bottomPanel.setMinimumSize(new java.awt.Dimension(0, LayoutPrefs.MIN_PANEL));
+    sidePanel.setMinimumSize(new java.awt.Dimension(UiScale.scaled(LayoutPrefs.MIN_PANEL), 0));
+    inspector.setMinimumSize(new java.awt.Dimension(UiScale.scaled(LayoutPrefs.MIN_PANEL), 0));
 
     final var middle = new JPanel(new BorderLayout());
     middle.add(activityBar, BorderLayout.LINE_START);
@@ -106,6 +108,50 @@ public class ShellLayout extends JPanel {
     bottomSplit.reapply();
   }
 
+  @Override
+  public void doLayout() {
+    updatePanelMinimum(sidePanel);
+    updatePanelMinimum(inspector);
+    sideSplit.setDividerSize(isSideVisible() ? UiScale.scaled(DIVIDER_SIZE) : 0);
+    inspectorSplit.setDividerSize(isInspectorVisible() ? UiScale.scaled(DIVIDER_SIZE) : 0);
+    bottomSplit.setDividerSize(isBottomVisible() ? UiScale.scaled(DIVIDER_SIZE) : 0);
+    super.doLayout();
+  }
+
+  private static void updatePanelMinimum(JComponent panel) {
+    final var textWidth = panel.getFontMetrics(panel.getFont()).charWidth('m') * 14;
+    final var size = new java.awt.Dimension(
+        Math.max(UiScale.scaled(LayoutPrefs.MIN_PANEL), textWidth + UiScale.scaled(16)), 0);
+    if (!size.equals(panel.getMinimumSize())) panel.setMinimumSize(size);
+  }
+
+  private void allocateHorizontalSpace() {
+    final var textWidth = editorArea.getFontMetrics(UiFonts.mono()).charWidth('m') * 32;
+    final var centerMinimum = Math.max(UiScale.scaled(320), textWidth + UiScale.scaled(48));
+    allocateHorizontalSpace(sideSplit, inspectorSplit, centerMinimum);
+  }
+
+  /** Reserve a useful editor viewport without changing the user's desired widths or visibility. */
+  private static void allocateHorizontalSpace(
+      SizedSplit side, SizedSplit inspector, int centerMinimum) {
+    final var leftWidth = side.hasBothChildren() ? side.requestedSize() : 0;
+    final var rightWidth = inspector.hasBothChildren() ? inspector.requestedSize() : 0;
+    final var insets = side.getInsets();
+    final var available = Math.max(0, side.getWidth() - insets.left - insets.right
+        - (side.hasBothChildren() ? side.dividerExtent() : 0)
+        - (inspector.hasBothChildren() ? inspector.dividerExtent() : 0));
+    final var budget = Math.max(0, available - centerMinimum);
+    final var requested = (long) leftWidth + rightWidth;
+    if (requested > budget) {
+      final var left = (int) (budget * (long) leftWidth / requested);
+      side.allocate(left);
+      inspector.allocate(budget - left);
+    } else {
+      side.allocate(-1);
+      inspector.allocate(-1);
+    }
+  }
+
   private static SizedSplit split(
       int orientation,
       JComponent first,
@@ -116,7 +162,7 @@ public class ShellLayout extends JPanel {
     final var pane =
         new SizedSplit(orientation, first, second, storedIsSecond, storedSize, sizeChanged);
     pane.setBorder(null);
-    pane.setDividerSize(DIVIDER_SIZE);
+    pane.setDividerSize(UiScale.scaled(DIVIDER_SIZE));
     pane.setContinuousLayout(true);
     return pane;
   }
@@ -124,24 +170,27 @@ public class ShellLayout extends JPanel {
   /**
    * A split pane that keeps one of its children at a remembered size.
    *
-   * <p>The size is enforced on every layout rather than set once: a window is laid out several
-   * times while it is being built, at sizes that have nothing to do with its final one, and a
-   * divider placed during one of those passes ends up in the wrong place or off the edge. When
-   * the user drags the divider the remembered size is updated, so enforcing it then changes
-   * nothing.
+   * <p>Restore on initialization, explicit restore and extent changes. Ordinary layout passes
+   * must leave the divider where the user is dragging it. Temporary window constraints do not
+   * replace the user's chosen size.
    */
-  private static final class SizedSplit extends JSplitPane {
+  static final class SizedSplit extends JSplitPane {
     private static final long serialVersionUID = 1L;
 
     private final boolean storedIsSecond;
     private final java.util.function.IntSupplier storedSize;
     private final java.util.function.IntConsumer sizeChanged;
 
-    /** Set while this class is moving the divider, so its own move is not read as a drag. */
-    private boolean adjusting;
-
-    /** Whether the divider is already being watched for drags. */
-    private boolean dragWatched;
+    private boolean restorePending = true;
+    private boolean dragging;
+    private int lastExtent = -1;
+    private int wantedSize;
+    private double lastScale = UiScale.factor();
+    private java.awt.Component watchedDivider;
+    private Runnable beforeAllocation;
+    private int allocatedSize = -1;
+    private boolean allocationChanged;
+    private int dragStartLocation;
 
     SizedSplit(
         int orientation,
@@ -164,24 +213,52 @@ public class ShellLayout extends JPanel {
      * every time the window was built. Watching the divider itself is exact.
      */
     private void watchForDrags() {
-      if (dragWatched) return;
       if (!(getUI() instanceof javax.swing.plaf.basic.BasicSplitPaneUI splitUi)) return;
       final var divider = splitUi.getDivider();
-      if (divider == null) return;
-      dragWatched = true;
+      if (divider == null || divider == watchedDivider) return;
+      watchedDivider = divider;
       divider.addMouseListener(
           new java.awt.event.MouseAdapter() {
             @Override
+            public void mousePressed(java.awt.event.MouseEvent event) {
+              dragging = javax.swing.SwingUtilities.isLeftMouseButton(event);
+              dragStartLocation = getDividerLocation();
+            }
+
+            @Override
             public void mouseReleased(java.awt.event.MouseEvent event) {
+              if (!dragging) return;
+              doLayout();
+              dragging = false;
               if (extent() <= 0 || !hasBothChildren()) return;
-              sizeChanged.accept(sizeOfStoredChild());
+              if (getDividerLocation() == dragStartLocation) return;
+              wantedSize = sizeOfStoredChild();
+              sizeChanged.accept(wantedSize);
             }
           });
     }
 
     /** Asks for the remembered size to be applied again. */
     void reapply() {
+      restorePending = true;
       revalidate();
+    }
+
+    private int requestedSize() {
+      return Math.max(0, restorePending ? storedSize.getAsInt()
+          : (int) Math.round(wantedSize * UiScale.factor() / lastScale));
+    }
+
+    private void allocate(int size) {
+      if (allocatedSize == size) return;
+      allocatedSize = size;
+      allocationChanged = true;
+    }
+
+    private int dividerExtent() {
+      if (getUI() instanceof javax.swing.plaf.basic.BasicSplitPaneUI ui
+          && ui.getDivider() != null) return ui.getDivider().getDividerSize();
+      return getDividerSize();
     }
 
     private boolean hasBothChildren() {
@@ -194,25 +271,63 @@ public class ShellLayout extends JPanel {
 
     /** How big the remembered child is right now, according to the divider. */
     private int sizeOfStoredChild() {
-      final var location = getDividerLocation();
-      return storedIsSecond ? extent() - getDividerSize() - location : location;
+      final var child = storedIsSecond ? getRightComponent() : getLeftComponent();
+      return getOrientation() == HORIZONTAL_SPLIT ? child.getWidth() : child.getHeight();
+    }
+
+    void rememberSize() {
+      if (lastExtent > 0 && hasBothChildren() && sizeOfStoredChild() > 0) {
+        // Save the chosen size, even if a narrow window currently constrains the child.
+        sizeChanged.accept(wantedSize);
+      }
+    }
+
+    private int minimum(java.awt.Component child) {
+      final var size = child.getMinimumSize();
+      return getOrientation() == HORIZONTAL_SPLIT ? size.width : size.height;
     }
 
     @Override
     public void doLayout() {
       super.doLayout();
       watchForDrags();
+      if (beforeAllocation != null) beforeAllocation.run();
       if (extent() <= 0 || !hasBothChildren()) return;
-      final var wanted = storedSize.getAsInt();
-      final var target = storedIsSecond ? extent() - getDividerSize() - wanted : wanted;
-      if (target < 0 || Math.abs(getDividerLocation() - target) <= 1) return;
-      adjusting = true;
-      try {
+      final var insets = getInsets();
+      final var start = getOrientation() == HORIZONTAL_SPLIT ? insets.left : insets.top;
+      final var end = getOrientation() == HORIZONTAL_SPLIT ? insets.right : insets.bottom;
+      // FlatLaf scales the divider independently of JSplitPane's requested dividerSize.
+      // Persistence and minimums describe child bounds, so use the laid-out divider extent.
+      final var dividerSize = watchedDivider == null ? getDividerSize()
+          : getOrientation() == HORIZONTAL_SPLIT
+              ? watchedDivider.getWidth() : watchedDivider.getHeight();
+      final var available = Math.max(0, extent() - start - end - dividerSize);
+      final var child = storedIsSecond ? getRightComponent() : getLeftComponent();
+      final var other = storedIsSecond ? getLeftComponent() : getRightComponent();
+      final var maximum = allocatedSize >= 0 ? available
+          : Math.max(0, available - minimum(other));
+      final var minimum = allocatedSize >= 0 ? 0 : Math.min(minimum(child), maximum);
+      final var scale = UiScale.factor();
+      final var scaleChanged = scale != lastScale;
+      if (restorePending) wantedSize = storedSize.getAsInt();
+      else if (scaleChanged) wantedSize = (int) Math.round(wantedSize * scale / lastScale);
+      final var restore = restorePending || lastExtent != extent() || scaleChanged
+          || allocationChanged;
+      lastScale = scale;
+      restorePending = false;
+      lastExtent = extent();
+      if (dragging) return;
+      allocationChanged = false;
+      final var wanted = Math.max(minimum,
+          Math.min(maximum, allocatedSize >= 0 ? allocatedSize
+              : restore ? wantedSize : sizeOfStoredChild()));
+      final var target = start + (storedIsSecond ? available - wanted : wanted);
+      // Reattaching a child resets BasicSplitPaneUI's layout sizes even when the divider
+      // property still equals the restored target. Compare the actual child bounds as well.
+      if (getDividerLocation() != target || sizeOfStoredChild() != wanted) {
         setDividerLocation(target);
-      } finally {
-        adjusting = false;
+        super.doLayout();
       }
-      super.doLayout();
     }
   }
 
@@ -233,7 +348,7 @@ public class ShellLayout extends JPanel {
     if (visible == isSideVisible()) return;
     if (visible) {
       sideSplit.setLeftComponent(sidePanel);
-      sideSplit.setDividerSize(DIVIDER_SIZE);
+      sideSplit.setDividerSize(UiScale.scaled(DIVIDER_SIZE));
       sideSplit.reapply();
     } else {
       rememberSideWidth();
@@ -254,7 +369,7 @@ public class ShellLayout extends JPanel {
     if (visible == isInspectorVisible()) return;
     if (visible) {
       inspectorSplit.setRightComponent(inspector);
-      inspectorSplit.setDividerSize(DIVIDER_SIZE);
+      inspectorSplit.setDividerSize(UiScale.scaled(DIVIDER_SIZE));
       inspectorSplit.reapply();
     } else {
       rememberInspectorWidth();
@@ -274,7 +389,7 @@ public class ShellLayout extends JPanel {
     if (visible == isBottomVisible()) return;
     if (visible) {
       bottomSplit.setBottomComponent(bottomPanel);
-      bottomSplit.setDividerSize(DIVIDER_SIZE);
+      bottomSplit.setDividerSize(UiScale.scaled(DIVIDER_SIZE));
       bottomSplit.reapply();
     } else {
       rememberBottomHeight();
@@ -335,21 +450,15 @@ public class ShellLayout extends JPanel {
   }
 
   private void rememberSideWidth() {
-    if (isSideVisible() && sideSplit.getDividerLocation() > 0) {
-      LayoutPrefs.setSideWidth(sideSplit.getDividerLocation());
-    }
+    if (isSideVisible()) sideSplit.rememberSize();
   }
 
   private void rememberInspectorWidth() {
-    if (!isInspectorVisible()) return;
-    final var width = inspectorSplit.getWidth() - inspectorSplit.getDividerLocation();
-    if (width > 0) LayoutPrefs.setInspectorWidth(width);
+    if (isInspectorVisible()) inspectorSplit.rememberSize();
   }
 
   private void rememberBottomHeight() {
-    if (!isBottomVisible()) return;
-    final var height = bottomSplit.getHeight() - bottomSplit.getDividerLocation();
-    if (height > 0) LayoutPrefs.setBottomHeight(height);
+    if (isBottomVisible()) bottomSplit.rememberSize();
   }
 
   public ActivityBar getActivityBar() {

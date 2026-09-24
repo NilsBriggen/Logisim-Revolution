@@ -68,7 +68,7 @@ public class Simulator {
 
     /**
      * Notify listeners that the simulator state has changed.
-     * Called by either the simulation thread or the gui thread.
+     * Called on the Swing event dispatch thread.
      *
      * @param e The event causing the state change
      */
@@ -579,15 +579,23 @@ public class Simulator {
 
       osc = prop != null && prop.isOscillating();
 
-      var clockDied = false;
+      var stateChanged = false;
       exceptionEncountered = oops;
       oscillating = osc;
       simStateLock.lock();
       try {
-        if (osc) {
+        if (osc || oops) {
+          stateChanged = autoPropagating;
           autoPropagating = false;
           autoPropagatingUnsynchronized = false;
           nudgeRequested = false;
+        }
+        if (oops) {
+          stateChanged |= autoTicking;
+          autoTicking = false;
+          autoTickingUnsynchronized = false;
+          manualTicksRequested = 0;
+          manualStepsRequested = 0;
         }
         if (ticked && manualTicksRequested > 0) {
           manualTicksRequested--;
@@ -595,7 +603,7 @@ public class Simulator {
         if (autoTicking && !hasClocks) {
           autoTicking = false;
           autoTickingUnsynchronized = false;
-          clockDied = true;
+          stateChanged = true;
         }
       } finally {
         simStateLock.unlock();
@@ -607,7 +615,7 @@ public class Simulator {
       if (ticked || stepped || propagated || doNudge) {
         sim.firePropagationCompleted(ticked, stepped && !propagated, propagated);
       }
-      if (clockDied) {
+      if (stateChanged) {
         sim.fireSimulatorStateChanged();
       }
       return true;
@@ -635,6 +643,7 @@ public class Simulator {
           } finally {
             simStateLock.unlock();
           }
+          sim.fireSimulatorStateChanged();
           SwingUtilities.invokeLater(
               () ->
                   OptionPane.showError(
@@ -786,6 +795,10 @@ public class Simulator {
 
   // called from either the gui thread or the simulation thread
   private void fireSimulatorStateChanged() {
+    if (!SwingUtilities.isEventDispatchThread()) {
+      SwingUtilities.invokeLater(this::fireSimulatorStateChanged);
+      return;
+    }
     final var event = new Event(this, false, false, false);
     for (final var listener : copyStatusListeners()) {
       listener.simulatorStateChanged(event);

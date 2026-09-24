@@ -19,7 +19,6 @@ import org.junit.jupiter.api.Test;
 
 /** Whether two selected rows can be given a value in one go. */
 class AttrMultiEditTest {
-
   private static JComboBox<String> choices(String... items) {
     return new JComboBox<>(items);
   }
@@ -72,5 +71,11 @@ class AttrMultiEditTest {
   void nothingIsCompatibleWithNothing() {
     assertFalse(AttrMultiEdit.sameChoices(null, choices("east")));
     assertFalse(AttrMultiEdit.sameChoices(choices("east"), null));
+  }
+
+  @Test
+  void identicalLabelsDoNotMakeDifferentValueTypesCompatible() {
+    final var number = new JComboBox<>(new Integer[] {1, 2});
+    assertFalse(AttrMultiEdit.sameChoices(number, choices("1", "2")));
   }
 }

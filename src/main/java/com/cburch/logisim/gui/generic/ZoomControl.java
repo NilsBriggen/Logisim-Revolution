@@ -185,6 +185,11 @@ public class ZoomControl extends JPanel {
     predefinedZoom1.setEnabled(val);
   }
 
+  /** The model of the active editor, or null for an editor without document zoom. */
+  public ZoomModel getZoomModel() {
+    return model;
+  }
+
   public void setZoomModel(ZoomModel value) {
     final var oldModel = model;
     if (oldModel != value) {

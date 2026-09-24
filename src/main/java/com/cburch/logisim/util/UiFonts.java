@@ -18,8 +18,8 @@ import javax.swing.UIManager;
  * <p>Fonts used to be constructed in place with a hard coded family and size, which is why parts of
  * the application still show fixed size {@code Serif} text that ignores both the look and feel and
  * the user's interface scale. Every font here is derived from the look and feel's label font, so a
- * theme change or a different application font flows through automatically, and every size is passed
- * through {@link UiScale}.
+ * theme change or a different application font flows through automatically. The look and feel has
+ * already scaled these fonts; only the role's relative size is applied here.
  *
  * <p>These fonts are for interface chrome. Fonts that belong to the circuit itself, such as the ones
  * in {@code com.cburch.draw.shapes.DrawAttr}, are part of the saved document and must not be derived
@@ -82,12 +82,12 @@ public final class UiFonts {
   /** Returns the look and feel's label font, or a fallback when it exposes none. */
   private static Font base() {
     final var font = UIManager.getFont("Label.font");
-    return (font == null) ? FALLBACK : font;
+    return (font == null) ? FALLBACK.deriveFont(UiScale.scaled(FALLBACK.getSize2D())) : font;
   }
 
   /** Derives a font at the given ratio of the base size, scaled and rounded to a whole point. */
   private static Font scale(Font font, float ratio, int style) {
-    final var size = Math.max(1.0f, UiScale.scaled(font.getSize2D() * ratio));
+    final var size = Math.max(1.0f, font.getSize2D() * ratio);
     return font.deriveFont(style, Math.round(size));
   }
 }

@@ -11,7 +11,10 @@ package com.cburch.logisim.fpga.gui;
 
 import static com.cburch.logisim.fpga.Strings.S;
 
+import com.cburch.logisim.gui.theme.AppIcons;
+import com.cburch.logisim.gui.theme.Tokens;
 import com.cburch.logisim.util.ColorUtil;
+import com.cburch.logisim.util.Spacing;
 import java.awt.Color;
 import java.awt.Component;
 import java.util.ArrayList;
@@ -44,6 +47,9 @@ public class HdlColorRenderer extends JLabel implements TableCellRenderer {
                                                  boolean hasFocus, int rowIdx, int columnIdx) {
     // Some sanity checks to avoid NPE
     final var value = (infoObj != null) ? (String) infoObj : "???";
+    setFont(table.getFont());
+    setIcon(null);
+    setBorder(Spacing.border(0, Spacing.XS, 0, Spacing.XS));
 
     // Set default cell colors
     setBackground(javax.swing.UIManager.getColor("Table.background"));
@@ -58,8 +64,8 @@ public class HdlColorRenderer extends JLabel implements TableCellRenderer {
     if (value.equals(REQUIRED_FIELD_STRING)) {
       // This field (mostly labels) is required to be set for FGPA support to work.
       // But this is not an error if the user does not really care about FPGA at this moment, so let's color it differently."
-      setCellColors(Color.ORANGE);
-      setHorizontalAlignment(JLabel.CENTER);
+      setIcon(AppIcons.colored(AppIcons.Id.WARNING, 14, Tokens.warning()));
+      setHorizontalAlignment(JLabel.LEFT);
       setText(S.get("FPGAHdlRequired"));
     } else if ((value.length() == 7 || value.length() == 9) && value.indexOf('#') == 0) {
       // Is this #RGB or #RGBA hex color value? If so, render the color
@@ -80,7 +86,6 @@ public class HdlColorRenderer extends JLabel implements TableCellRenderer {
       setHorizontalAlignment(JLabel.LEFT);
     }
 
-    setBorder(null);
     return this;
   }
 
@@ -95,24 +100,24 @@ public class HdlColorRenderer extends JLabel implements TableCellRenderer {
       return this;
     }
 
-    // Let's color the status cell in a fancy way
+    // Keep the table's readable foreground/background pair. A small semantic icon supports
+    // the explicit status text; the whole property cell must not become a fluorescent signal.
     final String labelKey;
-    var bg = javax.swing.UIManager.getColor("Table.background");
     if (!value.equals(UNKNOWN_STRING)) {
       if (value.equals(NO_SUPPORT_STRING)) {
-        bg = Color.RED;
+        setIcon(AppIcons.colored(AppIcons.Id.WARNING, 14, Tokens.warning()));
         labelKey = "FPGANotSupported";
       } else {
-        bg = Color.GREEN;
+        setIcon(AppIcons.colored(AppIcons.Id.CHECK, 14, Tokens.success()));
         labelKey = "FPGASupported";
       }
     } else {
+      setIcon(AppIcons.colored(AppIcons.Id.INFO, 14, Tokens.mutedForeground()));
       labelKey = "FPGAUnknown";
     }
 
     setText(S.get(labelKey));
-    setCellColors(bg);
-    setHorizontalAlignment(JLabel.CENTER);
+    setHorizontalAlignment(JLabel.LEFT);
 
     return this;
   }

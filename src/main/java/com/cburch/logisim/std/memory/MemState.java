@@ -16,7 +16,6 @@ import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.instance.InstanceData;
 import com.cburch.logisim.util.GraphicsUtil;
 import com.cburch.logisim.util.StringUtil;
-import java.awt.Color;
 import java.awt.Graphics;
 
 class MemState implements InstanceData, Cloneable, HexModelListener {
@@ -224,11 +223,11 @@ class MemState implements InstanceData, Cloneable, HexModelListener {
       calculateDisplayParameters(g, offsetX, offsetY, displayWidth, displayHeight);
     final var blockHeight = nrOfLines * (charHeight + 2);
     final var totalNrOfEntries = (1 << getAddrBits());
-    g.setColor(Color.LIGHT_GRAY);
+    g.setColor(CanvasStyle.dataBackground());
     g.fillRect(leftX + xOffset, topY + yOffset, dataBlockSize + addrBlockSize, blockHeight);
-    g.setColor(Color.DARK_GRAY);
+    g.setColor(CanvasStyle.dataForeground());
     g.drawRect(leftX + xOffset + addrBlockSize, topY + yOffset, dataBlockSize, blockHeight);
-    g.setColor(CanvasStyle.componentColor());
+    g.setColor(CanvasStyle.dataForeground());
     /* draw the addresses */
     int addr = (int) curScroll;
     if ((addr + (nrOfLines * nrDataSymbolsEachLine)) > totalNrOfEntries) {
@@ -256,13 +255,13 @@ class MemState implements InstanceData, Cloneable, HexModelListener {
 
           if (highLight((addr + j), nrItemsToHighlight)) {
             final var dataBounds = getDataBound(leftX, topY, i, j);
-            g.setColor(Color.DARK_GRAY);
+            g.setColor(CanvasStyle.dataHighlightBackground());
             g.fillRect(
                 dataBounds.getX(),
                 dataBounds.getY(),
                 dataBounds.getWidth(),
                 dataBounds.getHeight());
-            g.setColor(Color.WHITE);
+            g.setColor(CanvasStyle.dataHighlightForeground());
             GraphicsUtil.drawText(
                 g,
                 StringUtil.toHexString(contents.getWidth(), value),
@@ -270,7 +269,7 @@ class MemState implements InstanceData, Cloneable, HexModelListener {
                 firsty + i * yinc,
                 GraphicsUtil.H_CENTER,
                 GraphicsUtil.V_CENTER);
-            g.setColor(CanvasStyle.componentColor());
+            g.setColor(CanvasStyle.dataForeground());
           } else {
             GraphicsUtil.drawText(
                 g,

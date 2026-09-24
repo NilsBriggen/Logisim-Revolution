@@ -256,14 +256,13 @@ public class Clock extends InstanceFactory {
   }
 
   private void paintNewShape(
-      InstancePainter painter,
+      Graphics g,
       int x,
       int y,
       int width,
       int height,
       Direction dir,
       boolean ghost) {
-    java.awt.Graphics g = painter.getGraphics();
     Graphics2D g2 = (Graphics2D) g;
     var xpos = x + width;
     var ypos = y + height / 2;
@@ -310,13 +309,16 @@ public class Clock extends InstanceFactory {
     final var height = bds.getHeight();
     final var newAppear = painter.getAttributeValue(ProbeAttributes.PROBEAPPEARANCE).equals(ProbeAttributes.APPEAR_EVOLUTION_NEW);
     final var dir = painter.getAttributeValue(StdAttr.FACING);
-    Graphics g = painter.getGraphics();
-    GraphicsUtil.switchToWidth(g, 2);
-    g.setColor(Color.GRAY);
-    if (newAppear) {
-      paintNewShape(painter, x, y, width, height, dir, true);
-    } else {
-      g.drawRect(x, y, width, height);
+    final var g = painter.getGraphics().create();
+    try {
+      GraphicsUtil.switchToWidth(g, 2);
+      if (newAppear) {
+        paintNewShape(g, x, y, width, height, dir, true);
+      } else {
+        g.drawRect(x, y, width, height);
+      }
+    } finally {
+      g.dispose();
     }
   }
 
@@ -337,7 +339,7 @@ public class Clock extends InstanceFactory {
     final var shapeColor = new Color(AppPreferences.COMPONENT_COLOR.get());
     g.setColor(shapeColor);
     if (newAppear) {
-      paintNewShape(painter, x, y, width, height, dir, false);
+      paintNewShape(g, x, y, width, height, dir, false);
     } else {
       g.drawRect(x, y, width, height);
     }

@@ -184,6 +184,7 @@ public class BusTransactionInsertionGui extends JFrame
 
   @Override
   public void localeChanged() {
+    setTitle(getTransactionTitle(myBus));
     address.setText(S.get("SocTransInsAddress"));
     inputdata.setText(S.get("SocTransInsInputData"));
     readAction.setText(S.get("SocTransInsReadRequest"));
@@ -195,5 +196,15 @@ public class BusTransactionInsertionGui extends JFrame
     halfTrans.setText(S.get("SocTransInsHalfWordAccess"));
     byteTrans.setText(S.get("SocTransInsByteAccess"));
     pack();
+  }
+
+  static String getTransactionTitle(SocBusStateInfo bus) {
+    return S.get("SocInsertTransWindowTitle") + " " + bus.getName();
+  }
+
+  @Override
+  public void setVisible(boolean visible) {
+    if (visible) setTitle(getTransactionTitle(myBus));
+    super.setVisible(visible);
   }
 }

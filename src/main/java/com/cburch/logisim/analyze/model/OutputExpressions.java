@@ -13,13 +13,14 @@ import com.cburch.logisim.util.CollectionUtil;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
-
+import java.util.Map;
 import javax.swing.JTextArea;
+import javax.swing.SwingUtilities;
 
 public class OutputExpressions {
   private class MyListener implements VariableListListener, TruthTableListener {
-
     @Override
     public void rowsChanged(TruthTableEvent event) {
       // Do nothing
@@ -27,6 +28,7 @@ public class OutputExpressions {
 
     @Override
     public void cellsChanged(TruthTableEvent event) {
+      revision++;
       final var output = model.getOutputs().bits.get(event.getColumn());
       invalidate(output);
     }
@@ -70,6 +72,7 @@ public class OutputExpressions {
 
     @Override
     public void listChanged(VariableListEvent event) {
+      revision++;
       if (event.getSource() == model.getInputs()) inputsChanged(event);
       else outputsChanged(event);
     }
@@ -101,7 +104,7 @@ public class OutputExpressions {
 
     @Override
     public void structureChanged(TruthTableEvent event) {
-      // Dp nothing.
+      revision++;
     }
   }
 
@@ -116,8 +119,12 @@ public class OutputExpressions {
     private boolean invalidating = false;
 
     OutputData(String output) {
+      this(output, true);
+    }
+
+    OutputData(String output, boolean initialize) {
       this.output = output;
-      invalidate(true, false, null);
+      if (initialize) invalidate(true, false, null);
     }
 
     Expression getExpression() {
@@ -162,8 +169,7 @@ public class OutputExpressions {
           final var outputColumn = computeColumn(model.getTruthTable(), expr);
           final var outputIndex = model.getOutputs().bits.indexOf(output);
           final var currentColumn = table.getOutputColumn(outputIndex);
-          if (!columnsMatch(currentColumn, outputColumn)
-              || isAllUndefined(outputColumn)
+          if (!columnsMatch(currentColumn, outputColumn) || isAllUndefined(outputColumn)
               || formatChanged) {
             // if not, then we need to change the expression to
             // maintain consistency
@@ -274,14 +280,23 @@ public class OutputExpressions {
   private static Entry[] computeColumn(TruthTable table, Expression expr) {
     final var rows = table.getRowCount();
     final var cols = table.getInputColumnCount();
+    final var inputs = new ArrayList<String>(cols);
+    for (var i = 0; i < cols; i++) inputs.add(table.getInputHeader(i));
+    return computeColumn(inputs, rows, expr, OptimizationContext.SILENT);
+  }
+
+  private static Entry[] computeColumn(
+      List<String> inputs, int rows, Expression expr, OptimizationContext context) {
+    final var cols = inputs.size();
     final var values = new Entry[rows];
     if (expr == null) {
       Arrays.fill(values, Entry.DONT_CARE);
     } else {
       final var assn = new Assignments();
       for (var i = 0; i < rows; i++) {
+        context.checkCancelled();
         for (var j = 0; j < cols; j++) {
-          assn.put(table.getInputHeader(j), TruthTable.isInputSet(i, j, cols));
+          assn.put(inputs.get(j), TruthTable.isInputSet(i, j, cols));
         }
         values[i] = expr.evaluate(assn) ? Entry.ONE : Entry.ZERO;
       }
@@ -318,6 +333,7 @@ public class OutputExpressions {
   private final ArrayList<OutputExpressionsListener> listeners = new ArrayList<>();
 
   private boolean updatingTable = false;
+  private long revision;
 
   public OutputExpressions(AnalyzerModel model) {
     this.model = model;
@@ -326,11 +342,123 @@ public class OutputExpressions {
     model.getTruthTable().addTruthTableListener(myListener);
   }
 
-  public void forcedOptimize(JTextArea outtextArea, int format) {
-    for (final var output : outputData.keySet()) {
-      final var data = outputData.get(output);
-      data.setMinimizedFormat(format);
-      data.invalidate(false, false, outtextArea);
+  private record OptimizedOutput(int format, Expression expression, String expressionText,
+      List<Implicant> implicants, Expression minimalExpression) {}
+
+  /** A private copy of truth-table columns and expression state, captured on the EDT. */
+  public static final class OptimizationSnapshot {
+    private final OutputExpressions owner;
+    private final long revision;
+    private final int format;
+    private final List<String> inputs;
+    private final Map<String, Entry[]> columns;
+    private final Map<String, OptimizedOutput> originals;
+
+    private OptimizationSnapshot(OutputExpressions owner, int format) {
+      this.owner = owner;
+      this.revision = owner.revision;
+      this.format = format;
+      inputs = List.copyOf(owner.model.getInputs().bits);
+      columns = new LinkedHashMap<>();
+      originals = new HashMap<>();
+      final var outputs = owner.model.getOutputs().bits;
+      for (var i = 0; i < outputs.size(); i++) {
+        final var output = outputs.get(i);
+        columns.put(output, owner.model.getTruthTable().getOutputColumn(i).clone());
+        final var data = owner.outputData.get(output);
+        if (data != null) {
+          originals.put(output,
+              new OptimizedOutput(data.format, data.expr, data.exprString, null, data.minimalExpr));
+        }
+      }
+    }
+
+    /** Computes only local results. Cancellation or failure cannot alter the live model. */
+    public OptimizationResult compute(OptimizationContext context) {
+      context.checkCancelled();
+      final var results = new LinkedHashMap<String, OptimizedOutput>();
+      for (final var entry : columns.entrySet()) {
+        context.checkCancelled();
+        final var output = entry.getKey();
+        final var implicants =
+            Implicant.computeMinimal(format, inputs.size(), entry.getValue(), output, context);
+        final var minimal = Implicant.toExpression(format, inputs, implicants, context);
+        final var original = originals.get(output);
+        Expression expression = minimal;
+        String text = null;
+        if (original != null && original.format() == format && original.expression() != null
+            && original.expression() != original.minimalExpression()) {
+          final var expressed =
+              computeColumn(inputs, entry.getValue().length, original.expression(), context);
+          if (columnsMatch(entry.getValue(), expressed) && !isAllUndefined(expressed)) {
+            expression = original.expression();
+            text = original.expressionText();
+          }
+        }
+        results.put(output,
+            new OptimizedOutput(format, expression, text, List.copyOf(implicants), minimal));
+      }
+      context.checkCancelled();
+      return new OptimizationResult(this, results, context);
+    }
+  }
+
+  /** Complete results can be applied only once, to the unchanged source model, on the EDT. */
+  public static final class OptimizationResult {
+    private final OptimizationSnapshot snapshot;
+    private final Map<String, OptimizedOutput> outputs;
+    private final OptimizationContext context;
+    private boolean applied;
+
+    private OptimizationResult(OptimizationSnapshot snapshot, Map<String, OptimizedOutput> outputs,
+        OptimizationContext context) {
+      this.snapshot = snapshot;
+      this.outputs = outputs;
+      this.context = context;
+    }
+  }
+
+  public OptimizationSnapshot createOptimizationSnapshot(int format) {
+    requireEdt();
+    if (format != AnalyzerModel.FORMAT_SUM_OF_PRODUCTS
+        && format != AnalyzerModel.FORMAT_PRODUCT_OF_SUMS) {
+      throw new IllegalArgumentException("Unknown expression format");
+    }
+    return new OptimizationSnapshot(this, format);
+  }
+
+  public boolean applyOptimization(OptimizationResult result) {
+    requireEdt();
+    result.context.checkCancelled();
+    if (result.applied || result.snapshot.owner != this || result.snapshot.revision != revision) {
+      return false;
+    }
+    final var replacements = new LinkedHashMap<String, OutputData>();
+    for (final var entry : result.outputs.entrySet()) {
+      final var state = entry.getValue();
+      final var data = new OutputData(entry.getKey(), false);
+      data.format = state.format();
+      data.expr = state.expression();
+      data.exprString = state.expressionText();
+      data.minimalImplicants = state.implicants();
+      data.minimalExpr = state.minimalExpression();
+      replacements.put(entry.getKey(), data);
+    }
+    result.context.checkCancelled();
+    outputData.putAll(replacements);
+    result.applied = true;
+    revision++;
+    // Install every output before notifying observers, so they cannot see a partial result.
+    for (final var output : replacements.keySet()) {
+      fireModelChanged(OutputExpressionsEvent.OUTPUT_EXPRESSION, output);
+      fireModelChanged(OutputExpressionsEvent.OUTPUT_MINIMAL, output);
+    }
+    return true;
+  }
+
+  private static void requireEdt() {
+    if (!SwingUtilities.isEventDispatchThread()) {
+      throw new IllegalStateException("Optimizer snapshot and application require the EDT");
     }
   }
 
@@ -351,7 +479,7 @@ public class OutputExpressions {
 
   private void fireModelChanged(int type, String variable, Object data) {
     final var event = new OutputExpressionsEvent(model, type, variable, data);
-    for (OutputExpressionsListener l : listeners) {
+    for (OutputExpressionsListener l : List.copyOf(listeners)) {
       l.expressionChanged(event);
     }
   }
@@ -452,12 +580,14 @@ public class OutputExpressions {
 
   public void setExpression(String output, Expression expr, String exprString) {
     if (output == null) return;
+    revision++;
     getOutputData(output, true).setExpression(expr, exprString);
   }
 
   public void setMinimizedFormat(String output, int format) {
     final var oldFormat = getMinimizedFormat(output);
     if (format != oldFormat) {
+      revision++;
       getOutputData(output, true).setMinimizedFormat(format);
       invalidate(output);
     }

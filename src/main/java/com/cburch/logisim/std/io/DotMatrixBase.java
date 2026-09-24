@@ -351,7 +351,9 @@ public abstract class DotMatrixBase extends InstanceFactory implements DynamicEl
   }
 
   protected void drawCircle(Graphics g, int x, int y) {
-    g.fillOval((x + 1) * scaleX, (y + 1) * scaleY, 8 * scaleX, 8 * scaleY);
+    // The caller already positions each cell in circuit coordinates. Scale its inset and size,
+    // not its absolute position (which otherwise moves the dots away from their component).
+    g.fillOval(x + scaleX, y + scaleY, 8 * scaleX, 8 * scaleY);
   }
 
   protected void drawSquare(Graphics g, int x, int y) {

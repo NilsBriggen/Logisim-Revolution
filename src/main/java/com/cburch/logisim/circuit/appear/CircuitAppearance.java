@@ -312,7 +312,13 @@ public class CircuitAppearance extends Drawing implements AttributeListener {
       }
     }
     final var isPrintView = painter.isPrintView();
-    for (final var shape : getObjectsFromBottom()) {
+    // Circuit.draw supplies the print-color context. Rebuild automatic shapes locally so their
+    // cached screen colors cannot leak onto paper; never mutate the model or custom artwork.
+    final var shapes = isPrintView && isDefaultAppearance()
+        ? DefaultAppearance.build(circuitPins.getPins(), getCircuitAppearance(),
+            isNamedBoxShapedFixedSize(), getName())
+        : getObjectsFromBottom();
+    for (final var shape : shapes) {
       if (!(shape instanceof AppearanceElement)) {
         final var dup = g.create();
         if (shape instanceof ImageShape imgShape && isPrintView) {

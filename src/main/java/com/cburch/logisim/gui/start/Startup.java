@@ -18,7 +18,6 @@ import com.cburch.logisim.file.LogisimFileActions;
 import com.cburch.logisim.fpga.download.Download;
 import com.cburch.logisim.fpga.file.BoardReaderClass;
 import com.cburch.logisim.generated.BuildInfo;
-import com.cburch.logisim.gui.generic.CanvasPane;
 import com.cburch.logisim.gui.generic.OptionPane;
 import com.cburch.logisim.gui.icons.ErrorIcon;
 import com.cburch.logisim.gui.icons.InfoIcon;
@@ -52,27 +51,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import javax.help.JHelp;
-import javax.swing.JButton;
-import javax.swing.JCheckBox;
-import javax.swing.JCheckBoxMenuItem;
-import javax.swing.JComboBox;
-import javax.swing.JComponent;
 import javax.swing.JFileChooser;
-import javax.swing.JFrame;
 import javax.swing.JLabel;
-import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JProgressBar;
-import javax.swing.JRadioButton;
-import javax.swing.JRadioButtonMenuItem;
-import javax.swing.JScrollPane;
-import javax.swing.JSpinner;
-import javax.swing.JTabbedPane;
-import javax.swing.JTextArea;
-import javax.swing.JTextField;
-import javax.swing.JToolTip;
 import javax.swing.UIDefaults;
 import javax.swing.UIManager;
 import org.apache.commons.cli.CommandLine;
@@ -1162,32 +1144,6 @@ public class Startup implements AWTEventListener {
     if (event instanceof ContainerEvent containerEvent) {
       if (containerEvent.getID() == ContainerEvent.COMPONENT_ADDED) {
         final var container = containerEvent.getChild();
-        if ((container instanceof JButton)
-            || (container instanceof JCheckBox)
-            || (container instanceof JComboBox)
-            || (container instanceof JToolTip)
-            || (container instanceof JLabel)
-            || (container instanceof JFrame)
-            || (container instanceof JMenuItem)
-            || (container instanceof JRadioButton)
-            || (container instanceof JRadioButtonMenuItem)
-            || (container instanceof JProgressBar)
-            || (container instanceof JSpinner)
-            || (container instanceof JTabbedPane)
-            || (container instanceof JTextField)
-            || (container instanceof JTextArea)
-            || (container instanceof JHelp)
-            || (container instanceof JFileChooser)
-            || ((container instanceof JScrollPane) && (!(container instanceof CanvasPane)))
-            || (container instanceof JCheckBoxMenuItem)) {
-          AppPreferences.setScaledFonts(((JComponent) container).getComponents());
-          try {
-            container.setFont(AppPreferences.getScaledFont(containerEvent.getChild().getFont()));
-            container.revalidate();
-            container.repaint();
-          } catch (Exception ignored) {
-          }
-        }
         if (container instanceof final JOptionPane pane) {
           if (hasIcon(pane)) {
             switch (pane.getMessageType()) {

@@ -24,6 +24,11 @@ import java.awt.Window;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import javax.swing.JComboBox;
 
 public abstract class AttributeSetTableModel implements AttrTableModel, AttributeListener {
   private final ArrayList<AttrTableModelListener> listeners;
@@ -53,6 +58,13 @@ public abstract class AttributeSetTableModel implements AttrTableModel, Attribut
 
   public void setInstance(ComponentFactory fact) {
     compInst = fact;
+  }
+
+  /** The HDL status displayed by the informational first row, independent of edit transactions. */
+  protected String getHdlSupport() {
+    if (compInst == null) return HdlColorRenderer.UNKNOWN_STRING;
+    return compInst.isHDLSupportedComponent(attrs)
+        ? HdlColorRenderer.SUPPORT_STRING : HdlColorRenderer.NO_SUPPORT_STRING;
   }
 
   public void setIsTool() {
@@ -133,21 +145,21 @@ public abstract class AttributeSetTableModel implements AttrTableModel, Attribut
 
   protected void fireStructureChanged() {
     final var event = new AttrTableModelEvent(this);
-    for (final var l : listeners) {
+    for (final var l : List.copyOf(listeners)) {
       l.attrStructureChanged(event);
     }
   }
 
   protected void fireTitleChanged() {
     final var event = new AttrTableModelEvent(this);
-    for (final var l : listeners) {
+    for (final var l : List.copyOf(listeners)) {
       l.attrTitleChanged(event);
     }
   }
 
   protected void fireValueChanged(int index) {
     final var event = new AttrTableModelEvent(this, index);
-    for (final var l : listeners) {
+    for (final var l : List.copyOf(listeners)) {
       l.attrValueChanged(event);
     }
   }
@@ -187,14 +199,36 @@ public abstract class AttributeSetTableModel implements AttrTableModel, Attribut
     }
   }
 
-  protected abstract void setValueRequested(final Attribute<Object> attr, final Object value) throws AttrTableSetException;
+  protected abstract void setValueRequested(final Attribute<Object> attr, final Object value)
+      throws AttrTableSetException;
+
+  @FunctionalInterface
+  protected interface ValueSetter {
+    void commit(Map<Attribute<Object>, Object> values) throws AttrTableSetException;
+  }
+
+  protected ValueSetter captureValueSetter() {
+    return this::setValuesRequested;
+  }
+
+  protected boolean supportsMultiEdit() {
+    return false;
+  }
+
+  protected void setValuesRequested(Map<Attribute<Object>, Object> values)
+      throws AttrTableSetException {
+    for (final var entry : values.entrySet()) {
+      if (!Objects.equals(attrs.getValue(entry.getKey()), entry.getValue())) {
+        setValueRequested(entry.getKey(), entry.getValue());
+      }
+    }
+  }
 
   private class AttrRow implements AttrTableModelRow {
     private final Attribute<Object> attr;
 
     AttrRow(Attribute<?> attr) {
-      @SuppressWarnings("unchecked")
-      Attribute<Object> objAttr = (Attribute<Object>) attr;
+      @SuppressWarnings("unchecked") Attribute<Object> objAttr = (Attribute<Object>) attr;
       this.attr = objAttr;
     }
 
@@ -204,9 +238,65 @@ public abstract class AttributeSetTableModel implements AttrTableModel, Attribut
     }
 
     @Override
+    public boolean supportsMultiEdit() {
+      return AttributeSetTableModel.this.supportsMultiEdit();
+    }
+
+    @Override
+    public Edit captureEdit(Window parent, List<AttrTableModelRow> targets) {
+      final var setter = captureValueSetter();
+      final var attributes = targets.stream().map(AttrTableModelRow::getAttribute).toList();
+      final var bitOptions = new HashMap<Attribute<?>, List<Object>>();
+      for (final var target : targets) {
+        if (target.getAttribute() instanceof SplitterAttributes.BitOutAttribute) {
+          final var box = (JComboBox<?>) target.getEditor(parent);
+          final var options = new ArrayList<Object>();
+          for (var i = 0; i < box.getItemCount(); i++) options.add(box.getItemAt(i));
+          bitOptions.put(target.getAttribute(), options);
+        }
+      }
+      return value -> {
+        if (value == null) return;
+        final var values = new LinkedHashMap<Attribute<Object>, Object>();
+        try {
+          for (final var attribute : attributes) {
+            @SuppressWarnings("unchecked") final var target = (Attribute<Object>) attribute;
+            if (target != null) {
+              var parsed = value instanceof String text ? target.parse(text) : value;
+              final var options = bitOptions.get(target);
+              if (options != null && !(parsed instanceof Integer)) {
+                final var label = value.toString();
+                parsed = null;
+                for (var i = 0; i < options.size(); i++) {
+                  if (options.get(i).toString().equals(label)) {
+                    parsed = i;
+                    break;
+                  }
+                }
+                if (parsed == null) throw new IllegalArgumentException();
+              }
+              values.put(target, parsed);
+            }
+          }
+          setter.commit(values);
+        } catch (IllegalArgumentException | ClassCastException ex) {
+          throw new AttrTableSetException(S.get("attributeChangeInvalidError"));
+        }
+      };
+    }
+
+    @Override
     public Component getEditor(Window parent) {
       final var value = attrs.getValue(attr);
       return attr.getCellEditor(parent, value);
+    }
+
+    @Override
+    public String displayValue(Object value) {
+      if (((Object) attr) instanceof SplitterAttributes.BitOutAttribute) {
+        return value.toString();
+      }
+      return attr.toDisplayString(value);
     }
 
     @Override
@@ -231,10 +321,9 @@ public abstract class AttributeSetTableModel implements AttrTableModel, Attribut
       } else {
         try {
           final var str = attr.toDisplayString(value);
-          if (str.isEmpty()
-              && "label".equals(attr.getName())
-              && compInst != null
-              && compInst.requiresNonZeroLabel()) return HdlColorRenderer.REQUIRED_FIELD_STRING;
+          if (str.isEmpty() && "label".equals(attr.getName()) && compInst != null
+              && compInst.requiresNonZeroLabel())
+            return HdlColorRenderer.REQUIRED_FIELD_STRING;
           return str;
         } catch (Exception e) {
           return "???";
@@ -259,29 +348,11 @@ public abstract class AttributeSetTableModel implements AttrTableModel, Attribut
 
     @Override
     public void setValue(Window parent, Object value) throws AttrTableSetException {
-      final var attr = this.attr;
-      if (attr == null || value == null) return;
-
-      try {
-        if (value instanceof String) {
-          value = attr.parse((String) value);
-        }
-        setValueRequested(attr, value);
-      } catch (ClassCastException e) {
-        final var msg = S.get("attributeChangeInvalidError") + ": " + e;
-        throw new AttrTableSetException(msg);
-      } catch (NumberFormatException e) {
-        var msg = S.get("attributeChangeInvalidError");
-        final var eMsg = e.getMessage();
-        if (eMsg != null && eMsg.length() > 0) msg += ": " + eMsg;
-        msg += ".";
-        throw new AttrTableSetException(msg);
-      }
+      captureEdit(parent, List.of(this)).commit(value);
     }
   }
 
   private class HDLrow extends AttrRow {
-
     HDLrow(Attribute<?> attr) {
       super(attr);
     }
@@ -293,10 +364,7 @@ public abstract class AttributeSetTableModel implements AttrTableModel, Attribut
 
     @Override
     public String getValue() {
-      if (compInst == null) return HdlColorRenderer.UNKNOWN_STRING;
-      return (compInst.isHDLSupportedComponent(attrs))
-          ? HdlColorRenderer.SUPPORT_STRING
-          : HdlColorRenderer.NO_SUPPORT_STRING;
+      return getHdlSupport();
     }
 
     @Override

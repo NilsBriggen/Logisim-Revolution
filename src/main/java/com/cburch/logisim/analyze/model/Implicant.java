@@ -12,16 +12,20 @@ package com.cburch.logisim.analyze.model;
 import static com.cburch.logisim.analyze.Strings.S;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
-
 import javax.swing.JTextArea;
+import javax.swing.SwingUtilities;
 
 public class Implicant implements Comparable<Implicant> {
   private static class TermIterator implements Iterable<Implicant>, Iterator<Implicant> {
@@ -71,8 +75,25 @@ public class Implicant implements Comparable<Implicant> {
     return nrOfOnes;
   }
 
-  private static void report(JTextArea out, String info) {
-    if (out != null) out.append(info);
+  private static void report(OptimizationContext context, String info) {
+    context.report(info);
+  }
+
+  private static <T> void addAll(
+      Set<T> destination, Collection<T> source, OptimizationContext context) {
+    for (final var value : source) {
+      context.checkCancelled();
+      destination.add(value);
+    }
+  }
+
+  private static <T> boolean containsAll(
+      Set<T> container, Collection<T> contained, OptimizationContext context) {
+    for (final var value : contained) {
+      context.checkCancelled();
+      if (!container.contains(value)) return false;
+    }
+    return true;
   }
 
   private static String getGroupRepresentation(int value, int dontCares, int nrOfBits) {
@@ -89,14 +110,30 @@ public class Implicant implements Comparable<Implicant> {
     return result.toString();
   }
 
-  static List<Implicant> computeMinimal(int format, AnalyzerModel model, String variable, JTextArea outputArea) {
+  static List<Implicant> computeMinimal(
+      int format, AnalyzerModel model, String variable, JTextArea outputArea) {
     final var table = model.getTruthTable();
     final var outputVariableIndex = model.getOutputs().bits.indexOf(variable);
     if (outputVariableIndex < 0) return Collections.emptyList();
+    final var nrOfInputs = table.getInputColumnCount();
+    if (nrOfInputs > MAXIMAL_NR_OF_INPUTS_FOR_AUTO_MINIMAL_FORM && outputArea == null) {
+      return Collections.emptyList();
+    }
+    final var context = new OptimizationContext(() -> false, text -> {
+      if (outputArea == null) return;
+      if (SwingUtilities.isEventDispatchThread()) outputArea.append(text);
+      else SwingUtilities.invokeLater(() -> outputArea.append(text));
+    });
+    return computeMinimal(
+        format, nrOfInputs, table.getOutputColumn(outputVariableIndex), variable, context);
+  }
+
+  static List<Implicant> computeMinimal(
+      int format, int nrOfInputs, Entry[] column, String variable, OptimizationContext outputArea) {
+    outputArea.checkCancelled();
     // first we do some house keeping
     final var desiredTerm = format == AnalyzerModel.FORMAT_SUM_OF_PRODUCTS ? Entry.ONE : Entry.ZERO;
     final var skippedTerm = desiredTerm == Entry.ONE ? Entry.ZERO : Entry.ONE;
-    final var nrOfInputs = table.getInputColumnCount();
     final var oneHotTable = new HashSet<Integer>();
     var mask = 1;
     for (var bitIndex = 0; bitIndex < nrOfInputs; bitIndex++) {
@@ -104,20 +141,23 @@ public class Implicant implements Comparable<Implicant> {
       mask <<= 1;
     }
 
-    // Here we define the first table with all desired terms (minterms or maxterms) and we add also the don´t cares
-    // for the primes we have the group (key) and the min/maxterms in this group (HashSet)
-    final var primes = new HashMap<Implicant, HashSet<Implicant>>();
+    // Here we define the first table with all desired terms (minterms or maxterms) and we add also
+    // the don´t cares for the primes we have the group (key) and the min/maxterms in this group
+    // (HashSet)
+    final var primes = new LinkedHashMap<Implicant, HashSet<Implicant>>();
     final var essentialPrimes = new ArrayList<Implicant>();
-    // for the currentTable and the nextTable the key is the number of ones in the min/maxterms (groupid)
-    // the HashMap keeps track of the group (key) implicant and the number of min/max terms in this group (HashSet)
-    final var currentTable = new HashMap<Integer, HashMap<Implicant, HashSet<Implicant>>>();
-    final var newTable = new HashMap<Integer, HashMap<Implicant, HashSet<Implicant>>>();
+    // for the currentTable and the nextTable the key is the number of ones in the min/maxterms
+    // (groupid) the HashMap keeps track of the group (key) implicant and the number of min/max
+    // terms in this group (HashSet)
+    final var currentTable = new LinkedHashMap<Integer, HashMap<Implicant, HashSet<Implicant>>>();
+    final var newTable = new LinkedHashMap<Integer, HashMap<Implicant, HashSet<Implicant>>>();
     // for terms to cover is the "key" the min/maxterms that need to be covered, and the ArrayList
     // the set of prime covers that cover the key
-    final var termsToCover = new HashMap<Implicant, ArrayList<Implicant>>();
+    final var termsToCover = new LinkedHashMap<Implicant, ArrayList<Implicant>>();
     var allDontCare = true;
-    for (var inputCombination = 0; inputCombination < table.getRowCount(); inputCombination++) {
-      final var term = table.getOutputEntry(inputCombination, outputVariableIndex);
+    for (var inputCombination = 0; inputCombination < column.length; inputCombination++) {
+      outputArea.checkCancelled();
+      final var term = column[inputCombination];
       if (term == skippedTerm) {
         allDontCare = false;
         continue;
@@ -125,31 +165,25 @@ public class Implicant implements Comparable<Implicant> {
       final var nrOfOnes = getNrOfOnes(inputCombination, nrOfInputs);
       final var isDontCare = term != desiredTerm;
       final var implicant = new Implicant(inputCombination, isDontCare);
-      final var implicantsSet = new HashSet<Implicant>();
+      final var implicantsSet = new LinkedHashSet<Implicant>();
       if (!isDontCare) {
         termsToCover.put(implicant, new ArrayList<>());
         implicantsSet.add(implicant);
         allDontCare = false;
       }
       if (!newTable.containsKey(nrOfOnes)) {
-        newTable.put(nrOfOnes, new HashMap<>());
+        newTable.put(nrOfOnes, new LinkedHashMap<>());
       }
       newTable.get(nrOfOnes).put(implicant, implicantsSet);
     }
 
     if (allDontCare) return Collections.emptyList();
-    // In case the number of inputs is bigger than approx. 8 inputs, this
-    // algorithm takes a long time. To prevent "freezing" of logisim, we
-    // only perform an optimization for systems with more than 6 inputs on
-    // user request. Otherwise we exit here and return the set of min/maxterms
-    if ((nrOfInputs > MAXIMAL_NR_OF_INPUTS_FOR_AUTO_MINIMAL_FORM) && (outputArea == null)) {
-      return Collections.emptyList();
-    }
     report(outputArea, String.format("\n%s\n", S.fmt("implicantOutputName", variable)));
     // Here the real work starts, we determine all primes
     var couldMerge = false;
     var groupSize = 2;
     do {
+      outputArea.checkCancelled();
       report(outputArea, String.format("\n%s", S.fmt("implicantGroupSize", groupSize)));
       var nrOfPrimes = 0L;
       couldMerge = false;
@@ -159,6 +193,7 @@ public class Implicant implements Comparable<Implicant> {
       var minimalKey = Integer.MAX_VALUE;
       var maximalKey = 0;
       for (var key : currentTable.keySet()) {
+        outputArea.checkCancelled();
         if (key < minimalKey) minimalKey = key;
         if (key > maximalKey) maximalKey = key;
       }
@@ -166,28 +201,32 @@ public class Implicant implements Comparable<Implicant> {
         if (currentTable.containsKey(key) && currentTable.containsKey(key + 1)) {
           // we see if we can merge terms
           for (var termGroup1 : currentTable.get(key).keySet()) {
+            outputArea.checkCancelled();
             for (var termGroup2 : currentTable.get(key + 1).keySet()) {
+              outputArea.checkCancelled();
               if (termGroup1.unknowns != termGroup2.unknowns) continue;
               final var differenceMask = termGroup1.values ^ termGroup2.values;
               if (oneHotTable.contains(differenceMask)) {
                 final var dontCareMask = termGroup1.unknowns | differenceMask;
-                final var newValue = (termGroup1.values & differenceMask) == 0 ? termGroup1.values : termGroup2.values;
+                final var newValue = (termGroup1.values & differenceMask) == 0 ? termGroup1.values
+                                                                               : termGroup2.values;
                 final var isDontCareGroup = termGroup1.isDontCare && termGroup2.isDontCare;
                 final var newImplicant = new Implicant(dontCareMask, newValue, isDontCareGroup);
-                final var newImplicantTerms = new HashSet<Implicant>();
+                final var newImplicantTerms = new LinkedHashSet<Implicant>();
                 couldMerge = true;
                 termGroup1.isPrime = termGroup2.isPrime = false;
-                newImplicantTerms.addAll(currentTable.get(key).get(termGroup1));
-                newImplicantTerms.addAll(currentTable.get(key + 1).get(termGroup2));
+                addAll(newImplicantTerms, currentTable.get(key).get(termGroup1), outputArea);
+                addAll(newImplicantTerms, currentTable.get(key + 1).get(termGroup2), outputArea);
                 var found = false;
                 if (newTable.containsKey(key)) {
                   // see if the new implicant already is in the set
                   for (final var implicant : newTable.get(key).keySet()) {
+                    outputArea.checkCancelled();
                     found |= (implicant.values == newValue) && (implicant.unknowns == dontCareMask);
                   }
                   if (!found) newTable.get(key).put(newImplicant, newImplicantTerms);
                 } else {
-                  newTable.put(key, new HashMap<>());
+                  newTable.put(key, new LinkedHashMap<>());
                   newTable.get(key).put(newImplicant, newImplicantTerms);
                 }
               }
@@ -198,11 +237,13 @@ public class Implicant implements Comparable<Implicant> {
       // now we add the primes to the set
       for (final var key : currentTable.keySet()) {
         for (final var implicant : currentTable.get(key).keySet()) {
+          outputArea.checkCancelled();
           if (implicant.isPrime && !implicant.isDontCare) {
             primes.put(implicant, currentTable.get(key).get(implicant));
             if ((nrOfPrimes % 16L) == 0L) report(outputArea, "\n");
-            report(outputArea, String.format("%s ",
-                  getGroupRepresentation(implicant.values, implicant.unknowns, nrOfInputs)));
+            report(outputArea,
+                String.format("%s ",
+                    getGroupRepresentation(implicant.values, implicant.unknowns, nrOfInputs)));
             nrOfPrimes++;
           }
         }
@@ -214,6 +255,7 @@ public class Implicant implements Comparable<Implicant> {
     // we build now the table, with for each term which prime it covers
     for (final var prime : primes.keySet()) {
       for (final var term : termsToCover.keySet()) {
+        outputArea.checkCancelled();
         if (primes.get(prime).contains(term)) termsToCover.get(term).add(prime);
       }
     }
@@ -224,11 +266,13 @@ public class Implicant implements Comparable<Implicant> {
     report(outputArea, String.format("\n%s", S.get("implicantColumRowReduction")));
     var nrEssentialPrimes = 0L;
     do {
+      outputArea.checkCancelled();
       couldDoRowReduction = false;
       couldDoColumnReduction = false;
       final var termsToRemove = new ArrayList<Implicant>();
       // we first try a column reduction
       for (final var term : termsToCover.keySet()) {
+        outputArea.checkCancelled();
         final var termInfo = termsToCover.get(term);
         if (termInfo.size() == 1) {
           // we found a prime cover, as this cover only covers this term
@@ -236,6 +280,7 @@ public class Implicant implements Comparable<Implicant> {
           if (!primes.containsKey(prime)) continue;
           for (final var terms : primes.get(prime)) {
             for (final var currentPrime : primes.keySet()) {
+              outputArea.checkCancelled();
               if (currentPrime.equals(prime)) continue;
               couldDoColumnReduction |= primes.get(currentPrime).contains(terms);
               primes.get(currentPrime).remove(terms);
@@ -245,17 +290,23 @@ public class Implicant implements Comparable<Implicant> {
           essentialPrimes.add(prime);
           primes.remove(prime);
           if ((nrEssentialPrimes++ % 16L) == 0) report(outputArea, "\n");
-          report(outputArea, String.format(" %s", getGroupRepresentation(prime.values, prime.unknowns, nrOfInputs)));
+          report(outputArea,
+              String.format(
+                  " %s", getGroupRepresentation(prime.values, prime.unknowns, nrOfInputs)));
         }
       }
       // we do the cleanup
-      for (final var term : termsToRemove) termsToCover.remove(term);
+      for (final var term : termsToRemove) {
+        outputArea.checkCancelled();
+        termsToCover.remove(term);
+      }
       // now we perform the row reduction
       // first we look for empty primes
-      final var primesToRemove = new HashSet<Implicant>();
-      final var primeHierarchy = new HashMap<Integer, HashSet<Implicant>>();
+      final var primesToRemove = new LinkedHashSet<Implicant>();
+      final var primeHierarchy = new LinkedHashMap<Integer, HashSet<Implicant>>();
       final var nrOfElementGroups = new ArrayList<Integer>();
       for (final var prime : primes.keySet()) {
+        outputArea.checkCancelled();
         final var primeElements = primes.get(prime);
         if (primeElements.isEmpty()) {
           primesToRemove.add(prime);
@@ -263,7 +314,7 @@ public class Implicant implements Comparable<Implicant> {
         } else {
           final var nrOfElements = primeElements.size();
           if (!primeHierarchy.containsKey(nrOfElements)) {
-            primeHierarchy.put(nrOfElements, new HashSet<>());
+            primeHierarchy.put(nrOfElements, new LinkedHashSet<>());
           }
           primeHierarchy.get(nrOfElements).add(prime);
           if (!nrOfElementGroups.contains(nrOfElements)) {
@@ -275,11 +326,13 @@ public class Implicant implements Comparable<Implicant> {
       if (!nrOfElementGroups.isEmpty()) {
         for (var mergeGroupId = nrOfElementGroups.size() - 1; mergeGroupId > 0; mergeGroupId--) {
           for (final var bigPrime : primeHierarchy.get(nrOfElementGroups.get(mergeGroupId))) {
+            outputArea.checkCancelled();
             if (primesToRemove.contains(bigPrime)) continue;
             for (var checkGroupId = mergeGroupId - 1; checkGroupId >= 0; checkGroupId--) {
               for (final var smallPrime : primeHierarchy.get(nrOfElementGroups.get(checkGroupId))) {
+                outputArea.checkCancelled();
                 if (primesToRemove.contains(smallPrime)) continue;
-                if (primes.get(bigPrime).containsAll(primes.get(smallPrime))) {
+                if (containsAll(primes.get(bigPrime), primes.get(smallPrime), outputArea)) {
                   couldDoRowReduction = true;
                   primesToRemove.add(smallPrime);
                 }
@@ -289,8 +342,12 @@ public class Implicant implements Comparable<Implicant> {
         }
       }
       for (final var prime : primesToRemove) {
+        outputArea.checkCancelled();
         primes.remove(prime);
-        for (final var element : termsToCover.keySet()) termsToCover.get(element).remove(prime);
+        for (final var element : termsToCover.keySet()) {
+          outputArea.checkCancelled();
+          termsToCover.get(element).remove(prime);
+        }
       }
     } while (couldDoRowReduction || couldDoColumnReduction);
 
@@ -301,9 +358,11 @@ public class Implicant implements Comparable<Implicant> {
 
       // Populate the HashSet in order to begin Petrick's method
       for (final var term : termsToCover.keySet()) {
-        final var group = new HashSet<HashSet<Implicant>>();
+        outputArea.checkCancelled();
+        final var group = new LinkedHashSet<HashSet<Implicant>>();
         for (final var impl : termsToCover.get(term)) {
-          final var impli = new HashSet<Implicant>();
+          outputArea.checkCancelled();
+          final var impli = new LinkedHashSet<Implicant>();
           impli.add(impl);
           group.add(impli);
         }
@@ -311,6 +370,7 @@ public class Implicant implements Comparable<Implicant> {
       }
 
       do {
+        outputArea.checkCancelled();
         for (int i = 0; i < simplificationExpression.size(); i++) {
           final var first = simplificationExpression.get(i);
           if (i + 1 >= simplificationExpression.size()) { // If there is only one left, skip it
@@ -319,12 +379,13 @@ public class Implicant implements Comparable<Implicant> {
           final var second = simplificationExpression.remove(i + 1);
 
           // If there are two elements left, then combine them
-          final var group = new HashSet<HashSet<Implicant>>();
+          final var group = new LinkedHashSet<HashSet<Implicant>>();
           for (final var firstConj : first) {
             for (final var secondConj : second) {
-              final var conj = new HashSet<Implicant>();
-              conj.addAll(firstConj);
-              conj.addAll(secondConj);
+              outputArea.checkCancelled();
+              final var conj = new LinkedHashSet<Implicant>();
+              addAll(conj, firstConj, outputArea);
+              addAll(conj, secondConj, outputArea);
               group.add(conj);
             }
           }
@@ -333,23 +394,28 @@ public class Implicant implements Comparable<Implicant> {
 
         // After combining elements, apply reductions
         for (final var group : simplificationExpression) {
-          final var implGrpToRemove = new ArrayList<HashSet<Implicant>>();
+          final var implGrpToRemove = new LinkedHashSet<HashSet<Implicant>>();
           for (final var conj1 : group) {
+            outputArea.checkCancelled();
             if (implGrpToRemove.contains(conj1)) continue;
             for (final var conj2 : group) {
+              outputArea.checkCancelled();
               if (conj1 == conj2 || implGrpToRemove.contains(conj2)) continue;
-              if (conj2.containsAll(conj1)) {
+              if (containsAll(conj2, conj1, outputArea)) {
                 implGrpToRemove.add(conj2);
                 continue;
               }
-              if (conj1.containsAll(conj2)) {
+              if (containsAll(conj1, conj2, outputArea)) {
                 implGrpToRemove.add(conj1);
                 break;
               }
             }
           }
           if (!implGrpToRemove.isEmpty()) {
-            group.removeAll(implGrpToRemove);
+            for (final var removed : implGrpToRemove) {
+              outputArea.checkCancelled();
+              group.remove(removed);
+            }
           }
         }
       } while (simplificationExpression.size() > 1);
@@ -359,6 +425,7 @@ public class Implicant implements Comparable<Implicant> {
 
       final var results = new HashMap<Integer, ArrayList<HashSet<Implicant>>>();
       for (final var grp : resGroup) {
+        outputArea.checkCancelled();
         if (results.get(grp.size()) == null) {
           results.put(grp.size(), new ArrayList<>());
         }
@@ -370,7 +437,12 @@ public class Implicant implements Comparable<Implicant> {
       final var costMap = new HashMap<Integer, ArrayList<HashSet<Implicant>>>();
 
       for (final var cover : minimumPrimes) {
-        final var unknown = cover.stream().mapToInt(i -> i.getUnknownCount()).sum();
+        outputArea.checkCancelled();
+        var unknown = 0;
+        for (final var implicant : cover) {
+          outputArea.checkCancelled();
+          unknown += implicant.getUnknownCount();
+        }
         if (!costMap.keySet().contains(unknown)) {
           costMap.put(unknown, new ArrayList<>());
         }
@@ -379,26 +451,38 @@ public class Implicant implements Comparable<Implicant> {
 
       final var cheapestCovers = costMap.get(Collections.max(costMap.keySet()));
       // TODO: Return all possible covers.
-      essentialPrimes.addAll(cheapestCovers.get(0));
+      for (final var prime : cheapestCovers.get(0)) {
+        outputArea.checkCancelled();
+        essentialPrimes.add(prime);
+      }
     }
 
     // TODO: Return multiple minimal covers if present (Petrick's method)
+    outputArea.checkCancelled();
+    Collections.sort(essentialPrimes);
     return essentialPrimes;
   }
 
-  public static Expression toExpression(int format, AnalyzerModel model, List<Implicant> implicants) {
+  public static Expression toExpression(
+      int format, AnalyzerModel model, List<Implicant> implicants) {
+    return toExpression(format, model.getInputs().bits, implicants, OptimizationContext.SILENT);
+  }
+
+  static Expression toExpression(
+      int format, List<String> inputs, List<Implicant> implicants, OptimizationContext context) {
     if (implicants == null) return null;
-    final var table = model.getTruthTable();
     if (format == AnalyzerModel.FORMAT_PRODUCT_OF_SUMS) {
       Expression product = null;
       for (final var implicant : implicants) {
-        product = Expressions.and(product, implicant.toSum(table));
+        context.checkCancelled();
+        product = Expressions.and(product, implicant.toSum(inputs));
       }
       return product == null ? Expressions.constant(1) : product;
     } else {
       Expression sum = null;
       for (final var implicant : implicants) {
-        sum = Expressions.or(sum, implicant.toProduct(table));
+        context.checkCancelled();
+        sum = Expressions.or(sum, implicant.toProduct(inputs));
       }
       return sum == null ? Expressions.constant(0) : sum;
     }
@@ -440,9 +524,8 @@ public class Implicant implements Comparable<Implicant> {
 
   @Override
   public boolean equals(Object other) {
-    return (other instanceof Implicant o)
-           ? this.unknowns == o.unknowns && this.values == o.values
-           : false;
+    return (other instanceof Implicant o) ? this.unknowns == o.unknowns && this.values == o.values
+                                          : false;
   }
 
   public int getRow() {
@@ -469,11 +552,21 @@ public class Implicant implements Comparable<Implicant> {
   }
 
   public Expression toProduct(TruthTable source) {
+    return toProduct(inputNames(source));
+  }
+
+  private static List<String> inputNames(TruthTable source) {
+    final var names = new ArrayList<String>();
+    for (var i = 0; i < source.getInputColumnCount(); i++) names.add(source.getInputHeader(i));
+    return names;
+  }
+
+  private Expression toProduct(List<String> inputs) {
     Expression term = null;
-    final var cols = source.getInputColumnCount();
+    final var cols = inputs.size();
     for (var i = cols - 1; i >= 0; i--) {
       if ((unknowns & (1 << i)) == 0) {
-        var literal = Expressions.variable(source.getInputHeader(cols - 1 - i));
+        var literal = Expressions.variable(inputs.get(cols - 1 - i));
         if ((values & (1 << i)) == 0) literal = Expressions.not(literal);
         term = Expressions.and(term, literal);
       }
@@ -482,11 +575,15 @@ public class Implicant implements Comparable<Implicant> {
   }
 
   public Expression toSum(TruthTable source) {
+    return toSum(inputNames(source));
+  }
+
+  private Expression toSum(List<String> inputs) {
     Expression term = null;
-    final var cols = source.getInputColumnCount();
+    final var cols = inputs.size();
     for (var i = cols - 1; i >= 0; i--) {
       if ((unknowns & (1 << i)) == 0) {
-        var literal = Expressions.variable(source.getInputHeader(cols - 1 - i));
+        var literal = Expressions.variable(inputs.get(cols - 1 - i));
         if ((values & (1 << i)) != 0) literal = Expressions.not(literal);
         term = Expressions.or(term, literal);
       }

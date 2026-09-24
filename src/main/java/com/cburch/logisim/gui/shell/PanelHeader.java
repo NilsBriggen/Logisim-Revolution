@@ -15,14 +15,16 @@ import com.cburch.logisim.util.Spacing;
 import com.cburch.logisim.util.UiFonts;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
-import java.util.Locale;
-import javax.swing.BorderFactory;
+import java.awt.Insets;
+import java.awt.event.KeyEvent;
+import javax.swing.AbstractButton;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.KeyStroke;
 
 /**
- * The heading of a panel: a quiet small-caps title, with room for the panel's own buttons.
+ * The heading of a panel: a quiet title, with room for the panel's own buttons.
  *
  * <p>It replaces the titled borders and centred bold labels used elsewhere. A box drawn around a
  * panel that already has edges only adds a line; a small heading says the same thing and leaves
@@ -34,12 +36,12 @@ public class PanelHeader extends JPanel {
 
   private final JLabel titleLabel = new JLabel();
   private final JLabel subtitleLabel = new JLabel();
-  private final JPanel actions = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 0, 0));
+  private final JPanel actions =
+      new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 0, 0));
 
   public PanelHeader(String title) {
     super(new BorderLayout());
     setOpaque(false);
-    setBorder(BorderFactory.createEmptyBorder(Spacing.xs(), Spacing.sm(), Spacing.xs(), Spacing.xs()));
     actions.setOpaque(false);
     final var titles = new JPanel();
     titles.setOpaque(false);
@@ -53,19 +55,39 @@ public class PanelHeader extends JPanel {
     add(actions, BorderLayout.LINE_END);
     setTitle(title);
     applyTheme();
-    Theme.addListener(this::applyTheme);
+    Theme.addListener(this, this::applyTheme);
   }
 
   private void applyTheme() {
+    setBorder(Spacing.border(Spacing.XS, Spacing.SM, Spacing.XS, Spacing.XS));
     titleLabel.setFont(UiFonts.small());
     titleLabel.setForeground(Tokens.sidePanelHeaderForeground());
     subtitleLabel.setFont(UiFonts.small());
     subtitleLabel.setForeground(Tokens.mutedForeground());
+    revalidate();
+    repaint();
   }
 
-  /** Sets the heading. Shown in capitals, so that it reads as a label and not as content. */
+  /** Sets the heading without changing user-entered circuit or component identifiers. */
   public final void setTitle(String title) {
-    titleLabel.setText(title == null ? "" : title.toUpperCase(Locale.getDefault()));
+    titleLabel.setText(title == null ? "" : title);
+    titleLabel.setToolTipText(title);
+  }
+
+  /** Compact native buttons keep their look-and-feel focus indicator and accessible action. */
+  static void configureChromeButton(AbstractButton button, String name) {
+    button.putClientProperty("JButton.buttonType", "toolBarButton");
+    button.putClientProperty("JComponent.minimumWidth", 0);
+    button.setFont(UiFonts.small());
+    // FlatButtonBorder scales margins itself. These values must remain logical pixels.
+    button.setMargin(new Insets(Spacing.XS / 2, Spacing.XS, Spacing.XS / 2, Spacing.XS));
+    button.setFocusable(true);
+    button.setFocusPainted(true);
+    button.setToolTipText(name);
+    button.getAccessibleContext().setAccessibleName(name);
+    final var input = button.getInputMap(JComponent.WHEN_FOCUSED);
+    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0, false), "pressed");
+    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0, true), "released");
   }
 
   /**

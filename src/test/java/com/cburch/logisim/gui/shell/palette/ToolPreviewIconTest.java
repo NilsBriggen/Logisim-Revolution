@@ -9,15 +9,23 @@
 
 package com.cburch.logisim.gui.shell.palette;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 import com.cburch.logisim.std.Builtin;
 import com.cburch.logisim.tools.AddTool;
 import com.cburch.logisim.tools.Tool;
+import com.cburch.logisim.util.UiScale;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -26,6 +34,34 @@ import org.junit.jupiter.api.Test;
  * <p>A tile with nothing in it is the failure that matters, and it can only be seen by drawing.
  */
 class ToolPreviewIconTest {
+
+  @Test
+  void cachedPreviewRefreshesForDeviceScaleAndInterfaceZoom() throws Exception {
+    SwingUtilities.invokeAndWait(() -> {
+      final var original = UiScale.factor();
+      final var tool = mock(Tool.class);
+      final var image = new BufferedImage(200, 200, BufferedImage.TYPE_INT_ARGB);
+      final var g = image.createGraphics();
+      try {
+        UiScale.setFactor(1);
+        final var icon = new ToolPreviewIcon(tool);
+        final var width = icon.getIconWidth();
+        icon.paintIcon(null, g, 0, 0);
+        icon.paintIcon(null, g, 0, 0);
+        verify(tool, times(1)).paintIcon(any(), anyInt(), anyInt());
+        g.scale(2, 2);
+        icon.paintIcon(null, g, 0, 0);
+        verify(tool, times(2)).paintIcon(any(), anyInt(), anyInt());
+        UiScale.setFactor(2);
+        assertEquals(width * 2, icon.getIconWidth());
+        icon.paintIcon(null, g, 0, 0);
+        verify(tool, times(3)).paintIcon(any(), anyInt(), anyInt());
+      } finally {
+        g.dispose();
+        UiScale.setFactor(original);
+      }
+    });
+  }
 
   private static BufferedImage render(Tool tool) {
     final var icon = new ToolPreviewIcon(tool, 40);

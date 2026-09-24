@@ -21,8 +21,9 @@ import org.junit.jupiter.api.Test;
 
 /** Turning the wheel over a numeric property. */
 class AttrWheelNudgeTest {
-
-  /** AWT reports a negative rotation for a push away from the user, which should raise the value. */
+  /**
+   * AWT reports a negative rotation for a push away from the user, which should raise the value.
+   */
   private static final int UP = -1;
 
   private static final int DOWN = 1;
@@ -56,14 +57,25 @@ class AttrWheelNudgeTest {
     assertTrue(AttrWheelNudge.nudge("7", 0, null).isEmpty());
   }
 
+  @Test
+  void multipleDetentsArePreservedAndClamped() {
+    assertEquals("12", nudged("7", -5, null));
+    assertEquals("6", nudged("4", -5, Attributes.forIntegerRange("r", 3, 6)));
+  }
+
+  @Test
+  void unboundedLongEndpointsDoNotWrap() {
+    assertTrue(AttrWheelNudge.nudge(Long.toString(Long.MAX_VALUE), -1, null).isEmpty());
+    assertTrue(AttrWheelNudge.nudge(Long.toString(Long.MIN_VALUE), 1, null).isEmpty());
+  }
+
   /** A bit width knows it cannot go below one; nothing has to guess from its name. */
   @Test
   void bitWidthStopsAtItsOwnLimits() {
     final Attribute<BitWidth> width = Attributes.forBitWidth("w", StringUtil.constantGetter("w"));
     assertTrue(AttrWheelNudge.nudge("1", DOWN, width).isEmpty(), "must not go below one");
     assertEquals("2", nudged("1", UP, width));
-    assertTrue(
-        AttrWheelNudge.nudge(String.valueOf(BitWidth.MAXWIDTH), UP, width).isEmpty(),
+    assertTrue(AttrWheelNudge.nudge(String.valueOf(BitWidth.MAXWIDTH), UP, width).isEmpty(),
         "must not go above the widest value");
   }
 
@@ -77,8 +89,7 @@ class AttrWheelNudgeTest {
 
   @Test
   void durationStopsAtItsOwnLimits() {
-    final var duration =
-        new DurationAttribute("d", StringUtil.constantGetter("d"), 2, 9, false);
+    final var duration = new DurationAttribute("d", StringUtil.constantGetter("d"), 2, 9, false);
     assertTrue(AttrWheelNudge.nudge("2", DOWN, duration).isEmpty());
     assertTrue(AttrWheelNudge.nudge("9", UP, duration).isEmpty());
     assertEquals("3", nudged("2", UP, duration));

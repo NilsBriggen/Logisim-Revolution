@@ -11,11 +11,13 @@ package com.cburch.logisim.gui.log;
 
 import static com.cburch.logisim.gui.Strings.S;
 
-import com.cburch.logisim.gui.theme.Tokens;
 import com.cburch.logisim.data.BitWidth;
 import com.cburch.logisim.data.Value;
+import com.cburch.logisim.gui.theme.Theme;
+import com.cburch.logisim.gui.theme.Tokens;
 import com.cburch.logisim.util.GraphicsUtil;
 import com.cburch.logisim.util.UiFonts;
+import com.cburch.logisim.util.UiScale;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -50,8 +52,13 @@ public class ValueTable extends JPanel {
     return UiFonts.mono();
   }
 
-  private static final int COLUMN_SEP = 8;
-  private static final int HEADER_SEP = 4;
+  private static int columnGap() {
+    return UiScale.scaled(8);
+  }
+
+  private static int headerGap() {
+    return UiScale.scaled(4);
+  }
   private final TableHeader header;
   private final TableBody body;
   private final VerticalScrollBar vsb;
@@ -89,6 +96,7 @@ public class ValueTable extends JPanel {
     ToolTipManager.sharedInstance().registerComponent(body);
 
     setModel(model);
+    Theme.addListener(this, this::modelChanged);
   }
 
   private void computePreferredSize() {
@@ -96,68 +104,55 @@ public class ValueTable extends JPanel {
     final var oldTableWidth = tableWidth;
     final var oldTableHeight = tableHeight;
     final var columns = model == null ? 0 : model.getColumnCount();
-    final int default_width = 24;
+    final int defaultWidth = UiScale.scaled(24);
+    final var headerMetric = getFontMetrics(headFont());
+    final var bodyMetric = getFontMetrics(bodyFont());
+    cellHeight = Math.max(headerMetric.getHeight(), bodyMetric.getHeight()) + UiScale.scaled(4);
 
     if (columnWidth == null || columnWidth.length < columns) columnWidth = new int[columns];
 
     if (columns == 0) {
-      cellHeight = 16;
       tableWidth = tableHeight = 0;
     } else {
-      final var g = getGraphics();
       var cellsWidth = 0;
+      for (var i = 0; i < columns; i++) {
+        final var radix = model.getColumnValueRadix(i);
+        // column should be at least as wide as 24, as header, and
+        // as formatted value
+        final var header = model.getColumnName(i);
+        var cellWidth = Math.max(defaultWidth, headerMetric.stringWidth(header));
+        final var w = model.getColumnValueWidth(i);
 
-      if (g == null) {
-        cellHeight = 16;
-        // Initialize column widths with default values
-        for (var i = 0; i < columns; i++) {
-          columnWidth[i] = default_width;
+        if (w != null) {
+          final var val =
+              Value.createKnown(
+                  w, (radix == 2 ? 0 : (radix == 10 ? (1L << (w.getWidth() - 1)) : w.getMask())));
+          final var label = val.toDisplayString(radix);
+          cellWidth = Math.max(cellWidth, bodyMetric.stringWidth(label));
         }
-        cellsWidth = default_width * columns;
-      } else {
-        final var headerMetric = g.getFontMetrics(headFont());
-        final var bodyMetric = g.getFontMetrics(bodyFont());
-        cellHeight = Math.max(headerMetric.getHeight(), bodyMetric.getHeight());
-        for (var i = 0; i < columns; i++) {
-          final var radix = model.getColumnValueRadix(i);
-          // column should be at least as wide as 24, as header, and
-          // as formatted value
-          final var header = model.getColumnName(i);
-          var cellWidth = Math.max(default_width, headerMetric.stringWidth(header));
-          final var w = model.getColumnValueWidth(i);
 
-          if (w != null) {
-            final var val =
-                Value.createKnown(
-                    w, (radix == 2 ? 0 : (radix == 10 ? (1L << (w.getWidth() - 1)) : w.getMask())));
-            final var label = val.toDisplayString(radix);
-            cellWidth = Math.max(cellWidth, bodyMetric.stringWidth(label));
-          }
-
-          final var special = model.specialColumnEntry(i);
-          if (special != null) {
-            cellWidth = Math.max(cellWidth, bodyMetric.stringWidth(special));
-          }
-
-          // For button columns, ensure width is at least as wide as button text
-          if (model.isButtonColumn(i)) {
-            // Button columns typically have "Show" or "Set" text, ensure adequate width
-            cellWidth = Math.max(cellWidth, bodyMetric.stringWidth(" Show "));
-          }
-
-          columnWidth[i] = cellWidth;
-          cellsWidth += cellWidth;
+        final var special = model.specialColumnEntry(i);
+        if (special != null) {
+          cellWidth = Math.max(cellWidth, bodyMetric.stringWidth(special));
         }
+
+        // For button columns, ensure width is at least as wide as button text
+        if (model.isButtonColumn(i)) {
+          // Button columns typically have "Show" or "Set" text, ensure adequate width
+          cellWidth = Math.max(cellWidth, bodyMetric.stringWidth(" Show "));
+        }
+
+        columnWidth[i] = cellWidth;
+        cellsWidth += cellWidth;
       }
-
-      tableWidth = cellsWidth + COLUMN_SEP * (columns + 1);
+      tableWidth = cellsWidth + columnGap() * (columns + 1);
       tableHeight = cellHeight * model.getRowCount();
     }
 
     if (cellHeight != oldCellHeight
         || tableWidth != oldTableWidth
         || tableHeight != oldTableHeight) {
-      final var headSize = new Dimension(tableWidth, cellHeight + HEADER_SEP);
+      final var headSize = new Dimension(tableWidth, cellHeight + headerGap());
       final var bodySize = new Dimension(tableWidth, tableHeight);
       body.setPreferredSize(bodySize);
       header.setPreferredSize(headSize);
@@ -179,7 +174,7 @@ public class ValueTable extends JPanel {
     var left = Math.max(0, (width - tableWidth) / 2);
     if (x < left || x >= left + tableWidth) return -1;
 
-    var currentX = left + COLUMN_SEP;
+    var currentX = left + columnGap();
     final var columns = model.getColumnCount();
 
     if (columnWidth == null || columnWidth.length < columns) {
@@ -188,7 +183,7 @@ public class ValueTable extends JPanel {
 
     for (var i = 0; i < columns; i++) {
       final var cellWidth = columnWidth[i];
-      final var nextX = currentX + cellWidth + COLUMN_SEP;
+      final var nextX = currentX + cellWidth + columnGap();
 
       if (x >= currentX && x < nextX) {
         return i;
@@ -202,7 +197,7 @@ public class ValueTable extends JPanel {
   int findRow(int y, int height) {
     if (y < 0) return -1;
     final var row = y / cellHeight;
-    if (row >= rowCount) return -1;
+    if (model == null || row >= model.getRowCount()) return -1;
 
     return row;
   }
@@ -330,10 +325,8 @@ public class ValueTable extends JPanel {
         public void mouseClicked(MouseEvent e) {
           if (model == null) return;
 
-          // Get the viewport to convert coordinates if needed
-          java.awt.Point viewPos = scrollPane.getViewport().getViewPosition();
           int x = e.getX(); // X is relative to TableBody panel, no adjustment needed
-          int y = e.getY() + viewPos.y; // Adjust Y for vertical scroll position
+          int y = e.getY(); // The body event already includes the scroll offset.
 
           // Refresh data to ensure rowStart is current
           refreshData(y, y + cellHeight);
@@ -407,26 +400,26 @@ public class ValueTable extends JPanel {
 
       var top = 0;
       final var left = Math.max(0, (sz.width - tableWidth) / 2);
-      var x = left + COLUMN_SEP;
+      var x = left + columnGap();
 
       final var bg = getBackground();
 
       for (int col = 0; col < columns; col++) {
-        int y = top + firstRow * cellHeight;
         g.setColor(Tokens.divider());
-        g.drawLine(x - COLUMN_SEP / 2, clip.y, x - COLUMN_SEP / 2, clip.y + clip.height);
+        g.drawLine(x - columnGap() / 2, clip.y, x - columnGap() / 2, clip.y + clip.height);
         g.setColor(getForeground());
         final var cellWidth = columnWidth[col];
         final var radix = model.getColumnValueRadix(col);
 
         for (var row = firstRow; row <= lastRow; row++) {
+          final var y = top + row * cellHeight;
           if (!(rowStart <= row && row < rowStart + rowCount)) continue;
           final var cell = rowData[row - rowStart][col];
 
           if (cell == null) continue;
 
           g.setColor(cell.bg == null ? bg : cell.bg);
-          g.fillRect(x - COLUMN_SEP / 2 + 1, y, cellWidth + COLUMN_SEP - 1, cellHeight);
+          g.fillRect(x - columnGap() / 2 + 1, y, cellWidth + columnGap() - 1, cellHeight);
           g.setColor(getForeground());
 
           if (cell.value != null) {
@@ -438,17 +431,17 @@ public class ValueTable extends JPanel {
 
             if (cell.fg != null) g.setColor(cell.fg);
 
-            g.drawString(label, x + (cellWidth - width) / 2, y + bodyMetric.getAscent());
+            g.drawString(label, x + (cellWidth - width) / 2,
+                y + (cellHeight - bodyMetric.getHeight()) / 2 + bodyMetric.getAscent());
 
             // Restore the table's own colour, not black: the cell may have set its own.
             if (cell.fg != null) g.setColor(getForeground());
           }
-          y += cellHeight;
         }
-        x += cellWidth + COLUMN_SEP;
+        x += cellWidth + columnGap();
       }
       g.setColor(Tokens.divider());
-      g.drawLine(x - COLUMN_SEP / 2, clip.y, x - COLUMN_SEP / 2, clip.y + clip.height);
+      g.drawLine(x - columnGap() / 2, clip.y, x - columnGap() / 2, clip.y + clip.height);
     }
   }
 
@@ -481,7 +474,7 @@ public class ValueTable extends JPanel {
 
       final var columns = model == null ? 0 : model.getColumnCount();
       if (columns == 0) {
-        g.drawLine(0, cellHeight + HEADER_SEP / 2, sz.width, cellHeight + HEADER_SEP / 2);
+        g.drawLine(0, cellHeight + headerGap() / 2, sz.width, cellHeight + headerGap() / 2);
         return;
       }
 
@@ -490,24 +483,24 @@ public class ValueTable extends JPanel {
       final var top = 0;
       final var left = Math.max(0, (sz.width - tableWidth) / 2);
 
-      g.drawLine(left, cellHeight + HEADER_SEP / 2, left + tableWidth, cellHeight + HEADER_SEP / 2);
+      g.drawLine(left, cellHeight + headerGap() / 2, left + tableWidth, cellHeight + headerGap() / 2);
 
-      var x = left + COLUMN_SEP;
-      final var y = top + headerMetric.getAscent() + 1;
+      var x = left + columnGap();
+      final var y = top + (cellHeight - headerMetric.getHeight()) / 2 + headerMetric.getAscent();
 
       for (var i = 0; i < columns; i++) {
         g.setColor(Tokens.divider());
-        g.drawLine(x - COLUMN_SEP / 2, 0, x - COLUMN_SEP / 2, cellHeight);
+        g.drawLine(x - columnGap() / 2, 0, x - columnGap() / 2, cellHeight);
         g.setColor(getForeground());
         final var label = model.getColumnName(i);
         final var cellWidth = columnWidth[i];
         final var width = headerMetric.stringWidth(label);
         g.drawString(label, x + (cellWidth - width) / 2, y);
-        x += cellWidth + COLUMN_SEP;
+        x += cellWidth + columnGap();
       }
 
       g.setColor(Tokens.divider());
-      g.drawLine(x - COLUMN_SEP / 2, 0, x - COLUMN_SEP / 2, cellHeight);
+      g.drawLine(x - columnGap() / 2, 0, x - columnGap() / 2, cellHeight);
     }
 
     class MyListener extends java.awt.event.MouseAdapter {

@@ -63,6 +63,7 @@ import com.cburch.logisim.util.UiFonts;
 import com.cburch.logisim.util.Spacing;
 import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.proj.ProjectActions;
+import com.cburch.logisim.proj.ProjectCloseConfirmation;
 import com.cburch.logisim.proj.ProjectEvent;
 import com.cburch.logisim.proj.ProjectListener;
 import com.cburch.logisim.proj.Projects;
@@ -131,6 +132,7 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
   private static final String VHDL_BOTTOM_PANEL = "vhdlConsole";
   private static final String LOG_BOTTOM_PANEL = "log";
   private static final String TEST_BOTTOM_PANEL = "test";
+  private static final String EDIT_EMPTY = "empty";
   private final Timer timer = new Timer();
   private final Project project;
   private final MyProjectListener myProjectListener = new MyProjectListener();
@@ -153,6 +155,9 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
 
   /** Whether the welcome screen is covering the canvas. */
   private boolean welcomeShowing;
+  private boolean editorClosed;
+  private final javax.swing.JLabel emptyEditorHint = new javax.swing.JLabel();
+  private boolean closeResourcesReleased;
 
   /** The editor the project asked for while the welcome screen was up. */
   private String pendingEditorView;
@@ -301,6 +306,10 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
             () -> ProjectActions.doOpen(this, project),
             file -> ProjectActions.doOpenReplacingBlank(this, project, project, file));
     mainPanel.addView(EDIT_WELCOME, welcomePanel);
+    final var emptyEditor = new JPanel(new java.awt.GridBagLayout());
+    emptyEditor.setFocusable(true);
+    emptyEditor.add(emptyEditorHint);
+    mainPanel.addView(EDIT_EMPTY, emptyEditor);
 
     editorTabModel.setNavigator(this::activateEditorTab);
     editorTabs = new EditorTabs(editorTabModel, this::editorTabTitle);
@@ -360,6 +369,7 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
         vhdlSimulatorConsole);
 
     statusBar = new StatusBar();
+    zoomPill.setZoomTextListener(statusBar::setZoom);
     simulationToolbar = new Toolbar(new SimulationToolbarModel(project, menuListener));
     final var mainToolbar = new MainToolbar(toolbar, simulationToolbar);
 
@@ -367,7 +377,35 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     shell =
         new ShellLayout(
             mainToolbar, activityBar, sidePanel, editorArea, inspector, bottomPanel, statusBar);
-    shell.setBottomVisible(false);
+    editorTabModel.setEmptyListener(() -> {
+      editorClosed = true;
+      welcomeShowing = false;
+      mainPanel.setView(EDIT_EMPTY);
+      editorArea.setTabsVisible(false);
+      zoomPill.setVisible(false);
+      toolbar.setVisible(false);
+      menuListener.setEditHandler(null);
+      setAttrTableModel(null);
+      circuitList.clearEditorSelection();
+      emptyEditor.requestFocusInWindow();
+    });
+    circuitList.setOnOpen(() -> {
+      if (!editorClosed && !welcomeShowing) return;
+      dismissWelcome();
+      if (project.getCurrentHdl() != null) {
+        setHdlEditorView(project.getCurrentHdl());
+        syncEditorTabs();
+      } else {
+        setEditorView(EDIT_LAYOUT);
+        syncEditorTabs();
+      }
+    });
+    activityBar.addAction("properties", AppIcons.Id.INSPECTOR, S.get("propertiesTab"),
+        () -> shell.setInspectorVisible(!shell.isInspectorVisible()));
+    activityBar.addAction("timing", AppIcons.Id.WAVEFORM, S.get("logPanelTab"), this::showLogPanel);
+    activityBar.addAction("testVectors", AppIcons.Id.TEST, S.get("testPanelTab"), this::showTestPanel);
+    activityBar.addAction("vhdlConsole", AppIcons.Id.TERMINAL, S.get("vhdlConsoleTab"),
+        () -> shell.showBottomPanel(VHDL_BOTTOM_PANEL));
     // Both panels could be opened but never shut; their close buttons drive the shell.
     inspector.setOnClose(() -> shell.setInspectorVisible(false));
     bottomPanel.setOnClose(() -> shell.setBottomVisible(false));
@@ -375,7 +413,19 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
 
     localeChanged();
 
-    this.setSize(AppPreferences.WINDOW_WIDTH.get(), AppPreferences.WINDOW_HEIGHT.get());
+    final var screen = getGraphicsConfiguration().getBounds();
+    final var screenInsets = getToolkit().getScreenInsets(getGraphicsConfiguration());
+    final var availableWidth = screen.width - screenInsets.left - screenInsets.right;
+    final var availableHeight = screen.height - screenInsets.top - screenInsets.bottom;
+    // The old fresh default used half the width but the entire screen height, squeezing the
+    // editor between two full-size sidebars. Preserve saved sizes, bounded by the current screen.
+    final var prefs = AppPreferences.getPrefs();
+    final var initialWidth = prefs.get("windowWidth", null) == null
+        ? availableWidth * 9 / 10 : AppPreferences.WINDOW_WIDTH.get();
+    final var initialHeight = prefs.get("windowHeight", null) == null
+        ? availableHeight * 9 / 10 : AppPreferences.WINDOW_HEIGHT.get();
+    this.setSize(Math.max(1, Math.min(initialWidth, availableWidth)),
+        Math.max(1, Math.min(initialHeight, availableHeight)));
     final var prefPoint = getInitialLocation();
     if (prefPoint != null) {
       this.setLocation(prefPoint);
@@ -400,7 +450,6 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     syncEditorTabs();
     updateCircuitTrail();
     updateZoomStatus();
-    layoutZoomModel.addPropertyChangeListener(ZoomModel.ZOOM, event -> updateZoomStatus());
     restoreLayoutView(project.getCurrentCircuit());
   }
 
@@ -667,10 +716,6 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
       title.append(String.format(" [%s]", S.get("titleUnsavedProjectState").toUpperCase()));
     }
 
-    if (!BuildInfo.version.isStable()) {
-      title.append(String.format(" (ID:%s, BUILT:%s)", BuildInfo.buildId, BuildInfo.dateIso8601));
-    }
-
     this.setTitle(title.toString().trim());
     myProjectListener.enableSave();
   }
@@ -681,25 +726,31 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
 
   // returns true if user is OK with proceeding
   public boolean confirmClose(String title) {
-    if (!project.isFileDirty()) return true;
+    return ProjectCloseConfirmation.confirm(
+        project.isFileDirty(),
+        () -> {
+          toFront();
+          final var message = S.get("confirmDiscardMessage", project.getLogisimFile().getName());
+          final String[] options = {
+            S.get("saveOption"), S.get("discardOption"), S.get("cancelOption")
+          };
+          return OptionPane.showOptionDialog(
+              this, message, title, 0, OptionPane.QUESTION_MESSAGE, null, options, options[0]);
+        },
+        () -> ProjectActions.doSave(project));
+  }
 
-    final var message = S.get("confirmDiscardMessage", project.getLogisimFile().getName());
-
-    toFront();
-    final String[] options = {S.get("saveOption"), S.get("discardOption"), S.get("cancelOption")};
-    final var result = OptionPane.showOptionDialog(this, message, title, 0, OptionPane.QUESTION_MESSAGE, null, options, options[0]);
-    var ret = false;
-    if (result == 0) {
-      ret = ProjectActions.doSave(project);
-      project.getLogisimFile().stopAutosaveThread(false);
-    } else if (result == 1) {
-      // Close the current project
-      dispose();
-      ret = true;
+  @Override
+  public void dispose() {
+    // Confirmation has no cleanup side effects: a later window may cancel a multi-project Quit.
+    // Release recovery and canvas resources only when this window really closes.
+    if (!closeResourcesReleased && project != null) {
+      closeResourcesReleased = true;
+      if (layoutCanvas != null) layoutCanvas.closeCanvas();
+      if (timer != null) timer.cancel();
       project.getLogisimFile().stopAutosaveThread(true);
     }
-
-    return ret;
+    super.dispose();
   }
 
   /**
@@ -747,6 +798,11 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
    * screen is dismissed.
    */
   private void showEditor(String view) {
+    if (editorClosed) {
+      editorClosed = false;
+      editorArea.setTabsVisible(true);
+      placeToolbar();
+    }
     if (welcomeShowing) {
       pendingEditorView = view;
       return;
@@ -810,7 +866,8 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
 
   /** Shows the zoom level in the status bar, as a percentage. */
   private void updateZoomStatus() {
-    statusBar.setZoom(Math.round(layoutZoomModel.getZoomFactor() * 100) + "%");
+    final var active = zoom.getZoomModel();
+    statusBar.setZoom(active == null ? "" : Math.round(active.getZoomFactor() * 100) + "%");
   }
 
   /**
@@ -921,6 +978,7 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
   }
 
   public String getEditorView() {
+    if (editorClosed) return EDIT_EMPTY;
     return (getHdlEditorView() != null ? EDIT_HDL : mainPanel.getView());
   }
 
@@ -964,6 +1022,7 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
       syncEditorTabs();
       layoutCanvas.requestFocus();
     }
+    updateZoomStatus();
   }
 
   public ZoomControl getZoomControl() {
@@ -1040,6 +1099,12 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     bottomPanel.setTitle(LOG_BOTTOM_PANEL, S.get("logPanelTab"));
     bottomPanel.setTitle(TEST_BOTTOM_PANEL, S.get("testPanelTab"));
     editorTabs.refresh();
+    welcomePanel.refresh();
+    emptyEditorHint.setText(S.get("editorEmptyHint"));
+    shell.getActivityBar().setTooltip("properties", S.get("propertiesTab"));
+    shell.getActivityBar().setTooltip("timing", S.get("logPanelTab"));
+    shell.getActivityBar().setTooltip("testVectors", S.get("testPanelTab"));
+    shell.getActivityBar().setTooltip("vhdlConsole", S.get("vhdlConsoleTab"));
   }
 
   /**
@@ -1052,7 +1117,7 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
   private void placeToolbar() {
     final var loc = AppPreferences.TOOLBAR_PLACEMENT.get();
     toolbar.setOrientation(Toolbar.HORIZONTAL);
-    toolbar.setVisible(!AppPreferences.TOOLBAR_HIDDEN.equals(loc));
+    toolbar.setVisible(!editorClosed && !AppPreferences.TOOLBAR_HIDDEN.equals(loc));
     getContentPane().validate();
   }
 
@@ -1133,6 +1198,7 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     zoomPill.setModel(null);
     showEditor(EDIT_HDL);
     toolbar.setToolbarModel(hdlEditor.getToolbarModel());
+    updateZoomStatus();
   }
 
   void viewAttributes(Tool newTool) {
@@ -1180,6 +1246,7 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
   }
 
   public void viewComponentAttributes(Circuit circ, Component comp) {
+    shell.setInspectorVisible(true);
     if (comp == null) {
       setAttrTableModel(null);
     } else {
@@ -1234,8 +1301,10 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
         syncEditorTabs();
       } else if (action == ProjectEvent.ACTION_START) {
         // The first edit means the user has started work, so the welcome screen has served its
-        // purpose. Going through the project keeps the flag and the window in step.
+        // purpose. doAction already clears the project's flag before publishing this event, so
+        // its idempotent setter alone cannot dismiss a separately shown welcome surface.
         project.setStartupScreen(false);
+        dismissWelcome();
       } else if (action == ProjectEvent.ACTION_COMPLETE) {
         // An edit landed: mark the circuit it changed, so its tab says so.
         editorTabModel.setDirty(project.getCurrentCircuit(), true);
@@ -1273,6 +1342,11 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
         }
         final var oldTool = (Tool) event.getOldData();
         final var newTool = (Tool) event.getData();
+        if (newTool instanceof AddTool && (welcomeShowing || editorClosed)) {
+          dismissWelcome();
+          setEditorView(EDIT_LAYOUT);
+          syncEditorTabs();
+        }
         if (!getEditorView().equals(EDIT_APPEARANCE)) {
           viewAttributes(oldTool, newTool, false);
         }
@@ -1300,8 +1374,6 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     @Override
     public void windowClosing(WindowEvent e) {
       if (confirmClose(S.get("confirmCloseTitle"))) {
-        layoutCanvas.closeCanvas();
-        timer.cancel();
         Frame.this.dispose();
       }
     }

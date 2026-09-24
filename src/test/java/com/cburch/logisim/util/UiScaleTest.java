@@ -13,15 +13,27 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.cburch.logisim.TestBase;
+import com.cburch.logisim.gui.theme.AppIcons;
+import com.formdev.flatlaf.util.UIScale;
+import javax.swing.JCheckBox;
+import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /** Tests the interface scale facade. */
 public class UiScaleTest extends TestBase {
+  private UiScaleTestSupport.NativeFonts nativeFonts;
+
+  @BeforeEach
+  public void isolateFonts() throws Exception {
+    nativeFonts = new UiScaleTestSupport.NativeFonts();
+  }
 
   @AfterEach
-  public void restoreScale() {
-    UiScaleTestSupport.setScaleFactor(1.0);
+  public void restoreScale() throws Exception {
+    nativeFonts.close();
   }
 
   @Test
@@ -63,5 +75,25 @@ public class UiScaleTest extends TestBase {
     UiScaleTestSupport.setScaleFactor(2.0);
     assertEquals(2 * baseIcon, UiScale.iconSize());
     assertTrue(UiScale.iconBorder() > 0);
+  }
+
+  @Test
+  public void nativeAndCustomMetricsShareOneScaleIncludingLiveRoundTrips() throws Exception {
+    UiScaleTestSupport.setScaleFactor(1.0);
+    final var baseFont = UIManager.getFont("Label.font").getSize2D();
+    final var icon = AppIcons.get(AppIcons.Id.RUN, 16);
+    for (final var scale : new double[] {1.0, 1.25, 1.6, 2.0, 2.5, 1.0, 1.6}) {
+      UiScaleTestSupport.setScaleFactor(scale);
+      SwingUtilities.invokeAndWait(() -> {
+        assertEquals(scale, UiScale.factor(), 0.00001);
+        assertEquals(UIScale.scale(16), icon.getIconWidth(), "held SVG scales only once");
+        assertEquals(Math.round(16 * scale), UiScale.scaled(16));
+        assertEquals(Math.round(baseFont * scale), UiFonts.body().getSize());
+        assertEquals(UIManager.getFont("Label.font").getSize(),
+            UIManager.getFont("MenuItem.acceleratorFont").getSize());
+        final var check = new JCheckBox("Scale");
+        assertTrue(check.getPreferredSize().height >= check.getFontMetrics(check.getFont()).getHeight());
+      });
+    }
   }
 }

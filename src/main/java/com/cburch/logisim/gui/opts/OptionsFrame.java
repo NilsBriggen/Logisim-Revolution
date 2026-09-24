@@ -17,42 +17,42 @@ import com.cburch.logisim.file.LogisimFileActions;
 import com.cburch.logisim.file.Options;
 import com.cburch.logisim.gui.generic.LFrame;
 import com.cburch.logisim.gui.generic.OptionPane;
+import com.cburch.logisim.gui.generic.ScrollableForm;
 import com.cburch.logisim.gui.shell.PanelHeader;
 import com.cburch.logisim.gui.shell.SettingsNav;
 import com.cburch.logisim.gui.theme.AppIcons;
+import com.cburch.logisim.gui.theme.Theme;
 import com.cburch.logisim.gui.theme.Tokens;
-import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.proj.ProjectEvent;
 import com.cburch.logisim.util.LocaleListener;
 import com.cburch.logisim.util.LocaleManager;
 import com.cburch.logisim.util.Spacing;
-import com.cburch.logisim.util.TableLayout;
+import com.cburch.logisim.util.UiScale;
 import com.cburch.logisim.util.WindowMenuItemManager;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Dimension;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import java.util.Arrays;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
-import javax.swing.JTabbedPane;
 
 public class OptionsFrame extends LFrame.Dialog {
   private static final long serialVersionUID = 1L;
   private final MyListener myListener = new MyListener();
   private final WindowMenuManager windowManager = new WindowMenuManager();
   private final OptionsPanel[] panels;
+  private final ScrollableForm[] forms;
+  private final JSplitPane split;
   private final CardLayout pages = new CardLayout();
   private final JPanel pageHolder = new JPanel(pages);
   private final PanelHeader pageHeader = new PanelHeader("");
   private final JButton revertButton = new JButton();
   private SettingsNav nav;
-  private int selectedIndex = -1;
+  private double layoutScale = -1;
 
   /** Unscaled width of the page list, matching the preferences window. */
   private static final int NAV_WIDTH = 190;
@@ -73,37 +73,44 @@ public class OptionsFrame extends LFrame.Dialog {
         new OptionsPanel[] {
           new SimulateOptions(this), new ToolbarOptions(this), new MouseOptions(this)
         };
+    forms = new ScrollableForm[panels.length];
     for (var index = 0; index < panels.length; index++) {
-      pageHolder.add(new JScrollPane(panels[index]), String.valueOf(index));
+      forms[index] = new ScrollableForm(panels[index]);
+      pageHolder.add(forms[index].createScrollPane(), String.valueOf(index));
     }
 
     nav = new SettingsNav(S.get("preferencesFilterHint"), this::showPage);
-    final var navWidth = AppPreferences.getScaled(NAV_WIDTH);
-    nav.setPreferredSize(new Dimension(navWidth, 0));
-    nav.setMinimumSize(new Dimension(navWidth, 0));
+    pageHolder.add(nav.getEmptyState(), "empty");
 
     final var page = new JPanel(new BorderLayout());
     page.add(pageHeader, BorderLayout.NORTH);
     page.add(pageHolder, BorderLayout.CENTER);
     page.add(revertFooter(), BorderLayout.SOUTH);
+    page.setMinimumSize(new Dimension(0, 0));
 
-    final var split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, true, nav, page);
+    split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, true, nav, page);
     split.setBorder(null);
     split.setDividerSize(1);
     split.setResizeWeight(0.0);
 
     getContentPane().add(split, BorderLayout.CENTER);
-    setPreferredSize(
-        new Dimension(AppPreferences.getScaled(720), AppPreferences.getScaled(460)));
-
     LocaleManager.addLocaleListener(myListener);
     myListener.localeChanged();
     showPage(0);
-    pack();
-    // After packing: a split pane clamps a divider position to its own width, which it does not
-    // have until the window has been laid out.
-    split.setDividerLocation(navWidth);
+    updateWindowSize(true);
+    Theme.addListener(getRootPane(), () -> updateWindowSize(false));
     setLocationRelativeTo(project.getFrame());
+  }
+
+  private void updateWindowSize(boolean initial) {
+    nav.setPreferredSize(new Dimension(UiScale.scaled(NAV_WIDTH), 0));
+    nav.setMinimumSize(new Dimension(UiScale.scaled(120), 0));
+    ScrollableForm.sizeWindow(
+        this, new Dimension(720, 460), new Dimension(560, 340), initial);
+    if (initial || layoutScale != UiScale.factor()) {
+      split.setDividerLocation(Math.min(UiScale.scaled(NAV_WIDTH), getWidth() / 3));
+    }
+    layoutScale = UiScale.factor();
   }
 
   /**
@@ -112,7 +119,7 @@ public class OptionsFrame extends LFrame.Dialog {
    * <p>It throws away every setting in the project at once, so it now says so before doing it.
    */
   private JComponent revertFooter() {
-    final var footer = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.TRAILING, 0, 0));
+    final var footer = new JPanel(new BorderLayout());
     footer.setBorder(Spacing.panelBorder());
     revertButton.setIcon(
         AppIcons.colored(AppIcons.Id.RESET, AppIcons.SIZE, Tokens.error()));
@@ -133,20 +140,23 @@ public class OptionsFrame extends LFrame.Dialog {
   }
 
   private void showPage(int index) {
+    if (index == -1) {
+      pages.show(pageHolder, "empty");
+      pageHeader.setTitle(S.get("preferencesFilterHint"));
+      pageHeader.setSubtitle("");
+      return;
+    }
     if (index < 0 || index >= panels.length) return;
-    selectedIndex = index;
     pages.show(pageHolder, String.valueOf(index));
     pageHeader.setTitle(panels[index].getTitle());
-    pageHeader.setSubtitle(panels[index].getHelpText());
+    pageHeader.setSubtitle("");
     nav.setSelectedIndex(index);
+    nav.revealMatch(panels[index]);
   }
 
-  private java.util.List<String> pageTitles() {
-    final var titles = new java.util.ArrayList<String>(panels.length);
-    for (final var panel : panels) {
-      titles.add(panel.getTitle());
-    }
-    return titles;
+  static SettingsNav.SearchPage searchPage(OptionsPanel panel) {
+    return new SettingsNav.SearchPage(
+        panel.getTitle(), panel.getHelpText() + " " + SettingsNav.searchableText(panel));
   }
 
   private void computeTitle() {
@@ -184,17 +194,14 @@ public class OptionsFrame extends LFrame.Dialog {
     @Override
     public void localeChanged() {
       computeTitle();
-      for (final var panel : panels) {
-        panel.localeChanged();
+      for (var index = 0; index < panels.length; index++) {
+        panels[index].localeChanged();
+        forms[index].setHelpText(panels[index].getHelpText());
       }
       revertButton.setText(S.get("revertButton"));
+      revertButton.setToolTipText(S.get("revertButton"));
       nav.setFilterHint(S.get("preferencesFilterHint"));
-      nav.setTitles(pageTitles());
-      if (selectedIndex >= 0) {
-        pageHeader.setTitle(panels[selectedIndex].getTitle());
-        pageHeader.setSubtitle(panels[selectedIndex].getHelpText());
-        nav.setSelectedIndex(selectedIndex);
-      }
+      nav.setPages(Arrays.stream(panels).map(OptionsFrame::searchPage).toList());
       windowManager.localeChanged();
     }
   }

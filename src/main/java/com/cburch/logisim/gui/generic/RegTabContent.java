@@ -10,6 +10,7 @@
 package com.cburch.logisim.gui.generic;
 
 import com.cburch.logisim.gui.theme.Tokens;
+import com.cburch.logisim.gui.theme.Theme;
 import com.cburch.logisim.circuit.Circuit;
 import com.cburch.logisim.circuit.CircuitEvent;
 import com.cburch.logisim.circuit.CircuitListener;
@@ -29,6 +30,8 @@ import com.cburch.logisim.proj.ProjectListener;
 import com.cburch.logisim.std.memory.Register;
 import com.cburch.logisim.util.LocaleListener;
 import com.cburch.logisim.util.LocaleManager;
+import com.cburch.logisim.util.Spacing;
+import com.cburch.logisim.util.UiFonts;
 
 import java.awt.Color;
 import java.awt.Font;
@@ -46,6 +49,7 @@ import javax.swing.BorderFactory;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
 
 public class RegTabContent extends JScrollPane
     implements LocaleListener, Simulator.Listener, ProjectListener, CircuitListener {
@@ -55,6 +59,7 @@ public class RegTabContent extends JScrollPane
   // Column headings, not Windows-3.x grey bands set in bold italic.
   private final MyLabel hdrName = new MyLabel("", Font.BOLD, false, Tokens.badgeBackground());
   private final MyLabel hdrValue = new MyLabel("", Font.BOLD, false, Tokens.badgeBackground());
+  private final JTextArea emptyHint = new JTextArea(0, 18);
   private boolean showing = false;
   private CircuitState circuitState;
   private final ArrayList<Circuit> circuits = new ArrayList<>();
@@ -70,6 +75,13 @@ public class RegTabContent extends JScrollPane
     gridConstraints.fill = GridBagConstraints.HORIZONTAL;
     gridConstraints.anchor = GridBagConstraints.FIRST_LINE_START;
     gridConstraints.ipady = 2;
+
+    emptyHint.setEditable(false);
+    emptyHint.setOpaque(false);
+    emptyHint.setLineWrap(true);
+    emptyHint.setWrapStyleWord(true);
+    refreshAppearance();
+    Theme.addListener(this, this::refreshAppearance);
 
     localeChanged();
     LocaleManager.addLocaleListener(this);
@@ -112,7 +124,6 @@ public class RegTabContent extends JScrollPane
   }
 
   private void clear() {
-    if (circuits.isEmpty()) return;
     for (final var circ : circuits) {
       circ.removeCircuitListener(this);
     }
@@ -127,6 +138,7 @@ public class RegTabContent extends JScrollPane
     gridConstraints.gridx = 1;
     gridConstraints.weightx = 0.3;
     panel.add(hdrValue, gridConstraints);
+    showEmptyHint();
     panel.repaint();
   }
 
@@ -156,8 +168,10 @@ public class RegTabContent extends JScrollPane
 
   private void enumerate() {
     if (circuitState == null) return;
+    panel.remove(emptyHint);
     Circuit circ = circuitState.getCircuit();
     enumerate(null, circ, circuitState);
+    if (buildWatchers.isEmpty()) showEmptyHint();
     gridConstraints.weighty = 1;
     gridConstraints.gridy++;
     gridConstraints.gridx = 0;
@@ -241,6 +255,25 @@ public class RegTabContent extends JScrollPane
   public void localeChanged() {
     hdrName.setText(S.get("registerTabNameTitle"));
     hdrValue.setText(S.get("registerTabValueTitle"));
+    emptyHint.setText(S.get("registerTabEmptyHint"));
+    emptyHint.getAccessibleContext().setAccessibleName(S.get("registerTabEmptyHint"));
+  }
+
+  private void showEmptyHint() {
+    final var constraints = (GridBagConstraints) gridConstraints.clone();
+    constraints.gridx = 0;
+    constraints.gridy = 1;
+    constraints.gridwidth = 2;
+    constraints.weightx = 1;
+    panel.add(emptyHint, constraints);
+    gridConstraints.gridy = 1;
+  }
+
+  private void refreshAppearance() {
+    emptyHint.setFont(UiFonts.small());
+    emptyHint.setForeground(Tokens.mutedForeground());
+    emptyHint.setBorder(Spacing.innerBorder());
+    getVerticalScrollBar().setUnitIncrement(getFontMetrics(UiFonts.body()).getHeight());
   }
 
   @Override

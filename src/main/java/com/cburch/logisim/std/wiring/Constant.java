@@ -32,9 +32,7 @@ import com.cburch.logisim.instance.StdAttr;
 import com.cburch.logisim.tools.key.BitWidthConfigurator;
 import com.cburch.logisim.tools.key.JoinedConfigurator;
 import com.cburch.logisim.util.GraphicsUtil;
-import java.awt.Color;
 import java.awt.Font;
-import java.awt.Graphics;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -132,7 +130,6 @@ public class Constant extends InstanceFactory {
 
   public static final InstanceFactory FACTORY = new Constant();
 
-  private static final Color BACKGROUND_COLOR = new Color(230, 230, 230);
   private static final Font DEFAULT_FONT = new Font("monospaced", Font.PLAIN, 12);
 
   private static final List<Attribute<?>> ATTRIBUTES =
@@ -196,12 +193,16 @@ public class Constant extends InstanceFactory {
     final var vStr = (width == 1) ? Long.toHexString(v) : "0x" + Long.toHexString(v);
     final var bds = getOffsetBounds(painter.getAttributeSet());
 
-    final var g = painter.getGraphics();
-    GraphicsUtil.switchToWidth(g, 2);
-    g.fillOval(-2, -2, 4, 4);
-    g.setFont(DEFAULT_FONT);
-    GraphicsUtil.drawCenteredText(
-        g, vStr, bds.getX() + bds.getWidth() / 2, bds.getY() + bds.getHeight() / 2 - 2);
+    final var g = painter.getGraphics().create();
+    try {
+      GraphicsUtil.switchToWidth(g, 2);
+      g.fillOval(-2, -2, 4, 4);
+      g.setFont(DEFAULT_FONT);
+      GraphicsUtil.drawCenteredText(
+          g, vStr, bds.getX() + bds.getWidth() / 2, bds.getY() + bds.getHeight() / 2 - 2);
+    } finally {
+      g.dispose();
+    }
   }
 
   //
@@ -247,27 +248,25 @@ public class Constant extends InstanceFactory {
     final var x = loc.getX();
     final var y = loc.getY();
 
-    final var g = painter.getGraphics();
-    if (painter.shouldDrawColor()) {
-      g.setColor(BACKGROUND_COLOR);
-      g.fillRect(x + bds.getX(), y + bds.getY(), bds.getWidth(), bds.getHeight());
-    }
-    if (v.getWidth() == 1) {
-      if (painter.shouldDrawColor()) g.setColor(v.getColor());
+    final var g = painter.getGraphics().create();
+    try {
+      if (painter.shouldDrawColor()) {
+        g.setColor(CanvasStyle.dataBackground());
+        g.fillRect(x + bds.getX(), y + bds.getY(), bds.getWidth(), bds.getHeight());
+      }
+      // A one-bit constant carries a signal color; a bus value is automatic numeric text.
+      g.setColor(painter.shouldDrawColor()
+          ? (v.getWidth() == 1 ? v.getColor() : CanvasStyle.dataForeground())
+          : (painter.isPrintView()
+              ? CanvasStyle.dataForeground() : CanvasStyle.componentColor()));
       g.setFont(DEFAULT_FONT);
       GraphicsUtil.drawCenteredText(
           g,
-          v.toString(),
+          v.getWidth() == 1 ? v.toString() : "0x" + v.toHexString(),
           x + bds.getX() + bds.getWidth() / 2,
           y + bds.getY() + bds.getHeight() / 2 - 2);
-    } else {
-      g.setColor(CanvasStyle.componentColor());
-      g.setFont(DEFAULT_FONT);
-      GraphicsUtil.drawCenteredText(
-          g,
-          "0x" + v.toHexString(),
-          x + bds.getX() + bds.getWidth() / 2,
-          y + bds.getY() + bds.getHeight() / 2 - 2);
+    } finally {
+      g.dispose();
     }
     painter.drawPorts();
   }

@@ -24,7 +24,6 @@ import com.cburch.logisim.fpga.file.BoardReaderClass;
 import com.cburch.logisim.fpga.hdlgenerator.SynthesizedClockHdlGeneratorInstanceFactory;
 import com.cburch.logisim.fpga.settings.VendorSoftware;
 import com.cburch.logisim.gui.generic.OptionPane;
-import com.cburch.logisim.gui.icons.ProjectAddIcon;
 import com.cburch.logisim.gui.prefs.PreferencesFrame;
 import com.cburch.logisim.gui.shell.SectionPanel;
 import com.cburch.logisim.gui.theme.AppIcons;
@@ -44,6 +43,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowEvent;
 import java.io.File;
+import java.util.function.Consumer;
 import java.util.prefs.PreferenceChangeEvent;
 import java.util.prefs.PreferenceChangeListener;
 import javax.swing.BorderFactory;
@@ -55,6 +55,7 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
+import javax.swing.SwingUtilities;
 
 public class FpgaCommander
     implements ActionListener,
@@ -192,11 +193,6 @@ public class FpgaCommander
     FrequencyPanel.setFpgaClockFrequency(MyBoardInformation.fpga.getClockFrequency());
   }
 
-  private void setBoardSelectionEnabled(boolean enabled) {
-    AppPreferences.Boards.boardSelector().setEnabled(enabled);
-    ToolPath.setEnabled(enabled);
-  }
-
   private JComponent getProgressBar() {
     JPanel pan = new JPanel();
     pan.setLayout(new BorderLayout());
@@ -224,11 +220,6 @@ public class FpgaCommander
     return group(S.get("FpgaGuiAnnotationMethod"), pan);
   }
 
-  private void setAnnotationWindowEnabled(boolean enabled) {
-    annotationList.setEnabled(enabled);
-    annotateButton.setEnabled(enabled);
-  }
-
   private JComponent getExecuteWindow() {
     JPanel pan = new JPanel();
     pan.setLayout(new BorderLayout());
@@ -254,6 +245,48 @@ public class FpgaCommander
     textMainCircuit.setEnabled(enabled);
     setHdlControlsEnabled(
         actionCommands, validateButton, enabled, AppPreferences.HdlType.get());
+  }
+
+  private void setDownloadActive(boolean active) {
+    setExecuteWindowEnabled(!active);
+    setDownloadControlsRunning(
+        StopButton,
+        active,
+        annotationList,
+        annotateButton,
+        AppPreferences.Boards.boardSelector(),
+        ToolPath,
+        FrequencyPanel);
+  }
+
+  static void setDownloadControlsRunning(
+      JButton stopButton, boolean running, JComponent... controls) {
+    for (final var control : controls) control.setEnabled(!running);
+    stopButton.setEnabled(running);
+  }
+
+  private void finishDownload() {
+    downloader = null;
+    setDownloadActive(false);
+    Progress.setString(S.get("FpgaGuiIdle"));
+    Progress.setValue(0);
+  }
+
+  private void reportDownloadFailure(RuntimeException error) {
+    Reporter.report.addFatalError(S.get("FpgaGuiExecute") + ": " + error);
+  }
+
+  // Download's normal completion event is skipped if preparation throws. Own the
+  // worker lifecycle here so controls are restored on every exit, on the EDT.
+  static void runDownloadTask(
+      Runnable task, Consumer<RuntimeException> onFailure, Runnable onCompletion) {
+    try {
+      task.run();
+    } catch (RuntimeException error) {
+      SwingUtilities.invokeLater(() -> onFailure.accept(error));
+    } finally {
+      SwingUtilities.invokeLater(onCompletion);
+    }
   }
 
   static void setHdlControlsEnabled(
@@ -394,44 +427,38 @@ public class FpgaCommander
       handleHdlOnly();
     } else if (e.getActionCommand().equals(STOP_REQUESTED)) {
       if (downloader != null) downloader.stop();
-      ((ProjectAddIcon) StopButton.getIcon()).setDeselect(true);
       StopButton.setEnabled(false);
     } else if (e.getActionCommand().equals("Download")) {
-      setExecuteWindowEnabled(false);
-      setAnnotationWindowEnabled(false);
-      setBoardSelectionEnabled(false);
-      FrequencyPanel.setEnabled(false);
-      ((ProjectAddIcon) StopButton.getIcon()).setDeselect(false);
-      StopButton.setEnabled(true);
-      ReporterGui.clearAllMessages();
-      boolean writeFlash = actionCommands.getSelectedIndex() == 3;
-      boolean HdlOnly = actionCommands.getSelectedIndex() == 0;
-      boolean DownloadOnly = actionCommands.getSelectedIndex() >= 2;
-      downloader =
-          new Download(
-              MyProject,
-              circuitsList.getSelectedItem().toString(),
-              FrequencyPanel.getTickFrequency(),
-              MyBoardInformation,
-              "",
-              writeFlash,
-              DownloadOnly,
-              HdlOnly,
-              FrequencyPanel.getPreMultiplierValue(),
-              FrequencyPanel.getPreDividerValue(),
-              Progress,
-              panel);
-      downloader.addListener(this);
-      downloader.doDownload();
-    } else if (e.getSource() instanceof Download) {
-      setExecuteWindowEnabled(true);
-      setAnnotationWindowEnabled(true);
-      setBoardSelectionEnabled(true);
-      FrequencyPanel.setEnabled(true);
-      ((ProjectAddIcon) StopButton.getIcon()).setDeselect(true);
-      StopButton.setEnabled(false);
-      Progress.setString(S.get("FpgaGuiIdle"));
-      Progress.setValue(0);
+      if (downloader != null) return;
+      try {
+        setDownloadActive(true);
+        ReporterGui.clearAllMessages();
+        final var writeFlash = actionCommands.getSelectedIndex() == 3;
+        final var hdlOnly = actionCommands.getSelectedIndex() == 0;
+        final var downloadOnly = actionCommands.getSelectedIndex() >= 2;
+        final var task =
+            new Download(
+                MyProject,
+                circuitsList.getSelectedItem().toString(),
+                FrequencyPanel.getTickFrequency(),
+                MyBoardInformation,
+                "",
+                writeFlash,
+                downloadOnly,
+                hdlOnly,
+                FrequencyPanel.getPreMultiplierValue(),
+                FrequencyPanel.getPreDividerValue(),
+                Progress,
+                panel);
+        downloader = task;
+        new Thread(
+                () -> runDownloadTask(task, this::reportDownloadFailure, this::finishDownload),
+                "FpgaDownload")
+            .start();
+      } catch (RuntimeException error) {
+        finishDownload();
+        reportDownloadFailure(error);
+      }
     } else if (e.getActionCommand().equals("mainCircuit")) {
       if (circuitsList.getSelectedItem() != null) {
         final var circuitName = circuitsList.getSelectedItem().toString();

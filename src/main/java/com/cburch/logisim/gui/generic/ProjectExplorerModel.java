@@ -203,8 +203,8 @@ class ProjectExplorerModel extends DefaultTreeModel implements ProjectListener {
     SwingUtilities.invokeLater(
         () -> {
           if (root != null) {
-            model.fireTreeNodesChanged(model, root.getUserObjectPath(), null, null);
-            model.fireTreeStructureChanged(model, root.getUserObjectPath(), null, null);
+            model.fireTreeNodesChanged(model, root.getPath(), null, null);
+            model.fireTreeStructureChanged(model, root.getPath(), null, null);
           } else {
             model.fireTreeNodesChanged(model, null, null, null);
             model.fireTreeStructureChanged(model, null, null, null);

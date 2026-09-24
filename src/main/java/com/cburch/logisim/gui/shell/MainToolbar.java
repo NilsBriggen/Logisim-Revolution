@@ -13,8 +13,8 @@ import com.cburch.draw.toolbar.Toolbar;
 import com.cburch.logisim.gui.theme.Theme;
 import com.cburch.logisim.gui.theme.Tokens;
 import com.cburch.logisim.util.Spacing;
+import com.cburch.logisim.util.UiScale;
 import java.awt.Dimension;
-import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JPanel;
@@ -35,27 +35,39 @@ public class MainToolbar extends JPanel {
 
   private final Toolbar tools;
   private final Toolbar simulation;
+  private final JSeparator divider;
 
   public MainToolbar(Toolbar tools, Toolbar simulation) {
     this.tools = tools;
     this.simulation = simulation;
     setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
-    setBorder(BorderFactory.createEmptyBorder(0, Spacing.xs(), 0, Spacing.xs()));
 
     add(tools);
     add(Box.createHorizontalGlue());
     if (simulation != null) {
-      final var divider = new JSeparator(SwingConstants.VERTICAL);
-      divider.setMaximumSize(new Dimension(1, Integer.MAX_VALUE));
+      divider = new JSeparator(SwingConstants.VERTICAL);
       add(divider);
       add(simulation);
+    } else {
+      divider = null;
     }
     applyTheme();
-    Theme.addListener(this::applyTheme);
+    Theme.addListener(this, this::applyTheme);
   }
 
   private void applyTheme() {
+    setBorder(Spacing.border(0, Spacing.XS, 0, Spacing.XS));
     setBackground(Tokens.color("Logisim.sidePanel.background", getBackground()));
+    if (divider != null) {
+      final var width = Math.max(1, UiScale.scaled(1));
+      divider.setMinimumSize(new Dimension(width, 0));
+      divider.setPreferredSize(new Dimension(width, UiScale.scaled(16)));
+      divider.setMaximumSize(new Dimension(width, Integer.MAX_VALUE));
+    }
+    tools.revalidate();
+    if (simulation != null) simulation.revalidate();
+    revalidate();
+    repaint();
   }
 
   public Toolbar getToolsToolbar() {

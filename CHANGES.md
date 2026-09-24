@@ -3,6 +3,20 @@
 # Changes #
 
 * @dev (????-??-??)
+  * Preserve the last valid project and recovery file when serialization fails; Save As dismissal
+    never chooses an extension implicitly. Timing and vector drawers safely suspend for HDL
+    editors, and constrained layouts retain usable editor space without losing saved pane sizes
+    (@NilsBriggen).
+  * Fixed project-close and property-editor cancellation losing edits; multi-selection property
+    changes are validated and committed as a single undoable action (@NilsBriggen).
+  * Repaired UI scaling, readable component-picker captions and compact narrow-panel layouts,
+    keyboard search, shell splitters, editor-tab lifecycle and hidden-panel recovery. Shared
+    FlatLaf metrics now drive fonts and controls together (@NilsBriggen).
+  * Fixed FPGA actions depending on obsolete icon classes, unsupported hardware-only simulation
+    crashing, mismatched memory-display colors and displaced LED matrix dots (@NilsBriggen).
+  * Made optimization cancellable, added setting-level search with clear empty results, and
+    improved secondary-window sizing and theme-aware editor metrics. QA runs now use private
+    preferences and copied projects instead of modifying the developer's settings (@NilsBriggen).
   * Fixed: the interface came up far too small on a high-resolution display. Two of the five
     preference types wrote a new value to the store and never updated their own cached copy, so
     the value only caught up when a listener fired on another thread -- and the scale monitor's

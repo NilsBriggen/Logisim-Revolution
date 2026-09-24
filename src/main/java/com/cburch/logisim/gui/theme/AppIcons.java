@@ -9,7 +9,6 @@
 
 package com.cburch.logisim.gui.theme;
 
-import com.cburch.logisim.util.UiScale;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import java.awt.Color;
 import java.util.Map;
@@ -145,23 +144,28 @@ public final class AppIcons {
 
   /** The icon for {@code id} in the accent colour, for an active or selected control. */
   public static FlatSVGIcon accented(Id id, int size) {
-    return icon(id, size, null).setColorFilter(filter(Tokens::accent));
+    return variant(id, size, "accent", Tokens::accent);
   }
 
   /** A greyed-out variant, for a control that exists but cannot be used. */
   public static Icon disabled(Id id, int size) {
-    return icon(id, size, null).setColorFilter(filter(Tokens::iconDisabled));
+    return variant(id, size, "disabled", Tokens::iconDisabled);
   }
 
   private static FlatSVGIcon icon(Id id, int size, Color color) {
-    final var scaled = UiScale.scaled(size);
-    final var key = id.name() + '#' + scaled + '#' + (color == null ? "auto" : color.getRGB());
+    return variant(id, size, color == null ? "auto" : "color:" + color.getRGB(),
+        color == null ? Tokens::iconForeground : () -> color);
+  }
+
+  private static FlatSVGIcon variant(
+      Id id, int size, String variant, java.util.function.Supplier<Color> tint) {
+    final var key = id.name() + '#' + size + '#' + variant;
     return cache.computeIfAbsent(
         key,
         ignored -> {
-          final var icon = new FlatSVGIcon(id.resource(), scaled, scaled);
-          icon.setColorFilter(
-              color == null ? filter(Tokens::iconForeground) : filter(() -> color));
+          // FlatSVGIcon applies UIScale itself, including to instances already held by components.
+          final var icon = new FlatSVGIcon(id.resource(), size, size);
+          icon.setColorFilter(filter(tint));
           return icon;
         });
   }

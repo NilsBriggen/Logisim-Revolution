@@ -39,6 +39,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.Objects;
 import javax.swing.JFileChooser;
 
 public class Project {
@@ -569,8 +570,13 @@ public class Project {
   }
 
   public void setLogisimFile(LogisimFile value) {
+    Objects.requireNonNull(value, "replacement file");
     final var old = this.file;
+    if (old == value) return;
     if (old != null) {
+      // This boundary is reached only after loading succeeds. The loader may already belong
+      // to the replacement, so stop the obsolete writer without deleting its recovery path.
+      old.retireAutosaveThread();
       for (final var l : fileListeners) {
         old.removeLibraryListener(l);
       }

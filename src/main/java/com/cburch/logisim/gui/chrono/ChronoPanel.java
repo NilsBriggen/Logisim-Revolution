@@ -13,7 +13,6 @@ import static com.cburch.logisim.gui.Strings.S;
 
 import com.cburch.draw.toolbar.Toolbar;
 import com.cburch.logisim.gui.log.LogFrame;
-import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.gui.log.LogPanel;
 import com.cburch.logisim.gui.log.Model;
 import com.cburch.logisim.gui.log.Signal;
@@ -22,9 +21,14 @@ import com.cburch.logisim.gui.main.SimulationToolbarModel;
 import com.cburch.logisim.gui.menu.EditHandler;
 import com.cburch.logisim.gui.menu.LogisimMenuBar;
 import com.cburch.logisim.gui.menu.PrintHandler;
+import com.cburch.logisim.gui.theme.Theme;
+import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.util.GraphicsUtil;
+import com.cburch.logisim.util.UiFonts;
+import com.cburch.logisim.util.UiScale;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.GridBagConstraints;
@@ -59,6 +63,25 @@ public class ChronoPanel extends LogPanel implements Model.Listener {
   public static final int SIGNAL_HEIGHT = 30;
   public static final int GAP = 2;
   public static final int INITIAL_SPLIT = 150;
+
+  /** One row contract for the label table, waveform buffer, hit testing and export. */
+  static int signalHeight(Component component) {
+    final var textHeight = Math.max(component.getFontMetrics(UiFonts.body()).getHeight(),
+        component.getFontMetrics(UiFonts.mono()).getHeight());
+    return Math.max(UiScale.scaled(SIGNAL_HEIGHT),
+        Math.max(textHeight, UiScale.iconSize()) + 2 * gap() + UiScale.scaled(4));
+  }
+
+  /** Leaves space for a full line of ruler text, cursor-label padding and tick marks. */
+  static int headerHeight(Component component) {
+    final var textHeight = Math.max(component.getFontMetrics(UiFonts.bodyBold()).getHeight(),
+        component.getFontMetrics(UiFonts.mono()).getHeight());
+    return Math.max(UiScale.scaled(HEADER_HEIGHT), textHeight + UiScale.scaled(10));
+  }
+
+  static int gap() {
+    return UiScale.scaled(GAP);
+  }
   private Model model;
   private RightPanel rightPanel;
   private LeftPanel leftPanel;
@@ -71,12 +94,15 @@ public class ChronoPanel extends LogPanel implements Model.Listener {
 
   public ChronoPanel(LogFrame logFrame) {
     super(logFrame);
-    selectBg = UIManager.getDefaults().getColor("List.selectionBackground");
-    selectHi = darker(selectBg);
     setModel(logFrame.getModel());
     configure();
     resplit();
     editHandler.computeEnabled();
+    Theme.addListener(this, () -> {
+      selButton.setFont(UiFonts.small());
+      revalidate();
+      repaint();
+    });
   }
 
   private void configure() {
@@ -95,7 +121,7 @@ public class ChronoPanel extends LogPanel implements Model.Listener {
     toolpanel.add(toolbar);
 
     selButton = logFrame.makeSelectionButton();
-    selButton.setFont(selButton.getFont().deriveFont(10.0f));
+    selButton.setFont(UiFonts.small());
     Insets insets = gbc.insets;
     gbc.insets = new Insets(2, 0, 2, 0);
     gbc.gridx = 1;
@@ -286,8 +312,6 @@ public class ChronoPanel extends LogPanel implements Model.Listener {
   private static final Color SPOT_UNK = new Color(0xea, 0x98, 0x49);
   private static final Color SELECT_ERR = new Color(0xe5, 0x80, 0x80);
   private static final Color SELECT_UNK = new Color(0xee, 0x99, 0x44);
-  private final Color selectBg; // set in constructor
-  private final Color selectHi; // set in constructor
 
   /**
    * Returns the row palette for one signal.
@@ -299,6 +323,8 @@ public class ChronoPanel extends LogPanel implements Model.Listener {
   public Color[] rowColors(SignalInfo item, boolean isSelected) {
     final var line = new Color(AppPreferences.CHRONO_SIGNAL_COLOR.get());
     if (isSelected) {
+      final var selectBg = UIManager.getColor("List.selectionBackground");
+      final var selectHi = darker(selectBg);
       return new Color[] {
         selectBg, selectHi, line, SELECT_ERR, line, SELECT_UNK, line
       };
@@ -366,7 +392,7 @@ public class ChronoPanel extends LogPanel implements Model.Listener {
           final var l = leftPanel.getPreferredSize();
           final var r = rightPanel.getPreferredSize();
           final var width = l.width + 3 + r.width;
-          final var height = HEADER_HEIGHT + l.height;
+          final var height = headerHeight(ChronoPanel.this) + l.height;
           return new Dimension(width, height);
         }
 
@@ -375,23 +401,25 @@ public class ChronoPanel extends LogPanel implements Model.Listener {
           final var l = leftPanel.getPreferredSize();
           final var r = rightPanel.getPreferredSize();
 
-          g.setClip(0, 0, l.width, HEADER_HEIGHT);
+          final var headerHeight = headerHeight(ChronoPanel.this);
+
+          g.setClip(0, 0, l.width, headerHeight);
           leftPanel.getTableHeader().print(g);
 
-          g.setClip(l.width + 3, 0, r.width, HEADER_HEIGHT);
+          g.setClip(l.width + 3, 0, r.width, headerHeight);
           g.translate(l.width + 3, 0);
           rightPanel.getTimelineHeader().print(g);
           g.translate(-(l.width + 3), 0);
 
-          g.setClip(0, HEADER_HEIGHT, l.width, l.height);
-          g.translate(0, HEADER_HEIGHT);
+          g.setClip(0, headerHeight, l.width, l.height);
+          g.translate(0, headerHeight);
           leftPanel.print(g);
-          g.translate(0, -HEADER_HEIGHT);
+          g.translate(0, -headerHeight);
 
-          g.setClip(l.width + 3, HEADER_HEIGHT, r.width, l.height);
-          g.translate(l.width + 3, HEADER_HEIGHT);
+          g.setClip(l.width + 3, headerHeight, r.width, l.height);
+          g.translate(l.width + 3, headerHeight);
           rightPanel.paintExportImage(g);
-          g.translate(-(l.width + 3), -HEADER_HEIGHT);
+          g.translate(-(l.width + 3), -headerHeight);
         }
 
         @Override

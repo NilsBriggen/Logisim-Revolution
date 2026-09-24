@@ -15,9 +15,11 @@ import com.cburch.hex.HexEditor;
 import com.cburch.hex.HexModel;
 import com.cburch.logisim.gui.generic.LFrame;
 import com.cburch.logisim.gui.generic.OptionPane;
+import com.cburch.logisim.gui.generic.ScrollableForm;
 import com.cburch.logisim.gui.menu.LogisimMenuBar;
 import com.cburch.logisim.gui.shell.PanelHeader;
 import com.cburch.logisim.gui.theme.AppIcons;
+import com.cburch.logisim.gui.theme.Theme;
 import com.cburch.logisim.gui.theme.Tokens;
 import com.cburch.logisim.instance.Instance;
 import com.cburch.logisim.proj.Project;
@@ -53,6 +55,7 @@ public class HexFrame extends LFrame.SubWindow {
   private final HexEditor editor;
   private final JButton open = new JButton();
   private final JButton save = new JButton();
+  private final PanelHeader header = new PanelHeader("");
 
   /**
    * Where to jump to, typed and committed with Enter.
@@ -79,7 +82,6 @@ public class HexFrame extends LFrame.SubWindow {
     open.setIcon(AppIcons.get(AppIcons.Id.OPEN, 14));
     save.setIcon(AppIcons.get(AppIcons.Id.SAVE, 14));
     for (final var button : new JButton[] {open, save}) {
-      button.setFocusable(false);
       button.setBorderPainted(false);
       button.setContentAreaFilled(false);
       button.addActionListener(myListener);
@@ -97,15 +99,12 @@ public class HexFrame extends LFrame.SubWindow {
     actions.add(Box.createHorizontalStrut(Spacing.md()));
     actions.add(addressField);
 
-    final var header = new PanelHeader(S.get("hexFrameTitle"));
     header.setActions(actions);
 
-    final var pref = editor.getPreferredSize();
     final var scroll =
         new JScrollPane(
-            editor, JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-    pref.height = Math.min(pref.height, pref.width * 3 / 2);
-    scroll.setPreferredSize(pref);
+            editor, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+            JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
     scroll.getViewport().setBackground(editor.getBackground());
 
     Container contents = getContentPane();
@@ -114,15 +113,14 @@ public class HexFrame extends LFrame.SubWindow {
 
     LocaleManager.addLocaleListener(myListener);
     myListener.localeChanged();
-    pack();
-
-    Dimension size = getSize();
-    Dimension screen = getToolkit().getScreenSize();
-    if (size.width > screen.width || size.height > screen.height) {
-      size.width = Math.min(size.width, screen.width);
-      size.height = Math.min(size.height, screen.height);
-      setSize(size);
-    }
+    ScrollableForm.sizeWindow(this, new Dimension(900, 560), new Dimension(680, 360), true);
+    Theme.addListener(getRootPane(), () -> {
+      editor.setFont(UiFonts.mono());
+      addressField.setFont(UiFonts.mono());
+      scroll.getViewport().setBackground(editor.getBackground());
+      ScrollableForm.sizeWindow(this, new Dimension(900, 560), new Dimension(680, 360), false);
+    });
+    addressField.setFont(UiFonts.mono());
 
     editor.getCaret().addChangeListener(editListener);
     editor.getCaret().setDot(0, false);
@@ -241,8 +239,12 @@ public class HexFrame extends LFrame.SubWindow {
     @Override
     public void localeChanged() {
       setTitle(S.get("hexFrameTitle"));
+      header.setTitle(S.get("hexFrameTitle"));
       open.setToolTipText(S.get("openButton"));
       save.setToolTipText(S.get("saveButton"));
+      open.getAccessibleContext().setAccessibleName(S.get("openButton"));
+      save.getAccessibleContext().setAccessibleName(S.get("saveButton"));
+      addressField.getAccessibleContext().setAccessibleName(S.get("hexAddressPlaceholder"));
       addressField.putClientProperty(
           com.formdev.flatlaf.FlatClientProperties.PLACEHOLDER_TEXT, S.get("hexAddressPlaceholder"));
     }

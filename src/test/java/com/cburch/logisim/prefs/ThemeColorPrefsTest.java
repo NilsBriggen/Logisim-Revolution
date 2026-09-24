@@ -202,4 +202,32 @@ class ThemeColorPrefsTest {
     assertTrue(ThemeColorPrefs.registeredCount() >= 24, "registered: "
         + ThemeColorPrefs.registeredCount());
   }
+
+  @Test
+  void newTextUsesThemeInkAndRetainsSeparateExplicitOverrides() {
+    useTheme(AppPreferences.THEME_LIGHT);
+    assertEquals(AppPreferences.DEFAULT_TEXT_TOOL_COLOR, AppPreferences.TEXT_TOOL_COLOR.get());
+    useTheme(AppPreferences.THEME_DARK);
+    assertEquals(AppPreferences.DARK_TEXT_TOOL_COLOR, AppPreferences.TEXT_TOOL_COLOR.get());
+    AppPreferences.TEXT_TOOL_COLOR.set(CHOSEN);
+    useTheme(AppPreferences.THEME_LIGHT);
+    assertEquals(AppPreferences.DEFAULT_TEXT_TOOL_COLOR, AppPreferences.TEXT_TOOL_COLOR.get());
+    useTheme(AppPreferences.THEME_DARK);
+    assertEquals(CHOSEN, AppPreferences.TEXT_TOOL_COLOR.get());
+  }
+
+  @Test
+  void legacyExplicitTextColourIsPreservedInBothThemes() {
+    final var prefs = AppPreferences.getPrefs();
+    final var key = AppPreferences.TEXT_TOOL_COLOR.getIdentifier();
+    for (final var color : new int[] {CHOSEN, AppPreferences.DEFAULT_TEXT_TOOL_COLOR}) {
+      prefs.remove("textToolThemeMigrated");
+      prefs.remove("theme.light." + key);
+      prefs.remove("theme.dark." + key);
+      prefs.putInt(key, color);
+      AppPreferences.migrateTextToolColor();
+      assertEquals(color, prefs.getInt("theme.light." + key, -1));
+      assertEquals(color, prefs.getInt("theme.dark." + key, -1));
+    }
+  }
 }

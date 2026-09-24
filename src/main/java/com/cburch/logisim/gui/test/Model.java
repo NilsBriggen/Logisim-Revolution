@@ -52,8 +52,10 @@ class Model implements CircuitListener {
 
   @Override
   public void circuitChanged(CircuitEvent event) {
-    // A rename doesn't invalidate results.
-    if (event.getAction() == CircuitEvent.ACTION_SET_NAME) return;
+    // Renaming or changing the viewed/haloed circuit does not change its behavior.
+    // In particular, Project emits DISPLAY_CHANGE on both sides of an HDL editor round trip.
+    if (event.getAction() == CircuitEvent.ACTION_SET_NAME
+        || event.getAction() == CircuitEvent.ACTION_DISPLAY_CHANGE) return;
     clearResults();
   }
 

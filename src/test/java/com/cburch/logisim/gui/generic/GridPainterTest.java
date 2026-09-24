@@ -11,6 +11,7 @@ package com.cburch.logisim.gui.generic;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.cburch.logisim.prefs.AppPreferences;
 import org.junit.jupiter.api.Test;
@@ -19,6 +20,27 @@ import org.junit.jupiter.api.Test;
 class GridPainterTest {
 
   private static final int SIZE = 10;
+
+  @Test
+  void hierarchySurvivesFractionalZoomAndMinorDotsDisappearWhenCrowded() {
+    for (final var zoom : new double[] {0.25, 0.5, 0.75, 1.25, 1.6, 2.0, 4.0}) {
+      final var width = GridPainter.tileWidth(SIZE, zoom);
+      final var tile = GridPainter.gridPixels(SIZE, zoom, width);
+      assertEquals(AppPreferences.GRID_DOT_COLOR.get().intValue(), pixel(tile, width, 0, 0));
+      final var minor = zoom * SIZE < 4 ? AppPreferences.GRID_BG_COLOR.get()
+          : AppPreferences.GRID_ZOOMED_DOT_COLOR.get();
+      assertEquals(minor.intValue(), pixel(tile, width, (int) Math.round(SIZE * zoom), 0));
+      assertEquals(AppPreferences.GRID_DOT_COLOR.get().intValue(),
+          pixel(tile, width, (int) Math.round(5 * SIZE * zoom) % width, 0), "zoom=" + zoom);
+    }
+  }
+
+  @Test
+  void invalidZoomCannotTrapTheTileSizerInAnInfiniteLoop() {
+    for (final var zoom : new double[] {0, -1, Double.NaN, Double.POSITIVE_INFINITY}) {
+      assertThrows(IllegalArgumentException.class, () -> GridPainter.tileWidth(SIZE, zoom));
+    }
+  }
 
   private static int pixel(int[] tile, int width, int x, int y) {
     return tile[y * width + x];

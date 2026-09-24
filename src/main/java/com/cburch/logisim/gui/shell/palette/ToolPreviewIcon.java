@@ -16,6 +16,7 @@ import com.cburch.logisim.tools.Tool;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import javax.swing.Icon;
@@ -25,7 +26,7 @@ import javax.swing.Icon;
  *
  * <p>The palette shows a few hundred of these at once, and each one is drawn by the component
  * itself — the same code that draws it on the canvas — so it is worth drawing only once. The
- * picture is kept until the theme changes, which is the only thing that alters it.
+ * picture is kept until the theme, interface zoom, or device transform changes.
  *
  * <p>Nothing is drawn until the icon is asked to paint, so a group that has not been opened costs
  * nothing.
@@ -46,45 +47,59 @@ public final class ToolPreviewIcon implements Icon {
   }
 
   private final Tool tool;
-  private final int size;
+  private final Integer fixedSize;
 
   private BufferedImage picture;
   private int pictureGeneration = -1;
+  private double pictureScaleX;
+  private double pictureScaleY;
+  private int pictureSize;
 
   public ToolPreviewIcon(Tool tool) {
-    this(tool, AppPreferences.getScaled(AppPreferences.BOX_SIZE));
+    this.tool = tool;
+    fixedSize = null;
   }
 
   public ToolPreviewIcon(Tool tool, int size) {
     this.tool = tool;
-    this.size = Math.max(1, size);
+    fixedSize = Math.max(1, size);
   }
 
   @Override
   public int getIconHeight() {
-    return size;
+    return fixedSize == null ? AppPreferences.getScaled(AppPreferences.BOX_SIZE) : fixedSize;
   }
 
   @Override
   public int getIconWidth() {
-    return size;
+    return getIconHeight();
   }
 
   @Override
   public void paintIcon(Component component, Graphics graphics, int x, int y) {
     final var current = generation;
-    if (picture == null || pictureGeneration != current) {
-      picture = draw(component);
+    final var size = getIconWidth();
+    final var transform = ((Graphics2D) graphics).getTransform();
+    final var scaleX = Math.max(1, Math.hypot(transform.getScaleX(), transform.getShearY()));
+    final var scaleY = Math.max(1, Math.hypot(transform.getScaleY(), transform.getShearX()));
+    if (picture == null || pictureGeneration != current || pictureSize != size
+        || pictureScaleX != scaleX || pictureScaleY != scaleY) {
+      picture = draw(component, size, scaleX, scaleY);
       pictureGeneration = current;
+      pictureSize = size;
+      pictureScaleX = scaleX;
+      pictureScaleY = scaleY;
     }
-    graphics.drawImage(picture, x, y, null);
+    graphics.drawImage(picture, x, y, size, size, null);
   }
 
   /** Renders the tool once, on a transparent background so the tile's own colours show through. */
-  private BufferedImage draw(Component component) {
-    final var image = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
+  private BufferedImage draw(Component component, int size, double scaleX, double scaleY) {
+    final var image = new BufferedImage((int) Math.ceil(size * scaleX),
+        (int) Math.ceil(size * scaleY), BufferedImage.TYPE_INT_ARGB);
     final var base = image.createGraphics();
     try {
+      base.scale(scaleX, scaleY);
       base.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
       base.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
       base.setColor(new Color(AppPreferences.COMPONENT_ICON_COLOR.get()));

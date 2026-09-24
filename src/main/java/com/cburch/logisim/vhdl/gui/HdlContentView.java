@@ -15,21 +15,22 @@ import com.cburch.contracts.BaseDocumentListenerContract;
 import com.cburch.draw.toolbar.ToolbarModel;
 import com.cburch.logisim.gui.generic.EditorTheme;
 import com.cburch.logisim.gui.generic.OptionPane;
+import com.cburch.logisim.gui.theme.Theme;
 import com.cburch.logisim.proj.Action;
 import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.util.FileUtil;
 import com.cburch.logisim.util.JFileChoosers;
+import com.cburch.logisim.util.UiFonts;
 import com.cburch.logisim.vhdl.base.HdlModel;
 import com.cburch.logisim.vhdl.base.HdlModelListener;
 import com.cburch.logisim.vhdl.file.HdlFile;
 import java.awt.BorderLayout;
 import java.awt.Component;
-import java.awt.Dimension;
-import java.awt.FlowLayout;
 import java.io.File;
 import java.io.IOException;
 import javax.swing.JFileChooser;
 import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
 import javax.swing.event.DocumentEvent;
 import org.fife.ui.rsyntaxtextarea.RSyntaxDocument;
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
@@ -156,6 +157,8 @@ public class HdlContentView extends JPanel
   private static final String EXPORT_DIR = "hdl_export";
 
   private RSyntaxTextArea editor;
+  private RTextScrollPane scrollPane;
+  private boolean metricsRefreshPending;
   private HdlModel model;
   private final Project project;
 
@@ -168,6 +171,49 @@ public class HdlContentView extends JPanel
     this.toolbar = new HdlToolbarModel(proj, this);
     configure();
     EditorTheme.install(editor);
+    refreshEditorMetrics();
+    editor.addPropertyChangeListener("font", event -> queueMetricsRefresh());
+    editor.addPropertyChangeListener(RSyntaxTextArea.SYNTAX_SCHEME_PROPERTY,
+        event -> queueMetricsRefresh());
+    Theme.addListener(this, this::queueMetricsRefresh);
+  }
+
+  /** Runs after EditorTheme's queued reload, which otherwise replaces the scaled font. */
+  private void queueMetricsRefresh() {
+    if (!SwingUtilities.isEventDispatchThread()) {
+      SwingUtilities.invokeLater(this::queueMetricsRefresh);
+      return;
+    }
+    if (metricsRefreshPending) return;
+    metricsRefreshPending = true;
+    SwingUtilities.invokeLater(() -> {
+      try {
+        refreshEditorMetrics();
+      } finally {
+        metricsRefreshPending = false;
+      }
+    });
+  }
+
+  private void refreshEditorMetrics() {
+    final var font = UiFonts.mono();
+    if (!font.equals(editor.getFont())) editor.setFont(font);
+    final var scheme = (org.fife.ui.rsyntaxtextarea.SyntaxScheme) editor.getSyntaxScheme().clone();
+    var changed = false;
+    for (final var style : scheme.getStyles()) {
+      if (style == null || style.font == null) continue;
+      final var role = font.deriveFont(style.font.getStyle());
+      if (!role.equals(style.font)) {
+        style.font = role;
+        style.fontMetrics = null;
+        changed = true;
+      }
+    }
+    if (changed) editor.setSyntaxScheme(scheme);
+    scrollPane.getGutter().setLineNumberFont(font);
+    editor.revalidate();
+    scrollPane.getGutter().revalidate();
+    repaint();
   }
 
   private void configure() {
@@ -177,13 +223,13 @@ public class HdlContentView extends JPanel
     editor.setAntiAliasingEnabled(true);
     editor.getDocument().addDocumentListener(this);
 
-    RTextScrollPane sp = new RTextScrollPane(editor);
-    sp.setFoldIndicatorEnabled(true);
+    scrollPane = new RTextScrollPane(editor);
+    scrollPane.setFoldIndicatorEnabled(true);
 
     // The editor meets the toolbar directly. There used to be an empty FlowLayout panel above it
     // whose only contribution was its own vertical gap: a band of blank background between the
     // toolbar and the first line of code, left over from buttons that moved to the toolbar.
-    add(sp, BorderLayout.CENTER);
+    add(scrollPane, BorderLayout.CENTER);
   }
 
   private File getDefaultExportFile(File defaultFile) {

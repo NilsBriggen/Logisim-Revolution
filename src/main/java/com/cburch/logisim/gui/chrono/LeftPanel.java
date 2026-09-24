@@ -14,8 +14,11 @@ import static com.cburch.logisim.gui.Strings.S;
 import com.cburch.logisim.gui.log.Model;
 import com.cburch.logisim.gui.log.Signal;
 import com.cburch.logisim.gui.log.SignalInfo;
-import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.gui.menu.LogisimMenuBar;
+import com.cburch.logisim.gui.theme.Theme;
+import com.cburch.logisim.prefs.AppPreferences;
+import com.cburch.logisim.util.UiFonts;
+import com.cburch.logisim.util.UiScale;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -86,7 +89,7 @@ public class LeftPanel extends JTable {
    */
   private static Border rowInsets() {
     return BorderFactory.createMatteBorder(
-        ChronoPanel.GAP, 0, ChronoPanel.GAP, 0, chronoBackground());
+        ChronoPanel.gap(), 0, ChronoPanel.gap(), 0, chronoBackground());
   }
 
   /** Returns the chronogram background for the active theme. */
@@ -119,6 +122,7 @@ public class LeftPanel extends JTable {
       final var txt = s.getFormattedValue(chronoPanel.getRightPanel().getCurrentTime());
       final var ret = super.getTableCellRendererComponent(table, txt, false, false, row, col);
       if (ret instanceof JLabel label) {
+        label.setFont(UiFonts.mono());
         label.setBorder(rowInsets());
         label.setIcon(null);
         label.setBackground(chronoPanel.rowColors(s.info, isSelected)[0]);
@@ -186,7 +190,7 @@ public class LeftPanel extends JTable {
               int b = e.getLastIndex();
               chronoPanel.getRightPanel().updateSelected(a, b);
             });
-    setDragEnabled(true);
+    if (!java.awt.GraphicsEnvironment.isHeadless()) setDragEnabled(true);
     setDropMode(DropMode.INSERT_ROWS);
     setTransferHandler(new SignalTransferHandler());
 
@@ -244,7 +248,16 @@ public class LeftPanel extends JTable {
           }
         });
 
-    // calculate default sizes
+    refreshAppearance();
+    Theme.addListener(this, this::refreshAppearance);
+    requestFocusInWindow();
+  }
+
+  void refreshAppearance() {
+    setFont(UiFonts.body());
+    setBackground(chronoBackground());
+    getTableHeader().setFont(UiFonts.bodyBold());
+    // Measure before the first paint, and again after font/scale changes.
     var nameWidth = 0;
     var valueWidth = 0;
     final var render = getDefaultRenderer(String.class);
@@ -266,24 +279,26 @@ public class LeftPanel extends JTable {
       valueWidth = Math.max(valueWidth, c.getPreferredSize().width);
     }
 
-    setRowHeight(ChronoPanel.SIGNAL_HEIGHT);
+    setRowHeight(ChronoPanel.signalHeight(this));
+    setRowMargin(0);
     // table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
     var col = getColumnModel().getColumn(0);
-    col.setMinWidth(20);
-    col.setPreferredWidth(nameWidth + 10);
+    col.setMinWidth(UiScale.scaled(20));
+    col.setPreferredWidth(nameWidth + UiScale.iconSize() + UiScale.scaled(10));
 
     col = getColumnModel().getColumn(1);
-    col.setMinWidth(20);
-    col.setPreferredWidth(valueWidth + 10);
+    col.setMinWidth(UiScale.scaled(20));
+    col.setPreferredWidth(valueWidth + UiScale.scaled(10));
 
     setFillsViewportHeight(true);
     setPreferredScrollableViewportSize(getPreferredSize());
 
     final var header = getTableHeader();
     final var d = header.getPreferredSize();
-    d.height = ChronoPanel.HEADER_HEIGHT;
+    d.height = ChronoPanel.headerHeight(this);
     header.setPreferredSize(d);
-    requestFocusInWindow();
+    revalidate();
+    repaint();
   }
 
   public void setModel(Model m) {
@@ -298,6 +313,7 @@ public class LeftPanel extends JTable {
 
   public void updateSignals() {
     tableModel.fireTableDataChanged();
+    refreshAppearance();
   }
 
   public void updateSignalValues() {

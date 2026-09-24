@@ -15,15 +15,23 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.cburch.logisim.TestBase;
 import java.awt.Font;
+import javax.swing.UIManager;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /** Tests the shared typographic scale. */
 public class UiFontsTest extends TestBase {
+  private UiScaleTestSupport.NativeFonts nativeFonts;
+
+  @BeforeEach
+  public void isolateFonts() throws Exception {
+    nativeFonts = new UiScaleTestSupport.NativeFonts();
+  }
 
   @AfterEach
-  public void restoreScale() {
-    UiScaleTestSupport.setScaleFactor(1.0);
+  public void restoreScale() throws Exception {
+    nativeFonts.close();
   }
 
   @Test
@@ -63,6 +71,8 @@ public class UiFontsTest extends TestBase {
     final var baseSize = UiFonts.body().getSize();
     UiScaleTestSupport.setScaleFactor(2.0);
     assertTrue(UiFonts.body().getSize() > baseSize);
+    assertEquals(UIManager.getFont("Label.font").getSize(), UiFonts.body().getSize(),
+        "the already scaled LaF font must not be multiplied again");
   }
 
   /** Tabular data must align, so the monospaced roles have to stay monospaced. */

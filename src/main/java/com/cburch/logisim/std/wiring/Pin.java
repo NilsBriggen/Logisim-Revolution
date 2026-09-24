@@ -27,6 +27,7 @@ import com.cburch.logisim.data.Bounds;
 import com.cburch.logisim.data.Direction;
 import com.cburch.logisim.data.Location;
 import com.cburch.logisim.data.Value;
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.gui.generic.OptionPane;
 import com.cburch.logisim.gui.main.Canvas;
 import com.cburch.logisim.instance.Instance;
@@ -872,7 +873,7 @@ public class Pin extends InstanceFactory {
     } else {
       int labelYPos = height / 2 - 2;
       int LabelValueXOffset = (isOutput) ? -15 : -20;
-      g.setColor(Color.BLUE);
+      g.setColor(CanvasStyle.componentColor());
       g2.scale(0.7, 0.7);
       g2.drawString(
           radix.getIndexChar(),
@@ -898,9 +899,10 @@ public class Pin extends InstanceFactory {
         int cur = 0;
         for (int k = 0; k < wid; k++) {
           if (radix == RadixOption.RADIX_2 && !isOutput) {
-            g.setColor(value.get(k).getColor());
+            final var fill = value.get(k).getColor();
+            g.setColor(fill);
             g.fillOval(cx - 4, cy - 5, 9, 14);
-            g.setColor(Color.WHITE);
+            g.setColor(CanvasStyle.contrastInk(fill));
           }
           GraphicsUtil.drawCenteredText(g, value.get(k).toDisplayString(), cx, cy);
           if (radix == RadixOption.RADIX_2 && !isOutput) g.setColor(baseColor);

@@ -513,10 +513,15 @@ public final class ProjectActions {
 
   public static void doQuit() {
     final var top = Projects.getTopFrame();
-    top.savePreferences();
+    if (top != null) top.savePreferences();
 
-    for (Project proj : new ArrayList<>(Projects.getOpenProjects())) {
+    final var projects = new ArrayList<>(Projects.getOpenProjects());
+    for (final var proj : projects) {
       if (!proj.confirmClose(S.get("confirmQuitTitle"))) return;
+    }
+    // Do not delete recovery files or dispose any window until every project agrees to quit.
+    for (final var proj : projects) {
+      proj.getLogisimFile().stopAutosaveThread(true);
     }
     System.exit(0);
   }
@@ -537,13 +542,16 @@ public final class ProjectActions {
           final var loader = proj.getLogisimFile().getLoader();
           final var oldTool = proj.getTool();
           proj.setTool(null);
-          final var ret = loader.save(proj.getLogisimFile(), f);
-          if (ret) {
-            AppPreferences.updateRecentFile(f);
-            proj.setFileAsClean();
+          try {
+            final var ret = loader.save(proj.getLogisimFile(), f);
+            if (ret) {
+              AppPreferences.updateRecentFile(f);
+              proj.setFileAsClean();
+            }
+            return ret;
+          } finally {
+            proj.setTool(oldTool);
           }
-          proj.setTool(oldTool);
-          return ret;
         });
   }
 
@@ -790,13 +798,8 @@ public final class ProjectActions {
         dlog.setOptions(options);
         dlog.createDialog(proj.getFrame(), ttl).setVisible(true);
 
-        Object result = dlog.getValue();
-        if (result == options[0]) {
-          var name = old.substring(0, ext0) + Loader.LOGISIM_EXTENSION;
-          selectedFile = new File(selectedFile.getParentFile(), name);
-        } else if (result == options[1]) {
-          selectedFile = new File(selectedFile.getParentFile(), old + Loader.LOGISIM_EXTENSION);
-        }
+        selectedFile = resolveSaveExtension(selectedFile, dlog.getValue(), options);
+        if (selectedFile == null) return false;
       }
     }
 
@@ -810,5 +813,17 @@ public final class ProjectActions {
       if (confirm != OptionPane.YES_OPTION) return false;
     }
     return doSave(proj, selectedFile);
+  }
+
+  static File resolveSaveExtension(File selected, Object result, Object[] options) {
+    final var name = selected.getName();
+    if (result == options[0]) {
+      return new File(selected.getParentFile(),
+          name.substring(0, name.lastIndexOf('.')) + Loader.LOGISIM_EXTENSION);
+    }
+    if (result == options[1]) {
+      return new File(selected.getParentFile(), name + Loader.LOGISIM_EXTENSION);
+    }
+    return result == options[2] ? selected : null;
   }
 }

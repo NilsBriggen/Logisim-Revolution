@@ -197,6 +197,7 @@ class CanvasPainter implements PropertyChangeListener {
     g.setColor(componentColor());
 
     final var gfxScaled = g.create();
+    gfxScaled.setFont(CanvasStyle.documentFont());
     if (zoomFactor != 1.0 && gfxScaled instanceof Graphics2D g2d) {
       g2d.scale(zoomFactor, zoomFactor);
     }

@@ -11,25 +11,31 @@ package com.cburch.logisim.gui.main;
 
 import static com.cburch.logisim.gui.Strings.S;
 
+import com.cburch.logisim.circuit.Circuit;
 import com.cburch.logisim.circuit.CircuitAttributes;
+import com.cburch.logisim.circuit.CircuitChange;
 import com.cburch.logisim.circuit.CircuitException;
 import com.cburch.logisim.circuit.CircuitMutation;
 import com.cburch.logisim.circuit.SubcircuitFactory;
 import com.cburch.logisim.circuit.Wire;
+import com.cburch.logisim.comp.Component;
 import com.cburch.logisim.comp.ComponentFactory;
 import com.cburch.logisim.comp.PositionComparator;
 import com.cburch.logisim.data.Attribute;
 import com.cburch.logisim.data.AttributeEvent;
 import com.cburch.logisim.data.Location;
+import com.cburch.logisim.fpga.gui.HdlColorRenderer;
 import com.cburch.logisim.gui.generic.AttrTableSetException;
 import com.cburch.logisim.gui.generic.AttributeSetTableModel;
-import com.cburch.logisim.gui.generic.OptionPane;
 import com.cburch.logisim.gui.main.Selection.Event;
 import com.cburch.logisim.instance.StdAttr;
+import com.cburch.logisim.proj.Action;
 import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.tools.SetAttributeAction;
 import com.cburch.logisim.util.AutoLabel;
 import com.cburch.logisim.vhdl.base.VhdlContent;
+import java.util.Map;
+import java.util.Objects;
 import java.util.TreeSet;
 
 class AttrTableSelectionModel extends AttributeSetTableModel implements Selection.Listener {
@@ -117,6 +123,22 @@ class AttrTableSelectionModel extends AttributeSetTableModel implements Selectio
     }
   }
 
+  @Override
+  protected String getHdlSupport() {
+    Boolean supported = null;
+    for (final var component : frame.getCanvas().getSelection().getComponents()) {
+      if (component instanceof Wire) continue;
+      final var componentSupported =
+          component.getFactory().isHDLSupportedComponent(component.getAttributeSet());
+      if (supported != null && supported != componentSupported) {
+        return HdlColorRenderer.UNKNOWN_STRING;
+      }
+      supported = componentSupported;
+    }
+    if (supported == null) return HdlColorRenderer.UNKNOWN_STRING;
+    return supported ? HdlColorRenderer.SUPPORT_STRING : HdlColorRenderer.NO_SUPPORT_STRING;
+  }
+
   //
   // Selection.Listener methods
   @Override
@@ -143,20 +165,51 @@ class AttrTableSelectionModel extends AttributeSetTableModel implements Selectio
   }
 
   @Override
-  public void setValueRequested(final Attribute<Object> attr, final Object value) throws AttrTableSetException {
+  public void setValueRequested(final Attribute<Object> attr, final Object value)
+      throws AttrTableSetException {
+    captureValueSetter().commit(Map.of(attr, value));
+  }
+
+  @Override
+  protected boolean supportsMultiEdit() {
+    return true;
+  }
+
+  @Override
+  protected ValueSetter captureValueSetter() {
     final var selection = frame.getCanvas().getSelection();
     final var circuit = frame.getCanvas().getCircuit();
     final var hdl = frame.getCanvas().getCurrentHdl();
     if (circuit != null && selection.isEmpty()) {
       final var circuitModel = new AttrTableCircuitModel(project, circuit);
-      circuitModel.setValueRequested(attr, value);
+      return circuitModel::setValuesRequested;
     } else if (hdl instanceof VhdlContent vhdlContent) {
       final var hdlModel = new AttrTableHdlModel(project, vhdlContent);
-      hdlModel.setValueRequested(attr, value);
+      return values -> {
+        for (final var entry : values.entrySet()) {
+          if (!Objects.equals(
+                  vhdlContent.getStaticAttributes().getValue(entry.getKey()), entry.getValue())) {
+            hdlModel.setValueRequested(entry.getKey(), entry.getValue());
+          }
+        }
+      };
     } else {
-      final var act = new SetAttributeAction(circuit, S.getter("selectionAttributeAction"));
-      final var comps = new TreeSet<>(new PositionComparator());
+      final var comps = new TreeSet<Component>(new PositionComparator());
       comps.addAll(selection.getComponents());
+      return values -> setSelectionValues(circuit, comps, values);
+    }
+  }
+
+  private void setSelectionValues(Circuit circuit, TreeSet<Component> comps,
+      Map<Attribute<Object>, Object> values) throws AttrTableSetException {
+    if (!project.getLogisimFile().contains(circuit)) {
+      throw new AttrTableSetException(S.get("cannotModifyCircuitError"));
+    }
+    final var act = new SetAttributeAction(circuit, S.getter("selectionAttributeAction"));
+    final var circuitChanges = new CircuitMutation(circuit);
+    for (final var entry : values.entrySet()) {
+      final var attr = entry.getKey();
+      final var value = entry.getValue();
       if (comps.size() == 1) {
         final var comp = comps.first();
         if (!(comp instanceof Wire)
@@ -173,16 +226,14 @@ class AttrTableSelectionModel extends AttributeSetTableModel implements Selectio
           if (comp.getFactory() instanceof SubcircuitFactory fac) {
             if (attr.equals(CircuitAttributes.NAMED_CIRCUIT_BOX_FIXED_SIZE)
                 || attr.equals(CircuitAttributes.NAME_ATTR)) {
-              try {
-                final var mutation = new CircuitMutation(fac.getSubcircuit());
-                mutation.setForCircuit(attr, value);
-                final var action = mutation.toAction(null);
-                project.doAction(action);
-              } catch (CircuitException ex) {
-                OptionPane.showError(
-                    project.getFrame(), S.get("attributeChangeFailedTitle"), ex.getMessage(), ex);
+              final var target = fac.getSubcircuit();
+              if (!project.getLogisimFile().contains(target)) {
+                throw new AttrTableSetException(S.get("cannotModifyCircuitError"));
               }
-              return;
+              if (!Objects.equals(target.getStaticAttributes().getValue(attr), value)) {
+                circuitChanges.change(CircuitChange.setForCircuit(target, attr, value));
+              }
+              continue;
             }
           }
           if (attr.equals(StdAttr.LABEL)) {
@@ -190,18 +241,23 @@ class AttrTableSelectionModel extends AttributeSetTableModel implements Selectio
               if (comps.size() > 1) {
                 act.set(comp, attr, labeler.getNext(circuit, comp.getFactory()));
               } else {
-                if (getAttributeSet().getValue(StdAttr.LABEL).equals(value)) return;
-                else act.set(comp, attr, labeler.getCurrent(circuit, comp.getFactory()));
+                if (Objects.equals(comp.getAttributeSet().getValue(StdAttr.LABEL), value)) continue;
+                act.set(comp, attr, labeler.getCurrent(circuit, comp.getFactory()));
               }
-            } else act.set(comp, attr, "");
+            } else if (!Objects.equals(comp.getAttributeSet().getValue(StdAttr.LABEL), "")) {
+              act.set(comp, attr, "");
+            }
           } else {
             final var compAttrSet = comp.getAttributeSet();
+            if (Objects.equals(compAttrSet.getValue(attr), value)) continue;
             if (compAttrSet != null) {
               final var mayBeChangedList = compAttrSet.attributesMayAlsoBeChanged(attr, value);
               if (mayBeChangedList != null) {
                 for (final var mayChangeAttr : mayBeChangedList) {
                   // mayChangeAttr is set to its current value to have it restored on undo
-                  act.set(comp, mayChangeAttr, compAttrSet.getValue(mayChangeAttr));
+                  if (!values.containsKey(mayChangeAttr)) {
+                    act.set(comp, mayChangeAttr, compAttrSet.getValue(mayChangeAttr));
+                  }
                 }
               }
             }
@@ -209,7 +265,18 @@ class AttrTableSelectionModel extends AttributeSetTableModel implements Selectio
           }
         }
       }
-      project.doAction(act);
+    }
+    Action action = act.isEmpty() ? null : act;
+    if (!circuitChanges.isEmpty()) {
+      final var change = circuitChanges.toAction(S.getter("selectionAttributeAction"));
+      action = action == null ? change : action.append(change);
+    }
+    if (action != null) {
+      try {
+        project.doAction(action);
+      } catch (CircuitException ex) {
+        throw new AttrTableSetException(ex.getMessage());
+      }
     }
   }
 }

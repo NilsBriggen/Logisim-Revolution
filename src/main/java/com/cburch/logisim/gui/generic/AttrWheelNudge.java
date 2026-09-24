@@ -25,7 +25,6 @@ import java.util.Optional;
  * BoundedAttribute}.
  */
 public final class AttrWheelNudge {
-
   private static final String HEX_PREFIX = "0x";
 
   private AttrWheelNudge() {
@@ -55,15 +54,18 @@ public final class AttrWheelNudge {
     }
 
     // Turning the wheel away from the user reports a negative rotation and should raise the value.
-    var next = current - Integer.signum(clicks);
+    long next;
+    try {
+      next = Math.subtractExact(current, (long) clicks);
+    } catch (ArithmeticException overflow) {
+      next = clicks < 0 ? Long.MAX_VALUE : Long.MIN_VALUE;
+    }
     if (attribute instanceof BoundedAttribute bounded) {
       next = Math.max(bounded.minValue(), Math.min(bounded.maxValue(), next));
     }
     if (next == current) return Optional.empty();
 
     return Optional.of(
-        hex
-            ? HEX_PREFIX + Long.toHexString(next).toUpperCase(Locale.ROOT)
-            : Long.toString(next));
+        hex ? HEX_PREFIX + Long.toHexString(next).toUpperCase(Locale.ROOT) : Long.toString(next));
   }
 }

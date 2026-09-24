@@ -14,10 +14,10 @@ import com.cburch.logisim.gui.theme.Tokens;
 import com.cburch.logisim.util.Spacing;
 import com.cburch.logisim.util.UiFonts;
 import java.awt.Dimension;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
+import java.awt.Insets;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
+import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 
@@ -41,7 +41,9 @@ public class StatusBar extends JPanel {
   private final JLabel messageLabel = new JLabel();
   private final JLabel simulationLabel = new JLabel();
   private final JLabel tickRateLabel = new JLabel();
-  private final JLabel zoomLabel = new JLabel();
+  private final JButton zoomButton = statusButton("");
+  private Runnable zoomAction;
+  private boolean messageError;
 
   public StatusBar() {
     setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
@@ -63,10 +65,14 @@ public class StatusBar extends JPanel {
     add(gap());
     add(tickRateLabel);
     add(gap());
-    add(zoomLabel);
+    add(zoomButton);
+    zoomButton.setFocusable(false);
+    zoomButton.addActionListener(event -> {
+      if (zoomAction != null) zoomAction.run();
+    });
 
     applyTheme();
-    Theme.addListener(this::applyTheme);
+    Theme.addListener(this, this::applyTheme);
   }
 
   private javax.swing.Box.Filler gap() {
@@ -80,12 +86,26 @@ public class StatusBar extends JPanel {
     final var font = UiFonts.small();
     for (final var label :
         new JLabel[] {
-          circuitLabel, coordsLabel, messageLabel, simulationLabel, tickRateLabel, zoomLabel
+          circuitLabel, coordsLabel, messageLabel, simulationLabel, tickRateLabel
         }) {
       label.setFont(font);
       label.setForeground(Tokens.statusBarForeground());
     }
-    messageLabel.setForeground(Tokens.mutedForeground());
+    zoomButton.setFont(font);
+    zoomButton.setForeground(Tokens.statusBarForeground());
+    zoomButton.setMargin(new Insets(0, Spacing.XS, 0, Spacing.XS));
+    messageLabel.setForeground(messageError ? Tokens.error() : Tokens.mutedForeground());
+    for (final var component : breadcrumb.getComponents()) {
+      component.setFont(font);
+      if (component instanceof JButton button) {
+        button.setForeground(Tokens.accent());
+        button.setMargin(new Insets(0, Spacing.XS, 0, Spacing.XS));
+      } else {
+        component.setForeground(Tokens.mutedForeground());
+      }
+    }
+    revalidate();
+    repaint();
   }
 
   /** The name of the circuit being edited. */
@@ -117,20 +137,23 @@ public class StatusBar extends JPanel {
     breadcrumb.repaint();
   }
 
-  private JLabel crumb(String name, Runnable onClick) {
-    final var label = new JLabel(name);
-    label.setFont(UiFonts.small());
-    label.setForeground(Tokens.accent());
-    label.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
-    label.setToolTipText(name);
-    label.addMouseListener(
-        new MouseAdapter() {
-          @Override
-          public void mouseClicked(MouseEvent event) {
-            onClick.run();
-          }
-        });
-    return label;
+  private JButton crumb(String name, Runnable onClick) {
+    final var button = statusButton(name);
+    button.setForeground(Tokens.accent());
+    button.setToolTipText(name);
+    button.addActionListener(event -> onClick.run());
+    return button;
+  }
+
+  private static JButton statusButton(String text) {
+    final var button = new JButton(text);
+    button.putClientProperty("JButton.buttonType", "toolBarButton");
+    button.setFont(UiFonts.small());
+    button.setMargin(new Insets(0, Spacing.XS, 0, Spacing.XS));
+    button.setOpaque(false);
+    button.setContentAreaFilled(false);
+    button.setFocusPainted(true);
+    return button;
   }
 
   private JLabel separator() {
@@ -153,6 +176,7 @@ public class StatusBar extends JPanel {
    * @param error whether it reports a failure, which is shown in the error colour
    */
   public void setMessage(String text, boolean error) {
+    messageError = error;
     messageLabel.setText(text == null ? "" : text);
     messageLabel.setForeground(error ? Tokens.error() : Tokens.mutedForeground());
   }
@@ -166,19 +190,13 @@ public class StatusBar extends JPanel {
   }
 
   public void setZoom(String text) {
-    zoomLabel.setText(text == null ? "" : text);
+    zoomButton.setText(text == null ? "" : text);
   }
 
   /** Makes the zoom reading clickable, so it can offer the zoom levels. */
   public void setZoomAction(Runnable action) {
-    zoomLabel.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
-    zoomLabel.addMouseListener(
-        new MouseAdapter() {
-          @Override
-          public void mouseClicked(MouseEvent event) {
-            action.run();
-          }
-        });
+    zoomAction = action;
+    zoomButton.setFocusable(action != null);
   }
 
   @Override

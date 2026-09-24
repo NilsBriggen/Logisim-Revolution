@@ -14,9 +14,11 @@ import static com.cburch.logisim.std.Strings.S;
 import com.cburch.logisim.comp.Component;
 import com.cburch.logisim.data.Attribute;
 import com.cburch.logisim.data.AttributeSet;
+import com.cburch.logisim.data.BitWidth;
 import com.cburch.logisim.data.Bounds;
 import com.cburch.logisim.data.Direction;
 import com.cburch.logisim.data.Location;
+import com.cburch.logisim.data.Value;
 import com.cburch.logisim.fpga.data.ComponentMapInformationContainer;
 import com.cburch.logisim.instance.InstanceFactory;
 import com.cburch.logisim.instance.InstancePainter;
@@ -24,6 +26,7 @@ import com.cburch.logisim.instance.InstanceState;
 import com.cburch.logisim.instance.Port;
 import com.cburch.logisim.instance.StdAttr;
 import com.cburch.logisim.prefs.AppPreferences;
+import com.cburch.logisim.util.GraphicsUtil;
 import java.awt.Color;
 import java.util.ArrayList;
 
@@ -98,6 +101,7 @@ public class ReptarLocalBus extends InstanceFactory {
     // setKeyConfigurator(new BitWidthConfigurator(StdAttr.WIDTH));
     setOffsetBounds(Bounds.create(-110, -10, 110, 110));
     setIconName("localbus.gif");
+    setDefaultToolTip(S.getter("repLBSimulationUnsupported"));
 
     final var ps = new Port[10];
     ps[SP6_LB_nCS3_O] = new Port(0, 0, Port.OUTPUT, 1);
@@ -111,16 +115,9 @@ public class ReptarLocalBus extends InstanceFactory {
     ps[ADDR_LB_O] = new Port(0, 80, Port.OUTPUT, 9);
     ps[IRQ_I] = new Port(0, 90, Port.INPUT, 1);
     // ps[Addr_Data_LB_io ] = new Port(0,80, Port.INOUT,16);
-    ps[SP6_LB_nCS3_O].setToolTip(S.getter("repLBTip"));
-    ps[SP6_LB_nADV_ALE_O].setToolTip(S.getter("repLBTip"));
-    ps[SP6_LB_RE_nOE_O].setToolTip(S.getter("repLBTip"));
-    ps[SP6_LB_nWE_O].setToolTip(S.getter("repLBTip"));
-    ps[SP_6_LB_WAIT_3_I].setToolTip(S.getter("repLBTip"));
-    ps[ADDR_DATA_LB_O].setToolTip(S.getter("repLBTip"));
-    ps[ADDR_DATA_LB_I].setToolTip(S.getter("repLBTip"));
-    ps[ADDR_DATA_LB_TRIS_I].setToolTip(S.getter("repLBTip"));
-    ps[ADDR_LB_O].setToolTip(S.getter("repLBTip"));
-    ps[IRQ_I].setToolTip(S.getter("repLBTip"));
+    for (final var port : ps) {
+      port.setToolTip(S.getter("repLBSimulationUnsupported"));
+    }
     // ps[Addr_Data_LB_io ].setToolTip(S.getter("repLBTip"));
     setPorts(ps);
 
@@ -146,6 +143,12 @@ public class ReptarLocalBus extends InstanceFactory {
     g.setFont(g.getFont().deriveFont(g.getFont().getSize2D() - 2));
 
     painter.drawBounds();
+    final var bounds = painter.getBounds();
+    GraphicsUtil.drawCenteredText(
+        g,
+        S.get("repLBHardwareOnly"),
+        bounds.getCenterX(),
+        bounds.getY() - g.getFontMetrics().getHeight());
     painter.drawPort(SP6_LB_nCS3_O, "SP6_LB_nCS3_o", Direction.WEST);
     painter.drawPort(SP6_LB_nADV_ALE_O, "SP6_LB_nADV_ALE_o", Direction.WEST);
     painter.drawPort(SP6_LB_RE_nOE_O, "SP6_LB_RE_nOE_o", Direction.WEST);
@@ -170,19 +173,13 @@ public class ReptarLocalBus extends InstanceFactory {
 
   @Override
   public void propagate(InstanceState state) {
-    throw new UnsupportedOperationException("Reptar Local Bus simulation not implemented");
-    // // get attributes
-    // BitWidth dataWidth = state.getAttributeValue(StdAttr.WIDTH);
-    //
-    // // compute outputs
-    // Value a = state.getPortValue(IN0);
-    // Value b = state.getPortValue(IN1);
-    // Value c_in = state.getPortValue(C_IN);
-    // Value[] outs = ReptarLocalBus.computeSum(dataWidth, a, b, c_in);
-    //
-    // // propagate them
-    // int delay = (dataWidth.getWidth() + 2) * PER_DELAY;
-    // state.setPort(OUT, outs[0], delay);
-    // state.setPort(C_OUT, outs[1], delay);
+    // These signals come from the external Reptar bus. No host-side bus model
+    // exists, so no input combination can justify a known simulated output.
+    state.setPort(SP6_LB_nCS3_O, Value.UNKNOWN, 1);
+    state.setPort(SP6_LB_nADV_ALE_O, Value.UNKNOWN, 1);
+    state.setPort(SP6_LB_RE_nOE_O, Value.UNKNOWN, 1);
+    state.setPort(SP6_LB_nWE_O, Value.UNKNOWN, 1);
+    state.setPort(ADDR_DATA_LB_O, Value.createUnknown(BitWidth.create(16)), 1);
+    state.setPort(ADDR_LB_O, Value.createUnknown(BitWidth.create(9)), 1);
   }
 }

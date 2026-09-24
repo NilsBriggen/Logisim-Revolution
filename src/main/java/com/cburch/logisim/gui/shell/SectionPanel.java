@@ -13,17 +13,13 @@ import com.cburch.logisim.gui.theme.AppIcons;
 import com.cburch.logisim.gui.theme.Theme;
 import com.cburch.logisim.gui.theme.Tokens;
 import com.cburch.logisim.util.Spacing;
-import com.cburch.logisim.util.UiFonts;
 import java.awt.BorderLayout;
-import java.awt.Cursor;
 import java.awt.Dimension;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.util.Locale;
-import javax.swing.BorderFactory;
+import java.awt.Insets;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JToggleButton;
 
 /**
  * A named group of controls that can be folded away.
@@ -39,32 +35,24 @@ public class SectionPanel extends JPanel {
   /** Fired when the section is folded or unfolded, so a panel can remember the state. */
   public static final String EXPANDED_PROPERTY = "expanded";
 
-  private final JLabel titleLabel = new JLabel();
+  private final JToggleButton titleButton = new JToggleButton();
   private final JLabel badgeLabel = new JLabel();
   private final JPanel headerRow = new JPanel(new BorderLayout());
   private final JComponent content;
 
   private boolean expanded = true;
+  private AppIcons.Id badge;
 
   public SectionPanel(String title, JComponent content, boolean expanded) {
     super(new BorderLayout());
     this.content = content;
 
     headerRow.setOpaque(false);
-    headerRow.setBorder(
-        BorderFactory.createEmptyBorder(Spacing.xs(), Spacing.sm(), Spacing.xs(), Spacing.sm()));
-    headerRow.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-    badgeLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, Spacing.xs()));
     badgeLabel.setVisible(false);
     headerRow.add(badgeLabel, BorderLayout.WEST);
-    headerRow.add(titleLabel, BorderLayout.CENTER);
-    headerRow.addMouseListener(
-        new MouseAdapter() {
-          @Override
-          public void mouseClicked(MouseEvent event) {
-            setExpanded(!SectionPanel.this.expanded);
-          }
-        });
+    titleButton.setHorizontalAlignment(JToggleButton.LEADING);
+    titleButton.addActionListener(event -> setExpanded(titleButton.isSelected()));
+    headerRow.add(titleButton, BorderLayout.CENTER);
 
     add(headerRow, BorderLayout.NORTH);
     add(content, BorderLayout.CENTER);
@@ -72,16 +60,20 @@ public class SectionPanel extends JPanel {
     setTitle(title);
     setExpanded(expanded);
     applyTheme();
-    Theme.addListener(
-        () -> {
-          applyTheme();
-          refreshHeader();
-        });
+    Theme.addListener(this, this::applyTheme);
   }
 
   private void applyTheme() {
-    titleLabel.setFont(UiFonts.small());
-    titleLabel.setForeground(Tokens.sidePanelHeaderForeground());
+    headerRow.setBorder(Spacing.border(0, Spacing.SM, 0, Spacing.SM));
+    badgeLabel.setBorder(Spacing.border(0, 0, 0, Spacing.XS));
+    PanelHeader.configureChromeButton(titleButton, titleButton.getText());
+    titleButton.setMargin(new Insets(Spacing.XS / 2, 0, Spacing.XS / 2, 0));
+    titleButton.setForeground(Tokens.sidePanelHeaderForeground());
+    titleButton.setIconTextGap(Spacing.xs());
+    refreshHeader();
+    setBadge(badge);
+    revalidate();
+    repaint();
   }
 
   /** Whether the contents are showing. */
@@ -92,6 +84,7 @@ public class SectionPanel extends JPanel {
   public final void setExpanded(boolean expanded) {
     final var previous = this.expanded;
     this.expanded = expanded;
+    titleButton.setSelected(expanded);
     content.setVisible(expanded);
     refreshHeader();
     revalidate();
@@ -106,17 +99,20 @@ public class SectionPanel extends JPanel {
    * most recently — where a symbol says at a glance why the group exists.
    */
   public void setBadge(AppIcons.Id icon) {
+    badge = icon;
     badgeLabel.setVisible(icon != null);
     badgeLabel.setIcon(icon == null ? null : AppIcons.colored(icon, 12, Tokens.mutedForeground()));
   }
 
   public final void setTitle(String title) {
-    titleLabel.setText(title == null ? "" : title.toUpperCase(Locale.getDefault()));
+    titleButton.setText(title == null ? "" : title);
+    titleButton.getAccessibleContext().setAccessibleName(titleButton.getText());
+    titleButton.setToolTipText(title);
     refreshHeader();
   }
 
   private void refreshHeader() {
-    titleLabel.setIcon(
+    titleButton.setIcon(
         AppIcons.colored(
             expanded ? AppIcons.Id.CHEVRON_DOWN : AppIcons.Id.CHEVRON_RIGHT,
             12,

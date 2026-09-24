@@ -10,12 +10,21 @@
 package com.cburch.logisim.gui.theme;
 
 import com.cburch.logisim.prefs.AppPreferences;
+import com.cburch.logisim.proj.Projects;
+import com.cburch.logisim.util.UiScale;
 import com.formdev.flatlaf.FlatLaf;
 import java.awt.GraphicsEnvironment;
-import java.awt.Window;
+import java.awt.event.HierarchyEvent;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
+import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
@@ -61,12 +70,22 @@ public final class Theme {
   private static final int SYSTEM_POLL_MS = 20_000;
 
   private static final List<Runnable> listeners = new CopyOnWriteArrayList<>();
+  private static final AtomicBoolean uiRefreshPending = new AtomicBoolean();
 
   private static boolean defaultsRegistered = false;
-  private static boolean installed = false;
-  private static boolean dark = false;
+  private static volatile boolean installed = false;
+  private static volatile boolean dark = false;
   private static javax.swing.Timer systemPoll;
-  private static Boolean systemDarkCache;
+  private static volatile Boolean systemDarkCache;
+  private static Mode requestedMode;
+  private static boolean probePending;
+  private static final ExecutorService SYSTEM_PROBE =
+      Executors.newSingleThreadExecutor(
+          runnable -> {
+            final var thread = new Thread(runnable, "system-theme-probe");
+            thread.setDaemon(true);
+            return thread;
+          });
 
   private Theme() {
     throw new UnsupportedOperationException("Utility class, do not instantiate.");
@@ -77,12 +96,23 @@ public final class Theme {
    * created, and after {@link AppPreferences} is loaded.
    */
   public static void install() {
-    if (GraphicsEnvironment.isHeadless()) return;
-    installed = true;
+    if (!SwingUtilities.isEventDispatchThread()) {
+      try {
+        SwingUtilities.invokeAndWait(Theme::install);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new IllegalStateException("Interrupted installing theme", e);
+      } catch (java.lang.reflect.InvocationTargetException e) {
+        throw new IllegalStateException("Could not install theme", e.getCause());
+      }
+      return;
+    }
+    final var appFont = AppPreferences.APP_FONT.get();
+    if (appFont != null && !appFont.isBlank()) FlatLaf.setPreferredFontFamily(appFont);
     // Both windows and dialogs get the theme's own title bar, so the whole window is one surface
     // instead of a themed interior inside a system frame. macOS is left alone: its title bar is
     // part of the platform and already follows the system appearance.
-    if (!isMacOs()) {
+    if (!GraphicsEnvironment.isHeadless() && !isMacOs()) {
       JFrame.setDefaultLookAndFeelDecorated(true);
       JDialog.setDefaultLookAndFeelDecorated(true);
     }
@@ -102,8 +132,19 @@ public final class Theme {
 
   /** Applies {@code mode} to every open window and notifies listeners. */
   public static void apply(Mode mode) {
+    if (!SwingUtilities.isEventDispatchThread()) {
+      SwingUtilities.invokeLater(() -> apply(mode));
+      return;
+    }
+    requestedMode = mode;
     registerDefaults();
-    final var wantDark = resolveDark(mode);
+    applyResolved(resolveDark(mode));
+    updateSystemPoll(mode);
+    if (mode == Mode.SYSTEM) requestSystemTheme(SystemTheme::isSystemDark);
+  }
+
+  /** Installs defaults, drawing colours and custom widgets as one ordered EDT transaction. */
+  private static void applyResolved(boolean wantDark) {
     final var changed = !installed || wantDark != dark || !isOurLaf();
     dark = wantDark;
     if (changed) {
@@ -112,40 +153,39 @@ public final class Theme {
       } else {
         LogisimLightLaf.setup();
       }
-      FlatLaf.updateUI();
-      for (final var window : Window.getWindows()) {
-        SwingUtilities.updateComponentTreeUI(window);
+      installed = true;
+      UiScale.install();
+      AppPreferences.applyThemeColors();
+      for (final var project : Projects.getOpenProjects()) {
+        for (final var circuit : project.getLogisimFile().getCircuits()) {
+          if (circuit.getAppearance().isDefaultAppearance()) {
+            circuit.getAppearance().recomputeDefaultAppearance();
+          }
+        }
       }
-      fireChanged();
+      refreshUiLater();
     }
-    updateSystemPoll(mode);
   }
 
   /**
    * Whether a dark theme is showing right now.
    *
    * <p>Asked from component painting, so it must be cheap. Before a theme is installed, which is
-   * the case in tests and in the command-line tools, the desktop is consulted at most once.
+   * the case in tests and command-line tools, only the cached result or fallback is used.
    */
   public static boolean isDark() {
     if (installed) return dark;
     final var mode = currentMode();
     if (mode != Mode.SYSTEM) return mode == Mode.DARK;
-    if (systemDarkCache == null) {
-      systemDarkCache = SystemTheme.isSystemDark().orElse(SYSTEM_FALLBACK_DARK);
-    }
-    return systemDarkCache;
+    return systemDarkCache == null ? SYSTEM_FALLBACK_DARK : systemDarkCache;
   }
 
-  /** Resolves a mode to light or dark, asking the desktop when the mode is {@link Mode#SYSTEM}. */
+  /** Resolves a mode without I/O; a background probe refreshes the cached system choice. */
   static boolean resolveDark(Mode mode) {
     return switch (mode) {
       case LIGHT -> false;
       case DARK -> true;
-      case SYSTEM -> {
-        systemDarkCache = SystemTheme.isSystemDark().orElse(SYSTEM_FALLBACK_DARK);
-        yield systemDarkCache;
-      }
+      case SYSTEM -> systemDarkCache == null ? SYSTEM_FALLBACK_DARK : systemDarkCache;
     };
   }
 
@@ -154,8 +194,50 @@ public final class Theme {
     if (listener != null) listeners.add(listener);
   }
 
+  /** Subscribes only while the owner is displayable, without retaining disposed component trees. */
+  public static void addListener(JComponent owner, Runnable listener) {
+    owner.addHierarchyListener(
+        event -> {
+          if ((event.getChangeFlags() & HierarchyEvent.DISPLAYABILITY_CHANGED) == 0) return;
+          if (owner.isDisplayable()) {
+            listeners.add(listener);
+            listener.run();
+          } else {
+            listeners.remove(listener);
+          }
+        });
+    if (owner.isDisplayable()) listeners.add(listener);
+  }
+
+  /** At most one background probe runs; stale results cannot override a manual choice. */
+  static void requestSystemTheme(Supplier<Optional<Boolean>> probe) {
+    if (probePending) return;
+    probePending = true;
+    CompletableFuture.supplyAsync(probe, SYSTEM_PROBE)
+        .whenComplete((result, failure) -> SwingUtilities.invokeLater(() -> {
+          probePending = false;
+          if (failure != null || result == null || result.isEmpty()) return;
+          systemDarkCache = result.get();
+          if (requestedMode == Mode.SYSTEM) applyResolved(systemDarkCache);
+        }));
+  }
+
   public static void removeListener(Runnable listener) {
     listeners.remove(listener);
+  }
+
+  /**
+   * Coalesces native and custom-widget refreshes after the initiating Swing event has returned.
+   * Replacing a combo or slider delegate inside its own handler clears fields that handler still
+   * needs; listeners must therefore run after the deferred native tree update as well.
+   */
+  public static void refreshUiLater() {
+    if (!uiRefreshPending.compareAndSet(false, true)) return;
+    SwingUtilities.invokeLater(() -> {
+      uiRefreshPending.set(false);
+      FlatLaf.updateUI();
+      fireChanged();
+    });
   }
 
   /** Notifies listeners; a failing listener must not stop the others. */
@@ -171,8 +253,7 @@ public final class Theme {
 
   /**
    * Starts or stops watching the desktop. Only while following the system is there anything to
-   * watch, and the check is a cheap command, so a slow poll costs nothing and saves the user
-   * restarting after switching their desktop to dark.
+   * watch. The timer only schedules work; desktop I/O always runs off the EDT.
    */
   private static void updateSystemPoll(Mode mode) {
     if (mode != Mode.SYSTEM) {
@@ -184,7 +265,7 @@ public final class Theme {
           new javax.swing.Timer(
               SYSTEM_POLL_MS,
               event -> {
-                if (currentMode() == Mode.SYSTEM) apply(Mode.SYSTEM);
+                if (requestedMode == Mode.SYSTEM) requestSystemTheme(SystemTheme::isSystemDark);
               });
       systemPoll.setRepeats(true);
     }

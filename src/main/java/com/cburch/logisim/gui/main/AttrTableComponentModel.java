@@ -19,6 +19,8 @@ import com.cburch.logisim.gui.generic.AttributeSetTableModel;
 import com.cburch.logisim.instance.StdAttr;
 import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.tools.SetAttributeAction;
+import java.util.Map;
+import java.util.Objects;
 
 class AttrTableComponentModel extends AttributeSetTableModel {
   final Project proj;
@@ -52,25 +54,46 @@ class AttrTableComponentModel extends AttributeSetTableModel {
   }
 
   @Override
-  public void setValueRequested(final Attribute<Object> attr, final Object value) throws AttrTableSetException {
+  public void setValueRequested(final Attribute<Object> attr, final Object value)
+      throws AttrTableSetException {
+    setValuesRequested(Map.of(attr, value));
+  }
+
+  @Override
+  protected boolean supportsMultiEdit() {
+    return true;
+  }
+
+  @Override
+  protected void setValuesRequested(Map<Attribute<Object>, Object> values)
+      throws AttrTableSetException {
     if (!proj.getLogisimFile().contains(circ)) {
       final var msg = S.get("cannotModifyCircuitError");
       throw new AttrTableSetException(msg);
     } else {
-      if (!AttrTableLabelValidator.shouldApply(circ, comp, attr, value)) return;
+      for (final var entry : values.entrySet()) {
+        if (!AttrTableLabelValidator.shouldApply(circ, comp, entry.getKey(), entry.getValue())) {
+          return;
+        }
+      }
       final var act = new SetAttributeAction(circ, S.getter("changeAttributeAction"));
       final var compAttrSet = comp.getAttributeSet();
-      if (compAttrSet != null) {
+      for (final var entry : values.entrySet()) {
+        final var attr = entry.getKey();
+        final var value = entry.getValue();
+        if (Objects.equals(compAttrSet.getValue(attr), value)) continue;
         final var mayBeChangedList = compAttrSet.attributesMayAlsoBeChanged(attr, value);
         if (mayBeChangedList != null) {
           for (final var mayChangeAttr : mayBeChangedList) {
             // mayChangeAttr is set to its current value to have it restored on undo
-            act.set(comp, mayChangeAttr, compAttrSet.getValue(mayChangeAttr));
+            if (!values.containsKey(mayChangeAttr)) {
+              act.set(comp, mayChangeAttr, compAttrSet.getValue(mayChangeAttr));
+            }
           }
         }
+        act.set(comp, attr, value);
       }
-      act.set(comp, attr, value);
-      proj.doAction(act);
+      if (!act.isEmpty()) proj.doAction(act);
     }
   }
 }

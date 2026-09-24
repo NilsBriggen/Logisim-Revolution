@@ -359,7 +359,7 @@ abstract class AbstractGate extends InstanceFactory {
     }
   }
 
-  private void paintBase(InstancePainter painter) {
+  private void paintBase(InstancePainter painter, boolean ghost) {
     final var attrs = (GateAttributes) painter.getAttributeSet();
     final var facing = attrs.facing;
     final var inputs = attrs.inputs;
@@ -380,7 +380,8 @@ abstract class AbstractGate extends InstanceFactory {
     }
 
     final var g = painter.getGraphics();
-    final var baseColor = new Color(AppPreferences.COMPONENT_COLOR.get());
+    final var baseColor = ghost
+        ? g.getColor() : new Color(AppPreferences.COMPONENT_COLOR.get());
     if (shape == AppPreferences.SHAPE_SHAPED && paintInputLines) {
       g.setColor(baseColor);
       PainterShaped.paintInputLines(painter, this);
@@ -434,7 +435,7 @@ abstract class AbstractGate extends InstanceFactory {
   //
   @Override
   public void paintGhost(InstancePainter painter) {
-    paintBase(painter);
+    paintBase(painter, true);
   }
 
   @Override
@@ -524,7 +525,7 @@ abstract class AbstractGate extends InstanceFactory {
 
   @Override
   public void paintInstance(InstancePainter painter) {
-    paintBase(painter);
+    paintBase(painter, false);
     if (!painter.isPrintView() || painter.getGateShape() == AppPreferences.SHAPE_RECTANGULAR) {
       painter.drawPorts();
     }

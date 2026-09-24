@@ -13,6 +13,8 @@ import static com.cburch.logisim.gui.Strings.S;
 
 import com.cburch.logisim.circuit.Circuit;
 import com.cburch.logisim.comp.ComponentDrawContext;
+import com.cburch.logisim.data.Bounds;
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.gui.generic.OptionPane;
 import com.cburch.logisim.gui.generic.TikZWriter;
 import com.cburch.logisim.prefs.AppPreferences;
@@ -23,6 +25,7 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
@@ -196,6 +199,17 @@ public class ExportImage {
     g.setColor(Color.BLACK);
   }
 
+  /** Measures in document units without borrowing an on-screen graphics object from a worker. */
+  static Bounds exportBounds(Circuit circuit) {
+    final var metrics = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB).createGraphics();
+    try {
+      metrics.setFont(CanvasStyle.documentFont());
+      return circuit.getBounds(metrics).expand(BORDER_SIZE);
+    } finally {
+      metrics.dispose();
+    }
+  }
+
   private static class ExportThread extends UniquelyNamedThread {
     final Frame frame;
     final Canvas canvas;
@@ -230,23 +244,27 @@ public class ExportImage {
     }
 
     private void export(Circuit circuit) {
-      final var bds = circuit.getBounds(canvas.getGraphics()).expand(BORDER_SIZE);
+      final var bds = exportBounds(circuit);
       final var width = (int) Math.round(bds.getWidth() * scale);
       final var height = (int) Math.round(bds.getHeight() * scale);
-      Graphics g;
       Graphics base;
       final var img = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
       if (filter.type == FORMAT_TIKZ || filter.type == FORMAT_SVG) {
         final var tz = new TikZWriter();
         tz.setSvgMode(filter.type == FORMAT_SVG);
         base = tz;
-        g = base.create();
       } else {
         base = img.getGraphics();
-        g = base.create();
       }
+      base.setFont(CanvasStyle.documentFont());
+      final var g = base.create();
       paintExportBackground(g, width, height, filter.type, printerView, canvasBackground);
       if (g instanceof Graphics2D g2d) {
+        if (AppPreferences.AntiAliassing.getBoolean()) {
+          g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+          g2d.setRenderingHint(
+              RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        }
         g2d.scale(scale, scale);
         g.translate(-bds.getX(), -bds.getY());
       } else {

@@ -17,6 +17,8 @@ import com.cburch.logisim.data.Attribute;
 import com.cburch.logisim.gui.generic.AttrTableSetException;
 import com.cburch.logisim.gui.generic.AttributeSetTableModel;
 import com.cburch.logisim.proj.Project;
+import java.util.Map;
+import java.util.Objects;
 
 public class AttrTableCircuitModel extends AttributeSetTableModel {
   private final Project proj;
@@ -34,14 +36,31 @@ public class AttrTableCircuitModel extends AttributeSetTableModel {
   }
 
   @Override
-  public void setValueRequested(final Attribute<Object> attr, Object value) throws AttrTableSetException {
+  public void setValueRequested(final Attribute<Object> attr, Object value)
+      throws AttrTableSetException {
+    setValuesRequested(Map.of(attr, value));
+  }
+
+  @Override
+  protected boolean supportsMultiEdit() {
+    return true;
+  }
+
+  @Override
+  protected void setValuesRequested(Map<Attribute<Object>, Object> values)
+      throws AttrTableSetException {
     if (!proj.getLogisimFile().contains(circ)) {
       final var msg = S.get("cannotModifyCircuitError");
       throw new AttrTableSetException(msg);
     } else {
       final var xn = new CircuitMutation(circ);
-      xn.setForCircuit(attr, value);
-      proj.doAction(xn.toAction(S.getter("changeCircuitAttrAction")));
+      for (final var entry : values.entrySet()) {
+        if (!Objects.equals(
+                circ.getStaticAttributes().getValue(entry.getKey()), entry.getValue())) {
+          xn.setForCircuit(entry.getKey(), entry.getValue());
+        }
+      }
+      if (!xn.isEmpty()) proj.doAction(xn.toAction(S.getter("changeCircuitAttrAction")));
     }
   }
 }

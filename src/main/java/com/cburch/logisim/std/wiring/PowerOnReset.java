@@ -30,10 +30,8 @@ import com.cburch.logisim.instance.InstancePoker;
 import com.cburch.logisim.instance.InstanceState;
 import com.cburch.logisim.instance.Port;
 import com.cburch.logisim.instance.StdAttr;
-import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.util.GraphicsUtil;
 import java.awt.BasicStroke;
-import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
@@ -219,17 +217,37 @@ public class PowerOnReset extends InstanceFactory {
 
   @Override
   public void paintInstance(InstancePainter painter) {
+    paintBody(painter, false);
+    painter.drawPorts();
+  }
 
-    java.awt.Graphics g = painter.getGraphics();
-    Bounds bds = painter.getInstance().getBounds();
+  @Override
+  public void paintGhost(InstancePainter painter) {
+    paintBody(painter, true);
+  }
+
+  private void paintBody(InstancePainter painter, boolean ghost) {
+    final var g = (Graphics2D) painter.getGraphics().create();
+    try {
+      paintBody(painter, g, ghost);
+    } finally {
+      g.dispose();
+    }
+  }
+
+  private void paintBody(InstancePainter painter, Graphics2D g, boolean ghost) {
+    final var ink = ghost ? g.getColor() : CanvasStyle.dataForeground();
+    Bounds bds = painter.getBounds();
     int x = bds.getX();
     int y = bds.getY();
     int width =  bds.getWidth();
     int height = bds.getHeight();
     GraphicsUtil.switchToWidth(g, 2);
-    g.setColor(Color.WHITE);
-    g.fillRect(x, y, width, height);
-    g.setColor(new Color(AppPreferences.COMPONENT_COLOR.get()));
+    if (!ghost) {
+      g.setColor(CanvasStyle.dataBackground());
+      g.fillRect(x, y, width, height);
+    }
+    g.setColor(ghost ? ink : CanvasStyle.componentColor());
     g.drawRect(x, y, width, height);
 
     final var psize = painter.getAttributeValue(PORSIZE);
@@ -245,17 +263,17 @@ public class PowerOnReset extends InstanceFactory {
       int offset = (wide - fm.stringWidth(txt)) / 2;
       Direction facing = painter.getAttributeValue(StdAttr.FACING);
 
-      if (((facing == Direction.NORTH) || (facing == Direction.SOUTH)) && (g instanceof Graphics2D g2)) {
+      if ((facing == Direction.NORTH) || (facing == Direction.SOUTH)) {
         int xpos = facing == Direction.NORTH ? x + 20 - fm.getDescent() : x + 20 + fm.getDescent();
         int ypos = facing == Direction.NORTH ? y + offset : y + height - offset;
-        g.setColor(CanvasStyle.componentColor());
-        g2.translate(xpos, ypos);
-        g2.rotate(facing.toRadians());
+        g.setColor(ink);
+        g.translate(xpos, ypos);
+        g.rotate(facing.toRadians());
         g.drawString(txt, 0, 0);
-        g2.rotate(-facing.toRadians());
-        g2.translate(-xpos, -ypos);
+        g.rotate(-facing.toRadians());
+        g.translate(-xpos, -ypos);
       } else {
-        g.setColor(CanvasStyle.componentColor());
+        g.setColor(ink);
         g.drawString(txt, x + offset, y + fm.getDescent() + 20);
       }
     } else {
@@ -283,7 +301,8 @@ public class PowerOnReset extends InstanceFactory {
       Graphics2D g2 = (Graphics2D) g;
       var oldStroke = g2.getStroke();
       g2.setStroke(new BasicStroke(1));
-      g.setColor(Color.BLUE);
+      // These axes and the transition diagram describe timing, not simulated signal values.
+      g.setColor(ink);
       g.drawLine(x1, y1, x2, y1);
       x1 = x1 + 1;
       y1 = y1 + 1;
@@ -303,17 +322,15 @@ public class PowerOnReset extends InstanceFactory {
         y2 = tmp;
       }
 
-      g.setColor(Color.RED);
+      g.setColor(ink);
       g.drawLine(x1, y1, x2, y1);
       g.drawLine(x2, y1, x2, y2);
       g.drawLine(x2, y2, x3, y2);
 
-      g.setColor(new Color(AppPreferences.COMPONENT_COLOR.get()));
+      g.setColor(ink);
       String txt = S.get("PowerOnResetComponent");
       g.drawString(txt, x + 2, y + offset - 1);
     }
-
-    painter.drawPorts();
   }
 
   @Override

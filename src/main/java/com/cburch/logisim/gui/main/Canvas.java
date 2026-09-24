@@ -130,6 +130,9 @@ public class Canvas extends JPanel implements LocaleListener, CanvasPaneContents
     this.autoPanTimer.setCoalesce(true);
 
     setBackground(new Color(AppPreferences.CANVAS_BG_COLOR.get()));
+    // Internal captions share the document's coordinate system, not the surrounding controls.
+    // Explicit label/font attributes still override this base when a component paints them.
+    setFont(CanvasStyle.documentFont());
     addMouseListener(myListener);
     addMouseMotionListener(myListener);
     addMouseWheelListener(myListener);

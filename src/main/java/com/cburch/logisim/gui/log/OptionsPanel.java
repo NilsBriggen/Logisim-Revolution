@@ -12,13 +12,11 @@ package com.cburch.logisim.gui.log;
 import static com.cburch.logisim.gui.Strings.S;
 
 import com.cburch.logisim.comp.ComponentEvent;
+import com.cburch.logisim.util.UiScale;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Dimension;
 import java.awt.Font;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
 import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -42,6 +40,7 @@ import javax.swing.JRadioButton;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
 import javax.swing.JTextField;
+import javax.swing.JViewport;
 import javax.swing.Scrollable;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingConstants;
@@ -197,7 +196,6 @@ class OptionsPanel extends LogPanel implements ActionListener, ChangeListener, M
     // right side has history options
     limit.setModel(new SpinnerNumberModel(400, 10, Integer.MAX_VALUE, 100));
     limit.setEditor(new JSpinner.NumberEditor(limit, "####"));
-    limit.setMaximumSize(limit.getPreferredSize());
     unlimited.setAlignmentX(0.0f);
     final var limitBox = new Box(BoxLayout.X_AXIS);
     limitBox.add(limitLabel);
@@ -210,46 +208,10 @@ class OptionsPanel extends LogPanel implements ActionListener, ChangeListener, M
     historyPanel.add(limitBox);
     historyPanel.add(Box.createVerticalGlue());
 
-    final var inner = new ScrollablePanel();
-
-    final var gbl = new GridBagLayout();
-    final var gbc = new GridBagConstraints();
-    inner.setLayout(gbl);
-
-    gbc.fill = GridBagConstraints.BOTH;
-    gbc.insets = new Insets(5, 5, 5, 5);
-    gbc.weightx = gbc.weighty = 0.0f;
-    gbc.gridx = gbc.gridy = 0;
-    gbl.setConstraints(selectionPanel, gbc);
-    inner.add(selectionPanel);
-
-    gbc.gridy = 1;
-
-    gbl.setConstraints(modePanel, gbc);
-    inner.add(modePanel);
-
-    gbc.gridx = 1;
-    gbc.gridy = 0;
-    gbc.gridheight = 2;
-    gbl.setConstraints(optionsPanel, gbc);
-    inner.add(optionsPanel);
-
-    gbc.gridx = 2;
-    gbl.setConstraints(historyPanel, gbc);
-    inner.add(historyPanel);
-
-    java.awt.Component fill = Box.createGlue();
-    gbc.gridx = 3;
-    gbl.setConstraints(fill, gbc);
-    inner.add(fill);
-
-    gbc.weightx = gbc.weighty = 1.0f;
-    gbc.gridx = 0;
-    gbc.gridy = 2;
-    gbc.gridheight = 1;
-    gbc.gridwidth = 4;
-    gbl.setConstraints(description, gbc);
-    inner.add(description);
+    final var choices = new JPanel(new BorderLayout());
+    choices.add(selectionPanel, BorderLayout.NORTH);
+    choices.add(modePanel, BorderLayout.CENTER);
+    final var inner = new ScrollablePanel(description, choices, optionsPanel, historyPanel);
     description.setFont(description.getFont().deriveFont(Font.PLAIN));
 
     pane =
@@ -293,6 +255,70 @@ class OptionsPanel extends LogPanel implements ActionListener, ChangeListener, M
 
   static class ScrollablePanel extends JPanel implements Scrollable {
     private static final long serialVersionUID = 1L;
+    private final JComponent[] sections;
+    private final JLabel description;
+
+    ScrollablePanel(JLabel description, JComponent... sections) {
+      super(null);
+      this.sections = sections;
+      this.description = description;
+      for (final var section : sections) add(section);
+      add(description);
+    }
+
+    private int gap() {
+      return UiScale.scaled(8);
+    }
+
+    private int columnsWidth() {
+      var width = gap();
+      for (final var section : sections) width += section.getPreferredSize().width + gap();
+      return width;
+    }
+
+    private int minimumColumnWidth() {
+      var width = 0;
+      for (final var section : sections) width = Math.max(width, section.getPreferredSize().width);
+      return width + 2 * gap();
+    }
+
+    @Override
+    public Dimension getPreferredSize() {
+      final var width = getParent() instanceof JViewport viewport
+          ? Math.max(minimumColumnWidth(), viewport.getExtentSize().width) : columnsWidth();
+      return new Dimension(width, arrange(width, false));
+    }
+
+    @Override
+    public void doLayout() {
+      arrange(getWidth(), true);
+    }
+
+    private int arrange(int width, boolean apply) {
+      final var gap = gap();
+      final var stacked = width < columnsWidth();
+      var x = gap;
+      var y = gap;
+      var rowHeight = 0;
+      for (final var section : sections) {
+        final var preferred = section.getPreferredSize();
+        final var sectionWidth = stacked ? width - 2 * gap : preferred.width;
+        if (apply) section.setBounds(x, y, sectionWidth, preferred.height);
+        if (stacked) y += preferred.height + gap;
+        else {
+          x += sectionWidth + gap;
+          rowHeight = Math.max(rowHeight, preferred.height);
+        }
+      }
+      if (!stacked) y += rowHeight + gap;
+      final var textWidth = Math.max(1, width - 2 * gap);
+      final var html = (javax.swing.text.View) description.getClientProperty("html");
+      if (html != null) html.setSize(textWidth, 0);
+      final var textHeight = html == null ? description.getPreferredSize().height
+          : (int) Math.ceil(html.getPreferredSpan(javax.swing.text.View.Y_AXIS));
+      if (apply) description.setBounds(gap, y, textWidth, textHeight);
+      return y + textHeight + gap;
+    }
 
     @Override
     public Dimension getPreferredScrollableViewportSize() {
@@ -301,18 +327,20 @@ class OptionsPanel extends LogPanel implements ActionListener, ChangeListener, M
 
     @Override
     public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction) {
-      return 10;
+      return Math.max(UiScale.scaled(16), getFontMetrics(getFont()).getHeight());
     }
 
     @Override
     public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) {
-      return ((orientation == SwingConstants.VERTICAL) ? visibleRect.height : visibleRect.width)
-          - 10;
+      final var unit = getScrollableUnitIncrement(visibleRect, orientation, direction);
+      return Math.max(unit,
+          ((orientation == SwingConstants.VERTICAL) ? visibleRect.height : visibleRect.width) - unit);
     }
 
     @Override
     public boolean getScrollableTracksViewportWidth() {
-      return true;
+      return getParent() instanceof JViewport viewport
+          && viewport.getExtentSize().width >= minimumColumnWidth();
     }
 
     @Override
@@ -324,6 +352,7 @@ class OptionsPanel extends LogPanel implements ActionListener, ChangeListener, M
   @Override
   public void stateChanged(ChangeEvent e) {
     final var m = getLogFrame().getModel();
+    if (m == null) return;
     limit.setEnabled(!unlimited.isSelected());
     if (unlimited.isSelected()) {
       m.setHistoryLimit(0);
@@ -341,6 +370,7 @@ class OptionsPanel extends LogPanel implements ActionListener, ChangeListener, M
 
   private void doClockSourceDialog() {
     final var m = getLogFrame().getModel();
+    if (m == null) return;
     final var item = ClockSource.doClockObserverDialog(m.getCircuit());
     if (item == null) return;
     m.setClockSourceInfo(item);
@@ -349,6 +379,7 @@ class OptionsPanel extends LogPanel implements ActionListener, ChangeListener, M
   @Override
   public void actionPerformed(ActionEvent e) {
     final var m = getLogFrame().getModel();
+    if (m == null) return;
     if (e.getSource() == unlimited) {
       stateChanged(null);
     } else if (e.getSource() == clockSrcButton) {
@@ -444,7 +475,12 @@ class OptionsPanel extends LogPanel implements ActionListener, ChangeListener, M
     private static final long serialVersionUID = 1L;
     final String labelKey;
     final JLabel label = new JLabel();
-    final JPanel panel = new JPanel();
+    final JPanel panel = new JPanel() {
+      @Override
+      public Dimension getMaximumSize() {
+        return getPreferredSize();
+      }
+    };
 
     JLabeledComboBox(String labelKey, E[] items) {
       super(items);
@@ -455,7 +491,6 @@ class OptionsPanel extends LogPanel implements ActionListener, ChangeListener, M
       panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
       panel.add(label);
       panel.add(this);
-      panel.setMaximumSize(panel.getPreferredSize());
       panel.setAlignmentX(0.0f);
     }
 
@@ -586,6 +621,7 @@ class OptionsPanel extends LogPanel implements ActionListener, ChangeListener, M
   }
 
   void updateDescription() {
+    if (getModel() == null) return;
     limit.setEnabled(!unlimited.isSelected());
     String mode;
     String d;
@@ -691,6 +727,7 @@ class OptionsPanel extends LogPanel implements ActionListener, ChangeListener, M
   @Override
   public void modeChanged(Model.Event event) {
     final var m = getLogFrame().getModel();
+    if (m == null) return;
     if (m.isStepMode()) stepTime.setSelected(true);
     else if (m.isRealMode()) realTime.setSelected(true);
     else clockTime.setSelected(true);

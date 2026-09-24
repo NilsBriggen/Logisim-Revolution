@@ -10,8 +10,6 @@
 package com.cburch.logisim.gui.generic;
 
 import java.awt.Component;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 import javax.swing.JComboBox;
 
@@ -28,7 +26,6 @@ import javax.swing.JComboBox;
  * in its hand at the moment it has to decide.
  */
 public final class AttrMultiEdit {
-
   private AttrMultiEdit() {
     throw new UnsupportedOperationException("Utility class, do not instantiate.");
   }
@@ -36,20 +33,16 @@ public final class AttrMultiEdit {
   /**
    * Whether two rows offer the same choices.
    *
-   * <p>Compared by what the user reads, not by object identity: two attributes may build equal but
-   * separate option objects, and a splitter builds a fresh set per bit.
+   * <p>Compare actual values: identical translated labels do not make unrelated option types
+   * interchangeable. Splitter bit rows have their own model compatibility rule.
    */
   public static boolean sameChoices(Component first, Component second) {
     if (!(first instanceof JComboBox<?> a) || !(second instanceof JComboBox<?> b)) return false;
     if (a.isEditable() || b.isEditable()) return false;
-    return labelsOf(a).equals(labelsOf(b));
-  }
-
-  private static List<String> labelsOf(JComboBox<?> box) {
-    final var labels = new ArrayList<String>(box.getItemCount());
-    for (var i = 0; i < box.getItemCount(); i++) {
-      labels.add(Objects.toString(box.getItemAt(i), ""));
+    if (a.getItemCount() != b.getItemCount()) return false;
+    for (var i = 0; i < a.getItemCount(); i++) {
+      if (!Objects.equals(a.getItemAt(i), b.getItemAt(i))) return false;
     }
-    return labels;
+    return true;
   }
 }

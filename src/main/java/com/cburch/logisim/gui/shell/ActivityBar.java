@@ -18,13 +18,11 @@ import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 import javax.swing.BoxLayout;
-import javax.swing.JComponent;
+import javax.swing.JButton;
 import javax.swing.JPanel;
 
 /**
@@ -47,63 +45,22 @@ public class ActivityBar extends JPanel {
   private static final int ICON_SIZE = 20;
 
   /** An entry in the bar: either a side view or a standalone action such as Settings. */
-  private static final class Item extends JComponent {
+  private static final class Item extends JButton {
     private static final long serialVersionUID = 1L;
 
     private final String id;
     private final AppIcons.Id icon;
-    private final Runnable action;
     private final boolean selectable;
-    private boolean selected;
-    private boolean hovered;
-
-    /**
-     * Named for a screen reader, and announced as the button it behaves like.
-     *
-     * <p>A plain {@link JComponent} has no accessible context of its own, so without this the
-     * strip is invisible to assistive technology even now that it can be focused.
-     */
-    @Override
-    public javax.accessibility.AccessibleContext getAccessibleContext() {
-      if (accessibleContext == null) {
-        accessibleContext =
-            new AccessibleJComponent() {
-              private static final long serialVersionUID = 1L;
-
-              @Override
-              public javax.accessibility.AccessibleRole getAccessibleRole() {
-                return javax.accessibility.AccessibleRole.PUSH_BUTTON;
-              }
-
-              @Override
-              public String getAccessibleName() {
-                return getToolTipText();
-              }
-            };
-      }
-      return accessibleContext;
-    }
 
     Item(String id, AppIcons.Id icon, String tooltip, boolean selectable, Runnable action) {
       this.id = id;
       this.icon = icon;
-      this.action = action;
       this.selectable = selectable;
-      setToolTipText(tooltip);
-      // The strip is the shell's main navigation and was reachable only with the mouse: tab
-      // traversal skipped it and nothing answered a key.
-      setFocusable(true);
+      PanelHeader.configureChromeButton(this, tooltip);
+      setBorderPainted(false);
+      setRolloverEnabled(true);
       setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-      addKeyListener(
-          new java.awt.event.KeyAdapter() {
-            @Override
-            public void keyPressed(java.awt.event.KeyEvent event) {
-              if (event.getKeyCode() == java.awt.event.KeyEvent.VK_ENTER
-                  || event.getKeyCode() == java.awt.event.KeyEvent.VK_SPACE) {
-                action.run();
-              }
-            }
-          });
+      addActionListener(event -> action.run());
       addFocusListener(
           new java.awt.event.FocusAdapter() {
             @Override
@@ -116,29 +73,22 @@ public class ActivityBar extends JPanel {
               repaint();
             }
           });
+    }
+
+    @Override
+    public Dimension getPreferredSize() {
       final var size = UiScale.scaled(BUTTON_SIZE);
-      setPreferredSize(new Dimension(size, size));
-      setMaximumSize(new Dimension(size, size));
-      setMinimumSize(new Dimension(size, size));
-      addMouseListener(
-          new MouseAdapter() {
-            @Override
-            public void mouseEntered(MouseEvent event) {
-              hovered = true;
-              repaint();
-            }
+      return new Dimension(size, size);
+    }
 
-            @Override
-            public void mouseExited(MouseEvent event) {
-              hovered = false;
-              repaint();
-            }
+    @Override
+    public Dimension getMinimumSize() {
+      return getPreferredSize();
+    }
 
-            @Override
-            public void mouseClicked(MouseEvent event) {
-              action.run();
-            }
-          });
+    @Override
+    public Dimension getMaximumSize() {
+      return getPreferredSize();
     }
 
     @Override
@@ -148,10 +98,12 @@ public class ActivityBar extends JPanel {
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         final var width = getWidth();
         final var height = getHeight();
+        final var selected = isSelected();
+        final var hovered = getModel().isRollover();
         if (selected || hovered || isFocusOwner()) {
           g2.setColor(
-              selected ? Tokens.color("Logisim.activityBar.selectedBackground", getBackground())
-                  : getBackground());
+              Tokens.color("Logisim.activityBar.selectedBackground", getBackground()));
+          g2.fillRect(0, 0, width, height);
         }
         if (selected) {
           g2.setColor(Tokens.accent());
@@ -163,6 +115,13 @@ public class ActivityBar extends JPanel {
         final var glyph = AppIcons.colored(icon, ICON_SIZE, tint);
         glyph.paintIcon(
             this, g2, (width - glyph.getIconWidth()) / 2, (height - glyph.getIconHeight()) / 2);
+        if (isFocusOwner() && isFocusPainted()) {
+          final var inset = UiScale.scaled(4);
+          g2.setColor(Tokens.accent());
+          g2.setStroke(new java.awt.BasicStroke(UiScale.scaled(1.0f)));
+          g2.drawRoundRect(inset, inset, width - 2 * inset - 1, height - 2 * inset - 1,
+              UiScale.scaled(4), UiScale.scaled(4));
+        }
       } finally {
         g2.dispose();
       }
@@ -184,15 +143,14 @@ public class ActivityBar extends JPanel {
     add(bottom);
     setOpaque(true);
     applyTheme();
-    Theme.addListener(
-        () -> {
-          applyTheme();
-          repaint();
-        });
+    Theme.addListener(this, this::applyTheme);
   }
 
   private void applyTheme() {
     setBackground(Tokens.activityBarBackground());
+    for (final var item : items) item.revalidate();
+    revalidate();
+    repaint();
   }
 
   /**
@@ -220,17 +178,17 @@ public class ActivityBar extends JPanel {
     for (final var item : items) {
       if (!item.selectable) continue;
       final var selected = item.id.equals(id);
-      if (item.selected != selected) {
-        item.selected = selected;
-        item.repaint();
-      }
+      item.setSelected(selected);
     }
   }
 
   /** Replaces the tooltip of every button, after a change of language. */
   public void setTooltip(String id, String tooltip) {
     for (final var item : items) {
-      if (item.id.equals(id)) item.setToolTipText(tooltip);
+      if (item.id.equals(id)) {
+        item.setToolTipText(tooltip);
+        item.getAccessibleContext().setAccessibleName(tooltip);
+      }
     }
   }
 }

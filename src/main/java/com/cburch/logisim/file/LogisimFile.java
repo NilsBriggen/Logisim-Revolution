@@ -44,7 +44,9 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.function.LongSupplier;
 import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.TransformerConfigurationException;
 import javax.xml.transform.TransformerException;
@@ -64,9 +66,8 @@ public class LogisimFile extends Library implements LibraryEventSource, CircuitL
 
     @Override
     public void run() {
-      file.write(out, file.loader);
-      try {
-        out.close();
+      try (out) {
+        file.write(out, file.loader);
       } catch (IOException e) {
         file.loader.showError(S.get("fileDuplicateError", e.toString()));
       }
@@ -76,12 +77,15 @@ public class LogisimFile extends Library implements LibraryEventSource, CircuitL
   private static class AutosaveThread extends UniquelyNamedThread {
     private static int threadCount = 0;
 
-    private boolean run;
-    private LogisimFile file;
+    private volatile boolean run;
+    private volatile boolean retired;
+    private final LogisimFile file;
+    private final LongSupplier intervalMillis;
 
-    public AutosaveThread(LogisimFile file) {
+    AutosaveThread(LogisimFile file, LongSupplier intervalMillis) {
       super("AutosaveThread-" + threadCount++);
       this.file = file;
+      this.intervalMillis = intervalMillis;
       run = true;
     }
 
@@ -89,15 +93,16 @@ public class LogisimFile extends Library implements LibraryEventSource, CircuitL
     public void run() {
       while (run) {
         try {
-          sleep(AppPreferences.AUTOSAVE_INTERVAL.get() * 1000);
+          sleep(intervalMillis.getAsLong());
         } catch (InterruptedException ignored) {
           continue; // If thread is interrupted go to beginning of loop immediately
         }
+        if (!run) return;
         if (!file.isAutosaveDirty) continue;
         if (file.getLoader().autosave(file)) {
           file.isAutosaveDirty = false;
         } else {
-          file.loader.showError(S.get("autosaveError", file.name));
+          reportError(file.loader, S.get("autosaveError", file.name));
           run = false;
         }
         // Clear interrupted status before next iteration
@@ -105,13 +110,36 @@ public class LogisimFile extends Library implements LibraryEventSource, CircuitL
       }
     }
 
-    public void abort(boolean delete) throws InterruptedException {
+    void abort() {
+      retired = true;
       run = false; // Prepare the thread to stop
       this.interrupt(); // Notify the thread of it
-      if (delete) { // If we want to delete the autosave
-        this.join(); // Wait for the thread to exit, so another save won't be generated
-        file.getLoader().deleteAutosave(); // Then delete the autosave
-      }
+    }
+
+    void reportError(LibraryLoader loader, String message) {
+      // Never wait for a modal dialog: the EDT may be joining this worker during replacement.
+      SwingUtilities.invokeLater(() -> {
+        if (!retired) loader.showError(message);
+      });
+    }
+
+    LibraryLoader nonBlockingErrors(LibraryLoader delegate) {
+      return new LibraryLoader() {
+        @Override
+        public String getDescriptor(Library library) {
+          return delegate.getDescriptor(library);
+        }
+
+        @Override
+        public Library loadLibrary(String descriptor) {
+          return delegate.loadLibrary(descriptor);
+        }
+
+        @Override
+        public void showError(String description) {
+          reportError(delegate, description);
+        }
+      };
     }
   }
 
@@ -124,16 +152,18 @@ public class LogisimFile extends Library implements LibraryEventSource, CircuitL
   private Circuit main = null;
   private String name;
   private boolean isDirty = false;
-  private boolean isAutosaveDirty = false;
+  private volatile boolean isAutosaveDirty = false;
   private AutosaveThread autosaveThread = null;
   private boolean autosaveLoaded = false;
 
   LogisimFile(Loader loader) {
+    this(loader, AppPreferences.AUTOSAVE_ENABLED.getBoolean(),
+        () -> AppPreferences.AUTOSAVE_INTERVAL.get() * 1000L);
+  }
+
+  // Explicit scheduling allows lifecycle tests without changing global/user preferences.
+  LogisimFile(Loader loader, boolean autosaveEnabled, LongSupplier intervalMillis) {
     this.loader = loader;
-    if (AppPreferences.AUTOSAVE_ENABLED.getBoolean()) {
-      this.autosaveThread = new AutosaveThread(this);
-      autosaveThread.start();
-    }
 
     // Creates the default project name, adding an underscore if needed
     name = S.get("defaultProjectName");
@@ -144,6 +174,10 @@ public class LogisimFile extends Library implements LibraryEventSource, CircuitL
           break;
         }
       }
+    }
+    if (autosaveEnabled) {
+      this.autosaveThread = new AutosaveThread(this, intervalMillis);
+      autosaveThread.start();
     }
   }
 
@@ -676,43 +710,76 @@ public class LogisimFile extends Library implements LibraryEventSource, CircuitL
   //
   // other methods
   //
-  public void write(OutputStream out, LibraryLoader loader) {
+  public void write(OutputStream out, LibraryLoader loader) throws IOException {
     write(out, loader, null, null, false);
   }
 
-  public void write(OutputStream out, LibraryLoader loader, File dest) {
+  public void write(OutputStream out, LibraryLoader loader, File dest) throws IOException {
     write(out, loader, dest, null, false);
   }
 
-  void write(OutputStream out, LibraryLoader loader, String mainCircFile) {
+  void write(OutputStream out, LibraryLoader loader, String mainCircFile) throws IOException {
     write(out, loader, null, mainCircFile, false);
   }
 
-  void write(OutputStream out, LibraryLoader loader, String mainCircFile, boolean recurse) {
+  void write(OutputStream out, LibraryLoader loader, String mainCircFile, boolean recurse)
+      throws IOException {
     write(out, loader, null, mainCircFile, recurse);
   }
 
-  void write(OutputStream out, LibraryLoader loader, File dest, String mainCircFile) {
+  void write(OutputStream out, LibraryLoader loader, File dest, String mainCircFile)
+      throws IOException {
     write(out, loader, dest, mainCircFile, false);
   }
 
-  void write(OutputStream out, LibraryLoader loader, File dest, String mainCircFile, boolean recurse) {
+  void write(OutputStream out, LibraryLoader loader, File dest, String mainCircFile, boolean recurse)
+      throws IOException {
+    if (Thread.currentThread() instanceof AutosaveThread worker) {
+      // XmlWriter reports some errors directly; catching exceptions alone is not sufficient.
+      loader = worker.nonBlockingErrors(loader);
+    }
+    final var errors = new WriteErrors(loader);
     try {
-      XmlWriter.write(this, out, loader, dest, mainCircFile, recurse);
+      XmlWriter.write(this, out, errors, dest, mainCircFile, recurse);
     } catch (TransformerConfigurationException e) {
-      loader.showError("internal error configuring transformer");
+      throw new IOException("internal error configuring transformer", e);
     } catch (ParserConfigurationException e) {
-      loader.showError("internal error configuring parser");
+      throw new IOException("internal error configuring parser", e);
     } catch (TransformerException e) {
       org.slf4j.LoggerFactory.getLogger(LogisimFile.class).error("XML Transformation Exception during save", e);
       final var msg = e.getMessage();
       var err = S.get("xmlConversionError");
       if (msg != null) err += ": " + msg;
-      loader.showError(err);
-    } catch (IOException e) {
-      loader.showError("Unable to create zip file");
-    } catch (LoadFailedException e) {
-      loader.showError("Unable to create zip file");
+      throw new IOException(err, e);
+    } catch (LoadFailedException | LoaderException e) {
+      throw new IOException(e.getMessage(), e);
+    }
+    if (errors.firstError != null) throw new IOException(errors.firstError);
+  }
+
+  /** XmlWriter can report missing content without throwing; that still invalidates the save. */
+  private static final class WriteErrors implements LibraryLoader {
+    private final LibraryLoader delegate;
+    private String firstError;
+
+    WriteErrors(LibraryLoader delegate) {
+      this.delegate = delegate;
+    }
+
+    @Override
+    public String getDescriptor(Library library) {
+      return delegate.getDescriptor(library);
+    }
+
+    @Override
+    public Library loadLibrary(String descriptor) {
+      return delegate.loadLibrary(descriptor);
+    }
+
+    @Override
+    public void showError(String description) {
+      if (firstError == null) firstError = description;
+      delegate.showError(description);
     }
   }
 
@@ -723,10 +790,29 @@ public class LogisimFile extends Library implements LibraryEventSource, CircuitL
 
   public void stopAutosaveThread(boolean delete) {
     if (autosaveThread == null) return;
-    try {
-      autosaveThread.abort(delete);
-    } catch (InterruptedException ignored) {
+    if (delete) {
+      retireAutosaveThread();
+      loader.deleteAutosave();
+    } else {
+      autosaveThread.abort();
     }
+  }
+
+  /** Stops and joins this file's writer without deleting any loader-owned recovery file. */
+  public void retireAutosaveThread() {
+    final var worker = autosaveThread;
+    if (worker == null) return;
+    worker.abort();
+    var interrupted = false;
+    while (worker.isAlive()) {
+      try {
+        worker.join();
+      } catch (InterruptedException ex) {
+        // Replacement cannot proceed while the old writer can still overwrite recovery.
+        interrupted = true;
+      }
+    }
+    if (interrupted) Thread.currentThread().interrupt();
   }
 
   public boolean isAutosaveLoaded() {

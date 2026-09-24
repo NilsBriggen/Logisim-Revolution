@@ -16,26 +16,26 @@ import com.cburch.logisim.fpga.gui.ZoomSlider;
 import com.cburch.logisim.gui.theme.Theme;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.proj.Projects;
-import com.cburch.logisim.util.TableLayout;
+import com.cburch.logisim.util.Spacing;
+import com.cburch.logisim.util.UiFonts;
+import com.cburch.logisim.util.UiScale;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GraphicsEnvironment;
-import java.awt.Window;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.Objects;
 import javax.swing.JButton;
-import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JRadioButton;
 import javax.swing.JSlider;
 import javax.swing.JTextArea;
-import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
-import javax.swing.UIManager.LookAndFeelInfo;
-import javax.swing.UnsupportedLookAndFeelException;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
@@ -51,7 +51,6 @@ class WindowOptions extends OptionsPanel {
   private final JLabel themeLabel;
   private final JLabel appFontLabel;
   private final JLabel restartWarning;
-  private final JLabel restartWarningSpacer;
   private final JLabel zoomLabel;
   private final JTextArea zoomFactorImportant;
   private final JComboBox<String> themeMode;
@@ -71,7 +70,7 @@ class WindowOptions extends OptionsPanel {
     super(window);
 
     final var listener = myListener;
-    final var panel = new JPanel(new TableLayout(2));
+    final var panel = new JPanel(new GridBagLayout());
 
     checks =
         new PrefBoolean[] {
@@ -93,38 +92,32 @@ class WindowOptions extends OptionsPanel {
               new PrefOption(AppPreferences.TOOLBAR_HIDDEN, S.getter("windowToolbarHidden"))
             });
 
-    panel.add(toolbarPlacement.getJLabel());
-    panel.add(toolbarPlacement.getJComboBox());
+    addSetting(panel, toolbarPlacement.getJLabel(), toolbarPlacement.getJComboBox(), 0);
 
     // The seven colour controls that were here have moved to the Colors page, which owns every
     // colour in one grouped list. They had been split across this page and Simulation, with three
     // separate reset buttons between them.
 
-    panel.add(new JLabel(" "));
-    panel.add(new JLabel(" "));
-    panel.add(new JLabel(" "));
-
-    zoomFactorImportant = new JTextArea(S.get("windowToolbarImportant"));
-    zoomFactorImportant.setFont(zoomFactorImportant.getFont().deriveFont(Font.ITALIC));
+    zoomFactorImportant = new JTextArea(S.get("windowScaleHelp"));
     zoomFactorImportant.setEditable(false);
-    panel.add(zoomFactorImportant);
+    zoomFactorImportant.setFocusable(false);
+    zoomFactorImportant.setOpaque(false);
+    zoomFactorImportant.setLineWrap(true);
+    zoomFactorImportant.setWrapStyleWord(true);
+    zoomFactorImportant.setMinimumSize(new Dimension(0, 0));
+    addFullRow(panel, zoomFactorImportant, 1);
 
     zoomLabel = new JLabel(S.get("windowToolbarZoomfactor"));
     zoomValue =
         new ZoomSlider(
-            JSlider.HORIZONTAL, 100, 300, (int) (AppPreferences.SCALE_FACTOR.get() * 100));
+            JSlider.HORIZONTAL, 100, 300, (int) Math.round(UiScale.factor() * 100));
     zoomAutoButton = new JButton();
     zoomAutoButton.addActionListener(listener);
     zoomAutoButton.setActionCommand(cmdSetAutoScaleFactor);
     zoomAutoButton.setText(S.get("windowSetAutoScaleFactor"));
-    panel.add(zoomLabel);
-    panel.add(zoomValue);
-    panel.add(new JLabel(" "));
-    panel.add(zoomAutoButton);
+    addSetting(panel, zoomLabel, zoomValue, 2);
+    addFullRow(panel, zoomAutoButton, 3);
     zoomValue.addChangeListener(listener);
-
-    panel.add(new JLabel(" "));
-    panel.add(new JLabel(" "));
 
     // Initialize components before adding
     themeMode = new JComboBox<>();
@@ -145,6 +138,9 @@ class WindowOptions extends OptionsPanel {
     editorThemeLabel = new JLabel(S.get("windowEditorTheme"));
 
     appFont = new JComboBox<>();
+    // Installed font names must not determine the minimum width of the entire settings page.
+    // The popup still lists every full name; the selected value may elide inside the control.
+    appFont.setPrototypeDisplayValue("SansSerif");
     appFont.addItem(S.get("windowAppFontDefault"));
     for (String f : GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames()) {
       appFont.addItem(f);
@@ -157,39 +153,100 @@ class WindowOptions extends OptionsPanel {
 
     // Add components
     themeLabel = new JLabel(S.get("windowTheme"));
-    panel.add(themeLabel);
-    panel.add(themeMode);
+    addSetting(panel, themeLabel, themeMode, 4);
     themeMode.addActionListener(listener);
 
-    panel.add(editorThemeLabel);
-    panel.add(editorTheme);
+    addSetting(panel, editorThemeLabel, editorTheme, 5);
     editorTheme.addActionListener(listener);
 
-    panel.add(appFontLabel);
-    panel.add(appFont);
+    addSetting(panel, appFontLabel, appFont, 6);
     appFont.addActionListener(listener);
 
     restartWarning = new CollapsibleLabel(S.get("windowRestartWarning"));
-    restartWarning.setFont(restartWarning.getFont().deriveFont(Font.ITALIC));
     restartWarning.setIcon(UIManager.getIcon("OptionPane.warningIcon"));
     restartWarning.setVisible(false);
 
-    restartWarningSpacer = new CollapsibleLabel(" ");
-    restartWarningSpacer.setVisible(false);
+    addFullRow(panel, restartWarning, 7);
 
-    panel.add(restartWarningSpacer);
-    panel.add(restartWarning);
-
-    setLayout(new TableLayout(1));
+    setLayout(new GridBagLayout());
     resetWindowLayoutButton = new JButton();
     resetWindowLayoutButton.addActionListener(listener);
     resetWindowLayoutButton.setActionCommand(cmdResetWindowLayout);
     resetWindowLayoutButton.setText(S.get("windowToolbarReset"));
-    add(resetWindowLayoutButton);
+    addFullRow(this, resetWindowLayoutButton, 0);
+    var row = 1;
     for (final var check : checks) {
-      add(check);
+      addFullRow(this, check, row++);
     }
-    add(panel);
+    addFullRow(this, panel, row);
+    refreshFonts();
+  }
+
+  @Override
+  public void updateUI() {
+    super.updateUI();
+    refreshFonts();
+  }
+
+  private void refreshFonts() {
+    // Explicit role/style fonts are not UIResource fonts, so Swing does not replace them.
+    // Always derive from the current UI font, never from the previously scaled component font.
+    final var body = UiFonts.body();
+    if (zoomFactorImportant != null) {
+      zoomFactorImportant.setFont(body.deriveFont(Font.ITALIC));
+    }
+    if (restartWarning != null) {
+      restartWarning.setFont(body.deriveFont(Font.ITALIC));
+      restartWarning.setIcon(UIManager.getIcon("OptionPane.warningIcon"));
+    }
+    if (zoomValue != null && zoomValue.getLabelTable() != null) {
+      final var labels = zoomValue.getLabelTable();
+      for (final var values = labels.elements(); values.hasMoreElements(); ) {
+        if (values.nextElement() instanceof JLabel label) label.setFont(body);
+      }
+      zoomValue.setFont(body);
+      zoomValue.setLabelTable(labels);
+      zoomValue.revalidate();
+      zoomValue.repaint();
+    }
+  }
+
+  private static void addFullRow(JPanel panel, JComponent component, int row) {
+    final var constraints = new GridBagConstraints();
+    constraints.gridx = 0;
+    constraints.gridy = row;
+    constraints.gridwidth = 2;
+    constraints.weightx = 1;
+    constraints.fill = GridBagConstraints.HORIZONTAL;
+    constraints.anchor = GridBagConstraints.NORTHWEST;
+    constraints.insets = new Insets(Spacing.xs(), 0, Spacing.xs(), 0);
+    panel.add(component, constraints);
+  }
+
+  private static void addSetting(JPanel panel, JLabel label, JComponent control, int row) {
+    label.setLabelFor(control);
+    final var constraints = new GridBagConstraints();
+    constraints.gridx = 0;
+    constraints.gridy = row;
+    constraints.anchor = GridBagConstraints.LINE_START;
+    constraints.insets = new Insets(Spacing.xs(), 0, Spacing.xs(), Spacing.sm());
+    panel.add(label, constraints);
+    constraints.gridx = 1;
+    constraints.weightx = 1;
+    constraints.fill = GridBagConstraints.HORIZONTAL;
+    constraints.insets.right = 0;
+    panel.add(control, constraints);
+  }
+
+  @Override
+  public Dimension getPreferredSize() {
+    if (zoomFactorImportant != null) {
+      final var insets = getInsets();
+      final var width = getWidth() > 0 ? getWidth() : UiScale.scaled(360);
+      zoomFactorImportant.setSize(
+          Math.max(1, width - insets.left - insets.right), Short.MAX_VALUE);
+    }
+    return super.getPreferredSize();
   }
 
   /** The localized name of a theme choice, in the order {@link Theme.Mode} declares them. */
@@ -214,18 +271,6 @@ class WindowOptions extends OptionsPanel {
     }
     themeMode.setSelectedIndex(selected >= 0 ? selected : Theme.currentMode().ordinal());
     themeMode.addActionListener(myListener);
-  }
-
-  /** Re-applies every open project's default appearance after a theme change. */
-  private static void refreshProjectsForTheme() {
-    for (final var proj : Projects.getOpenProjects()) {
-      for (final var circuit : proj.getLogisimFile().getCircuits()) {
-        if (circuit.getAppearance().isDefaultAppearance()) {
-          circuit.getAppearance().recomputeDefaultAppearance();
-        }
-      }
-      proj.getFrame().repaint();
-    }
   }
 
   private void updateEditorThemeSelection() {
@@ -264,7 +309,7 @@ class WindowOptions extends OptionsPanel {
     editorThemeLabel.setText(S.get("windowEditorTheme"));
     appFontLabel.setText(S.get("windowAppFont"));
     restartWarning.setText(S.get("windowRestartWarning"));
-    zoomFactorImportant.setText(S.get("windowToolbarImportant"));
+    zoomFactorImportant.setText(S.get("windowScaleHelp"));
     resetWindowLayoutButton.setText(S.get("windowToolbarReset"));
     zoomAutoButton.setText(S.get("windowSetAutoScaleFactor"));
   }
@@ -277,11 +322,9 @@ class WindowOptions extends OptionsPanel {
       if (!source.getValueIsAdjusting()) {
         int value = source.getValue();
         AppPreferences.SCALE_FACTOR.set((double) value / 100.0);
-        final var nowOpen = Projects.getOpenProjects();
-        for (final var proj : nowOpen) {
-          proj.getFrame().revalidate();
-          proj.getFrame().repaint();
-        }
+        // Persist an explicit choice even when it happens to equal the current auto scale.
+        AppPreferences.getPrefs().putDouble("Scale", (double) value / 100.0);
+        UiScale.refresh();
       }
     }
 
@@ -291,8 +334,6 @@ class WindowOptions extends OptionsPanel {
         final var selected = themeMode.getSelectedIndex();
         if (selected >= 0 && selected < Theme.Mode.values().length) {
           Theme.setMode(Theme.Mode.values()[selected]);
-          AppPreferences.applyThemeColors();
-          refreshProjectsForTheme();
           updateEditorThemeSelection();
         }
       } else if (e.getSource().equals(editorTheme)) {
@@ -318,16 +359,18 @@ class WindowOptions extends OptionsPanel {
         }
       } else if (e.getActionCommand().equals(cmdSetAutoScaleFactor)) {
         final var tmp = AppPreferences.getAutoScaleFactor();
+        zoomValue.removeChangeListener(this);
+        zoomValue.setValue((int) Math.round(tmp * 100));
+        zoomValue.addChangeListener(this);
         AppPreferences.SCALE_FACTOR.set(tmp);
         AppPreferences.getPrefs().remove(AppPreferences.SCALE_FACTOR.getIdentifier());
-        zoomValue.setValue((int) (tmp * 100));
+        UiScale.refresh();
       }
     }
 
     private void checkRestartWarning() {
       boolean show = !Objects.equals(AppPreferences.APP_FONT.get(), initialAppFont);
       restartWarning.setVisible(show);
-      restartWarningSpacer.setVisible(show);
     }
   }
 

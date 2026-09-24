@@ -12,8 +12,10 @@ package com.cburch.logisim.gui.shell;
 import com.cburch.logisim.gui.theme.AppIcons;
 import com.cburch.logisim.gui.theme.Tokens;
 import com.formdev.flatlaf.FlatClientProperties;
+import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.util.function.Consumer;
+import javax.swing.AbstractAction;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JTextField;
@@ -40,40 +42,56 @@ public class FilterField extends JTextField {
   private static final int DEBOUNCE_MS = 120;
 
   private final javax.swing.Timer debounce;
+  private final Consumer<String> onChange;
+  private boolean pendingChange;
 
   public FilterField(String placeholder, Consumer<String> onChange) {
+    this.onChange = onChange;
     putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, placeholder);
     putClientProperty(FlatClientProperties.TEXT_FIELD_SHOW_CLEAR_BUTTON, true);
 
     final var leading = new JLabel(AppIcons.colored(AppIcons.Id.SEARCH, 14, Tokens.mutedForeground()));
     putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_COMPONENT, leading);
 
-    debounce = new javax.swing.Timer(DEBOUNCE_MS, event -> onChange.accept(getText()));
+    debounce = new javax.swing.Timer(DEBOUNCE_MS, event -> flushPendingChange());
     debounce.setRepeats(false);
     getDocument()
         .addDocumentListener(
             new DocumentListener() {
               @Override
               public void insertUpdate(DocumentEvent event) {
+                pendingChange = true;
                 debounce.restart();
               }
 
               @Override
               public void removeUpdate(DocumentEvent event) {
+                pendingChange = true;
                 debounce.restart();
               }
 
               @Override
               public void changedUpdate(DocumentEvent event) {
+                pendingChange = true;
                 debounce.restart();
               }
             });
 
     // Escape clears the filter, which is quicker than selecting the text to delete it.
-    registerKeyboardAction(
-        event -> clear(),
-        javax.swing.KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0),
-        WHEN_FOCUSED);
+    getInputMap(WHEN_FOCUSED).put(
+        javax.swing.KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "filter.clear");
+    getActionMap().put("filter.clear", new AbstractAction() {
+      @Override
+      public boolean isEnabled() {
+        // A disabled local binding falls through to the ancestor/root cancel action.
+        return !getText().isEmpty();
+      }
+
+      @Override
+      public void actionPerformed(ActionEvent event) {
+        clear();
+      }
+    });
   }
 
   /**
@@ -89,17 +107,26 @@ public class FilterField extends JTextField {
   public void setKeyboardHandoff(Runnable onAccept, java.util.function.IntConsumer onNavigate) {
     if (onAccept != null) {
       registerKeyboardAction(
-          event -> onAccept.run(),
+          event -> {
+            flushPendingChange();
+            onAccept.run();
+          },
           javax.swing.KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0),
           WHEN_FOCUSED);
     }
     if (onNavigate != null) {
       registerKeyboardAction(
-          event -> onNavigate.accept(1),
+          event -> {
+            flushPendingChange();
+            onNavigate.accept(1);
+          },
           javax.swing.KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, 0),
           WHEN_FOCUSED);
       registerKeyboardAction(
-          event -> onNavigate.accept(-1),
+          event -> {
+            flushPendingChange();
+            onNavigate.accept(-1);
+          },
           javax.swing.KeyStroke.getKeyStroke(KeyEvent.VK_UP, 0),
           WHEN_FOCUSED);
     }
@@ -109,8 +136,27 @@ public class FilterField extends JTextField {
   public void clear() {
     if (getText().isEmpty()) return;
     setText("");
+    flushPendingChange();
+  }
+
+  /** Reports the latest text before a key action can act on stale results. */
+  public void flushPendingChange() {
     debounce.stop();
-    debounce.getActionListeners()[0].actionPerformed(null);
+    if (!pendingChange) return;
+    pendingChange = false;
+    onChange.accept(getText());
+  }
+
+  @Override
+  public void removeNotify() {
+    debounce.stop();
+    super.removeNotify();
+  }
+
+  @Override
+  public void addNotify() {
+    super.addNotify();
+    if (pendingChange) debounce.restart();
   }
 
   /** Sets the greyed-out prompt, after a change of language. */

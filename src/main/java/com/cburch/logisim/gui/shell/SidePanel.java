@@ -9,6 +9,8 @@
 
 package com.cburch.logisim.gui.shell;
 
+import com.cburch.logisim.gui.theme.Theme;
+import com.cburch.logisim.gui.theme.Tokens;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.util.LinkedHashMap;
@@ -36,6 +38,16 @@ public class SidePanel extends JPanel {
     super(new BorderLayout());
     add(header, BorderLayout.NORTH);
     add(body, BorderLayout.CENTER);
+    applyTheme();
+    Theme.addListener(this, this::applyTheme);
+  }
+
+  private void applyTheme() {
+    final var background = Tokens.color("Logisim.sidePanel.background", getBackground());
+    setBackground(background);
+    body.setBackground(background);
+    revalidate();
+    repaint();
   }
 
   /** Registers a view. The first one registered is shown until another is chosen. */

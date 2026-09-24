@@ -14,8 +14,8 @@ import static com.cburch.logisim.soc.Strings.S;
 import com.cburch.logisim.comp.Component;
 import com.cburch.logisim.data.Bounds;
 import com.cburch.logisim.soc.gui.CpuStyle;
+import com.cburch.logisim.util.ColorUtil;
 import com.cburch.logisim.util.GraphicsUtil;
-import java.awt.Color;
 import java.awt.Graphics;
 
 public class SocBusInfo {
@@ -54,7 +54,8 @@ public class SocBusInfo {
     final var color = (ident == null) ? CpuStyle.programCounter() : CpuStyle.header();
     g.setColor(color);
     g.fillRect(b.getX(), b.getY(), b.getWidth(), b.getHeight());
-    g.setColor(Color.BLACK);
+    g.setColor(ident == null
+        ? ColorUtil.getComplementaryBlackWhite(color) : CpuStyle.headerText());
     GraphicsUtil.drawCenteredText(
         g, ident == null ? S.get("SocBusNotConnected") : ident, b.getCenterX(), b.getCenterY());
   }

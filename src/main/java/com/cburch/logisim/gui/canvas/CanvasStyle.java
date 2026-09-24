@@ -13,6 +13,7 @@ import com.cburch.logisim.gui.theme.Tokens;
 import com.cburch.logisim.prefs.AppPreferences;
 import java.awt.BasicStroke;
 import java.awt.Color;
+import java.awt.Font;
 import java.awt.Stroke;
 
 /**
@@ -29,6 +30,14 @@ import java.awt.Stroke;
  * and a component is free to paint itself in whatever colours it means something by.
  */
 public final class CanvasStyle {
+
+  // SansSerif has an explicit raster/SVG/TikZ mapping; Dialog is a UI-only font alias.
+  private static final Font DOCUMENT_FONT = new Font(Font.SANS_SERIF, Font.PLAIN, 12);
+
+  /** Default internal component text, in circuit units, never multiplied by interface scale. */
+  public static Font documentFont() {
+    return DOCUMENT_FONT;
+  }
 
   /**
    * Unscaled radius of a rounded component body.
@@ -104,6 +113,43 @@ public final class CanvasStyle {
   /** The ink a component is drawn in, from the preferences, honouring the print palette. */
   public static Color componentColor() {
     return new Color(AppPreferences.COMPONENT_COLOR.get());
+  }
+
+  /** Black or white ink with the higher WCAG contrast against an opaque signal fill. */
+  public static Color contrastInk(Color fill) {
+    final var luminance = 0.2126 * linearChannel(fill.getRed())
+        + 0.7152 * linearChannel(fill.getGreen())
+        + 0.0722 * linearChannel(fill.getBlue());
+    final var blackContrast = (luminance + 0.05) / 0.05;
+    final var whiteContrast = 1.05 / (luminance + 0.05);
+    return blackContrast >= whiteContrast ? Color.BLACK : Color.WHITE;
+  }
+
+  private static double linearChannel(int channel) {
+    final var value = channel / 255.0;
+    return value <= 0.04045
+        ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4);
+  }
+
+  /** Paired colors for automatic numeric displays, not explicit document colors. */
+  public static Color dataBackground() {
+    return AppPreferences.inPrintView()
+        ? Color.WHITE : Tokens.color("TextField.background", Color.WHITE);
+  }
+
+  public static Color dataForeground() {
+    return AppPreferences.inPrintView()
+        ? Color.BLACK : Tokens.color("TextField.foreground", Color.BLACK);
+  }
+
+  public static Color dataHighlightBackground() {
+    return AppPreferences.inPrintView()
+        ? Color.LIGHT_GRAY : Tokens.color("TextField.selectionBackground", new Color(0x245CB4));
+  }
+
+  public static Color dataHighlightForeground() {
+    return AppPreferences.inPrintView()
+        ? Color.BLACK : Tokens.color("TextField.selectionForeground", Color.WHITE);
   }
 
   /**

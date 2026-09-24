@@ -26,6 +26,7 @@ import java.awt.GridBagLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.HashSet;
+import java.util.Set;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
@@ -33,6 +34,9 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
+import javax.swing.event.AncestorEvent;
+import javax.swing.event.AncestorListener;
 
 class BuildCircuitButton extends JButton {
   private class DialogPanel extends JPanel {
@@ -67,10 +71,34 @@ class BuildCircuitButton extends JButton {
       }
 
       final var defaultCircuit = model.getCurrentCircuit();
-      if (defaultCircuit != null) {
-        name.setText(defaultCircuit.getName());
-        name.selectAll();
+      final var reserved = new HashSet<String>();
+      final var destination = ((ProjectItem) project.getSelectedItem()).project;
+      if (destination != null) {
+        for (final var circuit : destination.getLogisimFile().getCircuits()) {
+          reserved.add(circuit.getName());
+        }
       }
+      reserved.addAll(model.getInputs().getNames());
+      reserved.addAll(model.getOutputs().getNames());
+      final var baseName = defaultCircuit == null
+          ? S.get("buildNewCircuitName") : S.get("buildGeneratedCircuitName", defaultCircuit.getName());
+      name.setText(uniqueCircuitName(baseName, reserved));
+      name.selectAll();
+      name.addAncestorListener(new AncestorListener() {
+        @Override
+        public void ancestorAdded(AncestorEvent event) {
+          SwingUtilities.invokeLater(() -> {
+            name.requestFocusInWindow();
+            name.selectAll();
+          });
+        }
+
+        @Override
+        public void ancestorRemoved(AncestorEvent event) {}
+
+        @Override
+        public void ancestorMoved(AncestorEvent event) {}
+      });
 
       final var outputs = model.getOutputs();
       var enableNands = true;
@@ -191,13 +219,18 @@ class BuildCircuitButton extends JButton {
         }
 
         if (dest != null && dest.getLogisimFile().getCircuit(name) != null) {
-          int choice =
-              OptionPane.showConfirmDialog(
+          final String[] choices = {S.get("buildReplaceNamedCircuit", name), S.get("buildCancel")};
+          final var choice =
+              OptionPane.showOptionDialog(
                   parent,
                   S.get("buildConfirmReplaceMessage", name),
                   S.get("buildConfirmReplaceTitle"),
-                  OptionPane.YES_NO_OPTION);
-          if (choice != OptionPane.YES_OPTION) {
+                  OptionPane.YES_NO_OPTION,
+                  OptionPane.WARNING_MESSAGE,
+                  null,
+                  choices,
+                  choices[1]);
+          if (choice != 0) {
             continue;
           }
           replace = true;
@@ -221,7 +254,7 @@ class BuildCircuitButton extends JButton {
 
     @Override
     public String toString() {
-      if (project == null) return "< Create New Project >";
+      if (project == null) return S.get("buildNewProject");
       else return project.getLogisimFile().getDisplayName();
     }
   }
@@ -231,6 +264,16 @@ class BuildCircuitButton extends JButton {
   private final MyListener myListener = new MyListener();
   private final JFrame parent;
   private final AnalyzerModel model;
+
+  static String uniqueCircuitName(String base, Set<String> reserved) {
+    final var names = new HashSet<String>();
+    for (final var name : reserved) names.add(name.toLowerCase(java.util.Locale.ROOT));
+    var candidate = base;
+    for (var suffix = 2; names.contains(candidate.toLowerCase(java.util.Locale.ROOT)); suffix++) {
+      candidate = base + "_" + suffix;
+    }
+    return candidate;
+  }
 
   BuildCircuitButton(JFrame parent, AnalyzerModel model) {
     super();

@@ -35,10 +35,6 @@ public class ThemeColorPairingTest extends TestBase {
    */
   private static final java.util.Set<String> NO_DARK_VARIANT =
       java.util.Set.of(
-          // Seeds the colour attribute of newly created text, which is saved in the circuit file.
-          // Following the theme here would store white text that is invisible when the file is
-          // later opened in a light theme or printed.
-          "DEFAULT_TEXT_TOOL_COLOR",
           // Status colours drawn over the board image in the FPGA mapping dialog. They mark state
           // rather than following the theme, and the image behind them is not themed either.
           "DEFAULT_FPGA_MAPPED_COLOR",

@@ -24,7 +24,6 @@ import com.cburch.logisim.util.LocaleManager;
 import com.cburch.logisim.util.UiScale;
 import com.cburch.logisim.util.WindowMenuItemManager;
 import java.awt.BorderLayout;
-import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -32,17 +31,20 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Function;
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
 
 public class TestFrame extends LFrame.SubWindowWithSimulation {
 
   private static final long serialVersionUID = 1L;
-  private final Map<Circuit, Model> modelMap = new HashMap<>();
   private final MyListener myListener = new MyListener();
+  private final ModelHistory modelHistory =
+      new ModelHistory(circuit -> new Model(project, circuit), myListener);
   private final WindowMenuManager windowManager;
   private final JFileChooser chooser = new JFileChooser();
   private final TestPanel panel;
@@ -53,9 +55,6 @@ public class TestFrame extends LFrame.SubWindowWithSimulation {
   private final JButton close = new JButton();
   private final JLabel pass = new JLabel();
   private final JLabel fail = new JLabel();
-  private Model curModel;
-  private int finished;
-  private int count;
   private File curFile;
 
   /**
@@ -122,36 +121,48 @@ public class TestFrame extends LFrame.SubWindowWithSimulation {
   }
 
   Model getModel() {
-    return curModel;
+    return modelHistory.current;
+  }
+
+  /** Test results belong to circuits, not to the nullable active HDL editor state. */
+  static final class ModelHistory {
+    private final Map<Circuit, Model> models = new HashMap<>();
+    private final Function<Circuit, Model> factory;
+    private final ModelListener listener;
+    private volatile Model current;
+
+    ModelHistory(Function<Circuit, Model> factory, ModelListener listener) {
+      this.factory = factory;
+      this.listener = listener;
+    }
+
+    Model select(Circuit circuit) {
+      if (circuit == (current == null ? null : current.getCircuit())) return current;
+      final var old = current;
+      current = null;
+      if (old != null) {
+        old.removeModelListener(listener);
+        old.setSelected(false);
+      }
+      if (circuit != null) {
+        current = models.computeIfAbsent(circuit, factory);
+        current.addModelListener(listener);
+        current.setSelected(true);
+      }
+      return current;
+    }
   }
 
   private void updateWithProject(Project theProject) {
     final var simulator = theProject.getSimulator();
-    if (simulator == null) return;
-    final var circuitState = simulator.getCircuitState();
-    final var circuit = circuitState.getCircuit();
-    if (curModel != null && circuit == curModel.getCircuit()) return;
-
+    final var circuitState = theProject.getCircuitState();
+    final var circuit = circuitState == null ? null : circuitState.getCircuit();
     menubar.setCircuitState(simulator, circuitState);
-
-    if (curModel != null) curModel.setSelected(false);
-    if (curModel != null) curModel.removeModelListener(myListener);
-
-    Model oldModel = curModel;
-    Model data = null;
-    if (simulator != null) {
-      data = modelMap.get(circuit);
-      if (data == null) {
-        data = new Model(project, circuit);
-        modelMap.put(data.getCircuit(), data);
-      }
-    }
-    curModel = data;
-
-    if (curModel != null) curModel.addModelListener(myListener);
-    if (curModel != null) curModel.setSelected(true);
-    setTitle(computeTitle(curModel, project));
-    if (panel != null) panel.modelChanged(oldModel, curModel);
+    final var oldModel = getModel();
+    final var model = modelHistory.select(circuit);
+    setTitle(computeTitle(model, project));
+    if (panel != null && oldModel != model) panel.modelChanged(oldModel, model);
+    myListener.testingChanged();
     repaint();
   }
 
@@ -172,9 +183,14 @@ public class TestFrame extends LFrame.SubWindowWithSimulation {
       Object src = event.getSource();
       if (src == close) {
         requestClose();
-      } else if (src == load) {
+        return;
+      }
+      final var model = getModel();
+      if (model == null) return;
+      if (src == load) {
         int result = chooser.showOpenDialog(TestFrame.this);
         if (result != JFileChooser.APPROVE_OPTION) return;
+        if (getModel() != model) return;
         File file = chooser.getSelectedFile();
         if (!file.exists() || !file.canRead() || file.isDirectory()) {
           OptionPane.showMessageDialog(
@@ -186,12 +202,10 @@ public class TestFrame extends LFrame.SubWindowWithSimulation {
         }
         try {
           TestVector vec = new TestVector(file);
-          finished = 0;
-          count = vec.data.size();
-          getModel().setVector(vec);
+          model.setVector(vec);
           curFile = file;
-          getModel().setPaused(true);
-          getModel().start();
+          model.setPaused(true);
+          model.start();
         } catch (IOException e) {
           OptionPane.showMessageDialog(
               TestFrame.this,
@@ -207,7 +221,7 @@ public class TestFrame extends LFrame.SubWindowWithSimulation {
         }
       } else if (src == run) {
         try {
-          getModel().start();
+          model.start();
         } catch (TestException e) {
           OptionPane.showMessageDialog(
               TestFrame.this,
@@ -216,23 +230,23 @@ public class TestFrame extends LFrame.SubWindowWithSimulation {
               OptionPane.OK_OPTION);
         }
       } else if (src == stop) {
-        getModel().setPaused(true);
+        model.setPaused(true);
       } else if (src == reset) {
-        getModel().clearResults();
+        model.clearResults();
         testingChanged();
       }
     }
 
     @Override
     public void localeChanged() {
-      setTitle(computeTitle(curModel, project));
+      setTitle(computeTitle(getModel(), project));
       panel.localeChanged();
       load.setText(S.get("loadButton"));
       run.setText(S.get("runButton"));
       stop.setText(S.get("stopButton"));
       reset.setText(S.get("resetButton"));
       close.setText(S.get("closeButton"));
-      myListener.testResultsChanged(getModel().getPass(), getModel().getFail());
+      testingChanged();
       windowManager.localeChanged();
     }
 
@@ -242,36 +256,43 @@ public class TestFrame extends LFrame.SubWindowWithSimulation {
       if (action == ProjectEvent.ACTION_SET_STATE) {
         updateWithProject(event.getProject());
       } else if (action == ProjectEvent.ACTION_SET_FILE) {
-        setTitle(computeTitle(curModel, project));
+        setTitle(computeTitle(getModel(), project));
       }
     }
 
     @Override
     public void testingChanged() {
-      if (getModel().isRunning() && !getModel().isPaused()) {
-        run.setEnabled(false);
-        stop.setEnabled(true);
-      } else if (getModel().getVector() != null && finished != count) {
-        run.setEnabled(true);
-        stop.setEnabled(false);
-      } else {
-        run.setEnabled(false);
-        stop.setEnabled(false);
+      if (!SwingUtilities.isEventDispatchThread()) {
+        SwingUtilities.invokeLater(this::testingChanged);
+        return;
       }
-      reset.setEnabled(getModel().getVector() != null && finished > 0);
+      final var model = getModel();
+      updateControls(model, load, run, stop, reset);
+      pass.setText(S.get("passMessage", Integer.toString(model == null ? 0 : model.getPass())));
+      fail.setText(S.get("failMessage", Integer.toString(model == null ? 0 : model.getFail())));
     }
 
     @Override
     public void testResultsChanged(int numPass, int numFail) {
-      pass.setText(S.get("passMessage", Integer.toString(numPass)));
-      fail.setText(S.get("failMessage", Integer.toString(numFail)));
-      finished = numPass + numFail;
+      // Re-read the active model; a queued result can belong to the circuit just deselected.
+      testingChanged();
     }
 
     @Override
     public void vectorChanged() {
       // do nothing
     }
+  }
+
+  static void updateControls(Model model, JButton load, JButton run, JButton stop, JButton reset) {
+    final var active = model != null;
+    final var running = active && model.isRunning() && !model.isPaused();
+    final var hasVector = active && model.getVector() != null;
+    final var finished = active ? model.getPass() + model.getFail() : 0;
+    load.setEnabled(active);
+    run.setEnabled(hasVector && !running && finished < model.getVector().data.size());
+    stop.setEnabled(running);
+    reset.setEnabled(hasVector && finished > 0);
   }
 
   private class WindowMenuManager extends WindowMenuItemManager

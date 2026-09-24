@@ -9,29 +9,34 @@
 
 package com.cburch.logisim.gui.start;
 
+import static com.cburch.logisim.gui.Strings.S;
+
 import com.cburch.logisim.Main;
 import com.cburch.logisim.generated.BuildInfo;
+import com.cburch.logisim.gui.generic.Dialogs;
+import com.cburch.logisim.gui.theme.Theme;
 import com.cburch.logisim.gui.theme.Tokens;
 import com.cburch.logisim.util.LineBuffer;
-import com.cburch.logisim.util.UniquelyNamedThread;
-
+import com.cburch.logisim.util.UiScale;
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.Toolkit;
+import java.awt.datatransfer.StringSelection;
+import java.awt.event.HierarchyEvent;
+import java.awt.event.KeyEvent;
 import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
-import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.event.AncestorEvent;
-import javax.swing.event.AncestorListener;
-import java.awt.datatransfer.StringSelection;
-
-import static com.cburch.logisim.gui.Strings.S;
+import javax.swing.KeyStroke;
+import javax.swing.Timer;
 
 public class About {
   static final int PADDING = 20;
@@ -51,12 +56,17 @@ public class About {
     if (!Main.hasGui()) {
       return;
     }
+    createAboutDialog(owner).setVisible(true);
+  }
 
+  static JDialog createAboutDialog(JFrame owner) {
     final var content = new JPanel(new BorderLayout());
     content.add(new AboutPanel(true));
     content.setBorder(BorderFactory.createLineBorder(Tokens.divider(), 1));
 
     final var dialog = new JDialog(owner, S.get("aboutDialogTitle"), true);
+    dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+    Dialogs.installEscapeToClose(dialog);
     final var optionPane = new JOptionPane(content, JOptionPane.PLAIN_MESSAGE);
     final var copyDetailsButton = new JButton(S.get("aboutDialogCopyDetails"));
     copyDetailsButton.addActionListener(event -> {
@@ -86,89 +96,120 @@ public class About {
     optionPane.setOptions(new JButton[]{copyDetailsButton, closeButton});
 
     dialog.setContentPane(optionPane);
+    // JOptionPane's ancestor binding otherwise consumes Escape by changing its value. This
+    // custom dialog has no value listener, so use the same window-closing action as its root.
+    final var root = dialog.getRootPane();
+    final var escape = KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0);
+    final var closeAction = root.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).get(escape);
+    optionPane.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
+        .put(escape, closeAction);
+    optionPane.getActionMap().put(closeAction, root.getActionMap().get(closeAction));
+    dialog.getRootPane().setDefaultButton(closeButton);
     dialog.pack();
     dialog.setLocationRelativeTo(owner);
-    dialog.setVisible(true);
+    return dialog;
   }
 
-  private static class AboutPanel extends JPanel implements AncestorListener {
+  static class AboutPanel extends JPanel {
     private static final long serialVersionUID = 1L;
-    private AboutCredits credits = null;
-    private PanelThread thread = null;
+    private static final int FRAME_MILLIS = 20;
+    private final AboutCredits credits;
+    private final Timer animation;
 
     public AboutPanel() {
       this(false);
     }
 
     public AboutPanel(boolean includeCredits) {
-      // A real layout rather than absolute positions: the panel is shown at several sizes, and
-      // the logo and the credits were placed by arithmetic that assumed only one of them.
-      setLayout(new java.awt.BorderLayout());
-      setBorder(
-          javax.swing.BorderFactory.createEmptyBorder(PADDING, PADDING, PADDING, PADDING));
-
-      final var prefWidth = PANEL_WIDTH + 2 * PADDING;
-      var prefHeight = LOGO_HEIGHT + 2 * PADDING;
+      setLayout(new BorderLayout());
+      add(new LogoPanel(), BorderLayout.NORTH);
+      credits = includeCredits ? new AboutCredits(PANEL_WIDTH, SCROLLER_HEIGHT) : null;
       if (includeCredits) {
-        prefHeight += SCROLLER_HEIGHT;
+        add(credits, BorderLayout.CENTER);
       }
-
-      setPreferredSize(new Dimension(prefWidth, prefHeight));
-      // The panel is part of the application's own window, so it takes the theme's background
-      // rather than being white whatever else is on screen.
-      setBackground(Tokens.color("Logisim.sidePanel.background", getBackground()));
-      addAncestorListener(this);
-
-      final var logo = new JLabel(new ImageIcon(getClass().getClassLoader().getResource(LOGO_IMG)));
-      logo.setHorizontalAlignment(JLabel.CENTER);
-      add(logo, java.awt.BorderLayout.NORTH);
-
-      if (includeCredits) {
-        credits = new AboutCredits(PANEL_WIDTH, SCROLLER_HEIGHT);
-        add(credits, java.awt.BorderLayout.CENTER);
-      }
-    }
-
-    @Override
-    public void ancestorAdded(AncestorEvent arg0) {
-      if (credits != null) {
-        if (thread == null) {
-          thread = new PanelThread(this);
+      animation = new Timer(FRAME_MILLIS, event -> {
+        if (credits != null) {
+          credits.advance(FRAME_MILLIS);
+          credits.repaint();
         }
-        thread.start();
-      }
+      });
+      animation.setCoalesce(true);
+      addHierarchyListener(event -> {
+        if ((event.getChangeFlags() & HierarchyEvent.SHOWING_CHANGED) != 0) updateAnimation();
+      });
+      applyTheme();
+      Theme.addListener(this, this::applyTheme);
+    }
+
+    private void applyTheme() {
+      final var padding = UiScale.scaled(PADDING);
+      setBorder(BorderFactory.createEmptyBorder(padding, padding, padding, padding));
+      setBackground(AboutCredits.surfaceColor());
+      revalidate();
+      repaint();
     }
 
     @Override
-    public void ancestorMoved(AncestorEvent arg0) {}
-
-    @Override
-    public void ancestorRemoved(AncestorEvent arg0) {
-      if (thread != null) {
-        thread.running = false;
-      }
-    }
-  } // AboutPanel
-
-  private static class PanelThread extends UniquelyNamedThread {
-    private final AboutPanel panel;
-    private boolean running = true;
-
-    PanelThread(AboutPanel panel) {
-      super("About-PanelThread");
-      this.panel = panel;
+    public Dimension getPreferredSize() {
+      return new Dimension(
+          UiScale.scaled(PANEL_WIDTH + 2 * PADDING),
+          UiScale.scaled(LOGO_HEIGHT + 2 * PADDING + (credits == null ? 0 : SCROLLER_HEIGHT)));
     }
 
     @Override
-    public void run() {
-      while (running) {
-        panel.repaint();
-        try {
-          Thread.sleep(20);
-        } catch (InterruptedException ignored) {
-          // Let's pretend nothing happened.
-        }
+    public void addNotify() {
+      super.addNotify();
+      updateAnimation();
+    }
+
+    @Override
+    public void removeNotify() {
+      animation.stop();
+      super.removeNotify();
+    }
+
+    private void updateAnimation() {
+      if (credits != null && isDisplayable() && isShowing()) animation.start();
+      else animation.stop();
+    }
+
+    boolean isAnimationRunning() {
+      return animation.isRunning();
+    }
+  }
+
+  /** Preserve the original logo and its aspect ratio at the current UI scale and available width. */
+  private static class LogoPanel extends JPanel {
+    private static final long serialVersionUID = 1L;
+    private final ImageIcon logo =
+        new ImageIcon(About.class.getClassLoader().getResource(LOGO_IMG));
+
+    private LogoPanel() {
+      setOpaque(false);
+    }
+
+    @Override
+    public Dimension getPreferredSize() {
+      return new Dimension(UiScale.scaled(PANEL_WIDTH), UiScale.scaled(LOGO_HEIGHT));
+    }
+
+    @Override
+    protected void paintComponent(Graphics graphics) {
+      super.paintComponent(graphics);
+      final var g = (Graphics2D) graphics.create();
+      try {
+        final var ratio = Math.min(
+            (double) getWidth() / logo.getIconWidth(),
+            (double) getHeight() / logo.getIconHeight());
+        final var width = (int) Math.round(logo.getIconWidth() * ratio);
+        final var height = (int) Math.round(logo.getIconHeight() * ratio);
+        g.setRenderingHint(
+            RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+        g.drawImage(logo.getImage(), (getWidth() - width) / 2, (getHeight() - height) / 2,
+            width, height, this);
+      } finally {
+        g.dispose();
       }
     }
-  } // PanelThread
+  }
 }

@@ -16,6 +16,7 @@ import com.cburch.logisim.circuit.SubcircuitFactory;
 import com.cburch.logisim.comp.ComponentDrawContext;
 import com.cburch.logisim.gui.icons.TreeIcon;
 import com.cburch.logisim.gui.main.Canvas;
+import com.cburch.logisim.gui.theme.Theme;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.proj.ProjectEvent;
@@ -26,11 +27,13 @@ import com.cburch.logisim.util.ColorUtil;
 import com.cburch.logisim.util.LocaleListener;
 import com.cburch.logisim.util.LocaleManager;
 import com.cburch.logisim.util.StringUtil;
+import com.cburch.logisim.util.Spacing;
+import com.cburch.logisim.util.UiFonts;
+import com.cburch.logisim.util.UiScale;
 import com.cburch.logisim.vhdl.base.VhdlContent;
 import com.cburch.logisim.vhdl.base.VhdlEntity;
 
 import java.awt.Color;
-import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
@@ -104,9 +107,33 @@ public class ProjectExplorer extends JTree implements LocaleListener {
     AppPreferences.GATE_SHAPE.addPropertyChangeListener(myListener);
     AppPreferences.UI_ANTIALIASING.addPropertyChangeListener(myListener);
     LocaleManager.addLocaleListener(this);
-    DefaultTreeCellRenderer renderer = (DefaultTreeCellRenderer) getCellRenderer();
+    refreshUiMetrics();
+    Theme.addListener(this, this::refreshUiMetrics);
+  }
+
+  @Override
+  public void updateUI() {
+    super.updateUI();
+    refreshUiMetrics();
+  }
+
+  private void refreshUiMetrics() {
+    // JTree calls updateUI from its constructor, before our renderer exists.
+    if (renderer == null) return;
+    renderer.updateUI();
+    final var font = UiFonts.body();
+    setFont(font);
+    renderer.setFont(font);
     renderer.setClosedIcon(new TreeIcon(true));
     renderer.setOpenIcon(new TreeIcon(false));
+    renderer.setIconTextGap(Spacing.xs());
+    final var textHeight = Math.max(getFontMetrics(font).getHeight(),
+        getFontMetrics(UiFonts.bodyBold()).getHeight());
+    final var iconHeight = Math.max(UiScale.scaled(AppPreferences.BOX_SIZE),
+        renderer.getClosedIcon().getIconHeight());
+    setRowHeight(Math.max(iconHeight, textHeight + Spacing.xs()));
+    revalidate();
+    repaint();
   }
 
   public Tool getSelectedTool() {
@@ -286,8 +313,8 @@ public class ProjectExplorer extends JTree implements LocaleListener {
         int row,
         boolean hasFocus) {
       java.awt.Component ret = super.getTreeCellRendererComponent(tree, value, selected, expanded, leaf, row, hasFocus);
-      final var plainFont = AppPreferences.getScaledFont(ret.getFont());
-      final var boldFont = plainFont.deriveFont(Font.BOLD);
+      final var plainFont = UiFonts.body();
+      final var boldFont = UiFonts.bodyBold();
       ret.setFont(plainFont);
       if (ret instanceof JComponent comp) {
         comp.setToolTipText(null);

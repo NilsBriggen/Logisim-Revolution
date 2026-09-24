@@ -12,8 +12,24 @@ package com.cburch.logisim.gui.generic;
 import com.cburch.logisim.data.Attribute;
 import java.awt.Component;
 import java.awt.Window;
+import java.util.List;
 
 public interface AttrTableModelRow {
+  @FunctionalInterface
+  interface Edit {
+    void commit(Object value) throws AttrTableSetException;
+  }
+
+  /** Captures the destination before selection changes or editor teardown. */
+  default Edit captureEdit(Window parent, List<AttrTableModelRow> rows) {
+    return value -> setValue(parent, value);
+  }
+
+  /** Whether this model can commit selected rows as one undoable operation. */
+  default boolean supportsMultiEdit() {
+    return false;
+  }
+
   Component getEditor(Window parent);
 
   /**
@@ -30,6 +46,11 @@ public interface AttrTableModelRow {
   String getLabel();
 
   String getValue();
+
+  /** Formats an editor value for a pending, uncommitted wheel preview. */
+  default String displayValue(Object value) {
+    return String.valueOf(value);
+  }
 
   boolean isValueEditable();
 

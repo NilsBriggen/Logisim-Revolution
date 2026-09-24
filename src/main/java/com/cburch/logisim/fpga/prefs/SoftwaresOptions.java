@@ -20,18 +20,26 @@ import com.cburch.logisim.gui.prefs.PreferencesFrame;
 import com.cburch.logisim.gui.theme.Tokens;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.util.Softwares;
+import com.cburch.logisim.util.Spacing;
 import com.cburch.logisim.util.StringGetter;
+import com.cburch.logisim.util.UiFonts;
+import com.cburch.logisim.util.UiScale;
+import java.awt.BorderLayout;
+import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
-import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.prefs.PreferenceChangeEvent;
 import java.util.prefs.PreferenceChangeListener;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JLabel;
+import javax.swing.JPanel;
 import javax.swing.JSeparator;
+import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
 public class SoftwaresOptions extends OptionsPanel {
@@ -82,6 +90,14 @@ public class SoftwaresOptions extends OptionsPanel {
   private final MyListener myListener = new MyListener();
 
   private final JCheckBox questaValidationCheckBox = new JCheckBox();
+  private final JTextArea questaValidationText = new JTextArea() {
+    @Override
+    public Dimension getMinimumSize() {
+      // GridBagLayout uses minimum sizes in both axes when the path fields must shrink.
+      // Width can shrink freely, but the caption still needs every measured wrapped line.
+      return new Dimension(0, getPreferredSize().height);
+    }
+  };
   private final PrefOptionList vhdlStandard =
       new PrefOptionList(
           AppPreferences.VHDL_STANDARD,
@@ -119,6 +135,23 @@ public class SoftwaresOptions extends OptionsPanel {
     super(window);
 
     questaValidationCheckBox.addActionListener(myListener);
+    questaValidationText.setEditable(false);
+    questaValidationText.setFocusable(false);
+    questaValidationText.setOpaque(false);
+    questaValidationText.setFont(UiFonts.body());
+    questaValidationText.setLineWrap(true);
+    questaValidationText.setWrapStyleWord(true);
+    questaValidationText.addMouseListener(new MouseAdapter() {
+      @Override
+      public void mouseClicked(MouseEvent event) {
+        if (javax.swing.SwingUtilities.isLeftMouseButton(event)) {
+          questaValidationCheckBox.doClick();
+        }
+      }
+    });
+    final var validation = new JPanel(new BorderLayout(Spacing.xs(), 0));
+    validation.add(questaValidationCheckBox, BorderLayout.WEST);
+    validation.add(questaValidationText, BorderLayout.CENTER);
     questaPathButton.addActionListener(myListener);
     quartusPathButton.addActionListener(myListener);
     isePathButton.addActionListener(myListener);
@@ -126,162 +159,27 @@ public class SoftwaresOptions extends OptionsPanel {
     openfpgaPathButton.addActionListener(myListener);
     AppPreferences.getPrefs().addPreferenceChangeListener(myListener);
 
-    final var sep = dividerRule();
-    final var gbl = new GridBagLayout();
+    setLayout(new GridBagLayout());
     final var gbc = new GridBagConstraints();
-    setLayout(gbl);
-
-    gbc.insets = new Insets(2, 4, 4, 2);
+    gbc.insets = Spacing.formGaps();
     gbc.anchor = GridBagConstraints.BASELINE_LEADING;
-
-    var gridY = 0;
     gbc.gridx = 0;
-    gbc.gridy = gridY++;
-    gbc.gridwidth = 4;
+    gbc.gridy = 0;
+    gbc.gridwidth = 2;
     gbc.weightx = 1.0;
     gbc.fill = GridBagConstraints.HORIZONTAL;
     add(dividerRule(), gbc);
-
-    gbc.gridx = 0;
-    gbc.gridy = gridY++;
-    gbc.gridwidth = 3;
-    gbc.fill = GridBagConstraints.NONE;
-    add(questaValidationCheckBox, gbc);
-
-    gbc.gridx = 0;
-    gbc.gridy = gridY++;
-    gbc.gridwidth = 1;
-    gbc.fill = GridBagConstraints.NONE;
+    gbc.gridy++;
+    add(validation, gbc);
+    gbc.gridy++;
     add(vhdlStandard.getJLabel(), gbc);
-    gbc.gridx = 1;
-    gbc.gridwidth = 2;
+    gbc.gridy++;
     add(vhdlStandard.getJComboBox(), gbc);
-
-    gbc.gridx = 0;
-    gbc.gridy = gridY++;
-    gbc.gridwidth = 4;
-    gbc.weightx = 1.0;
-    gbc.fill = GridBagConstraints.HORIZONTAL;
-    add(sep, gbc);
-
-    gbc.gridx = 0;
-    gbc.gridy = gridY++;
-    gbc.gridwidth = 3;
-    gbc.fill = GridBagConstraints.NONE;
-    add(questaPathLabel, gbc);
-
-    gbc.gridx = 0;
-    gbc.gridy = gridY;
-    gbc.gridwidth = 2;
-    gbc.weightx = 1.0;
-    gbc.fill = GridBagConstraints.HORIZONTAL;
-    add(questaPathField, gbc);
-    gbc.gridx = 2;
-    gbc.gridy = gridY++;
-    gbc.fill = GridBagConstraints.NONE;
-    add(questaPathButton, gbc);
-
-    gbc.gridx = 0;
-    gbc.gridy = gridY++;
-    gbc.gridwidth = 4;
-    gbc.weightx = 1.0;
-    gbc.fill = GridBagConstraints.HORIZONTAL;
-    add(dividerRule(), gbc);
-
-    gbc.gridx = 0;
-    gbc.gridy = gridY++;
-    gbc.gridwidth = 4;
-    gbc.weightx = 1.0;
-    gbc.fill = GridBagConstraints.HORIZONTAL;
-    add(quartusPathLabel, gbc);
-
-    gbc.gridx = 0;
-    gbc.gridy = gridY;
-    gbc.gridwidth = 2;
-    gbc.weightx = 1.0;
-    gbc.fill = GridBagConstraints.HORIZONTAL;
-    add(quartusPathField, gbc);
-    gbc.gridx = 2;
-    gbc.gridy = gridY++;
-    gbc.fill = GridBagConstraints.NONE;
-    add(quartusPathButton, gbc);
-
-    gbc.gridx = 0;
-    gbc.gridy = gridY++;
-    gbc.gridwidth = 4;
-    gbc.weightx = 1.0;
-    gbc.fill = GridBagConstraints.HORIZONTAL;
-    add(dividerRule(), gbc);
-
-    gbc.gridx = 0;
-    gbc.gridy = gridY++;
-    gbc.gridwidth = 4;
-    gbc.weightx = 1.0;
-    gbc.fill = GridBagConstraints.HORIZONTAL;
-
-    add(isePathLabel, gbc);
-    gbc.gridx = 0;
-    gbc.gridy = gridY;
-    gbc.gridwidth = 2;
-    gbc.weightx = 1.0;
-    gbc.fill = GridBagConstraints.HORIZONTAL;
-    add(isePathField, gbc);
-    gbc.gridx = 2;
-    gbc.gridy = gridY++;
-    gbc.fill = GridBagConstraints.NONE;
-    add(isePathButton, gbc);
-
-    gbc.gridx = 0;
-    gbc.gridy = gridY++;
-    gbc.gridwidth = 4;
-    gbc.weightx = 1.0;
-    gbc.fill = GridBagConstraints.HORIZONTAL;
-    add(dividerRule(), gbc);
-
-    gbc.gridx = 0;
-    gbc.gridy = gridY++;
-    gbc.gridwidth = 4;
-    gbc.weightx = 1.0;
-    gbc.fill = GridBagConstraints.HORIZONTAL;
-    add(vivadoPathLabel, gbc);
-
-    gbc.gridx = 0;
-    gbc.gridy = gridY;
-    gbc.gridwidth = 2;
-    gbc.weightx = 1.0;
-    gbc.fill = GridBagConstraints.HORIZONTAL;
-    add(vivadoPathField, gbc);
-
-    gbc.gridx = 2;
-    gbc.gridy = gridY++;
-    gbc.fill = GridBagConstraints.NONE;
-    add(vivadoPathButton, gbc);
-
-    gbc.gridx = 0;
-    gbc.gridy = gridY++;
-    gbc.gridwidth = 4;
-    gbc.weightx = 1.0;
-    gbc.fill = GridBagConstraints.HORIZONTAL;
-    add(dividerRule(), gbc);
-
-    gbc.gridx = 0;
-    gbc.gridy = gridY++;
-    gbc.gridwidth = 4;
-    gbc.weightx = 1.0;
-    gbc.fill = GridBagConstraints.HORIZONTAL;
-    add(openfpgaPathLabel, gbc);
-
-    gbc.gridx = 0;
-    gbc.gridy = gridY;
-    gbc.gridwidth = 2;
-    gbc.weightx = 1.0;
-    gbc.fill = GridBagConstraints.HORIZONTAL;
-    add(openfpgaPathField, gbc);
-
-    gbc.gridx = 2;
-    gbc.gridy = gridY++;
-    gbc.fill = GridBagConstraints.NONE;
-    add(openfpgaPathButton, gbc);
+    addPathRow(gbc, questaPathLabel, questaPathField, questaPathButton);
+    addPathRow(gbc, quartusPathLabel, quartusPathField, quartusPathButton);
+    addPathRow(gbc, isePathLabel, isePathField, isePathButton);
+    addPathRow(gbc, vivadoPathLabel, vivadoPathField, vivadoPathButton);
+    addPathRow(gbc, openfpgaPathLabel, openfpgaPathField, openfpgaPathButton);
 
     questaValidationCheckBox.setSelected(AppPreferences.QUESTA_VALIDATION.getBoolean());
 
@@ -298,6 +196,46 @@ public class SoftwaresOptions extends OptionsPanel {
   }
 
   @Override
+  public void updateUI() {
+    super.updateUI();
+    if (questaValidationText != null) questaValidationText.setFont(UiFonts.body());
+  }
+
+  @Override
+  public Dimension getPreferredSize() {
+    if (questaValidationText != null) {
+      final var insets = getInsets();
+      final var gaps = Spacing.formGaps();
+      final var width = getWidth() > 0 ? getWidth() : UiScale.scaled(360);
+      questaValidationText.setSize(
+          Math.max(1, width - insets.left - insets.right - gaps.left - gaps.right
+              - questaValidationCheckBox.getPreferredSize().width - Spacing.xs()),
+          Short.MAX_VALUE);
+    }
+    return super.getPreferredSize();
+  }
+
+  private void addPathRow(
+      GridBagConstraints gbc, JLabel label, JTextField field, JButton browse) {
+    gbc.gridx = 0;
+    gbc.gridy++;
+    gbc.gridwidth = 2;
+    gbc.weightx = 1.0;
+    gbc.fill = GridBagConstraints.HORIZONTAL;
+    add(dividerRule(), gbc);
+    gbc.gridy++;
+    label.setLabelFor(field);
+    add(label, gbc);
+    gbc.gridy++;
+    gbc.gridwidth = 1;
+    add(field, gbc);
+    gbc.gridx = 1;
+    gbc.weightx = 0.0;
+    gbc.fill = GridBagConstraints.NONE;
+    add(browse, gbc);
+  }
+
+  @Override
   public String getHelpText() {
     return S.get("softwaresHelp");
   }
@@ -309,7 +247,9 @@ public class SoftwaresOptions extends OptionsPanel {
 
   @Override
   public void localeChanged() {
-    questaValidationCheckBox.setText(S.get("softwaresQuestaValidationLabel"));
+    final var validationLabel = S.get("softwaresQuestaValidationLabel");
+    questaValidationText.setText(validationLabel);
+    questaValidationCheckBox.getAccessibleContext().setAccessibleName(validationLabel);
     vhdlStandard.getJLabel().setText(S.get("softwaresVhdlStandardLabel") + " ");
     questaPathButton.setText(S.get("softwaresQuestaPathButton"));
     questaPathLabel.setText(S.get("softwaresQuestaPathLabel"));

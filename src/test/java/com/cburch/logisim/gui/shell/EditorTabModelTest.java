@@ -159,13 +159,44 @@ class EditorTabModelTest {
   }
 
   @Test
-  void closingTheOnlyTabLeavesNothingSelected() {
+  void closingTheOnlyTabRequestsABlankEditorWithoutNavigatingTheCircuit() {
     model.syncTo(layout(alu));
+    activated.clear();
+    final var blanks = new java.util.concurrent.atomic.AtomicInteger();
+    model.setEmptyListener(blanks::incrementAndGet);
 
     model.close(0);
 
     assertEquals(0, model.count());
     assertEquals(-1, model.selectedIndex());
+    assertEquals(1, blanks.get());
+    assertTrue(activated.isEmpty());
+  }
+
+  @Test
+  void deletingTheFinalTargetStillRemovesItsTabs() {
+    model.syncTo(layout(alu));
+    model.syncTo(new Tab(Kind.APPEARANCE, alu));
+    activated.clear();
+
+    model.removeTarget(alu);
+
+    assertEquals(0, model.count());
+    assertEquals(-1, model.selectedIndex());
+    assertTrue(activated.isEmpty(), "deleting must not reopen another view of that target");
+  }
+
+  @Test
+  void deletingActiveTargetNavigatesOnlyAfterAllItsViewsAreGone() {
+    model.syncTo(layout(main));
+    model.syncTo(layout(alu));
+    model.syncTo(new Tab(Kind.APPEARANCE, alu));
+    activated.clear();
+
+    model.removeTarget(alu);
+
+    assertEquals(List.of(layout(main)), activated);
+    assertSame(main, model.selected().target());
   }
 
   @Test

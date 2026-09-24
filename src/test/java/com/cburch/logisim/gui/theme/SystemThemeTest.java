@@ -10,10 +10,16 @@
 package com.cburch.logisim.gui.theme;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.nio.file.Path;
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -75,9 +81,53 @@ class SystemThemeTest {
   }
 
   @Test
-  void probingTheRealDesktopNeverThrows() {
-    final var result = SystemTheme.isSystemDark();
+  void stalledStdoutIsBoundedAndProcessIsTerminated() throws Exception {
+    final var process = startProbe("stall");
+    try {
+      assertTimeoutPreemptively(Duration.ofSeconds(5), () ->
+          assertNull(SystemTheme.readProbe(process, 150)));
+      assertTrue(process.waitFor(2, TimeUnit.SECONDS));
+      assertFalse(process.isAlive());
+    } finally {
+      process.destroyForcibly();
+    }
+  }
 
-    assertTrue(result.isPresent() || result.isEmpty(), "must answer or abstain, never fail");
+  @Test
+  void excessiveOutputIsRejectedWithoutBlockingTheReader() throws Exception {
+    final var process = startProbe("large");
+    try {
+      assertTimeoutPreemptively(Duration.ofSeconds(5), () ->
+          assertNull(SystemTheme.readProbe(process, 2_000)));
+    } finally {
+      process.destroyForcibly();
+    }
+  }
+
+  @Test
+  void successfulProbeReturnsItsOutput() throws Exception {
+    final var process = startProbe("short");
+    try {
+      assertEquals("prefer-dark", SystemTheme.readProbe(process, 2_000));
+    } finally {
+      process.destroyForcibly();
+    }
+  }
+
+  private static Process startProbe(String mode) throws Exception {
+    final var java = Path.of(System.getProperty("java.home"), "bin", "java").toString();
+    final var classes = Path.of(Probe.class.getProtectionDomain().getCodeSource()
+        .getLocation().toURI()).toString();
+    return new ProcessBuilder(java, "-cp", classes, Probe.class.getName(), mode)
+        .redirectError(ProcessBuilder.Redirect.DISCARD).start();
+  }
+
+  /** A disposable child with no desktop or preference access. */
+  public static class Probe {
+    public static void main(String[] args) throws Exception {
+      if (args[0].equals("stall")) Thread.sleep(30_000);
+      if (args[0].equals("large")) System.out.print("x".repeat(100_000));
+      if (args[0].equals("short")) System.out.print("prefer-dark");
+    }
   }
 }

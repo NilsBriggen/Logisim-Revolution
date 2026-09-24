@@ -14,15 +14,17 @@ import static com.cburch.logisim.gui.Strings.S;
 import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.gui.log.Model;
 import com.cburch.logisim.gui.log.Signal;
+import com.cburch.logisim.gui.theme.Theme;
 import com.cburch.logisim.gui.theme.Tokens;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.util.UiFonts;
+import com.cburch.logisim.util.UiScale;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
-import java.awt.Graphics2D;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
@@ -54,7 +56,7 @@ public class RightPanel extends JPanel {
     return UiFonts.mono();
   }
   private static final long serialVersionUID = 1L;
-  private static final int WAVE_HEIGHT = ChronoPanel.SIGNAL_HEIGHT;
+  private int waveHeight;
   private static final int EXTRA_SPACE = 40;
   private static final int CURSOR_GAP = 20;
   private static final int TIMELINE_SPACING = 80;
@@ -73,14 +75,33 @@ public class RightPanel extends JPanel {
   private int height;
   private final MyListener myListener = new MyListener();
   private Timeline header;
+  // AppPreferences holds listeners weakly; retain this for the lifetime of the waveform view.
+  private final PropertyChangeListener colorListener = event -> {
+    if (SwingUtilities.isEventDispatchThread()) refreshAppearance();
+    else SwingUtilities.invokeLater(this::refreshAppearance);
+  };
 
   public RightPanel(ChronoPanel p, ListSelectionModel m) {
     chronoPanel = p;
     selectionModel = (DefaultListSelectionModel) m;
     model = p.getModel();
     slope = (tickWidth < 12) ? (int) (tickWidth / 3) : 4;
+    waveHeight = ChronoPanel.signalHeight(this);
     configure();
     installThemeListener();
+    Theme.addListener(this, this::refreshAppearance);
+  }
+
+  void refreshAppearance() {
+    waveHeight = ChronoPanel.signalHeight(this);
+    setBackground(backgroundColor());
+    header.setBackground(backgroundColor());
+    header.setPreferredSize(new Dimension(width, ChronoPanel.headerHeight(this)));
+    updateSize(false);
+    flushWaveforms();
+    header.revalidate();
+    header.repaint();
+    repaint();
   }
 
   /**
@@ -90,28 +111,22 @@ public class RightPanel extends JPanel {
    * diagram would keep the colours of the previous theme until it was next invalidated.
    */
   private void installThemeListener() {
-    final PropertyChangeListener listener =
-        event -> {
-          flushWaveforms();
-          setBackground(backgroundColor());
-          repaint();
-        };
-    AppPreferences.CHRONO_BG_COLOR.addPropertyChangeListener(listener);
-    AppPreferences.CHRONO_SIGNAL_COLOR.addPropertyChangeListener(listener);
-    AppPreferences.CHRONO_LABEL_COLOR.addPropertyChangeListener(listener);
-    AppPreferences.CHRONO_ROW_BG_COLOR.addPropertyChangeListener(listener);
-    AppPreferences.CHRONO_SPOT_BG_COLOR.addPropertyChangeListener(listener);
+    AppPreferences.CHRONO_BG_COLOR.addPropertyChangeListener(colorListener);
+    AppPreferences.CHRONO_SIGNAL_COLOR.addPropertyChangeListener(colorListener);
+    AppPreferences.CHRONO_LABEL_COLOR.addPropertyChangeListener(colorListener);
+    AppPreferences.CHRONO_ROW_BG_COLOR.addPropertyChangeListener(colorListener);
+    AppPreferences.CHRONO_SPOT_BG_COLOR.addPropertyChangeListener(colorListener);
   }
 
   private void configure() {
     final var n = model.getSignalCount();
-    height = n * ChronoPanel.SIGNAL_HEIGHT;
+    height = n * waveHeight;
     setBackground(backgroundColor());
     final var timeScale = model.getTimeScale();
     final var numTicks = ((model.getEndTime() - model.getStartTime()) + timeScale - 1) / timeScale;
     width = (int) (tickWidth * numTicks + EXTRA_SPACE + 0.5);
     header = new Timeline();
-    header.setPreferredSize(new Dimension(width, ChronoPanel.HEADER_HEIGHT));
+    header.setPreferredSize(new Dimension(width, ChronoPanel.headerHeight(this)));
     addMouseListener(myListener);
     addMouseMotionListener(myListener);
     final var tracker =
@@ -186,7 +201,7 @@ public class RightPanel extends JPanel {
     final var timeScale = model.getTimeScale();
     final var numTicks = ((timeNextDraw - timeStartDraw) + timeScale - 1) / timeScale;
     final var m = model.getSignalCount();
-    height = m * ChronoPanel.SIGNAL_HEIGHT;
+    height = m * waveHeight;
     width = (int) (tickWidth * numTicks + EXTRA_SPACE + 0.5);
     final var d = getPreferredSize();
     if (d.width == width && d.height == height) return;
@@ -197,7 +212,7 @@ public class RightPanel extends JPanel {
 
     d.width = width;
     d.height = height;
-    header.setPreferredSize(new Dimension(width, ChronoPanel.HEADER_HEIGHT));
+    header.setPreferredSize(new Dimension(width, ChronoPanel.headerHeight(this)));
     setPreferredSize(d); // necessary for scrollbar
     revalidate();
 
@@ -349,10 +364,11 @@ public class RightPanel extends JPanel {
       gfx.setFont(msgFont());
       final var lines = S.get("NoSignalsSelected");
       final var x = AppPreferences.getScaled(15);
-      var y = AppPreferences.getScaled(15);
+      final var metrics = gfx.getFontMetrics();
+      var y = UiScale.scaled(4) + metrics.getAscent();
       for (final var s : lines.split("\\|")) {
         gfx.drawString(s.trim(), x, y);
-        y += AppPreferences.getScaled(14);
+        y += metrics.getHeight();
       }
       gfx.setFont(f);
       return;
@@ -360,8 +376,10 @@ public class RightPanel extends JPanel {
     if (width > 32000) {
       gfx.setColor(labelColor());
       gfx.setFont(msgFont());
-      gfx.drawString(S.get("chronoTooLargeMessage"), 15, 15);
-      gfx.drawString(S.get("chronoTooLargeHint"), 15, 29);
+      final var metrics = gfx.getFontMetrics();
+      final var baseline = UiScale.scaled(4) + metrics.getAscent();
+      gfx.drawString(S.get("chronoTooLargeMessage"), UiScale.scaled(15), baseline);
+      gfx.drawString(S.get("chronoTooLargeHint"), UiScale.scaled(15), baseline + metrics.getHeight());
     } else {
       for (final var w : rows) {
         if (export) w.paintWaveformDirect(gfx);
@@ -384,7 +402,7 @@ public class RightPanel extends JPanel {
     boolean subtracting;
 
     Signal getSignal(int y, boolean force) {
-      var idx = y / WAVE_HEIGHT;
+      var idx = Math.floorDiv(y, waveHeight);
       final var n = model.getSignalCount();
       if (idx < 0 && force) idx = 0;
       else if (idx >= n && force) idx = n - 1;
@@ -476,10 +494,6 @@ public class RightPanel extends JPanel {
 
   private class Waveform {
 
-    private static final int HIGH = ChronoPanel.GAP;
-    private static final int LOW = WAVE_HEIGHT - ChronoPanel.GAP;
-    private static final int MID = WAVE_HEIGHT / 2;
-
     final Signal signal;
     private BufferedImage buf;
     boolean selected;
@@ -489,11 +503,14 @@ public class RightPanel extends JPanel {
     }
 
     Rectangle getBounds() {
-      int y = WAVE_HEIGHT * signal.idx;
-      return new Rectangle(0, y, width, WAVE_HEIGHT);
+      int y = waveHeight * signal.idx;
+      return new Rectangle(0, y, width, waveHeight);
     }
 
     private void drawSignal(Graphics2D g, boolean bold, Color[] colors) {
+      final int high = ChronoPanel.gap();
+      final int low = waveHeight - ChronoPanel.gap();
+      final int mid = waveHeight / 2;
       g.setStroke(new BasicStroke(bold ? 2 : 1));
 
       final var t0 = model.getStartTime();
@@ -550,12 +567,12 @@ public class RightPanel extends JPanel {
             // not enough room for sloped transition
             if (hi) {
               g.setColor(fillColor);
-              g.fillRect(x0, HIGH, (x1 - x0) + 1, LOW - HIGH + 1);
+              g.fillRect(x0, high, (x1 - x0) + 1, low - high + 1);
             }
             g.setColor(lineColor);
-            g.drawLine(x0, HIGH, x0, LOW);
-            if (hi) g.drawLine(x0, HIGH, x1, HIGH);
-            if (lo) g.drawLine(x0, LOW, x1, LOW);
+            g.drawLine(x0, high, x0, low);
+            if (hi) g.drawLine(x0, high, x1, high);
+            if (lo) g.drawLine(x0, low, x1, low);
           } else {
             // draw sloped transition
             if (prevHi && prevLo && hi && lo) {
@@ -564,64 +581,64 @@ public class RightPanel extends JPanel {
               //
               g.setColor(prevFill);
               g.fillPolygon(
-                  new int[] {x0, x0 + (xt - x0) / 2, x0}, new int[] {HIGH, MID, LOW + 1}, 3);
+                  new int[] {x0, x0 + (xt - x0) / 2, x0}, new int[] {high, mid, low + 1}, 3);
               g.setColor(fillColor);
               g.fillPolygon(
                   new int[] {x0 + (xt - x0) / 2, xt, x1, x1, xt},
-                  new int[] {MID, HIGH, HIGH, LOW + 1, LOW + 1},
+                  new int[] {mid, high, high, low + 1, low + 1},
                   5);
               g.setColor(lineColor);
-              g.drawLine(x0, HIGH, xt, LOW);
-              g.drawLine(x0, LOW, xt, HIGH);
-              g.drawLine(xt, HIGH, x1, HIGH);
-              g.drawLine(xt, LOW, x1, LOW);
+              g.drawLine(x0, high, xt, low);
+              g.drawLine(x0, low, xt, high);
+              g.drawLine(xt, high, x1, high);
+              g.drawLine(xt, low, x1, low);
             } else if (!hi) {
               //   _____
               //   _ _ _\_____
               //
               g.setColor(prevFill);
-              g.fillPolygon(new int[] {x0, xt, x0}, new int[] {HIGH, LOW + 1, LOW + 1}, 3);
+              g.fillPolygon(new int[] {x0, xt, x0}, new int[] {high, low + 1, low + 1}, 3);
               g.setColor(lineColor);
-              g.drawLine(x0, HIGH, xt, LOW);
-              g.drawLine(prevLo ? x0 : xt, LOW, x1, LOW);
+              g.drawLine(x0, high, xt, low);
+              g.drawLine(prevLo ? x0 : xt, low, x1, low);
             } else if (!lo) {
               //   _ _ _ _____
               //   _____/
               //
               if (prevHi) {
                 g.setColor(prevFill);
-                g.fillPolygon(new int[] {x0, xt, x0}, new int[] {HIGH, HIGH, LOW + 1}, 3);
+                g.fillPolygon(new int[] {x0, xt, x0}, new int[] {high, high, low + 1}, 3);
               }
               g.setColor(fillColor);
               g.fillPolygon(
-                  new int[] {x0, xt, x1, x1, x0}, new int[] {LOW + 1, HIGH, HIGH, LOW + 1}, 4);
+                  new int[] {x0, xt, x1, x1, x0}, new int[] {low + 1, high, high, low + 1}, 4);
               g.setColor(lineColor);
-              g.drawLine(x0, LOW, xt, HIGH);
-              g.drawLine(prevHi ? x0 : xt, HIGH, x1, HIGH);
+              g.drawLine(x0, low, xt, high);
+              g.drawLine(prevHi ? x0 : xt, high, x1, high);
             } else if (!prevHi) {
               //         _____
               //   _____/_____
               //
               g.setColor(fillColor);
               g.fillPolygon(
-                  new int[] {x0, xt, x1, x1, x0}, new int[] {LOW + 1, HIGH, HIGH, LOW + 1}, 4);
+                  new int[] {x0, xt, x1, x1, x0}, new int[] {low + 1, high, high, low + 1}, 4);
               g.setColor(lineColor);
-              g.drawLine(x0, LOW, x1, LOW);
-              g.drawLine(x0, LOW, xt, HIGH);
-              g.drawLine(xt, HIGH, x1, HIGH);
+              g.drawLine(x0, low, x1, low);
+              g.drawLine(x0, low, xt, high);
+              g.drawLine(xt, high, x1, high);
             } else if (!prevLo) {
               //   ___________
               //        \_____
               //
               g.setColor(prevFill);
-              g.fillPolygon(new int[] {x0, xt, x0}, new int[] {HIGH, LOW + 1, LOW + 1}, 3);
+              g.fillPolygon(new int[] {x0, xt, x0}, new int[] {high, low + 1, low + 1}, 3);
               g.setColor(fillColor);
               g.fillPolygon(
-                  new int[] {x0, x1, x1, xt}, new int[] {HIGH, HIGH, LOW + 1, LOW + 1}, 4);
+                  new int[] {x0, x1, x1, xt}, new int[] {high, high, low + 1, low + 1}, 4);
               g.setColor(lineColor);
-              g.drawLine(x0, HIGH, x1, HIGH);
-              g.drawLine(x0, HIGH, xt, LOW);
-              g.drawLine(xt, LOW, x1, LOW);
+              g.drawLine(x0, high, x1, high);
+              g.drawLine(x0, high, xt, low);
+              g.drawLine(xt, low, x1, low);
             } else {
               System.out.println("huh? Unknown (and unhandled) case occured!");
             }
@@ -630,18 +647,20 @@ public class RightPanel extends JPanel {
           // first point, no left transition
           if (hi) {
             g.setColor(fillColor);
-            g.fillRect(x0, HIGH, (x1 - x0) + 1, LOW - HIGH + 1);
+            g.fillRect(x0, high, (x1 - x0) + 1, low - high + 1);
             g.setColor(lineColor);
-            g.drawLine(x0, HIGH, x1, HIGH);
+            g.drawLine(x0, high, x1, high);
           }
           if (lo) {
             g.setColor(lineColor);
-            g.drawLine(x0, LOW, x1, LOW);
+            g.drawLine(x0, low, x1, low);
           }
         }
-        if (x1 - x0 > labelWidth) {
-          g.setColor(labelColor());
-          g.drawString(v, x0 + 6, MID + 5);
+        if (x1 - x0 > Math.max(labelWidth, fm.stringWidth(v)) + UiScale.scaled(12)) {
+          // X/E fills are fixed light pastels in both themes; their labels need dark ink.
+          g.setColor(v.contains("E") || v.contains("x") ? Color.BLACK : labelColor());
+          g.drawString(v, x0 + UiScale.scaled(6),
+              (waveHeight - fm.getHeight()) / 2 + fm.getAscent());
         }
 
         prevHi = hi;
@@ -652,6 +671,9 @@ public class RightPanel extends JPanel {
     }
 
     private void drawWaveform(Graphics2D g) {
+      final int high = ChronoPanel.gap();
+      final int low = waveHeight - ChronoPanel.gap();
+      g.setFont(UiFonts.mono());
       g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_DEFAULT);
       g.setRenderingHint(
           RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
@@ -659,16 +681,16 @@ public class RightPanel extends JPanel {
       final var isBold = (model.getSpotlight() == signal);
       final var colors = chronoPanel.rowColors(signal.info, selected);
       g.setColor(backgroundColor());
-      g.fillRect(0, 0, width, ChronoPanel.GAP - 1);
-      g.fillRect(0, LOW, width, ChronoPanel.GAP - 1);
+      g.fillRect(0, 0, width, ChronoPanel.gap());
+      g.fillRect(0, low, width, ChronoPanel.gap());
       g.setColor(colors[0]);
-      g.fillRect(0, HIGH, width, LOW - HIGH);
+      g.fillRect(0, high, width, low - high);
       g.setColor(labelColor());
       drawSignal(g, isBold, colors);
     }
 
     private void createOffscreen() {
-      buf = (BufferedImage) createImage(width, WAVE_HEIGHT);
+      buf = new BufferedImage(Math.max(1, width), waveHeight, BufferedImage.TYPE_INT_RGB);
       final var g = buf.createGraphics();
       drawWaveform(g);
       g.dispose();
@@ -679,12 +701,12 @@ public class RightPanel extends JPanel {
         // TODO: reallocating image each time seems silly
         createOffscreen();
       }
-      final var y = WAVE_HEIGHT * signal.idx;
+      final var y = waveHeight * signal.idx;
       g.drawImage(buf, null, 0, y);
     }
 
     public void paintWaveformDirect(Graphics2D g) {
-      final var y = WAVE_HEIGHT * signal.idx;
+      final var y = waveHeight * signal.idx;
       final var gCopy = (Graphics2D) g.create();
       gCopy.translate(0, y);
       drawWaveform(gCopy);
@@ -742,11 +764,10 @@ public class RightPanel extends JPanel {
   static final long[] subd = new long[] {4, 4, 5, 5};
 
   private class Timeline extends JPanel {
-    final Color borderColor = Tokens.divider();
-    final int height = ChronoPanel.HEADER_HEIGHT;
 
     @Override
     public void paintComponent(Graphics gr) {
+      final var height = ChronoPanel.headerHeight(this);
       final var g = (Graphics2D) gr;
       /* Anti-aliasing changes from https://github.com/hausen/logisim-evolution */
       g.setRenderingHint(
@@ -754,37 +775,46 @@ public class RightPanel extends JPanel {
       g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
       g.setColor(getBackground());
       g.fillRect(0, 0, getWidth() - 1, height - 1);
-      g.setColor(borderColor);
+      g.setColor(Tokens.divider());
       g.drawLine(0, height - 1, getWidth() - 1, height - 1);
       paintScale(g);
       paintCursorWithLabel(g);
     }
 
     void paintCursorWithLabel(Graphics2D g) {
+      final var height = ChronoPanel.headerHeight(this);
       final var x = getSignalCursorX();
       final var t = getCurrentTime();
       g.setFont(timeFont());
 
       final var s = Model.formatDuration(t);
       final var fm = g.getFontMetrics();
-      final var r = fm.getStringBounds(s, g);
-      final var y = (height - ChronoPanel.GAP) / 2;
+      final var y = UiScale.scaled(3) + fm.getAscent();
+      final var padding = UiScale.scaled(3);
+      final var labelWidth = fm.stringWidth(s);
+      final var visible = getVisibleRect();
+      final var labelX = Math.max(visible.x + padding,
+          Math.min(x + UiScale.scaled(2), visible.x + visible.width - labelWidth - padding));
       g.setColor(Tokens.accent());
       g.fillRoundRect(
-          x + 2 + (int) r.getX() - 3,
-          y + (int) r.getY() - 2,
-          (int) r.getWidth() + 6,
-          (int) r.getHeight() + 4,
+          labelX - padding,
+          y - fm.getAscent() - padding,
+          labelWidth + 2 * padding,
+          fm.getHeight() + 2 * padding,
           CanvasStyle.bodyRadius(),
           CanvasStyle.bodyRadius());
       g.setColor(Tokens.accentText());
-      g.drawString(s, x + 2, y);
+      g.drawString(s, labelX, y);
       g.setColor(Tokens.accent());
       g.setStroke(CanvasStyle.stroke(1));
       g.drawLine(x, 0, x, height);
     }
 
     void paintScale(Graphics2D g) {
+      final var height = ChronoPanel.headerHeight(this);
+      final var fm = getFontMetrics(timeFont());
+      final var spacing = Math.max(UiScale.scaled(TIMELINE_SPACING),
+          fm.stringWidth(Model.formatDuration(model.getEndTime())) + UiScale.scaled(12));
       final var timeScale = model.getTimeScale();
       final var pixelPerTime = tickWidth / timeScale;
 
@@ -795,7 +825,7 @@ public class RightPanel extends JPanel {
       // TODO: in clock and step mode, maybe use timeScale as unit?
       var b = 1L;
       var j = 0;
-      while ((int) (unit[j] * b * pixelPerTime) < TIMELINE_SPACING) {
+      while ((int) (unit[j] * b * pixelPerTime) < spacing) {
         if (++j >= unit.length) {
           b *= 10;
           j = 0;
@@ -809,7 +839,7 @@ public class RightPanel extends JPanel {
       g.setFont(timeFont());
       final var time0 = model.getStartTime();
       final var timeL = (time0 / divMajor) * divMajor;
-      final var h = ChronoPanel.HEADER_HEIGHT - ChronoPanel.GAP;
+      final var h = height - ChronoPanel.gap();
       g.setColor(labelColor());
       g.drawLine(0, height - 2, width, height - 2);
       for (var i = 0; true; i++) {
@@ -818,8 +848,9 @@ public class RightPanel extends JPanel {
         final var x = (int) ((t - time0) * pixelPerTime);
         if (x >= width) break;
         if (i % numMinor == 0) {
-          if (x + EXTRA_SPACE <= width) {
-            g.drawString(Model.formatDuration(t), x, h / 2);
+          final var label = Model.formatDuration(t);
+          if (x + fm.stringWidth(label) <= width) {
+            g.drawString(label, x, UiScale.scaled(3) + fm.getAscent());
           }
           g.drawLine(x, h * 2 / 3, x, h);
         } else {

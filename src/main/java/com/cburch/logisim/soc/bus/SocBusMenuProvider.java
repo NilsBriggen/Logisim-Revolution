@@ -68,7 +68,7 @@ public class SocBusMenuProvider implements ActionListener {
           case SHOW_MEMORY_MAP -> myInfo.get(inst).showMemoryMap(inst);
           case INSERT_TRANSACTION -> myInfo
               .get(inst)
-              .insertTransaction(inst, info.getCircuitState(), info.getState(), info.getName());
+              .insertTransaction(inst, info.getCircuitState(), info.getState());
           case SHOW_TRACES ->
               myInfo.get(inst).showTraceWindow(inst, info.getState(), info.getHierInfo());
           default ->
@@ -248,7 +248,7 @@ public class SocBusMenuProvider implements ActionListener {
     }
 
     public void insertTransaction(Instance instance, CircuitState circuitState,
-                                  SocBusStateInfo.SocBusState state, String name) {
+                                  SocBusStateInfo.SocBusState state) {
       if (!myInsertionFrames.containsKey(state)) return;
       if (myInsertionFrames.get(state) == null) {
         String id = instance.getAttributeSet().getValue(SocBusAttributes.SOC_BUS_ID).getBusId();
@@ -259,7 +259,6 @@ public class SocBusMenuProvider implements ActionListener {
                 .getSocBusState(id);
         final var gui = new BusTransactionInsertionGui(busInfo, id, circuitState);
         parentFrame.addWindowListener(gui);
-        gui.setTitle(S.get("SocInsertTransWindowTitle") + " " + name);
         myInsertionFrames.put(state, gui);
       }
       final var frame = myInsertionFrames.get(state);

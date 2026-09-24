@@ -11,6 +11,8 @@ package com.cburch.logisim.gui.theme;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.cburch.logisim.util.UiScale;
@@ -79,5 +81,20 @@ class AppIconsTest {
 
     assertNotNull(icon.getColorFilter());
     assertEquals(java.awt.Color.RED, icon.getColorFilter().filter(java.awt.Color.BLACK));
+  }
+
+  @Test
+  void variantsNeverMutateAnExistingNormalIcon() {
+    final var normal = AppIcons.get(AppIcons.Id.RUN, 16);
+    final var filter = normal.getColorFilter();
+    final var foreground = filter.filter(java.awt.Color.BLACK);
+    final var accented = AppIcons.accented(AppIcons.Id.RUN, 16);
+    final var disabled = AppIcons.disabled(AppIcons.Id.RUN, 16);
+    assertNotSame(normal, accented);
+    assertNotSame(normal, disabled);
+    assertNotSame(accented, disabled);
+    assertSame(filter, normal.getColorFilter());
+    assertEquals(foreground, normal.getColorFilter().filter(java.awt.Color.BLACK));
+    assertEquals(Tokens.accent(), accented.getColorFilter().filter(java.awt.Color.BLACK));
   }
 }

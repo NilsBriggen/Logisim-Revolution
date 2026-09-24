@@ -14,20 +14,21 @@ import static com.cburch.logisim.gui.Strings.S;
 import com.cburch.logisim.Main;
 import com.cburch.logisim.circuit.RadixOption;
 import com.cburch.logisim.data.AttributeOption;
-import com.cburch.logisim.data.Value;
 import com.cburch.logisim.data.Direction;
+import com.cburch.logisim.data.Value;
 import com.cburch.logisim.fpga.hdlgenerator.HdlGeneratorFactory;
 import com.cburch.logisim.gui.menu.Menu;
 import com.cburch.logisim.gui.menu.MenuItemImpl;
 import com.cburch.logisim.gui.start.Startup;
 import com.cburch.logisim.gui.theme.Theme;
 import com.cburch.logisim.instance.StdAttr;
+import com.cburch.logisim.util.DesktopScale;
 import com.cburch.logisim.util.LocaleListener;
 import com.cburch.logisim.util.LocaleManager;
 import com.cburch.logisim.util.PropertyChangeWeakSupport;
+import com.cburch.logisim.util.UiScale;
+import com.formdev.flatlaf.util.UIScale;
 import java.awt.Color;
-import java.awt.Component;
-import java.awt.Container;
 import java.awt.Font;
 import java.awt.GraphicsEnvironment;
 import java.awt.Image;
@@ -43,6 +44,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.prefs.BackingStoreException;
 import java.util.prefs.PreferenceChangeEvent;
 import java.util.prefs.PreferenceChangeListener;
@@ -52,6 +54,7 @@ import javax.swing.JFrame;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
 import javax.swing.KeyStroke;
+import javax.swing.SwingUtilities;
 
 public class AppPreferences {
   // Export and print jobs may run off the EDT, so keep their palette override thread-local.
@@ -389,58 +392,44 @@ public class AppPreferences {
     }
   }
 
-  public static void setScaledFonts(Component[] comp) {
-    for (final var component : comp) {
-      if (component instanceof Container) {
-        setScaledFonts(((Container) component).getComponents());
-      }
-      try {
-        component.setFont(getScaledFont(component.getFont()));
-        component.revalidate();
-        component.repaint();
-      } catch (Exception ignored) {
-      }
-    }
-  }
-
   public static int getDownScaled(int value, float extScale) {
     getPrefs();
-    return (int) Math.round(value / (SCALE_FACTOR.get() * extScale));
+    return (int) Math.round(value / (UiScale.factor() * extScale));
   }
 
   public static int getDownScaled(int value) {
     getPrefs();
-    return (int) Math.round(value / SCALE_FACTOR.get());
+    return UiScale.unscaled(value);
   }
 
   public static double getDownScaled(double value) {
     getPrefs();
-    return value / SCALE_FACTOR.get();
+    return value / UiScale.factor();
   }
 
   public static int getScaled(int value, float extScale) {
     getPrefs();
-    return (int) Math.round(value * (SCALE_FACTOR.get() * extScale));
+    return (int) Math.round(value * (UiScale.factor() * extScale));
   }
 
   public static int getScaled(int value) {
     getPrefs();
-    return (int) Math.round(value * SCALE_FACTOR.get());
+    return UiScale.scaled(value);
   }
 
   public static float getScaled(float value) {
     getPrefs();
-    return value * SCALE_FACTOR.get().floatValue();
+    return UiScale.scaled(value);
   }
 
   public static float getScaled(float value, float extscale) {
     getPrefs();
-    return value * SCALE_FACTOR.get().floatValue() * extscale;
+    return UiScale.scaled(value) * extscale;
   }
 
   public static double getScaled(double value) {
     getPrefs();
-    return value * SCALE_FACTOR.get();
+    return UiScale.scaled(value);
   }
 
   public static Font getScaledFont(Font myfont) {
@@ -697,6 +686,7 @@ public class AppPreferences {
   public static final int DEFAULT_CLOCK_FREQUENCY_COLOR = 0xFF00B4;
   // dark mode default component colors
   public static final int DARK_COMPONENT_COLOR = 0xFFE2E6ED;
+  public static final int DARK_TEXT_TOOL_COLOR = DARK_COMPONENT_COLOR;
   public static final int DARK_COMPONENT_SECONDARY_COLOR = 0xFFAAAAAA;
   public static final int DARK_COMPONENT_GHOST_COLOR = 0xFF777777;
   public static final int DARK_COMPONENT_ICON_COLOR = 0xFFFFFFFF;
@@ -832,6 +822,7 @@ public class AppPreferences {
 
   /** Set once the theme-dependent colours have been declared to {@link ThemeColorPrefs}. */
   private static boolean themeColorsRegistered = false;
+  private static boolean textToolColorRegistered;
 
   /** The sixteen cover colours, in order, so they can be registered and reset as a set. */
   @SuppressWarnings("unchecked")
@@ -884,8 +875,28 @@ public class AppPreferences {
       ThemeColorPrefs.register(CHRONO_SPOT_BG_COLOR, DEFAULT_CHRONO_SPOT_BG_COLOR, DARK_CHRONO_SPOT_BG_COLOR);
     }
     ThemeColorPrefs.migrateShippedPalette();
+    // Register after the legacy palette migration, which must not discard text overrides.
+    if (!textToolColorRegistered) {
+      migrateTextToolColor();
+      ThemeColorPrefs.register(TEXT_TOOL_COLOR, DEFAULT_TEXT_TOOL_COLOR, DARK_TEXT_TOOL_COLOR);
+      textToolColorRegistered = true;
+    }
     ThemeColorPrefs.applyTheme(isDarkTheme());
     reloadValueColors();
+  }
+
+  /** Retains an explicitly stored legacy text colour in both palettes, including explicit black. */
+  static void migrateTextToolColor() {
+    final var prefs = getPrefs();
+    if (prefs.getBoolean("textToolThemeMigrated", false)) return;
+    final var key = TEXT_TOOL_COLOR.getIdentifier();
+    final var legacy = prefs.get(key, null);
+    if (legacy != null) {
+      for (final var prefix : ThemeColorPrefs.storagePrefixes()) {
+        if (prefs.get(prefix + key, null) == null) prefs.put(prefix + key, legacy);
+      }
+    }
+    prefs.putBoolean("textToolThemeMigrated", true);
   }
 
   /** Copies the colour preferences into the colours {@link Value} paints with. */
@@ -991,9 +1002,6 @@ public class AppPreferences {
   public static final PrefMonitor<Boolean> NEW_INPUT_OUTPUT_SHAPES =
       create(new PrefMonitorBooleanConvert("oldIO", true));
 
-  /** Screen height, in pixels, above which an unscaled display is treated as high resolution. */
-  private static final double TALL_SCREEN_THRESHOLD = 1600.0;
-
   /**
    * Returns the scale the platform already applies to the interface.
    *
@@ -1019,18 +1027,13 @@ public class AppPreferences {
   /**
    * Returns the interface scale to use when the user has not chosen one.
    *
-   * <p>This used to be the screen height divided by a thousand, which double-scaled on any display
-   * the operating system already scales: the interface was enlarged once by Java2D and again by the
-   * application. Defer to the platform where it scales, and only fall back to a size-based guess on
-   * a high resolution display that is not being scaled at all, where the interface would otherwise
-   * be uncomfortably small.
+   * <p>FlatLaf resolves platform/font scaling independently of Java2D's device transform. Exclude
+   * application zoom so that returning to Auto cannot compound a previous explicit setting. A
+   * cached desktop DPI fills in missing Xwayland scaling after the background probe completes.
    */
   public static double getAutoScaleFactor() {
-    if (GraphicsEnvironment.isHeadless()) return 1.0;
-    if (getPlatformScaleFactor() > 1.0) return 1.0;
-
-    final var height = Toolkit.getDefaultToolkit().getScreenSize().getHeight();
-    return (height >= TALL_SCREEN_THRESHOLD) ? height / 1000.0 : 1.0;
+    return DesktopScale.autoFactor(
+        UIScale.getUserScaleFactor() / UIScale.getZoomFactor(), getPlatformScaleFactor());
   }
 
   /** The legacy value, exposed for the development scale probe. */
@@ -1046,12 +1049,6 @@ public class AppPreferences {
         / 1000.0;
   }
 
-  static {
-    // Must run before SCALE_FACTOR is created below: the monitor caches the stored value as it is
-    // constructed, and static initialisers run in source order.
-    migrateScaleFactor();
-  }
-
   public static final PrefMonitor<Double> SCALE_FACTOR =
       create(
           new PrefMonitorDouble(
@@ -1059,34 +1056,6 @@ public class AppPreferences {
               Math.max(
                   getAutoScaleFactor(),
                   1.0)));
-  /** Preference recording that the stored interface scale has been checked for double-scaling. */
-  private static final String SCALE_FACTOR_MIGRATED = "scaleFactorHiDpiMigrated";
-
-  /** Tolerance when recognising a stored scale as one the old heuristic produced. */
-  private static final double SCALE_MATCH_EPSILON = 1.0e-6;
-
-  /**
-   * Clears an interface scale that the old screen-height heuristic chose on a display the platform
-   * already scales.
-   *
-   * <p>Such a scale was never a deliberate choice by the user, and leaving it in place would keep
-   * double-scaling the interface. A scale the user picked themselves is left alone, as is one that
-   * is still the right answer for this display.
-   */
-  private static void migrateScaleFactor() {
-    final var prefs = getPrefs();
-    if (prefs.getBoolean(SCALE_FACTOR_MIGRATED, false)) return;
-    prefs.putBoolean(SCALE_FACTOR_MIGRATED, true);
-
-    if (GraphicsEnvironment.isHeadless()) return;
-    if (getPlatformScaleFactor() <= 1.0) return;
-
-    final var stored = prefs.getDouble("Scale", 1.0);
-    final var legacy = Math.max(getLegacyAutoScaleFactor(), 1.0);
-    if (Math.abs(stored - legacy) < SCALE_MATCH_EPSILON && stored > 1.0) {
-      prefs.putDouble("Scale", getAutoScaleFactor());
-    }
-  }
 
   public static final PrefMonitor<String> ADD_AFTER =
       create(
@@ -1701,19 +1670,19 @@ public class AppPreferences {
     }
   }
 
-  public static final List<Menu> gui_sync_objects = new ArrayList<>();
+  public static final List<Menu> gui_sync_objects = new CopyOnWriteArrayList<>();
 
   private static final KeyStroke SWING_SHOW_TOOL_TIP_SHORTCUT =
       KeyStroke.getKeyStroke(KeyEvent.VK_F1, InputEvent.CTRL_DOWN_MASK);
 
   public static void hotkeySync() {
-    try {
-      AppPreferences.getPrefs().flush();
-      for (Menu m : gui_sync_objects) {
-        m.hotkeyUpdate();
-      }
-    } catch (BackingStoreException e) {
-      throw new RuntimeException(e);
+    if (!SwingUtilities.isEventDispatchThread()) {
+      SwingUtilities.invokeLater(AppPreferences::hotkeySync);
+      return;
+    }
+    // Preference writes are already queued by the monitors; never block Swing on a disk flush.
+    for (final var menu : gui_sync_objects) {
+      menu.hotkeyUpdate();
     }
   }
 

@@ -9,52 +9,64 @@
 
 package com.cburch.logisim.util;
 
-import com.cburch.logisim.prefs.AppPreferences;
+import com.formdev.flatlaf.FlatLaf;
+import com.formdev.flatlaf.FlatLightLaf;
+import com.formdev.flatlaf.util.UIScale;
+import javax.swing.LookAndFeel;
+import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
 
 /**
  * Helper for tests that need to change the interface scale factor.
  *
- * <p>The preference store these tests write to is the developer's own. A run of the suite used to
- * leave the interface scale wherever the last test had put it — in practice 1.0 — so the
- * application came up uncomfortably small afterwards on any high-resolution screen, and the
- * automatic guess never got another chance because a stored value had appeared. The original is
- * captured on first use and put back when the test JVM exits.
- *
- * <p>The polling this class used to do is gone: {@code PrefMonitorDouble.set()} now updates its own
- * cached value, so a write is visible immediately.
+ * <p>Only in-memory look-and-feel state changes. These tests never write a Scale preference.
  */
 final class UiScaleTestSupport {
-
-  private static boolean captured;
-  private static Double original;
 
   private UiScaleTestSupport() {
     // Utility class, not instantiable.
   }
 
-  /** Sets the scale factor, remembering what the developer had before the first change. */
-  static synchronized void setScaleFactor(double scale) {
-    if (!captured) {
-      final var stored = AppPreferences.getPrefs().getDouble("Scale", Double.NaN);
-      original = Double.isNaN(stored) ? null : stored;
-      captured = true;
-      Runtime.getRuntime().addShutdownHook(new Thread(UiScaleTestSupport::restore));
+  /** Isolates native fonts from developer-default overrides left by other Swing fixtures. */
+  static final class NativeFonts implements AutoCloseable {
+    private Object labelOverride;
+    private LookAndFeel lookAndFeel;
+    private float zoom;
+
+    NativeFonts() throws Exception {
+      SwingUtilities.invokeAndWait(() -> {
+        lookAndFeel = UIManager.getLookAndFeel();
+        zoom = UIScale.getZoomFactor();
+        // get("Label.font") would resolve a LaF font and freeze it as a developer override.
+        labelOverride = UIManager.put("Label.font", null);
+        FlatLightLaf.setup();
+      });
     }
-    AppPreferences.SCALE_FACTOR.set(scale);
+
+    @Override
+    public void close() throws Exception {
+      SwingUtilities.invokeAndWait(() -> {
+        try {
+          UIManager.setLookAndFeel(lookAndFeel);
+        } catch (javax.swing.UnsupportedLookAndFeelException e) {
+          throw new AssertionError(e);
+        } finally {
+          UIScale.setZoomFactor(zoom);
+          UIManager.put("Label.font", labelOverride);
+        }
+      });
+    }
   }
 
-  /** Puts the developer's own scale back, or removes the key if they never had one. */
-  private static void restore() {
-    final var prefs = AppPreferences.getPrefs();
-    if (original == null) {
-      prefs.remove("Scale");
-    } else {
-      prefs.putDouble("Scale", original);
-    }
+  /** Applies metrics on the EDT without touching stored application preferences. */
+  static synchronized void setScaleFactor(double scale) {
     try {
-      prefs.flush();
-    } catch (java.util.prefs.BackingStoreException ignored) {
-      // Nothing useful to do while the process is going away.
+      SwingUtilities.invokeAndWait(() -> {
+        if (!(javax.swing.UIManager.getLookAndFeel() instanceof FlatLaf)) FlatLightLaf.setup();
+        UiScale.setFactor(scale);
+      });
+    } catch (Exception e) {
+      throw new AssertionError(e);
     }
   }
 }

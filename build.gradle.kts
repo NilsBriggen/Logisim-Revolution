@@ -886,6 +886,16 @@ tasks.register("genBuildInfo") {
   inputs.dir("${projectDir}/src")
   inputs.dir(ext.get(SUPPORT_DIR) as String)
   inputs.files("${projectDir}/gradle.properties", "${projectDir}/README.md", "${projectDir}/LICENSE.md")
+  inputs.file("${projectDir}/build.gradle.kts")
+  // Source files need not change when HEAD/branch changes (for example after a commit).
+  val gitRevision = if (File("${projectDir}/.git").exists()) providers.exec {
+    commandLine("git", "-C", projectDir, "rev-parse", "HEAD")
+  }.standardOutput.asText.map { it.trim() } else providers.provider { "source-archive" }
+  val gitBranch = if (File("${projectDir}/.git").exists()) providers.exec {
+    commandLine("git", "-C", projectDir, "rev-parse", "--abbrev-ref", "HEAD")
+  }.standardOutput.asText.map { it.trim() } else providers.provider { "" }
+  inputs.property("gitRevision", gitRevision)
+  inputs.property("gitBranch", gitBranch)
   outputs.dir(buildInfoDir)
 
   val buildInfoFilePath = "${buildInfoDir}/BuildInfo.java"
@@ -1020,6 +1030,12 @@ tasks {
   test {
     useJUnitPlatform()
     jvmArgs("--enable-native-access=ALL-UNNAMED")
+    doFirst {
+      val isolated = Files.createTempDirectory("logisim-tests-").toFile()
+      systemProperty("user.home", File(isolated, "home").apply { mkdirs() }.path)
+      systemProperty("java.util.prefs.userRoot", File(isolated, "prefs").apply { mkdirs() }.path)
+      systemProperty("java.util.prefs.systemRoot", File(isolated, "system-prefs").apply { mkdirs() }.path)
+    }
 //    testLogging {
 //      events("passed", "skipped", "failed")
 //    }
@@ -1120,4 +1136,16 @@ tasks.register<JavaExec>("themeProbe") {
   classpath = sourceSets["test"].runtimeClasspath
   mainClass.set("com.cburch.logisim.gui.theme.ThemeProbe")
   args(project.findProperty("theme")?.toString() ?: "light")
+}
+
+// Development probes must never read/write the developer's real settings or recovery files.
+tasks.withType<JavaExec>().configureEach {
+  if (name in setOf("uiSnapshot", "optionsProbe", "scaleProbe", "themeProbe")) {
+    doFirst {
+      val isolated = Files.createTempDirectory("logisim-${name}-").toFile()
+      systemProperty("user.home", File(isolated, "home").apply { mkdirs() }.path)
+      systemProperty("java.util.prefs.userRoot", File(isolated, "prefs").apply { mkdirs() }.path)
+      systemProperty("java.util.prefs.systemRoot", File(isolated, "system-prefs").apply { mkdirs() }.path)
+    }
+  }
 }

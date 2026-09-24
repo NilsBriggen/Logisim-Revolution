@@ -9,6 +9,8 @@
 
 package com.cburch.logisim.util;
 
+import com.cburch.logisim.gui.theme.Theme;
+import com.cburch.logisim.gui.theme.Tokens;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontMetrics;
@@ -49,8 +51,6 @@ public class TextLineNumber extends JPanel implements CaretListener, DocumentLis
   public static final float CENTER = 0.5f;
   public static final float RIGHT = 1.0f;
 
-  private static final Border OUTER = new MatteBorder(0, 0, 0, 2, Color.GRAY);
-
   private static final int HEIGHT = Integer.MAX_VALUE - 1_000_000;
 
   //  Text component this TextTextLineNumber component is in sync with
@@ -59,7 +59,7 @@ public class TextLineNumber extends JPanel implements CaretListener, DocumentLis
 
   //  Properties that can be changed
 
-  private boolean updateFont;
+  private boolean updateFont = true;
   private int borderGap;
   private Color currentLineForeground;
   private float digitAlignment;
@@ -97,13 +97,20 @@ public class TextLineNumber extends JPanel implements CaretListener, DocumentLis
     setFont(component.getFont());
 
     setBorderGap(5);
-    setCurrentLineForeground(Color.RED);
+    setCurrentLineForeground(Tokens.accent());
     setDigitAlignment(RIGHT);
     setMinimumDisplayDigits(minimumDisplayDigits);
 
     component.getDocument().addDocumentListener(this);
     component.addCaretListener(this);
     component.addPropertyChangeListener("font", this);
+    Theme.addListener(this, () -> {
+      setBackground(component.getBackground());
+      setForeground(component.getForeground());
+      setCurrentLineForeground(Tokens.accent());
+      setBorderGap(borderGap);
+      if (updateFont) propertyChange(new PropertyChangeEvent(component, "font", null, component.getFont()));
+    });
   }
 
   /**
@@ -136,15 +143,15 @@ public class TextLineNumber extends JPanel implements CaretListener, DocumentLis
   }
 
   /**
-   * The border gap is used in calculating the left and right insets of the border. Default value is
-   * 5.
+   * The logical border gap is used in calculating scaled left and right insets. Default is 5.
    *
    * @param borderGap the gap in pixels.
    */
   public void setBorderGap(int borderGap) {
     this.borderGap = borderGap;
-    Border inner = new EmptyBorder(0, borderGap, 0, borderGap);
-    setBorder(new CompoundBorder(OUTER, inner));
+    Border inner = new EmptyBorder(0, UiScale.scaled(borderGap), 0, UiScale.scaled(borderGap));
+    final var outer = new MatteBorder(0, 0, 0, UiScale.scaled(2), Tokens.divider());
+    setBorder(new CompoundBorder(outer, inner));
     lastDigits = 0;
     setPreferredWidth();
   }
@@ -159,7 +166,7 @@ public class TextLineNumber extends JPanel implements CaretListener, DocumentLis
   }
 
   /**
-   * The Color used to render the current line digits. Default is Coolor.RED.
+   * The Color used to render the current line digits. Defaults to the theme accent.
    *
    * @param currentLineForeground the Color used to render the current line.
    */
@@ -238,6 +245,8 @@ public class TextLineNumber extends JPanel implements CaretListener, DocumentLis
   @Override
   public void paintComponent(Graphics g) {
     super.paintComponent(g);
+    g.setFont(getFont());
+    final var digitMetrics = g.getFontMetrics();
 
     //  Determine the width of the space available to draw the line number
 
@@ -260,7 +269,7 @@ public class TextLineNumber extends JPanel implements CaretListener, DocumentLis
         //  "X" and "Y" offsets for drawing the string.
 
         String lineNumber = getTextLineNumber(rowStartOffset);
-        int stringWidth = fontMetrics.stringWidth(lineNumber);
+        int stringWidth = digitMetrics.stringWidth(lineNumber);
         int x = getOffsetX(availableWidth, stringWidth) + insets.left;
         int y = getOffsetY(rowStartOffset, fontMetrics);
         g.drawString(lineNumber, x, y);
@@ -314,7 +323,7 @@ public class TextLineNumber extends JPanel implements CaretListener, DocumentLis
     Rectangle r = component.modelToView2D(rowStartOffset).getBounds();
     final var lineHeight = fontMetrics.getHeight();
     final var y = r.y + r.height;
-    var descent = 0;
+    var descent = fontMetrics.getDescent();
 
     //  The text needs to be positioned above the bottom of the bounding
     //  rectangle based on the descent of the font(s) contained on the row.
@@ -332,8 +341,10 @@ public class TextLineNumber extends JPanel implements CaretListener, DocumentLis
       for (var i = 0; i < line.getElementCount(); i++) {
         final var child = line.getElement(i);
         final var as = child.getAttributes();
-        final var fontFamily = (String) as.getAttribute(StyleConstants.FontFamily);
-        final var fontSize = (Integer) as.getAttribute(StyleConstants.FontSize);
+        final var fontFamily = as.isDefined(StyleConstants.FontFamily)
+            ? StyleConstants.getFontFamily(as) : component.getFont().getFamily();
+        final var fontSize = as.isDefined(StyleConstants.FontSize)
+            ? StyleConstants.getFontSize(as) : component.getFont().getSize();
         final var key = fontFamily + fontSize;
 
         var fm = fonts.get(key);
@@ -399,9 +410,10 @@ public class TextLineNumber extends JPanel implements CaretListener, DocumentLis
         () -> {
           try {
             final var endPos = component.getDocument().getLength();
-            final var rect = component.modelToView2D(endPos).getBounds();
-
-            if (rect != null && rect.y != lastHeight) {
+            final var bounds = component.modelToView2D(endPos);
+            if (bounds == null) return;
+            final var rect = bounds.getBounds();
+            if (rect.y != lastHeight) {
               setPreferredWidth();
               repaint();
               lastHeight = rect.y;
@@ -418,10 +430,13 @@ public class TextLineNumber extends JPanel implements CaretListener, DocumentLis
   @Override
   public void propertyChange(PropertyChangeEvent evt) {
     if (evt.getNewValue() instanceof Font newFont) {
+      fonts = null;
       if (updateFont) {
         setFont(newFont);
         lastDigits = 0;
         setPreferredWidth();
+        revalidate();
+        repaint();
       } else {
         repaint();
       }

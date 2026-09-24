@@ -12,6 +12,8 @@ package com.cburch.logisim.gui.shell;
 import static com.cburch.logisim.gui.Strings.S;
 
 import com.cburch.logisim.gui.theme.AppIcons;
+import com.cburch.logisim.gui.theme.Theme;
+import com.cburch.logisim.gui.theme.Tokens;
 import java.awt.BorderLayout;
 import javax.swing.JButton;
 import javax.swing.JComponent;
@@ -30,12 +32,28 @@ public class Inspector extends JPanel {
 
   private final PanelHeader header;
   private final JPanel body = new JPanel(new BorderLayout());
+  private JButton closeButton;
+  private Runnable onClose;
 
   public Inspector(String title) {
     super(new BorderLayout());
     header = new PanelHeader(title);
     add(header, BorderLayout.NORTH);
     add(body, BorderLayout.CENTER);
+    applyTheme();
+    Theme.addListener(this, this::applyTheme);
+  }
+
+  private void applyTheme() {
+    final var background = Tokens.color("Logisim.sidePanel.background", getBackground());
+    setBackground(background);
+    body.setBackground(background);
+    if (closeButton != null) {
+      closeButton.setIcon(AppIcons.get(AppIcons.Id.CLOSE, 12));
+      PanelHeader.configureChromeButton(closeButton, S.get("inspectorHideTip"));
+    }
+    revalidate();
+    repaint();
   }
 
   /**
@@ -46,17 +64,19 @@ public class Inspector extends JPanel {
    * column back.
    */
   public void setOnClose(Runnable onClose) {
+    this.onClose = onClose;
     if (onClose == null) {
       header.setActions(null);
       return;
     }
-    final var close = new JButton(AppIcons.get(AppIcons.Id.CLOSE, 12));
-    close.setToolTipText(S.get("inspectorHideTip"));
-    close.setFocusable(false);
-    close.setBorderPainted(false);
-    close.setContentAreaFilled(false);
-    close.addActionListener(event -> onClose.run());
-    header.setActions(close);
+    if (closeButton == null) {
+      closeButton = new JButton();
+      closeButton.addActionListener(event -> {
+        if (this.onClose != null) this.onClose.run();
+      });
+    }
+    applyTheme();
+    header.setActions(closeButton);
   }
 
   /** Sets the panel's contents. */

@@ -27,14 +27,14 @@ import com.cburch.logisim.util.LocaleListener;
 import com.cburch.logisim.util.LocaleManager;
 import com.cburch.logisim.util.WindowMenuItemManager;
 import java.awt.BorderLayout;
+import java.awt.CardLayout;
 import java.awt.Dimension;
 import java.awt.Toolkit;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.util.HashMap;
-import java.util.Map;
 import javax.swing.JButton;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
@@ -51,13 +51,14 @@ public class LogFrame extends LFrame.SubWindowWithSimulation {
     public void libraryChanged(LibraryEvent event) {
       final var action = event.getAction();
       if (action == LibraryEvent.SET_NAME) {
-        setTitle(computeTitle(curModel, project));
+        setTitle(computeTitle(getModel(), project));
       }
     }
 
     @Override
     public void localeChanged() {
-      setTitle(computeTitle(curModel, project));
+      setTitle(computeTitle(getModel(), project));
+      inactiveLabel.setText(S.get("editorEmptyHint"));
       for (var i = 0; i < panels.length; i++) {
         tabbedPane.setTitleAt(i, panels[i].getTitle());
         tabbedPane.setToolTipTextAt(i, panels[i].getToolTipText());
@@ -72,34 +73,39 @@ public class LogFrame extends LFrame.SubWindowWithSimulation {
       if (action == ProjectEvent.ACTION_SET_STATE) {
         setSimulator(event.getProject().getSimulator(), event.getProject().getCircuitState());
       } else if (action == ProjectEvent.ACTION_SET_FILE) {
-        setTitle(computeTitle(curModel, project));
+        setTitle(computeTitle(getModel(), project));
       }
     }
 
     @Override
     public void simulatorReset(Simulator.Event e) {
-      curModel.simulatorReset();
+      final var model = eventModel(e);
+      if (model != null) model.simulatorReset();
     }
 
     @Override
     public void propagationCompleted(Simulator.Event e) {
-      curModel.propagationCompleted(e.didTick(), e.didSingleStep(), e.didPropagate());
+      final var model = eventModel(e);
+      if (model != null) model.propagationCompleted(e.didTick(), e.didSingleStep(), e.didPropagate());
     }
 
     @Override
     public boolean wantsProgressEvents() {
-      return curModel.isFine();
+      final var model = getModel();
+      return model != null && model.isFine();
     }
 
     @Override
     public void propagationInProgress(Simulator.Event e) {
-      curModel.propagationCompleted(false, true, false); // treat as a single-step
+      final var model = eventModel(e);
+      if (model != null) model.propagationCompleted(false, true, false); // treat as a single-step
     }
 
     @Override
     public void simulatorStateChanged(Simulator.Event e) {
       if (setSimulator(project.getSimulator(), project.getCircuitState())) return;
-      if (curModel != null) curModel.checkForClocks();
+      final var model = getModel();
+      if (model != null) model.checkForClocks();
     }
   }
 
@@ -148,15 +154,17 @@ public class LogFrame extends LFrame.SubWindowWithSimulation {
 
   private static final long serialVersionUID = 1L;
   private Simulator curSimulator = null;
-  private Model curModel;
-  private final Map<CircuitState, Model> modelMap = new HashMap<>();
+  private final LogModelHistory modelHistory = new LogModelHistory();
+  private Model displayedModel;
   private final MyListener myListener = new MyListener();
   private final MyChangeListener myChangeListener = new MyChangeListener();
 
   private final WindowMenuManager windowManager;
-  private final LogPanel[] panels;
+  private LogPanel[] panels = new LogPanel[0];
   // private SelectionPanel selPanel;
-  private final JTabbedPane tabbedPane;
+  private final JTabbedPane tabbedPane = new JTabbedPane();
+  private final JPanel modelView = new JPanel(new CardLayout());
+  private final JLabel inactiveLabel = new JLabel();
 
   /**
    * Set while the drawer is holding this window's contents.
@@ -193,34 +201,29 @@ public class LogFrame extends LFrame.SubWindowWithSimulation {
 
   public JButton makeSelectionButton() {
     final var button = new JButton(S.get("addRemoveSignals"));
-    button.addActionListener(event -> SelectionPanel.doDialog(LogFrame.this));
+    button.addActionListener(event -> {
+      if (getModel() != null) SelectionPanel.doDialog(LogFrame.this);
+    });
     return button;
   }
 
   /** The contents, for the drawer to hold. Building this marks the window as docked. */
   public javax.swing.JComponent dockedContent() {
     dockedInDrawer = true;
-    if (tabbedPane.getParent() != null) tabbedPane.getParent().remove(tabbedPane);
-    return tabbedPane;
+    if (modelView.getParent() != null) modelView.getParent().remove(modelView);
+    return modelView;
   }
 
   public LogFrame(Project project) {
     super(project);
     windowManager = new WindowMenuManager(project);
     menuListener = new LogMenuListener(menubar);
+    modelView.add(tabbedPane, "circuit");
+    modelView.add(inactiveLabel, "inactive");
     project.addProjectListener(myListener);
     project.addLibraryListener(myListener);
     setSimulator(project.getSimulator(), project.getCircuitState());
 
-    panels =
-        new LogPanel[] {
-          new OptionsPanel(this), new ChronoPanel(this),
-        };
-    tabbedPane = new JTabbedPane();
-    // tabbedPane.setFont(new Font("Dialog", Font.BOLD, 9));
-    for (LogPanel panel : panels) {
-      tabbedPane.addTab(panel.getTitle(), null, panel, panel.getToolTipText());
-    }
     tabbedPane.addChangeListener(myChangeListener);
     myChangeListener.stateChanged(null);
 
@@ -228,7 +231,7 @@ public class LogFrame extends LFrame.SubWindowWithSimulation {
     final var w = Math.max(550, project.getFrame().getWidth());
     var h = 300;
     tabbedPane.setPreferredSize(new Dimension(w, h));
-    if (!dockedInDrawer) contents.add(tabbedPane, BorderLayout.CENTER);
+    if (!dockedInDrawer) contents.add(modelView, BorderLayout.CENTER);
 
     LocaleManager.addLocaleListener(myListener);
     myListener.localeChanged();
@@ -276,7 +279,7 @@ public class LogFrame extends LFrame.SubWindowWithSimulation {
   }
 
   public Model getModel() {
-    return curModel;
+    return modelHistory.current();
   }
 
   LogPanel[] getPrefPanels() {
@@ -284,35 +287,43 @@ public class LogFrame extends LFrame.SubWindowWithSimulation {
   }
 
   private boolean setSimulator(Simulator value, CircuitState state) {
-    if ((value == null) == (curModel == null)) {
-      if (value == null || value.getCircuitState() == curModel.getCircuitState()) return false;
-    }
     menubar.setCircuitState(value, state);
-
-    if (curSimulator != null) curSimulator.removeSimulatorListener(myListener);
-    if (curModel != null) curModel.setSelected(false);
-
-    final var oldModel = curModel;
-    Model data = null;
-    if (value != null) {
-      data = modelMap.get(value.getCircuitState());
-      if (data == null) {
-        data = new Model(value.getCircuitState());
-        modelMap.put(data.getCircuitState(), data);
-      }
+    final var simulatorChanged = curSimulator != value;
+    if (simulatorChanged) {
+      if (curSimulator != null) curSimulator.removeSimulatorListener(myListener);
+      curSimulator = value;
+      if (curSimulator != null) curSimulator.addSimulatorListener(myListener);
     }
-    curSimulator = value;
-    curModel = data;
-
-    if (curSimulator != null) curSimulator.addSimulatorListener(myListener);
-    if (curModel != null) curModel.setSelected(true);
-    setTitle(computeTitle(curModel, project));
-    if (panels != null) {
-      for (LogPanel panel : panels) {
-        panel.modelChanged(oldModel, curModel);
+    final var changed = modelHistory.select(value == null ? null : state);
+    final var model = getModel();
+    // Circuit panels retain their last valid model while hidden. Never feed them a fake/null
+    // circuit. This also permits opening the drawer for the first time while editing HDL.
+    if (model != null) {
+      if (panels.length == 0) {
+        panels = new LogPanel[] {new OptionsPanel(this), new ChronoPanel(this)};
+        for (final var panel : panels) {
+          tabbedPane.addTab(panel.getTitle(), null, panel, panel.getToolTipText());
+        }
+      } else if (model != displayedModel) {
+        for (final var panel : panels) panel.modelChanged(displayedModel, model);
       }
+      displayedModel = model;
     }
-    return true;
+    ((CardLayout) modelView.getLayout()).show(modelView, model == null ? "inactive" : "circuit");
+    setTitle(computeTitle(model, project));
+    if (model == null) {
+      menuListener.setEditHandler(null);
+      menuListener.setPrintHandler(null);
+    } else {
+      myChangeListener.stateChanged(null);
+    }
+    return changed || simulatorChanged;
+  }
+
+  private Model eventModel(Simulator.Event event) {
+    final var model = getModel();
+    return event.getSource() == curSimulator && model != null
+        && project.getCircuitState() == model.getCircuitState() ? model : null;
   }
 
   @Override
@@ -332,6 +343,7 @@ public class LogFrame extends LFrame.SubWindowWithSimulation {
   private class MyChangeListener implements ChangeListener {
     @Override
     public void stateChanged(ChangeEvent e) {
+      if (getModel() == null) return;
       Object selected = tabbedPane.getSelectedComponent();
       if (selected instanceof JScrollPane scrollPane) {
         selected = scrollPane.getViewport().getView();

@@ -15,6 +15,13 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.cburch.logisim.prefs.AppPreferences;
+import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -50,12 +57,13 @@ class ThemeTest {
   }
 
   @Test
-  void isDarkFollowsTheStoredChoiceBeforeAnythingIsInstalled() {
-    AppPreferences.THEME_MODE.set(AppPreferences.THEME_DARK);
-    assertTrue(Theme.isDark());
-
-    AppPreferences.THEME_MODE.set(AppPreferences.THEME_LIGHT);
-    assertFalse(Theme.isDark());
+  void installedThemeTracksExplicitChoices() throws Exception {
+    SwingUtilities.invokeAndWait(() -> {
+      Theme.apply(Theme.Mode.DARK);
+      assertTrue(Theme.isDark());
+      Theme.apply(Theme.Mode.LIGHT);
+      assertFalse(Theme.isDark());
+    });
   }
 
   @Test
@@ -97,5 +105,84 @@ class ThemeTest {
     }
 
     assertTrue(reached[0]);
+  }
+
+  @Test
+  void listenerSeesUpdatedDrawingPaletteOnTheEdt() throws Exception {
+    final var observed = new AtomicBoolean();
+    final Runnable listener = () -> {
+      observed.set(SwingUtilities.isEventDispatchThread()
+          && AppPreferences.COMPONENT_COLOR.get() == AppPreferences.DARK_COMPONENT_COLOR);
+    };
+    SwingUtilities.invokeAndWait(() -> {
+      Theme.apply(Theme.Mode.LIGHT);
+    });
+    // Drain the light-theme refresh before observing the following dark-theme transaction.
+    SwingUtilities.invokeAndWait(() -> {});
+    try {
+      SwingUtilities.invokeAndWait(() -> {
+        Theme.addListener(listener);
+        Theme.apply(Theme.Mode.DARK);
+        assertFalse(observed.get(), "refresh must wait for the initiating event to return");
+      });
+      SwingUtilities.invokeAndWait(() -> {});
+      assertTrue(observed.get(), "listeners must see the new palette, not the outgoing one");
+    } finally {
+      Theme.removeListener(listener);
+    }
+  }
+
+  @Test
+  void stalledDesktopProbeDoesNotBlockSwing() throws Exception {
+    final var entered = new CountDownLatch(1);
+    final var release = new CountDownLatch(1);
+    final var finished = new CountDownLatch(1);
+    final var offEdt = new AtomicBoolean();
+    try {
+      SwingUtilities.invokeAndWait(() -> Theme.requestSystemTheme(() -> {
+        offEdt.set(!SwingUtilities.isEventDispatchThread());
+        entered.countDown();
+        try {
+          release.await(5, TimeUnit.SECONDS);
+          return Optional.of(true);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          return Optional.empty();
+        } finally {
+          finished.countDown();
+        }
+      }));
+      assertTrue(entered.await(2, TimeUnit.SECONDS));
+      final var ping = new CountDownLatch(1);
+      SwingUtilities.invokeLater(ping::countDown);
+      assertTrue(ping.await(1, TimeUnit.SECONDS), "desktop I/O blocked Swing");
+      assertTrue(offEdt.get());
+      SwingUtilities.invokeAndWait(() -> Theme.apply(Theme.Mode.LIGHT));
+    } finally {
+      release.countDown();
+      assertTrue(finished.await(2, TimeUnit.SECONDS));
+    }
+  }
+
+  @Test
+  void ownerSubscriptionEndsOnDisposeAndResumesOnReattach() throws Exception {
+    SwingUtilities.invokeAndWait(() -> {
+      final var owner = new JPanel();
+      final var calls = new AtomicInteger();
+      Theme.addListener(owner, calls::incrementAndGet);
+      Theme.fireChanged();
+      assertEquals(0, calls.get());
+      owner.addNotify();
+      final var attached = calls.get();
+      Theme.fireChanged();
+      assertEquals(attached + 1, calls.get());
+      owner.removeNotify();
+      final var detached = calls.get();
+      Theme.fireChanged();
+      assertEquals(detached, calls.get());
+      owner.addNotify();
+      assertTrue(calls.get() > detached);
+      owner.removeNotify();
+    });
   }
 }

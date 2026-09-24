@@ -17,6 +17,7 @@ import com.cburch.logisim.data.Bounds;
 import com.cburch.logisim.data.Direction;
 import com.cburch.logisim.data.Location;
 import com.cburch.logisim.data.Value;
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.gui.icons.ArithmeticIcon;
 import com.cburch.logisim.instance.Instance;
 import com.cburch.logisim.instance.InstancePainter;
@@ -200,7 +201,7 @@ public class SocDma extends SocInstanceFactory {
         .paint(g2, Bounds.create(x + 215, y + 65, 100, 16));
 
     // Bus connection labels
-    g2.setColor(Color.BLACK);
+    g2.setColor(CanvasStyle.componentColor());
     GraphicsUtil.drawCenteredText(g2, "CTRL", x + 55, y + 85);
     GraphicsUtil.drawCenteredText(g2, "SRC", x + 160, y + 85);
     GraphicsUtil.drawCenteredText(g2, "DST", x + 265, y + 85);

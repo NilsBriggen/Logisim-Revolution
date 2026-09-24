@@ -57,6 +57,7 @@ public final class EditorTabModel {
 
   private Navigator navigator = tab -> {};
   private Consumer<EditorTabModel> listener = model -> {};
+  private Runnable emptyListener = () -> {};
 
   /**
    * Guards against the loop where showing a tab changes the project, the project change comes
@@ -71,6 +72,11 @@ public final class EditorTabModel {
   /** Called after any change, so the tab strip can redraw itself. */
   public void setListener(Consumer<EditorTabModel> listener) {
     this.listener = listener == null ? model -> {} : listener;
+  }
+
+  /** Hides the live editor when the last tab is closed; project/circuit state is retained. */
+  public void setEmptyListener(Runnable listener) {
+    emptyListener = listener == null ? () -> {} : listener;
   }
 
   public List<Tab> tabs() {
@@ -155,6 +161,7 @@ public final class EditorTabModel {
     if (tabs.isEmpty()) {
       selectedIndex = -1;
       changed();
+      emptyListener.run();
       return;
     }
     if (wasSelected) {
@@ -169,10 +176,23 @@ public final class EditorTabModel {
 
   /** Closes every tab showing {@code target}, for a circuit that has been deleted. */
   public void removeTarget(Object target) {
-    for (var index = tabs.size() - 1; index >= 0; index--) {
-      if (tabs.get(index).target() == target) close(index);
-    }
+    final var selected = selected();
+    final var previousIndex = selectedIndex;
+    // Remove all views before navigating, so deleting a circuit cannot activate its appearance.
+    tabs.removeIf(tab -> tab.target() == target);
     dirtyTargets.remove(target);
+    if (selected != null && selected.target() != target) {
+      selectedIndex = indexOf(selected);
+      changed();
+    } else {
+      selectedIndex = -1;
+      if (tabs.isEmpty()) {
+        changed();
+        if (selected != null) emptyListener.run();
+      } else {
+        select(Math.min(Math.max(0, previousIndex), tabs.size() - 1));
+      }
+    }
   }
 
   /** Marks or unmarks {@code target} as having unsaved changes. */
