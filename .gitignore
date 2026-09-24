@@ -296,3 +296,5 @@ gradle-app.setting
 !/snap/local/usr/bin/
 *.py
 !/artwork/generate_revolution_assets.py
+!/scripts/ci/*.py
+__pycache__/

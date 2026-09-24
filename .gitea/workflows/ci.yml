@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+  issues: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: https://gitea.com/actions/checkout@v4
+      - uses: https://gitea.com/actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Check workflow policy and release completeness rules
+        run: python3 -m unittest discover -s scripts/ci -p 'test_*.py'
+      - name: Build, test and check Java style
+        run: ./gradlew build --no-daemon --console=plain
+
+  pull_request_policy:
+    if: gitea.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: https://gitea.com/actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fetch main for pull request comparisons
+        run: git fetch origin main
+      - name: Check changelog and linked issue
+        env:
+          GITEA_EVENT_PATH: ${{ gitea.event_path }}
+          GITEA_SERVER_URL: ${{ gitea.server_url }}
+          GITEA_API_URL: ${{ gitea.api_url }}
+          GITEA_REPOSITORY: ${{ gitea.repository }}
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+          NO_CHANGELOG_AUTHOR_CREDIT: ${{ vars.NO_CHANGELOG_AUTHOR_CREDIT }}
+        run: python3 scripts/ci/pr_checks.py
+
+  markdown:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: https://gitea.com/actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: https://gitea.com/actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Fetch main for pull request comparisons
+        if: gitea.event_name == 'pull_request'
+        run: git fetch origin main
+      - name: Lint changed Markdown files
+        env:
+          GITEA_EVENT_NAME: ${{ gitea.event_name }}
+          GITEA_EVENT_PATH: ${{ gitea.event_path }}
+        run: python3 scripts/ci/lint_changed_markdown.py

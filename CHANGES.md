@@ -3,6 +3,8 @@
 # Changes #
 
 * @dev (????-??-??)
+  * Reworked Gitea CI and manual all-platform release builds, added complete native-package
+    publication checks, and documented realistic installation methods (@NilsBriggen).
   * Gave Revolution its own application identity, loading splash, vector icon family, readable
     component captions and isolated settings and recovery paths. Refreshed Help and Preferences,
     and rewrote the README around the new interface and verified source-build path

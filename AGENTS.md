@@ -12,13 +12,15 @@ Logisim-evolution is a Java 21 / Swing digital logic designer and simulator, bui
 ./gradlew test                # run tests (JUnit 5 / junit-jupiter)
 ./gradlew test --tests com.cburch.logisim.std.ttl.Ttl7493Test   # single test class
 ./gradlew checkstyleMain      # lint main sources (checkstyleTest for tests)
-./gradlew shadowJar           # fat jar -> build/libs/logisim-evolution-<ver>-all.jar
+./gradlew shadowJar           # fat jar -> build/libs/logisim-revolution-<ver>-all.jar
 ./gradlew createAll           # platform installer(s) into build/dist (jpackage; host platform only)
 ./gradlew genFiles            # run code generation only (needed before importing into Eclipse)
 ```
 
-CI (`.github/workflows/build.yml`) runs `./gradlew build -x checkstyleMain -x checkstyleTest` on JDK 21
-(temurin); style is checked separately (`checkstyle.yml`), and only on files the PR touches.
+Gitea CI (`.gitea/workflows/ci.yml`) runs `./gradlew build` on JDK 21, including tests and
+Checkstyle. A manual Gitea workflow builds Linux packages and dispatches Windows and macOS
+packages on the public GitHub mirror; it publishes a Gitea release only after all targets
+succeed. See `.gitea/README.md`.
 
 ## Build-time code generation
 
@@ -76,12 +78,11 @@ prefixed `# ==> key =` mark untranslated keys.
 
 - Code style is **Google Java Style** via Checkstyle (`google_checks.xml` shipped with the tool),
   relaxed by `checkstyle-suppressions.xml` in the repo root — 2-space indent, and the codebase widely
-  uses the `final var` idiom. Keep the Checkstyle version in `build.gradle.kts` and
-  `.github/workflows/checkstyle.yml` in sync.
+  uses the `final var` idiom. The full Checkstyle task runs as part of Gitea CI.
 - Every source file carries the project's GPLv3 header comment block.
 - Files are UTF-8, LF line endings, no trailing whitespace, and end with a newline
   (`.pre-commit-config.yaml.dist` enforces this; copy it to `.pre-commit-config.yaml` to use).
-- **CI enforces two PR requirements** (`changelog.yml`, `ticket.yml`): an entry in the topmost `@dev`
+- **CI enforces two PR requirements** (`scripts/ci/pr_checks.py`): an entry in the topmost `@dev`
   section of `CHANGES.md` crediting the author (`* Fixed the frobnicator (@nick).`), and a closing
   reference to an existing open issue (`Closes #1234`) in the PR description. Opt out with
   `NO_CHANGELOG_ENTRY` / `NO_CHANGELOG_AUTHOR_CREDIT` / `NO_TICKET` in the description.

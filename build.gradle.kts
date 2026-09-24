@@ -334,6 +334,9 @@ object func {
   /** Helper function to remove all contents from the given directory */
   fun deleteDirectoryContents(directory: String) {
     val dir = File(directory)
+    if (!dir.exists() && !dir.mkdirs()) {
+      throw GradleException("Cannot create ${directory}")
+    }
     if (!dir.isDirectory) {
       throw GradleException("Cannot remove contents of ${directory}")
     }
@@ -363,26 +366,25 @@ object func {
 
   /**
    * Helper function to verify the distribution file now exists in build/dist.
-   * It issues a warning if it does not and also lists the contents of its directory.
+   * It fails if the expected package is missing, and lists the actual directory contents.
    */
   fun verifyFileExists(filename: String) {
     val theFile = File(filename)
     if (theFile.isFile()) {
       return
     }
-    logger.warn("*** WARNING ***");
-    logger.warn("File does not exist: ${filename}")
+    logger.error("File does not exist: ${filename}")
     val parentDir = theFile.getParentFile();
     if (parentDir != null && parentDir.isDirectory()) {
-      logger.warn("Directory actually contains:")
+      logger.error("Directory actually contains:")
       val dirList = parentDir.list()
-      if (dirList == null) return;
-      for (file in dirList) {
-        logger.warn("  ${file}")
+      for (file in dirList.orEmpty()) {
+        logger.error("  ${file}")
       }
     } else {
-      logger.warn("Parent directory does not exist: ${parentDir}");
+      logger.error("Parent directory does not exist: ${parentDir}")
     }
+    throw GradleException("Expected package was not created: ${filename}")
   }
 
   /**
@@ -669,7 +671,7 @@ tasks.register("createMsi") {
         "--type", "msi",
         // we MUST use short version form (without any suffix like "-dev", as it is not allowed in MSI package:
         // https://docs.microsoft.com/en-us/windows/win32/msi/productversion?redirectedfrom=MSDN
-        // NOTE: any change to version **format** may require editing of .github/workflows/nightly.yml too!
+        // NOTE: release.py validates these package names before publishing.
         "--app-version", version,
     )
     func.runCommand(params, "Error while creating the MSI package.")
@@ -722,7 +724,7 @@ tasks.register("createExe") {
         "--type", "app-image",
         // we MUST use short version form (without any suffix like "-dev", as it is not allowed in MSI package:
         // https://docs.microsoft.com/en-us/windows/win32/msi/productversion?redirectedfrom=MSDN
-        // NOTE: any change to version **format** may require editing of .github/workflows/nightly.yml too!
+        // NOTE: release.py validates these package names before publishing.
         "--app-version", version,
     )
     func.runCommand(params, "Error while creating the Windows executable.")
