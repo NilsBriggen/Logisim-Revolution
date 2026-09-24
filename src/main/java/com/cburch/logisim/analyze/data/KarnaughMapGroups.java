@@ -150,14 +150,14 @@ public class KarnaughMapGroups {
       g.setColor(oldColor);
     }
 
+    /**
+     * The cover colour at the right transparency.
+     *
+     * <p>It used to blend a dark-mode colour 45% toward white, because the palette had only one
+     * set of values. The palette now has a set for each theme, so nothing has to be faked.
+     */
     private Color adjustColor(Color c, int lightAlpha, int darkAlpha, boolean isDark) {
-      if (!isDark) return new Color(c.getRed(), c.getGreen(), c.getBlue(), lightAlpha);
-      // brighten dark colors for visibility on dark backgrounds
-      final float factor = 0.45f;
-      final int r = Math.min(255, (int) (c.getRed() + (255 - c.getRed()) * factor));
-      final int g = Math.min(255, (int) (c.getGreen() + (255 - c.getGreen()) * factor));
-      final int b = Math.min(255, (int) (c.getBlue() + (255 - c.getBlue()) * factor));
-      return new Color(r, g, b, darkAlpha);
+      return new Color(c.getRed(), c.getGreen(), c.getBlue(), isDark ? darkAlpha : lightAlpha);
     }
 
     public boolean insideCover(int col, int row) {

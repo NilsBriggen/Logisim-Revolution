@@ -15,6 +15,7 @@ import com.cburch.logisim.analyze.data.CsvInterpretor;
 import com.cburch.logisim.analyze.data.CsvParameter;
 import com.cburch.logisim.gui.generic.Dialogs;
 import com.cburch.logisim.gui.generic.OptionPane;
+import com.cburch.logisim.gui.theme.Tokens;
 import com.cburch.logisim.prefs.AppPreferences;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -93,14 +94,13 @@ public class CsvReadParameterDialog extends JDialog implements ActionListener {
     var celHeight = AppPreferences.getScaled(25);
     gbc.gridwidth = 1;
     labels = new JLabel[16];
-    final var border = BorderFactory.createLineBorder(Color.BLACK, AppPreferences.getScaled(1));
+    final var border = BorderFactory.createLineBorder(Tokens.divider(), AppPreferences.getScaled(1));
     final var dim = new Dimension(celwidth, celHeight);
     for (int x = 0; x < 4; x++)
       for (int y = 0; y < 4; y++) {
         final var j = new JPanel();
         labels[y * 4 + x] = new JLabel(x + "," + y);
         j.setBorder(border);
-        j.setBackground(Color.WHITE);
         j.setPreferredSize(dim);
         j.add(labels[y * 4 + x]);
         gbc.gridx = x;

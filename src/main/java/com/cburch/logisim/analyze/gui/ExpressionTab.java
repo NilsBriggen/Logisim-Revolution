@@ -14,8 +14,8 @@ import static com.cburch.logisim.analyze.Strings.S;
 import com.cburch.logisim.analyze.gui.ExpressionView.NamedExpression;
 import com.cburch.logisim.analyze.gui.MinimizedTab.NotationModel;
 import com.cburch.logisim.analyze.model.AnalyzerModel;
-import com.cburch.logisim.analyze.model.Expression;
 import com.cburch.logisim.analyze.model.Expression.Notation;
+import com.cburch.logisim.analyze.model.Expression;
 import com.cburch.logisim.analyze.model.Expressions;
 import com.cburch.logisim.analyze.model.OutputExpressionsEvent;
 import com.cburch.logisim.analyze.model.OutputExpressionsListener;
@@ -26,6 +26,7 @@ import com.cburch.logisim.analyze.model.VariableListListener;
 import com.cburch.logisim.gui.menu.EditHandler;
 import com.cburch.logisim.gui.menu.LogisimMenuBar;
 import com.cburch.logisim.gui.menu.PrintHandler;
+import com.cburch.logisim.gui.theme.Tokens;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.util.StringGetter;
 import java.awt.Color;
@@ -75,6 +76,7 @@ class ExpressionTab extends AnalyzerTab {
   private final ExpressionTableModel tableModel;
 
   private final JTable table = new JTable(1, 1);
+  /** Inline validation, in the same colour the status bar uses; it had no colour at all here. */
   private final JLabel error = new JLabel();
 
   public class ExpressionTableModel extends AbstractTableModel
@@ -366,7 +368,7 @@ class ExpressionTab extends AnalyzerTab {
     add(infoLabel);
 
     final var scroll = new JScrollPane(table,
-            ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS,
+            ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
             ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
     scroll.setPreferredSize(new Dimension(AppPreferences.getScaled(60), AppPreferences.getScaled(100)));
     gbc.weighty = 1.0;
@@ -377,6 +379,7 @@ class ExpressionTab extends AnalyzerTab {
     gbc.weighty = 0.0;
     gbc.fill = GridBagConstraints.HORIZONTAL;
     gbl.setConstraints(error, gbc);
+    error.setForeground(Tokens.error());
     add(error);
 
     final var f =

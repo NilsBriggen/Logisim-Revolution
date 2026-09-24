@@ -48,8 +48,6 @@ public class MinimizeButton  extends JButton {
     final var info = new JTextArea(20, 80);
     info.setEditable(false);
     info.setFont(UiFonts.mono());
-    info.setForeground(Color.WHITE);
-    info.setBackground(Color.BLACK);
     final var caret = (DefaultCaret) info.getCaret();
     caret.setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);
     final var pane = new JScrollPane(info);

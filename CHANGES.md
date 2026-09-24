@@ -3,6 +3,20 @@
 # Changes #
 
 * @dev (????-??-??)
+  * The Circuit Analysis window no longer sizes itself with two invisible panels wedged into its
+    layout, and its six actions sit at the trailing edge in groups -- change the table, build the
+    circuit, export -- instead of a centred strip that re-wrapped onto a second row when the
+    window narrowed. Building the circuit is the default action (@YOUR_GITHUB_HANDLE).
+  * Fixed: the Karnaugh map's sixteen cover colours had no dark set, so dark mode faked one by
+    blending every colour 45% toward white -- which pushed them together in the one place telling
+    them apart is the point. Each now has a colour per theme. Two of the light ones, a pale pink
+    and a pale peach, were barely distinguishable from each other; a test now holds both sets to a
+    minimum separation (@YOUR_GITHUB_HANDLE).
+  * Three scroll panes in the analysis window forced a scrollbar to be visible whether or not
+    there was anything to scroll; its inline validation was raw red in one tab and uncoloured in
+    another; its CSV import preview was a grid of white panels with black rules whatever the
+    theme; and the simplifier's progress log was a white-on-black terminal inside a themed window
+    (@YOUR_GITHUB_HANDLE).
   * Project Options is a page list like the preferences window instead of four tabs fixed at
     450x300, and "Reset All Settings" -- which was a whole tab holding one button -- is a footer
     control that now says what it is about to throw away before doing it (@YOUR_GITHUB_HANDLE).

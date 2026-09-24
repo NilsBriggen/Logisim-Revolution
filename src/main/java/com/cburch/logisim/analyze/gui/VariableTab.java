@@ -19,6 +19,7 @@ import com.cburch.logisim.analyze.model.VariableListListener;
 import com.cburch.logisim.gui.menu.EditHandler;
 import com.cburch.logisim.gui.menu.LogisimMenuBar;
 import com.cburch.logisim.gui.menu.LogisimMenuItem;
+import com.cburch.logisim.gui.theme.Tokens;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.util.SyntaxChecker;
 import java.awt.Color;
@@ -177,7 +178,7 @@ public class VariableTab extends AnalyzerTab {
   private JTable focus;
 
   private JScrollPane wrap(JTable table) {
-    final var scroll = new JScrollPane(table, ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS,
+    final var scroll = new JScrollPane(table, ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
                                   ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
     scroll.setPreferredSize(new Dimension(AppPreferences.getScaled(60), AppPreferences.getScaled(100)));
     scroll.addMouseListener(
@@ -262,7 +263,7 @@ public class VariableTab extends AnalyzerTab {
     gbc.gridy = 2;
     gbl.setConstraints(error, gbc);
     add(error);
-    error.setForeground(Color.RED);
+    error.setForeground(Tokens.error());
 
     if (!outputs.vars.isEmpty()) {
       outputsTable.changeSelection(0, 0, false, false);

@@ -704,6 +704,53 @@ public class AppPreferences {
   public static final int DEFAULT_EXPRESSION_OVERLINE_COLOR = 0xFF000000;
   public static final int DARK_EXPRESSION_OVERLINE_COLOR = 0xFFFFFFFF;
   // default kmap cell text colors
+  /**
+   * The sixteen colours a Karnaugh map draws its covers in.
+   *
+   * <p>They were sixteen bare hex literals with no dark counterpart, so dark mode faked one by
+   * blending every colour 45% toward white — which pushed the dark end of the set together and
+   * made covers hard to tell apart, in the one place telling them apart is the point. Two of the
+   * light ones, a pale pink and a pale peach, were barely distinguishable from each other as
+   * well; {@code KarnaughPaletteTest} now holds both sets to a minimum separation.
+   */
+  public static final int[] DEFAULT_KMAP_COLORS = {
+    0x800000,
+    0xE6194B,
+    0xFABEBE,
+    0xAA6E28,
+    0xF58230,
+    0xE8C49A,
+    0x808000,
+    0xFFFF19,
+    0xD2F53C,
+    0x000080,
+    0x911EB4,
+    0x3CB4AF,
+    0x0082CB,
+    0xE6BEFF,
+    0xAAFFC3,
+    0xF032E6,
+  };
+
+  public static final int[] DARK_KMAP_COLORS = {
+    0xEA8686,
+    0xE86230,
+    0xEAD186,
+    0xE4E830,
+    0xB8EA86,
+    0x5BE830,
+    0x86EA9F,
+    0x30E890,
+    0x86EAEA,
+    0x30B6E8,
+    0x869FEA,
+    0x3430E8,
+    0xB886EA,
+    0xBE30E8,
+    0xEA86D1,
+    0xE83089,
+  };
+
   public static final int DEFAULT_KMAP_CELL_TEXT_COLOR = 0xFF222831;
   public static final int DARK_KMAP_CELL_TEXT_COLOR = 0xFFE2E6ED;
   // default table caret colors
@@ -786,6 +833,17 @@ public class AppPreferences {
   /** Set once the theme-dependent colours have been declared to {@link ThemeColorPrefs}. */
   private static boolean themeColorsRegistered = false;
 
+  /** The sixteen cover colours, in order, so they can be registered and reset as a set. */
+  @SuppressWarnings("unchecked")
+  public static PrefMonitor<Integer>[] kmapColorMonitors() {
+    return new PrefMonitor[] {
+      KMAP1_COLOR, KMAP2_COLOR, KMAP3_COLOR, KMAP4_COLOR,
+      KMAP5_COLOR, KMAP6_COLOR, KMAP7_COLOR, KMAP8_COLOR,
+      KMAP9_COLOR, KMAP10_COLOR, KMAP11_COLOR, KMAP12_COLOR,
+      KMAP13_COLOR, KMAP14_COLOR, KMAP15_COLOR, KMAP16_COLOR,
+    };
+  }
+
   /**
    * Loads the drawing colours belonging to the theme now showing and hands them to {@link Value}.
    *
@@ -805,6 +863,10 @@ public class AppPreferences {
       ThemeColorPrefs.register(COMPONENT_GHOST_COLOR, DEFAULT_COMPONENT_GHOST_COLOR, DARK_COMPONENT_GHOST_COLOR);
       ThemeColorPrefs.register(COMPONENT_ICON_COLOR, DEFAULT_COMPONENT_ICON_COLOR, DARK_COMPONENT_ICON_COLOR);
       ThemeColorPrefs.register(KMAP_CELL_TEXT_COLOR, DEFAULT_KMAP_CELL_TEXT_COLOR, DARK_KMAP_CELL_TEXT_COLOR);
+      final var kmapColors = kmapColorMonitors();
+      for (var i = 0; i < kmapColors.length; i++) {
+        ThemeColorPrefs.register(kmapColors[i], DEFAULT_KMAP_COLORS[i], DARK_KMAP_COLORS[i]);
+      }
       ThemeColorPrefs.register(TABLE_CURSOR_COLOR, DEFAULT_TABLE_CURSOR_COLOR, DARK_TABLE_CURSOR_COLOR);
       ThemeColorPrefs.register(TABLE_HIGHLIGHT_COLOR, DEFAULT_TABLE_HIGHLIGHT_COLOR, DARK_TABLE_HIGHLIGHT_COLOR);
       ThemeColorPrefs.register(TABLE_SELECTION_COLOR, DEFAULT_TABLE_SELECTION_COLOR, DARK_TABLE_SELECTION_COLOR);
@@ -1107,37 +1169,37 @@ public class AppPreferences {
   public static final PrefMonitor<Integer> TABLE_SELECTION_COLOR =
       create(new PrefMonitorInt("TableSelectionColor", DEFAULT_TABLE_SELECTION_COLOR));
   public static final PrefMonitor<Integer> KMAP1_COLOR =
-      create(new PrefMonitorInt("KMAPColor1", 0x800000));
+      create(new PrefMonitorInt("KMAPColor1", DEFAULT_KMAP_COLORS[0]));
   public static final PrefMonitor<Integer> KMAP2_COLOR =
-      create(new PrefMonitorInt("KMAPColor2", 0xE6194B));
+      create(new PrefMonitorInt("KMAPColor2", DEFAULT_KMAP_COLORS[1]));
   public static final PrefMonitor<Integer> KMAP3_COLOR =
-      create(new PrefMonitorInt("KMAPColor3", 0xFABEBE));
+      create(new PrefMonitorInt("KMAPColor3", DEFAULT_KMAP_COLORS[2]));
   public static final PrefMonitor<Integer> KMAP4_COLOR =
-      create(new PrefMonitorInt("KMAPColor4", 0xAA6E28));
+      create(new PrefMonitorInt("KMAPColor4", DEFAULT_KMAP_COLORS[3]));
   public static final PrefMonitor<Integer> KMAP5_COLOR =
-      create(new PrefMonitorInt("KMAPColor5", 0xF58230));
+      create(new PrefMonitorInt("KMAPColor5", DEFAULT_KMAP_COLORS[4]));
   public static final PrefMonitor<Integer> KMAP6_COLOR =
-      create(new PrefMonitorInt("KMAPColor6", 0xFFD7B4));
+      create(new PrefMonitorInt("KMAPColor6", DEFAULT_KMAP_COLORS[5]));
   public static final PrefMonitor<Integer> KMAP7_COLOR =
-      create(new PrefMonitorInt("KMAPColor7", 0x808000));
+      create(new PrefMonitorInt("KMAPColor7", DEFAULT_KMAP_COLORS[6]));
   public static final PrefMonitor<Integer> KMAP8_COLOR =
-      create(new PrefMonitorInt("KMAPColor8", 0xFFFF19));
+      create(new PrefMonitorInt("KMAPColor8", DEFAULT_KMAP_COLORS[7]));
   public static final PrefMonitor<Integer> KMAP9_COLOR =
-      create(new PrefMonitorInt("KMAPColor9", 0xD2F53C));
+      create(new PrefMonitorInt("KMAPColor9", DEFAULT_KMAP_COLORS[8]));
   public static final PrefMonitor<Integer> KMAP10_COLOR =
-      create(new PrefMonitorInt("KMAPColor10", 0x000080));
+      create(new PrefMonitorInt("KMAPColor10", DEFAULT_KMAP_COLORS[9]));
   public static final PrefMonitor<Integer> KMAP11_COLOR =
-      create(new PrefMonitorInt("KMAPColor11", 0x911EB4));
+      create(new PrefMonitorInt("KMAPColor11", DEFAULT_KMAP_COLORS[10]));
   public static final PrefMonitor<Integer> KMAP12_COLOR =
-      create(new PrefMonitorInt("KMAPColor12", 0x3CB4AF));
+      create(new PrefMonitorInt("KMAPColor12", DEFAULT_KMAP_COLORS[11]));
   public static final PrefMonitor<Integer> KMAP13_COLOR =
-      create(new PrefMonitorInt("KMAPColor13", 0x0082CB));
+      create(new PrefMonitorInt("KMAPColor13", DEFAULT_KMAP_COLORS[12]));
   public static final PrefMonitor<Integer> KMAP14_COLOR =
-      create(new PrefMonitorInt("KMAPColor14", 0xE6BEFF));
+      create(new PrefMonitorInt("KMAPColor14", DEFAULT_KMAP_COLORS[13]));
   public static final PrefMonitor<Integer> KMAP15_COLOR =
-      create(new PrefMonitorInt("KMAPColor15", 0xAAFFC3));
+      create(new PrefMonitorInt("KMAPColor15", DEFAULT_KMAP_COLORS[14]));
   public static final PrefMonitor<Integer> KMAP16_COLOR =
-      create(new PrefMonitorInt("KMAPColor16", 0xF032E6));
+      create(new PrefMonitorInt("KMAPColor16", DEFAULT_KMAP_COLORS[15]));
 
   // FPGA Commander colors
   public static final PrefMonitor<Integer> FPGA_DEFINE_COLOR =

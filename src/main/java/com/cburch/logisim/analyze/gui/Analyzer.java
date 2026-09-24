@@ -20,12 +20,15 @@ import com.cburch.logisim.gui.generic.LFrame;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.util.LocaleListener;
 import com.cburch.logisim.util.LocaleManager;
+import com.cburch.logisim.util.Spacing;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
 import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
@@ -183,21 +186,36 @@ public class Analyzer extends LFrame.SubWindow {
     tabbedPane.setEnabledAt(TABLE_TAB, false);
 
     final var contents = getContentPane();
-    final var vertStrut = new JPanel(null);
-    vertStrut.setPreferredSize(new Dimension(0, AppPreferences.getScaled(300)));
-    final var horzStrut = new JPanel(null);
-    horzStrut.setPreferredSize(new Dimension(AppPreferences.getScaled(450), 0));
+
+    // The window used to be sized by two invisible panels wedged into WEST and NORTH. A minimum
+    // size says the same thing and does not appear in the layout.
+    setMinimumSize(
+        new Dimension(AppPreferences.getScaled(450), AppPreferences.getScaled(300)));
+
+    // The six actions were a centred FlowLayout strip that re-wrapped onto a second row when the
+    // window narrowed. They now sit at the trailing edge, grouped: the two that change the table,
+    // then the one that builds a circuit, then the two that export.
     final var buttonPanel = new JPanel();
+    buttonPanel.setLayout(new BoxLayout(buttonPanel, BoxLayout.X_AXIS));
+    buttonPanel.setBorder(Spacing.panelBorder());
+    buttonPanel.add(Box.createHorizontalGlue());
     buttonPanel.add(importTable);
-    buttonPanel.add(buildCircuit);
+    buttonPanel.add(Box.createHorizontalStrut(Spacing.sm()));
     buttonPanel.add(minimizeMinterms);
+    buttonPanel.add(Box.createHorizontalStrut(Spacing.sm()));
     buttonPanel.add(minimizeMaxterms);
+    buttonPanel.add(Box.createHorizontalStrut(Spacing.lg()));
     buttonPanel.add(exportTable);
+    buttonPanel.add(Box.createHorizontalStrut(Spacing.sm()));
     buttonPanel.add(exportTex);
-    contents.add(vertStrut, BorderLayout.WEST);
-    contents.add(horzStrut, BorderLayout.NORTH);
+    buttonPanel.add(Box.createHorizontalStrut(Spacing.lg()));
+    // Building the circuit is what the window is for, and the only one that changes the project.
+    buildCircuit.putClientProperty("JButton.buttonType", "default");
+    buttonPanel.add(buildCircuit);
+
     contents.add(tabbedPane, BorderLayout.CENTER);
     contents.add(buttonPanel, BorderLayout.SOUTH);
+    getRootPane().setDefaultButton(buildCircuit);
 
     final var myLocaleListener = new MyLocaleListener();
     LocaleManager.addLocaleListener(myLocaleListener);
@@ -214,7 +232,7 @@ public class Analyzer extends LFrame.SubWindow {
       return;
     }
     final var pane = new JScrollPane(comp,
-        ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS,
+        ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
         ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
     pane.addComponentListener(new ComponentAdapter() {
       @Override
