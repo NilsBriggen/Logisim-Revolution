@@ -22,10 +22,13 @@ and check ARM64 execution before starting a release:
 
 ```bash
 sudo apt-get install qemu-user-binfmt
-docker run --rm --platform linux/arm64 ubuntu:24.04 uname -m
+docker pull --platform linux/arm64 arm64v8/ubuntu:24.04
+docker run --rm arm64v8/ubuntu:24.04 uname -m
 ```
 
-The check must print `aarch64`. The ARM64 job installs an ARM64 JDK 21 inside its container, so
+The check must print `aarch64` (Docker may warn about the host architecture). Keep this
+ARM64 image on the server: act_runner cannot pull an ARM-only image using the host's default
+x86_64 platform. The ARM64 job installs an ARM64 JDK 21 inside its container, so
 `jpackage` embeds an ARM64 runtime. It uses the public Gitea source repository at the exact
 workflow commit. The x86_64 container installs `fakeroot` and RPM tools during its job. ARM64
 emulation is slower than a native ARM machine; the job timeout is four hours.
