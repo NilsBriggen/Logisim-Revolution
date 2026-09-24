@@ -50,14 +50,15 @@ jobs:
           test "$(uname -m)" = x86_64
           if [ "$(id -u)" -eq 0 ]; then
             apt-get update
-            DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends fakeroot rpm xxd
+            DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends fakeroot rpm binutils xxd
           else
             sudo apt-get update
-            sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends fakeroot rpm xxd
+            sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends fakeroot rpm binutils xxd
           fi
           command -v fakeroot
           command -v dpkg-deb
           command -v rpmbuild
+          command -v objcopy
       - name: Test and build JAR, sources, DEB and RPM
         run: ./gradlew clean build sourcesJar createAll --no-daemon --console=plain
       - name: Attach Linux x86_64 files to draft release
@@ -91,7 +92,8 @@ jobs:
           test "$(uname -m)" = aarch64
           apt-get update
           DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-            ca-certificates openjdk-21-jdk fakeroot rpm git curl
+            ca-certificates openjdk-21-jdk fakeroot rpm binutils git curl
+          command -v objcopy
           git clone --quiet https://git.briggen.dev/NilsBriggen/Logisim-Revolution.git source
           cd source
           git checkout --detach "$GITEA_SHA"
