@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Logisim Revolution
+Comment=Logisim Revolution is educational software for designing and simulating digital logic circuits.
+GenericName=Digital logic design tool and simulator
+Exec=logisim-revolution %f
+Icon=/snap/logisim-revolution/current/meta/gui/logisim-revolution-icon-128.png
+Type=Application
+StartupNotify=false
+Categories=Education;Electronics;
+MimeType=application/x-logisim-circuit;
+Keywords=circuits;simulation;logic;HDL;chronogram;

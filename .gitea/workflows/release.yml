@@ -1,0 +1,148 @@
+name: Build all platforms and publish release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  code: read
+  releases: write
+
+jobs:
+  prepare:
+    if: gitea.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      release_id: ${{ steps.draft.outputs.release_id }}
+    steps:
+      - uses: https://github.com/actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Create a draft release for this run
+        id: draft
+        env:
+          GITEA_API_URL: ${{ gitea.api_url }}
+          GITEA_REPOSITORY: ${{ gitea.repository }}
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+          GITEA_SHA: ${{ gitea.sha }}
+          GITEA_RUN_ID: ${{ gitea.run_id }}
+          GITEA_RUN_ATTEMPT: ${{ gitea.run_attempt }}
+        run: python3 scripts/ci/release.py prepare
+      - name: Mirror this commit and dispatch GitHub Windows and Mac builds
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GITEA_SHA: ${{ gitea.sha }}
+          RELEASE_TAG: build-${{ gitea.run_id }}-attempt-${{ gitea.run_attempt }}
+        run: python3 scripts/ci/github_release.py dispatch
+
+  linux_amd64:
+    needs: prepare
+    runs-on: linux-amd64
+    timeout-minutes: 120
+    steps:
+      - uses: https://github.com/actions/checkout@v4
+      - uses: https://github.com/actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install Linux packaging tools
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = x86_64
+          if [ "$(id -u)" -eq 0 ]; then
+            apt-get update
+            DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends fakeroot rpm xxd
+          else
+            sudo apt-get update
+            sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends fakeroot rpm xxd
+          fi
+          command -v fakeroot
+          command -v dpkg-deb
+          command -v rpmbuild
+      - name: Test and build JAR, sources, DEB and RPM
+        run: ./gradlew clean build sourcesJar createAll --no-daemon --console=plain
+      - name: Attach Linux x86_64 files to draft release
+        env:
+          GITEA_API_URL: ${{ gitea.api_url }}
+          GITEA_REPOSITORY: ${{ gitea.repository }}
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+          RELEASE_ID: ${{ needs.prepare.outputs.release_id }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          files=(build/libs/*-all.jar build/libs/*-src.jar build/dist/*_amd64.deb build/dist/*.x86_64.rpm)
+          test "${#files[@]}" -eq 4
+          for file in "${files[@]}"; do
+            curl --fail --silent --show-error \
+              -H "Authorization: token ${GITEA_TOKEN}" \
+              -F "attachment=@${file}" \
+              "${GITEA_API_URL}/repos/${GITEA_REPOSITORY}/releases/${RELEASE_ID}/assets" > /dev/null
+          done
+
+  linux_arm64:
+    needs: prepare
+    runs-on: linux-arm64
+    timeout-minutes: 240
+    steps:
+      - name: Test and build ARM64 packages under QEMU
+        env:
+          GITEA_SHA: ${{ gitea.sha }}
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = aarch64
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            ca-certificates openjdk-21-jdk fakeroot rpm git curl
+          git clone --quiet https://git.briggen.dev/NilsBriggen/Logisim-Revolution.git source
+          cd source
+          git checkout --detach "$GITEA_SHA"
+          ./gradlew clean createAll --no-daemon --console=plain
+      - name: Attach Linux ARM64 files to draft release
+        env:
+          GITEA_API_URL: ${{ gitea.api_url }}
+          GITEA_REPOSITORY: ${{ gitea.repository }}
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+          RELEASE_ID: ${{ needs.prepare.outputs.release_id }}
+        run: |
+          set -euo pipefail
+          cd source
+          shopt -s nullglob
+          files=(build/dist/*_arm64.deb build/dist/*.aarch64.rpm)
+          test "${#files[@]}" -eq 2
+          for file in "${files[@]}"; do
+            curl --fail --silent --show-error \
+              -H "Authorization: token ${GITEA_TOKEN}" \
+              -F "attachment=@${file}" \
+              "${GITEA_API_URL}/repos/${GITEA_REPOSITORY}/releases/${RELEASE_ID}/assets" > /dev/null
+          done
+
+  collect_github:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 210
+    steps:
+      - uses: https://github.com/actions/checkout@v4
+      - name: Collect successful Windows and Mac packages from GitHub
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GITEA_API_URL: ${{ gitea.api_url }}
+          GITEA_REPOSITORY: ${{ gitea.repository }}
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+          GITEA_SHA: ${{ gitea.sha }}
+          RELEASE_TAG: build-${{ gitea.run_id }}-attempt-${{ gitea.run_attempt }}
+          RELEASE_ID: ${{ needs.prepare.outputs.release_id }}
+        run: python3 scripts/ci/github_release.py collect
+
+  publish:
+    needs: [prepare, linux_amd64, linux_arm64, collect_github]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: https://github.com/actions/checkout@v4
+      - name: Verify all assets and publish the release
+        env:
+          GITEA_API_URL: ${{ gitea.api_url }}
+          GITEA_REPOSITORY: ${{ gitea.repository }}
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+          GITEA_RUN_ID: ${{ gitea.run_id }}
+          GITEA_RUN_ATTEMPT: ${{ gitea.run_attempt }}
+          RELEASE_ID: ${{ needs.prepare.outputs.release_id }}
+        run: python3 scripts/ci/release.py publish

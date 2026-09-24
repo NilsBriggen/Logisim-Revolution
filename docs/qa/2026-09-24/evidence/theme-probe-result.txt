@@ -1,0 +1,12 @@
+Diagnostic: ThemeLifecycleProbe.java, run against copied QA jar matching build/libs jar.
+Both jar SHA256: c854edbbea34d6cfc0e53ac9cf70ef5b2a5dcf550a3959ff0ed99d852950d433
+Isolated java.util.prefs.userRoot and user.home. Headless JVM, no document mutation.
+Observed 2026-09-24:
+regular_is_disabled_instance=true
+regular_filter_mutated=true
+later_regular_keeps_mutation=true
+probe_elapsed_ms=3004
+probe_returned=dark
+
+The 2-second SystemTheme timeout failed to bound a 3-second silent child process.
+This proves the timeout defect; it does not measure a real desktop theme probe hanging.

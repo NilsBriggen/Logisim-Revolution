@@ -1,0 +1,28 @@
+name: Translation report
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/main/resources/resources/logisim/strings/**/*.properties'
+      - 'src/main/resources/resources/logisim/settings.properties'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/main/resources/resources/logisim/strings/**/*.properties'
+      - 'src/main/resources/resources/logisim/settings.properties'
+
+permissions:
+  code: read
+
+jobs:
+  translations:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: https://github.com/actions/checkout@v4
+      - name: Check localization bundles
+        run: |
+          set -euo pipefail
+          python3 -m venv .translation-venv
+          .translation-venv/bin/pip install --quiet trans-tool==2.5.2 pysimple-log==0.0.5
+          PATH="$PWD/.translation-venv/bin:$PATH" python3 scripts/ci/check_translations.py

@@ -1,0 +1,1399 @@
+{
+  "reviewer": "foundations",
+  "date": "2026-09-24",
+  "repository": "/home/nilsb/Documents/projects/logisim-revolution",
+  "head": "0a62266649937f3c2cbcb1ef495b6d9be6ba2d5a",
+  "scope": {
+    "completed": [
+      "inspect-palette",
+      "inspect-scaling",
+      "inspect-codeaudit",
+      "verify-codeaudit"
+    ],
+    "partial": [
+      "verify-palette",
+      "verify-scaling"
+    ],
+    "assignedUniqueIds": 105,
+    "originalIds": 90,
+    "verifierAdditionalIds": 15
+  },
+  "provenance": {
+    "jar": "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/logisim.jar",
+    "sha256": "c854edbbea34d6cfc0e53ac9cf70ef5b2a5dcf550a3959ff0ed99d852950d433",
+    "embeddedBuildId": "main/2532c84d",
+    "embeddedBuildTime": "2026-09-24T16:07:16+0200",
+    "qualification": "Supplied jar embeds an older build ID but javap verifies HEAD's PrefMonitorDouble immediate-cache/writeback implementation. Reviewed tile/font/scale classes are unchanged between embedded revision and HEAD. Full reproducible-build equivalence not established.",
+    "session": "cx-foundations",
+    "privateHome": "/tmp/logisim-qa-recovery-20260924/foundations-home",
+    "privatePrefs": "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/run/cx-foundations/prefs",
+    "fixture": "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/run/cx-foundations/work/sample.circ",
+    "screenshots": "Fresh live captures in foundations-evidence; reused out/palette, out/scaling and out/dialogs captures are explicitly identified and were actually viewed.",
+    "viewer": "view_image failed with mountinfo; scoped base64 read was emitted as image() per user-provided fallback.",
+    "desktopLimitation": "Private 2560x1600 KWin/Xwayland plus Java/Swing UI, not proof of exact physical KDE, desktop scale, GPU, font rasterization or mixed-DPI behavior."
+  },
+  "summary": {
+    "noP0Demonstrated": true,
+    "workstreams": 9,
+    "workstreamMeaning": "Planning groups, not independent defect counts. 105 source IDs include duplicated symptoms, design proposals and unverified claims.",
+    "primaryBlocker": "Normal component identification fails in the palette at 1.6/2.0, with an overlapping tree fallback at 2.0.",
+    "statusCounts": {
+      "confirmed-visual": 11,
+      "confirmed-source": 26,
+      "confirmed-runtime": 6,
+      "design-recommendation": 20,
+      "duplicate": 27,
+      "unverified": 14,
+      "rejected": 1
+    }
+  },
+  "findings": [
+    {
+      "id": "foundations-geometry",
+      "severity": "P1",
+      "title": "Palette labels and tree rows do not fit scaled content",
+      "canonicalIds": [
+        "palette-01",
+        "palette-02",
+        "palette-03",
+        "codeaudit-v-02"
+      ],
+      "reproduction": "Start cx-foundations with private home/prefs at 1.6, open Library; repeat at 2.0 and switch to tree. For 1.0 naming compare the recovered Arithmetic crop.",
+      "observed": "1.6 captions show only glyph tops; at 2.0 captions vanish. Tree fallback overlaps at 2.0. At 1.0 Floating... and Controlle... remove distinguishing words. This is not one defect per tile.",
+      "screenshots": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/02-palette-1.6-crop.png",
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/08-palette-2.0-crop.png",
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/05-tree-1.6-crop.png",
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/07-scale2-start-crop.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/palette/42z-scale1-float-2x.png"
+      ],
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/palette/ComponentTile.java:45",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/palette/ComponentTile.java:184",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/ProjectExplorer.java:288",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/ProjectExplorer.java:521",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/resources/com/cburch/logisim/gui/theme/FlatLaf.properties:38"
+      ],
+      "concreteFix": "Measure tile preview and caption lines from effective icon size and FontMetrics; scale padding once and anchor star badges within bounds. Allow two lines or a width-adaptive row mode. Add localized short names such as FP Add / FP Multiply while retaining full tooltip and accessible name; distinguish PLA from PLA ROM without changing serialized factory IDs. Set tree row height to max(font line height, actual icon height)+padding. Reset reused renderer font from tree.getFont(), explicitly plain/bold per row.",
+      "acceptanceTest": "At app zoom 1.0/1.25/1.6/2.0/2.5, dark and light, every caption baseline+descent stays within its tile and labels distinguish integer/FP variants. Tree icons and descenders do not overlap; switching current circuit does not make following rows bold. Test default and narrow panel widths plus a long localized name; inspect native crops."
+    },
+    {
+      "id": "foundations-scale",
+      "severity": "P1",
+      "title": "One coordinated UI scale and font contract is missing",
+      "canonicalIds": [
+        "scaling-01",
+        "scaling-06",
+        "scaling-08",
+        "scaling-22",
+        "codeaudit-03",
+        "codeaudit-25",
+        "codeaudit-v-11"
+      ],
+      "reproduction": "At 1.6 open File menu; at 2.0 open Preferences > Window. Change slider from 2.0 to 1.0 and close Preferences. Compare chrome, captions and cached preview symbols; inspect recovered Statistics header.",
+      "observed": "Accelerators and native checkbox glyphs stay small beside enlarged labels. After live scale change captions shrink, menu and panel headers remain large, and preview icons retain their old raster size. Recovered Statistics has a large first header cell and small remaining cells.",
+      "screenshots": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/06-menu-1.6-crop.png",
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/12-window-settings-2.0.png",
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/14-live-scale1-main-crop.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/scaling/50-s1.6-statistics.png"
+      ],
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/start/Startup.java:1161",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/prefs/AppPreferences.java:446",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/prefs/AppPreferences.java:1003",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/util/UiFonts.java:89",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/theme/AppIcons.java:156",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/prefs/WindowOptions.java:275",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/palette/ToolPreviewIcon.java:44"
+      ],
+      "concreteFix": "Prototype FlatLaf 3.7.2 UIScale.setZoomFactor(float), getZoomFactor(), setSupportedZoomFactors(float[]) and PROP_ZOOM_FACTOR as the application zoom authority; local javap confirms these public APIs. Preserve Java2D device transform separately. Measure LaF base/user scaling before mapping stored explicit Scale values; preserve explicit settings and support required fractional values, checking setZoomFactor's boolean result. Remove the global COMPONENT_ADDED font rewrite and app multiplication layered on already-scaled LaF fonts/SVGs. Give custom widgets one logical-to-UI conversion and update geometry/fonts/caches together on the EDT. Key preview rasters by effective scale, device transform and theme or paint vector previews directly. Use role fonts, including explicit TableHeader/editor/gutter roles. Keep circuit document fonts/coordinates and canvas zoom independent.",
+      "acceptanceTest": "Existing explicit Scale=1.6 survives migration/restart with intended effective size. Auto mode and explicit mode remain distinct. Native menu labels/accelerators, checkbox targets, row metrics and custom icons scale together at 1.0/1.25/1.6/2.0/2.5. A live 2->1->1.6 change matches a fresh launch at each setting; renderer order/repaint does not change font size. Repeat on actual KDE/Wayland-Xwayland, Windows scaling and a mixed-DPI monitor move before declaring cross-platform acceptance."
+    },
+    {
+      "id": "foundations-panels",
+      "severity": "P2",
+      "title": "Raw panel persistence and continuous-layout resets prevent a useful sizing workaround",
+      "canonicalIds": [
+        "palette-06",
+        "scaling-03",
+        "scaling-04",
+        "scaling-05",
+        "scaling-23"
+      ],
+      "reproduction": "Fresh 2560x1600 private session opens 1280x1600. At 2.0 drag the left divider from approximately x410 to x660; compare before and after.",
+      "observed": "Initial window occupies the left half. Fresh migration stores 320px side width. A tested drag did not widen it; doLayout restores the saved size while release later persists that restored position.",
+      "screenshots": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/01-fresh-1.6.png",
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/08-palette-2.0.png",
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/09-after-divider-drag-2.0.png"
+      ],
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/LayoutPrefs.java:63",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/ShellLayout.java:166",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/ShellLayout.java:202",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/PanelHeader.java:37",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/prefs/AppPreferences.java:1309"
+      ],
+      "concreteFix": "Restore persisted divider size only during explicit initialization/restore, not every layout while dragging. Persist user changes after drag. Store logical panel sizes with versioned conversion of legacy device-pixel values. Migrate old fractions only when legacy settings actually exist; use content-aware defaults for fresh users and usable screen bounds. Let headers reserve a minimum title width and overflow secondary actions.",
+      "acceptanceTest": "Dragging side/inspector/bottom dividers changes their size and survives repaint, resize, hide/show and restart. Fresh 1366x768 and 2560x1600 starts provide usable canvas/palette proportions; existing customized widths are preserved. Header actions do not erase the title at high zoom."
+    },
+    {
+      "id": "foundations-search",
+      "severity": "P2",
+      "title": "Search contracts fail common vocabulary and provide no empty-result feedback",
+      "canonicalIds": [
+        "palette-04",
+        "palette-05",
+        "palette-11",
+        "scaling-12",
+        "scaling-20"
+      ],
+      "reproduction": "Enter mux in Library; compare recovered Find Action mux results. In Preferences type scale. Inspect ComponentPalette.matches, category order and SettingsNav.matches.",
+      "observed": "Palette mux is blank while Find Action finds Multiplexer. Settings scale empties navigation while retaining the old page. The two PLA factories have the same label. Project components are appended after built-ins by construction.",
+      "screenshots": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/03-search-mux-crop.png",
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/17-settings-scale-corrected.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/palette/49b-omni-mux-win.png"
+      ],
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/palette/ComponentPalette.java:162",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/palette/ComponentPalette.java:190",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/SettingsNav.java:115",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/resources/resources/logisim/strings/std/std.properties:385",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/resources/resources/logisim/strings/std/std.properties:507"
+      ],
+      "concreteFix": "Share component search metadata/ranking between palette and Find Action: exact label first, then aliases (mux, demux, flip-flop, output pin), then other matches. Keep localized labels and stable IDs separate. Show query-aware No components found with a clear action. Index settings labels/keywords and reveal the target page/control; explain no results. Put a clearly named project group before long built-in catalogs. Make search popup sizing content/zoom aware and remove provider counts.",
+      "acceptanceTest": "mux finds Multiplexer; exact AND ranks before unrelated matches; output pin is discoverable and distinguishes its configuration; PLA and PLA ROM are unambiguous. Nonsense query yields a readable empty state. scale/zoom/theme locate appropriate settings. Enter selects the intended result; clearing preserves focus."
+    },
+    {
+      "id": "foundations-interaction",
+      "severity": "P2",
+      "title": "Palette keyboard, recents and Escape behaviors need explicit state handling",
+      "canonicalIds": [
+        "palette-07",
+        "palette-09",
+        "palette-13",
+        "scaling-29",
+        "codeaudit-18",
+        "codeaudit-19",
+        "codeaudit-v-12"
+      ],
+      "reproduction": "From palette search press Down then Right. Use Tab across tiles. Select a new tool and inspect recents source. In Preferences filter type text and press Escape twice.",
+      "observed": "Right does not move tile focus; tile listeners support Enter/Space only. choose() persists recents but does not refresh the group. Section fold state is memory-only. Empty filter still swallows Escape. Activity hover/selected fill and tree halo have paint branches that draw nothing.",
+      "screenshots": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/15-keyboard-right.png",
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/18-after-double-escape.png"
+      ],
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/palette/ComponentTile.java:98",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/palette/ComponentPalette.java:272",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/SectionPanel.java:61",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/FilterField.java:72",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/ActivityBar.java:151",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/ProjectExplorer.java:537"
+      ],
+      "concreteFix": "Implement a single grid traversal policy with arrows/Home/End, scrollRectToVisible on focus, Enter/Space activation and keyboard context menu. Use focusable actions for section headers/view toggle and visible focus state. Refresh recents immediately without dropping focus/scroll position; document whether pinned items also appear in recents. Persist collapse by stable section key if that is the intended contract. Escape clears a nonempty query, then delegates to the dialog/root action when empty. Paint the intended activity and halo state indicators.",
+      "acceptanceTest": "Keyboard-only user can find, select, pin and place a component then leave the palette without hundreds of Tab stops. Focus remains visible across all sections. Recents reorder immediately. Empty-filter Escape closes applicable dialogs; nonempty-filter Escape only clears. Selection/focus/hover is visible in both themes. This run did not establish offscreen-focus behavior through its 35-Tab screenshot."
+    },
+    {
+      "id": "foundations-theme",
+      "severity": "P2",
+      "title": "Text and symbol visibility need semantic theme colors and usable names",
+      "canonicalIds": [
+        "palette-08",
+        "codeaudit-16",
+        "scaling-14",
+        "codeaudit-v-05",
+        "codeaudit-v-14"
+      ],
+      "reproduction": "Inspect live palette icons, recovered About credits and theme/source color declarations.",
+      "observed": "White-backed legacy bitmap glyphs coexist with monochrome icons. Purple credits are nearly unreadable. Reported muted color pairs calculate to 3.976:1 dark and 3.152:1 light. Inspector renderer uses raw GREEN/RED/ORANGE; chrono error fills use static pastels (both source-only here).",
+      "screenshots": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/02-palette-1.6-crop.png",
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/08-palette-2.0-crop.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/scaling/28z-s1.25-about-credits.png"
+      ],
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/resources/com/cburch/logisim/gui/theme/LogisimDarkLaf.properties:27",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/resources/com/cburch/logisim/gui/theme/LogisimLightLaf.properties:27",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/start/AboutCredits.java:190",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/fpga/gui/HdlColorRenderer.java:61",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/chrono/ChronoPanel.java:283"
+      ],
+      "concreteFix": "Choose semantic foreground/status colors against the actual surface and target at least 4.5:1 for normal readable text. Theme About credits. Replace white-backed raster palette assets with scale-aware transparent/vector previews, retaining meaningful signal colors. Use subtle status fills plus readable labels/icons, not color alone. Verify light/dark waveform X/E contrast before changing chrono fills.",
+      "acceptanceTest": "Native palette names and About credits remain legible in light/dark at 1.0 and 1.6. Required/status cells meet contrast and remain distinguishable without color. All supported preview backgrounds are transparent. Measure real resolved theme colors, not fallback literals; inspect selected/disabled states."
+    },
+    {
+      "id": "foundations-forms",
+      "severity": "P2",
+      "title": "Secondary forms need measured row/layout sizing rather than a universal fixed rectangle",
+      "canonicalIds": [
+        "scaling-10",
+        "scaling-11",
+        "codeaudit-07",
+        "codeaudit-08",
+        "codeaudit-09"
+      ],
+      "reproduction": "Inspect recovered native Statistics and Hotkey settings captures; review fixed metrics in editor themes, hotkey input and chrono. Editor/chrono runtime not retested.",
+      "observed": "Statistics has truncated cells and inconsistent headers. Hotkey instructions and navigation truncate, and scroll panes reveal only a small part of the content. EditorTheme uses Theme.load(input) without a role/base font; other fixed metrics remain source leads.",
+      "screenshots": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/scaling/50-s1.6-statistics.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/dialogs/12-prefs-hotkeys.png"
+      ],
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/StatisticsDialog.java:59",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/PanelHeader.java:35",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/SettingsNav.java:153",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/EditorTheme.java:77",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/chrono/ChronoPanel.java:58",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/util/JHotkeyInput.java:151"
+      ],
+      "concreteFix": "After the scale contract is fixed, wrap page help text and compute nav width/row height from content. Do not merely hide horizontal scrollbars. Center Statistics over its owner and size columns/rows from metrics within usable screen bounds. Set code/gutter fonts together after theme application. Size hotkey button boxes from icons and content; derive chrono row/header metrics from actual text. Defer secondary panels without rendered evidence to their owners.",
+      "acceptanceTest": "Full Hotkey instructions are readable without horizontal scrolling; long nav titles remain identifiable. All Statistics headers have equal font role on first and later paints. For editor/chrono follow-up, inspect multiline code gutters, X/E timing rows and editing action buttons at 1.0/1.6/2.0 before accepting."
+    },
+    {
+      "id": "foundations-harness-recovery",
+      "severity": "P2",
+      "title": "Autosave ownership must be isolated in QA and recovery must identify the right session",
+      "canonicalIds": [
+        "palette-19"
+      ],
+      "reproduction": "Read qa.sh launch arguments and Loader.determineAutosaveName/Startup autosave scan. This run set JAVA_TOOL_OPTIONS=-Duser.home=/tmp/logisim-qa-recovery-20260924/foundations-home on every launch.",
+      "observed": "Original rig isolates java.util.prefs.userRoot but not user.home. Unnamed autosaves are discovered globally within that home; Discard deletes the selected file. No real autosaves were cleared by this review and no P0 data loss was reproduced.",
+      "screenshots": [],
+      "sourcePointers": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/qa.sh",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/file/Loader.java:175",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/start/Startup.java:997"
+      ],
+      "concreteFix": "Harness: create D/home before launch, pass both private user.home and preference root every time including relaunch, keep process ownership/PID validation, and derive shot dimensions from the display or use win for nondefault sizes. Record Java2D transform, configured zoom, LaF scale, size, theme and jar hash. Application: use session-owned recovery records and an explicit recovery list with source/date instead of ambiguous per-file prompts; never conflate another active instance's recovery with the current project.",
+      "acceptanceTest": "Two disposable sessions produce and recover only their own unnamed autosaves; stopping either cannot remove the other's records. Harness writes stay under assigned temp directories. Startup with no pending recovery has no dialog. Recovery tests use synthetic files only. Physical KDE and mixed-DPI equivalence require separate measurement."
+    },
+    {
+      "id": "foundations-source-followups",
+      "severity": "P2",
+      "title": "Two source-supported risks should remain separate from visual acceptance",
+      "canonicalIds": [
+        "codeaudit-v-09",
+        "codeaudit-v-10"
+      ],
+      "reproduction": "Inspect Theme update timer, SystemTheme.run read order, and cached AppIcons variants. No hang was injected; no accented/disabled call sites currently found.",
+      "observed": "Theme polling can block EDT while reading a process before checking its timeout. Accent/disabled helpers mutate a shared cached icon; the latter is latent P3.",
+      "screenshots": [],
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/theme/Theme.java:182",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/theme/SystemTheme.java:163",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/theme/AppIcons.java:147"
+      ],
+      "concreteFix": "Probe system theme off EDT with bounded stdout consumption/process timeout, then update UI only on changed result. Cache separate icon variants/copies rather than mutate a base cache entry.",
+      "acceptanceTest": "A stub probe that stalls cannot block an EDT ping; timed-out processes terminate. Requesting an accented/disabled glyph leaves an existing base glyph unchanged. Do not claim a measured performance problem or user-visible cache regression before those checks."
+    }
+  ],
+  "dispositions": [
+    {
+      "id": "palette-01",
+      "status": "confirmed-visual",
+      "severity": "P1",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/02-palette-1.6-crop.png",
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/08-palette-2.0-crop.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/palette/ComponentTile.java:45"
+      ],
+      "reason": "Live native crops show chopped captions at 1.6 and absent captions at 2.0. One geometry defect, not one bug per tile."
+    },
+    {
+      "id": "palette-02",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/palette/42z-scale1-float-2x.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/palette/ComponentTile.java:184"
+      ],
+      "reason": "Recovered 1.0 crop visibly repeats Floating... labels; icons often indicate the operation but fail to distinguish integer from FP variants. Exact counts and all subcircuits were not re-counted."
+    },
+    {
+      "id": "palette-03",
+      "status": "confirmed-visual",
+      "severity": "P1",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/05-tree-1.6-crop.png",
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/07-scale2-start-crop.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/ProjectExplorer.java:289"
+      ],
+      "reason": "Tree fallback clips/overlaps scaled text; source has fixed LaF rows and scaled icons/fonts. Styling age is not the failure criterion."
+    },
+    {
+      "id": "palette-04",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/palette/ComponentPalette.java:190"
+      ],
+      "reason": "Unknown/project libraries are appended after preseeded built-in categories. Exact wheel-notch count was not retested."
+    },
+    {
+      "id": "palette-05",
+      "status": "confirmed-runtime",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/03-search-mux-crop.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/palette/ComponentPalette.java:162",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/palette/49b-omni-mux-win.png"
+      ],
+      "reason": "Live mux query returns an empty palette without explanation. Substring-only matching is confirmed. Cross-language matching is a proposal, not an existing promise."
+    },
+    {
+      "id": "palette-06",
+      "status": "confirmed-runtime",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/08-palette-2.0.png",
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/09-after-divider-drag-2.0.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/ShellLayout.java:166",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/ShellLayout.java:202"
+      ],
+      "reason": "One live 2.0 divider drag did not widen the panel; doLayout restores the stored location before release saves it. This fresh session used a 320px migrated side width, not the report's universal 260px claim."
+    },
+    {
+      "id": "palette-07",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/15-keyboard-right.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/palette/ComponentTile.java:98",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/SectionPanel.java:61"
+      ],
+      "reason": "Tile keys only handle Enter/Space and focusGained only repaints; sections are mouse-only. Live Down/Right left focus on the first tile. The 35-Tab capture still had a visible focused tile and does not prove the report's offscreen claim."
+    },
+    {
+      "id": "palette-08",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/02-palette-1.6-crop.png",
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/08-palette-2.0-crop.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/palette/ToolPreviewIcon.java:84"
+      ],
+      "reason": "Live crops show white-backed raster icons and colored legacy marks alongside monochrome symbols; visibility varies. Not all claimed icon classes were individually verified."
+    },
+    {
+      "id": "palette-09",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/palette/ComponentPalette.java:185",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/palette/ComponentPalette.java:272"
+      ],
+      "reason": "choose() mutates/persists recents without rebuilding; pin/recent/category independently render the same tool. Multiple highlights are consistent identity indicators, not multiple selections."
+    },
+    {
+      "id": "palette-10",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/palette/ComponentPalette.java:247",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/palette/ComponentTile.java:88"
+      ],
+      "reason": "A one-item pin menu and no double-click circuit editor are verified in source, but richer actions need an intentional product decision; use Circuits for editing today."
+    },
+    {
+      "id": "palette-11",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/resources/resources/logisim/strings/std/std.properties:385",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/resources/resources/logisim/strings/std/std.properties:507"
+      ],
+      "reason": "Two different factories have the identical display label PLA. That ambiguity is actionable; Pin to top and Library terminology are editorial choices."
+    },
+    {
+      "id": "palette-12",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/palette/ComponentPalette.java:238",
+        "/tmp/logisim-qa-recovery-20260924/reports/inspect-palette.json"
+      ],
+      "reason": "Catalog regrouping, collapsed advanced groups and an output-pin preset are design choices. Output search discoverability belongs to palette-05."
+    },
+    {
+      "id": "palette-13",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/palette/ComponentPalette.java:70",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/SectionPanel.java:53"
+      ],
+      "reason": "Collapse state is in-memory only and header has only a click listener; persisting collapse and adding hover/count are separate UX choices. Contrast is consolidated under codeaudit-16."
+    },
+    {
+      "id": "palette-14",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/05-tree-1.6-crop.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/Toolbox.java:63"
+      ],
+      "reason": "Folder glyph and no standard button fill are present. Replace with a named two-state view toggle for clarity; working toggle itself is not broken."
+    },
+    {
+      "id": "palette-15",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/02-palette-1.6-crop.png",
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/08-palette-2.0-crop.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/FilterField.java:48"
+      ],
+      "reason": "Placeholder truncation at 2.0 and cramped leading icon are visible. At this fresh 320px width the 1.6 placeholder fits, so failure is width-dependent."
+    },
+    {
+      "id": "palette-16",
+      "status": "design-recommendation",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/palette/ComponentTile.java:88",
+        "/tmp/logisim-qa-recovery-20260924/reports/inspect-palette.json"
+      ],
+      "reason": "Source exposes click-to-arm only; drag-to-place is not implemented. No new live drag-placement test or claim of a promised drag workflow."
+    },
+    {
+      "id": "palette-17",
+      "status": "duplicate",
+      "severity": "P1",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/08-palette-2.0-crop.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/palette/ComponentTile.java:176"
+      ],
+      "reason": "High-scale tile and star clipping share fixed tile geometry. Our 320px panel retained three columns, so two columns is not universal.",
+      "canonicalId": "palette-01"
+    },
+    {
+      "id": "palette-18",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/14-live-scale1-main-crop.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/palette/ComponentTile.java:160"
+      ],
+      "reason": "Ragged fixed-width tiles and weak focus/hover styling are visible; selected stroke is 1.6f, not the claimed uniform 1px. Prefer measurable hit-target/contrast criteria."
+    },
+    {
+      "id": "palette-19",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/file/Loader.java:175",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/start/Startup.java:997",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/qa.sh"
+      ],
+      "reason": "Loader and startup share user.home autosaves and Discard deletes the selected file. Harness interference is confirmed by design, not independently reproduced data loss. This run isolated user.home and never cleared real autosaves."
+    },
+    {
+      "id": "palette-20",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/01-fresh-1.6.png",
+        "/tmp/logisim-qa-recovery-20260924/reports/inspect-palette.json"
+      ],
+      "reason": "Welcome exposes palette and inspector in live capture, but failed placement and second-window creation were not retested; retain as workflow follow-up."
+    },
+    {
+      "id": "palette-21",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/reports/inspect-palette.json",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/fpga/gui/HdlColorRenderer.java:61"
+      ],
+      "reason": "Bundled canvas/inspector defects belong to other owners. HdlColorRenderer literals were checked separately; this pass did not visually verify the full canvas claim."
+    },
+    {
+      "id": "palette-22",
+      "status": "duplicate",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/03-search-mux-crop.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/palette/49b-omni-mux-win.png"
+      ],
+      "reason": "Live palette mux miss plus visually inspected recovered Find Action mux hit substantiate the inconsistent search contract; presentation changes remain design work.",
+      "canonicalId": "palette-05"
+    },
+    {
+      "id": "scaling-01",
+      "status": "confirmed-visual",
+      "severity": "P1",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/06-menu-1.6-crop.png",
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/12-window-settings-2.0.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/scaling/05z-checkboxes.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/start/Startup.java:1161"
+      ],
+      "reason": "Native menu and preferences captures show large labels with small accelerators/checkboxes. Phrase 'only fonts' is too broad: custom icons also scale, but FlatLaf metrics are not coordinated."
+    },
+    {
+      "id": "scaling-02",
+      "status": "duplicate",
+      "severity": "P1",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/02-palette-1.6-crop.png",
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/08-palette-2.0-crop.png"
+      ],
+      "reason": "Same fixed-size tile/caption defect, including ambiguous names at 1.0.",
+      "canonicalId": "palette-01"
+    },
+    {
+      "id": "scaling-03",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/LayoutPrefs.java:26",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/ShellLayout.java:202",
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/08-palette-2.0-crop.png"
+      ],
+      "reason": "Panel dimensions are persisted and clamped in raw pixels. Fresh migration can yield 320 rather than 260. Scaling strategy must preserve user-adjusted widths."
+    },
+    {
+      "id": "scaling-04",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/LayoutPrefs.java:63",
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/01-fresh-1.6.png"
+      ],
+      "reason": "Migration checks only the migrated flag and imports default old fractions even without stored legacy settings. 1366px case not rerun."
+    },
+    {
+      "id": "scaling-05",
+      "status": "confirmed-runtime",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/01-fresh-1.6.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/prefs/AppPreferences.java:1309"
+      ],
+      "reason": "Fresh 2560x1600 session opened at (0,0), 1280x1600. Low-resolution behavior and physical screen insets were not tested."
+    },
+    {
+      "id": "scaling-06",
+      "status": "confirmed-runtime",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/08-palette-2.0-crop.png",
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/14-live-scale1-main-crop.png",
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/17-settings-scale-corrected.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/prefs/WindowOptions.java:275"
+      ],
+      "reason": "Live 2.0->1.0 slider/Home change shrinks captions and toolbar glyphs while menu, headers, fields and cached previews retain old sizes. Restart warning exists; no dynamic restart action."
+    },
+    {
+      "id": "scaling-07",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/util/UiFonts.java:24",
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/09-after-divider-drag-2.0.png"
+      ],
+      "reason": "UI scale and document zoom are intentionally separate. Changing circuit fonts/geometry with theme would violate UiFonts' document-font contract. Evaluate default viewport zoom separately; no blanket canvas-scale bug."
+    },
+    {
+      "id": "scaling-08",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/scaling/50-s1.6-statistics.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/start/Startup.java:1163",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/SettingsNav.java:153"
+      ],
+      "reason": "Recovered Statistics crop clearly shows large Component header beside small remaining headers. COMPONENT_ADDED font replacement can affect shared renderers; nav first-cell variability was not fully retested."
+    },
+    {
+      "id": "scaling-09",
+      "status": "duplicate",
+      "severity": "P1",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/07-scale2-start-crop.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/ProjectExplorer.java:289"
+      ],
+      "reason": "Shared ProjectExplorer row/font sizing defect; toolbar-list and Mouse-table subclaims were not separately verified.",
+      "canonicalId": "palette-03"
+    },
+    {
+      "id": "scaling-10",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/scaling/50-s1.6-statistics.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/StatisticsDialog.java:59"
+      ],
+      "reason": "Recovered native Statistics screenshot shows truncated cells and mixed headers. Source omits parent centering and caps dimensions rather than using one universal fixed size."
+    },
+    {
+      "id": "scaling-11",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/dialogs/12-prefs-hotkeys.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/PanelHeader.java:35"
+      ],
+      "reason": "Recovered Hotkey preferences shows clipped instructions, navigation ellipsis and horizontal scrollbars. Other pages in this bundled claim were not individually retested."
+    },
+    {
+      "id": "scaling-12",
+      "status": "confirmed-runtime",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/17-settings-scale-corrected.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/SettingsNav.java:115"
+      ],
+      "reason": "Corrected live scale query clears the navigation list and leaves old Window page with no no-results explanation. SettingsNav matches page titles only."
+    },
+    {
+      "id": "scaling-13",
+      "status": "duplicate",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/start/Startup.java:997"
+      ],
+      "reason": "Same shared-home autosave/recovery issue. 'Every startup' is conditional on pending files, not universal.",
+      "canonicalId": "palette-19"
+    },
+    {
+      "id": "scaling-14",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/scaling/28z-s1.25-about-credits.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/start/AboutCredits.java:190"
+      ],
+      "reason": "Recovered crop shows nearly unreadable purple credits on dark background. Rebranding the historical logo is a design choice, not a runtime defect."
+    },
+    {
+      "id": "scaling-15",
+      "status": "duplicate",
+      "severity": null,
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/01-fresh-1.6.png",
+        "/tmp/logisim-qa-recovery-20260924/reports/inspect-scaling.json"
+      ],
+      "reason": "Same untested welcome/new-window workflow; visual presence of an empty inspector alone does not prove the second-window behavior.",
+      "canonicalId": "palette-20"
+    },
+    {
+      "id": "scaling-16",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/01-fresh-1.6.png",
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/09-after-divider-drag-2.0.png"
+      ],
+      "reason": "Development build suffix and truncation are visible; debug metadata is explicitly conditional. A shorter document-first title is polish."
+    },
+    {
+      "id": "scaling-17",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/reports/inspect-scaling.json"
+      ],
+      "reason": "Pin/probe radix contrast not inspected at native crop in this bounded pass; leave for component/canvas reviewer."
+    },
+    {
+      "id": "scaling-18",
+      "status": "duplicate",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/fpga/gui/HdlColorRenderer.java:103"
+      ],
+      "reason": "FPGA support-color claim overlaps checked renderer literals. Raw-coordinate and attribute-truncation subclaims not fully assessed here.",
+      "canonicalId": "codeaudit-v-05"
+    },
+    {
+      "id": "scaling-19",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/reports/inspect-scaling.json"
+      ],
+      "reason": "A Swing chooser is not inherently a workflow bug. Specific small metrics share scaling-01; native portal replacement needs platform requirements and is not required by this audit."
+    },
+    {
+      "id": "scaling-20",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/palette/49b-omni-mux-win.png"
+      ],
+      "reason": "Recovered 680x440 Find Action capture shows horizontal overflow and noisy highlight/footer. Scale/zoom action indexing not independently retested."
+    },
+    {
+      "id": "scaling-21",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/reports/inspect-scaling.json"
+      ],
+      "reason": "Timing drawer small-screen workflow not exercised or its screenshots viewed in this pass."
+    },
+    {
+      "id": "scaling-22",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/prefs/AppPreferences.java:1003",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/prefs/AppPreferences.java:1028"
+      ],
+      "reason": "Height heuristic applies only when Java2D device transform <=1. Source already detects platform scaling; claim it always ignores OS scale is incorrect. DPI/desktop intent and explicit-preference semantics need clarification."
+    },
+    {
+      "id": "scaling-23",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/PanelHeader.java:37",
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/01-fresh-1.6.png"
+      ],
+      "reason": "PanelHeader title stack and full-width end actions compete without overflow policy. Exact title disappearance not reproduced in this 320px panel."
+    },
+    {
+      "id": "scaling-24",
+      "status": "duplicate",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/02-palette-1.6-crop.png"
+      ],
+      "reason": "Same raster/legacy icon visibility and consistency workstream.",
+      "canonicalId": "palette-08"
+    },
+    {
+      "id": "scaling-25",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/09-after-divider-drag-2.0.png"
+      ],
+      "reason": "Duplicate zoom display is visible but both are consistent. Consolidate only if product hierarchy benefits."
+    },
+    {
+      "id": "scaling-26",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/12-window-settings-2.0.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/prefs/WindowOptions.java:103"
+      ],
+      "reason": "Live Window page shows excessive spacers, stretched controls and ambiguous Zoom factor wording. Layout polish; scaled checkbox discrepancy already covered."
+    },
+    {
+      "id": "scaling-27",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/reports/inspect-scaling.json"
+      ],
+      "reason": "Colors page alignment/defaults not inspected in this bounded review."
+    },
+    {
+      "id": "scaling-28",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/06-menu-1.6-crop.png"
+      ],
+      "reason": "Ctrl+Comma is visible and platform-generated. Broader menu terminology audit was not repeated; copy consistency is editorial."
+    },
+    {
+      "id": "scaling-29",
+      "status": "confirmed-runtime",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/17-settings-scale-corrected.png",
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/18-after-double-escape.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/FilterField.java:72"
+      ],
+      "reason": "In Preferences, first Escape clears the filter and second Escape still leaves window open. Focused unconditional binding swallows the dialog action. Project Options shares field code but was not live retested."
+    },
+    {
+      "id": "scaling-30",
+      "status": "rejected",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/10-preferences-2.0.png"
+      ],
+      "reason": "Broad no-current-language claim does not reproduce: English is visibly selected on this fresh-preference-derived run. Initial International page and gate-shape placement are design choices; no separate bug accepted."
+    },
+    {
+      "id": "scaling-31",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/reports/inspect-scaling.json"
+      ],
+      "reason": "Focus/click swallowing may be a KWin/Xwayland automation artifact; no physical-desktop confirmation."
+    },
+    {
+      "id": "scaling-32",
+      "status": "duplicate",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/08-palette-2.0-crop.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/FilterField.java:48"
+      ],
+      "reason": "Same FilterField inset/placeholder issue.",
+      "canonicalId": "palette-15"
+    },
+    {
+      "id": "codeaudit-01",
+      "status": "duplicate",
+      "severity": "P1",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/02-palette-1.6-crop.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/palette/ComponentTile.java:45"
+      ],
+      "reason": "Identical tile-size/caption-baseline root cause.",
+      "canonicalId": "palette-01"
+    },
+    {
+      "id": "codeaudit-02",
+      "status": "duplicate",
+      "severity": "P1",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/06-menu-1.6-crop.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/start/Startup.java:1161",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/util/UiScale.java:14"
+      ],
+      "reason": "Independent app scaling and LaF metrics are the same mismatch documented in scaling-01. FlatLaf can scale via its own font/zoom paths, so 'never scales' is not globally true.",
+      "canonicalId": "scaling-01"
+    },
+    {
+      "id": "codeaudit-03",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/start/Startup.java:1161",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/prefs/AppPreferences.java:446",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/util/UiFonts.java:89"
+      ],
+      "reason": "Global COMPONENT_ADDED listener replaces specified roles with constant 14*Scale. UiFonts derives a different ramp from Label.font. Order-dependent hierarchy loss is real."
+    },
+    {
+      "id": "codeaudit-04",
+      "status": "duplicate",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/06-menu-1.6-crop.png"
+      ],
+      "reason": "Menu label/accelerator mismatch is a symptom of uncoordinated scale. Ctrl+Comma wording is cosmetic.",
+      "canonicalId": "scaling-01"
+    },
+    {
+      "id": "codeaudit-05",
+      "status": "duplicate",
+      "severity": "P1",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/07-scale2-start-crop.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/scaling/50-s1.6-statistics.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/resources/com/cburch/logisim/gui/theme/FlatLaf.properties:38"
+      ],
+      "reason": "Fixed tree/table metric versus scaled content is substantiated on ProjectExplorer and Statistics. Do not infer every listed table clips.",
+      "canonicalId": "palette-03"
+    },
+    {
+      "id": "codeaudit-06",
+      "status": "duplicate",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/LayoutPrefs.java:26"
+      ],
+      "reason": "Same raw-pixel shell dimensions; see migration and drag qualifications.",
+      "canonicalId": "scaling-03"
+    },
+    {
+      "id": "codeaudit-07",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/EditorTheme.java:77",
+        "/tmp/logisim-qa-recovery-20260924/reports/verify-codeaudit.json"
+      ],
+      "reason": "EditorTheme loads the XML theme without a scaled base font after editor creation. Actual editor/gutter sizes were not measured in this run; treat as source-supported scale integration debt."
+    },
+    {
+      "id": "codeaudit-08",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/chrono/ChronoPanel.java:58",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/chrono/ChronoPanel.java:98"
+      ],
+      "reason": "ChronoPanel has literal 20px header, 30px rows and 10pt selector font. Header clipping screenshot was not viewed; source mechanism only."
+    },
+    {
+      "id": "codeaudit-09",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/util/JHotkeyInput.java:151",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/dialogs/12-prefs-hotkeys.png",
+        "/tmp/logisim-qa-recovery-20260924/reports/verify-codeaudit.json"
+      ],
+      "reason": "Fixed hotkey editor metrics and 8pt action fonts exist; recovered page has cramped scroll regions. Prior verifier says resize timer corrects field text height, so do not claim all text fields clip."
+    },
+    {
+      "id": "codeaudit-10",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/reports/inspect-codeaudit.json"
+      ],
+      "reason": "Broad collection of hard-coded dialog colors was not independently checked here. Literal colors alone are insufficient to assert each surface is unreadable."
+    },
+    {
+      "id": "codeaudit-11",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/reports/verify-codeaudit.json"
+      ],
+      "reason": "FPGA/SoC surface sweep outside this bounded pass. Confirmed inspector status colors are dispositioned separately under codeaudit-v-05; fixed 12px runtime text may be overwritten by listener."
+    },
+    {
+      "id": "codeaudit-12",
+      "status": "duplicate",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/scaling/28z-s1.25-about-credits.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/start/AboutCredits.java:190"
+      ],
+      "reason": "Same independently viewed dark-credit contrast defect.",
+      "canonicalId": "scaling-14"
+    },
+    {
+      "id": "codeaudit-13",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/reports/inspect-codeaudit.json"
+      ],
+      "reason": "Titled/etched borders are not inherently broken. Restyle after correcting measured metric/contrast failures, avoiding an independent bug count per border."
+    },
+    {
+      "id": "codeaudit-14",
+      "status": "duplicate",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/08-palette-2.0-crop.png"
+      ],
+      "reason": "Raster artifacts are visible in palette. Exact GIF count and interpolation mode not re-audited.",
+      "canonicalId": "palette-08"
+    },
+    {
+      "id": "codeaudit-15",
+      "status": "duplicate",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/02-palette-1.6-crop.png"
+      ],
+      "reason": "Mixed colored and monochrome glyphs visible; per-class repaint audit not repeated.",
+      "canonicalId": "palette-08"
+    },
+    {
+      "id": "codeaudit-16",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/resources/com/cburch/logisim/gui/theme/LogisimDarkLaf.properties:27",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/resources/com/cburch/logisim/gui/theme/LogisimLightLaf.properties:27",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/palette/ComponentTile.java:182"
+      ],
+      "reason": "Recomputed reported color pairs: dark 3.976:1, light 3.152:1. Theme formulas and muted caption usage checked. Physical display/color management and light-theme pixels were not remeasured."
+    },
+    {
+      "id": "codeaudit-17",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/01-fresh-1.6.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/resources/com/cburch/logisim/gui/theme/LogisimDarkLaf.properties:30"
+      ],
+      "reason": "Black activity/status backgrounds are visible; black itself is not a defect. Missing selected-background token should be handled together with activity state painting."
+    },
+    {
+      "id": "codeaudit-18",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/ActivityBar.java:151",
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/08-palette-2.0.png"
+      ],
+      "reason": "Activity state branch sets a color but paints no fill. Selection still has an accent stripe and glyph, so 'no selected state' would overstate the result."
+    },
+    {
+      "id": "codeaudit-19",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/SectionPanel.java:61",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/Toolbox.java:63"
+      ],
+      "reason": "Section headers only handle mouse clicks and Toolbox toggle is nonfocusable. Other listed controls not individually assessed; combine with palette keyboard work."
+    },
+    {
+      "id": "codeaudit-20",
+      "status": "duplicate",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/palette/49b-omni-mux-win.png"
+      ],
+      "reason": "Same recovered fixed-size search dialog and horizontal overflow.",
+      "canonicalId": "scaling-20"
+    },
+    {
+      "id": "codeaudit-21",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/reports/inspect-codeaudit.json"
+      ],
+      "reason": "Wide fixed-size-dialog inventory not independently checked. Statistics is confirmed separately, and not every literal Dimension is a defect."
+    },
+    {
+      "id": "codeaudit-22",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/dialogs/12-prefs-hotkeys.png",
+        "/tmp/logisim-qa-recovery-20260924/reports/inspect-codeaudit.json"
+      ],
+      "reason": "Unscaled spacing inventory is a cleanup lead, not proof of a separate visible regression at every site. Prioritize forms with captured truncation."
+    },
+    {
+      "id": "codeaudit-23",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/reports/verify-codeaudit.json",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/start/Startup.java:1161"
+      ],
+      "reason": "Font literals can be overwritten by global listener. No blanket claim of actual 8/9/12px runtime text accepted without renderer or native-image evidence."
+    },
+    {
+      "id": "codeaudit-24",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/theme/AppIcons.java:137",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/Toolbox.java:83"
+      ],
+      "reason": "Different icon sizes can legitimately express hierarchy. Establish a small role-based size set; not an independent defect merely because values differ."
+    },
+    {
+      "id": "codeaudit-25",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/util/UiFonts.java:89",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/theme/AppIcons.java:156",
+        "/home/nilsb/.gradle/caches/modules-2/files-2.1/com.formdev/flatlaf/3.7.2/fcf9f3f276b11c7f5fc525838073ddcd80abda6a/flatlaf-3.7.2.jar"
+      ],
+      "reason": "UiFonts scales LaF font again and AppIcons passes app-scaled dimensions into FlatSVGIcon. Latent double-scaling integration risk; no physical mixed-DPI reproduction. Public FlatLaf zoom API verified locally."
+    },
+    {
+      "id": "codeaudit-26",
+      "status": "duplicate",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/prefs/AppPreferences.java:1028"
+      ],
+      "reason": "Same fallback heuristic. Reject the blanket OS-scale-ignorance wording; source explicitly tests Java2D device transform.",
+      "canonicalId": "scaling-22"
+    },
+    {
+      "id": "codeaudit-27",
+      "status": "duplicate",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/14-live-scale1-main-crop.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/prefs/WindowOptions.java:275"
+      ],
+      "reason": "Live partial refresh confirmed. Static restart warning exists; dynamic restart action absent.",
+      "canonicalId": "scaling-06"
+    },
+    {
+      "id": "codeaudit-28",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/09-after-divider-drag-2.0.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/MainToolbar.java:45"
+      ],
+      "reason": "Simulation controls sit in the middle-right region in live capture; right-edge alignment is a layout choice, not a blocked workflow."
+    },
+    {
+      "id": "codeaudit-29",
+      "status": "duplicate",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/01-fresh-1.6.png"
+      ],
+      "reason": "Same dev-build title polish. Emoji behavior not independently retested.",
+      "canonicalId": "scaling-16"
+    },
+    {
+      "id": "codeaudit-30",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/reports/inspect-codeaudit.json"
+      ],
+      "reason": "JavaHelp viewer was not opened or its screenshots inspected in this pass. Age of toolkit alone does not establish P1/P2 severity."
+    },
+    {
+      "id": "codeaudit-31",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/chrono/ChronoPanel.java:129"
+      ],
+      "reason": "Chrono debug print exists. No demonstrated UI failure/performance regression from logging; cleanup backlog, not visual blocker."
+    },
+    {
+      "id": "codeaudit-32",
+      "status": "confirmed-source",
+      "severity": "P3",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/prefs/WindowOptions.java:136",
+        "/tmp/logisim-qa-recovery-20260924/reports/inspect-codeaudit.json"
+      ],
+      "reason": "WindowOptions contains literal English editor-theme labels; the broader localization sweep was not repeated. Preserve named themes; localize user-facing explanatory labels."
+    },
+    {
+      "id": "codeaudit-33",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/theme/Tokens.java:111",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/theme/AppIcons.java:158"
+      ],
+      "reason": "Tokens allocates Color wrappers and AppIcons allocates keys, but no profiling evidence of material cost. Do not schedule optimization ahead of observed UX failures."
+    },
+    {
+      "id": "codeaudit-34",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/reports/inspect-codeaudit.json"
+      ],
+      "reason": "Specific canvas/K-map stroke, halo and swatch sites not independently verified. Literal offsets alone do not determine rendered scale."
+    },
+    {
+      "id": "codeaudit-35",
+      "status": "duplicate",
+      "severity": "P3",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/util/UiFonts.java:24"
+      ],
+      "reason": "Same document-zoom versus interface-scale decision; avoid altering saved circuit font/geometry semantics.",
+      "canonicalId": "scaling-07"
+    },
+    {
+      "id": "codeaudit-36",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/01-fresh-1.6.png"
+      ],
+      "reason": "Empty inspector and main status are visually present on Welcome. Simplify startup context, but this alone does not prove failed editing."
+    },
+    {
+      "id": "codeaudit-v-01",
+      "status": "duplicate",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/scaling/50-s1.6-statistics.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/start/Startup.java:1163"
+      ],
+      "reason": "Recovered native Statistics crop verifies inconsistent table-header fonts; source points to shared-renderer font mutation. File chooser case not rechecked.",
+      "canonicalId": "scaling-08"
+    },
+    {
+      "id": "codeaudit-v-02",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/ProjectExplorer.java:288",
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/05-tree-1.6-crop.png"
+      ],
+      "reason": "ProjectExplorer derives plainFont from mutable renderer.getFont(), preserving BOLD from a prior viewed row. Source-supported reused-renderer state leak; live tree is uniformly bold."
+    },
+    {
+      "id": "codeaudit-v-03",
+      "status": "duplicate",
+      "severity": "P1",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/07-scale2-start-crop.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/ProjectExplorer.java:521"
+      ],
+      "reason": "Library tree scaled icons exceed fixed rows in live scale-2 capture. Simulation renderer subclaim not independently reviewed.",
+      "canonicalId": "palette-03"
+    },
+    {
+      "id": "codeaudit-v-04",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/reports/verify-codeaudit.json",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/EditorTheme.java:77"
+      ],
+      "reason": "HDL gutter smear not viewed or live tested here. Editor theme load is checked under codeaudit-07; gutter-specific mechanism requires editor reproduction."
+    },
+    {
+      "id": "codeaudit-v-05",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/fpga/gui/HdlColorRenderer.java:61",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/fpga/gui/HdlColorRenderer.java:103"
+      ],
+      "reason": "HdlColorRenderer explicitly uses GREEN/RED/ORANGE backgrounds. This does not apply to every component/state indiscriminately; inspector status treatment is a scoped contrast/design fix."
+    },
+    {
+      "id": "codeaudit-v-06",
+      "status": "duplicate",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/reports/verify-codeaudit.json"
+      ],
+      "reason": "Same file-chooser redesign proposal; exact size and details-view clipping not independently verified in this pass.",
+      "canonicalId": "scaling-19"
+    },
+    {
+      "id": "codeaudit-v-07",
+      "status": "duplicate",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/dialogs/12-prefs-hotkeys.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/PanelHeader.java:35"
+      ],
+      "reason": "Recovered Hotkey screenshot shows one-line instructions ending in ellipsis. Single-line PanelHeader implementation confirmed.",
+      "canonicalId": "scaling-11"
+    },
+    {
+      "id": "codeaudit-v-08",
+      "status": "duplicate",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/dialogs/12-prefs-hotkeys.png"
+      ],
+      "reason": "Same recovered preferences form/nav overflow. A bare HORIZONTAL_SCROLLBAR_NEVER would hide information unless width/wrapping is fixed as well.",
+      "canonicalId": "scaling-11"
+    },
+    {
+      "id": "codeaudit-v-09",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/theme/Theme.java:182",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/theme/SystemTheme.java:163"
+      ],
+      "reason": "Swing Timer invokes theme detection on EDT; SystemTheme.run reads to EOF before its timeout. UI freeze risk under a hung probe is credible but was not induced."
+    },
+    {
+      "id": "codeaudit-v-10",
+      "status": "confirmed-source",
+      "severity": "P3",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/theme/AppIcons.java:147"
+      ],
+      "reason": "accented/disabled mutate the cached base FlatSVGIcon. Repository search found no current callers; latent cache API defect, not an observed UI regression."
+    },
+    {
+      "id": "codeaudit-v-11",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/palette/ToolPreviewIcon.java:44",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/palette/ToolPreviewIcon.java:55",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/palette/ToolPreviewIcon.java:84",
+        "/tmp/logisim-qa-recovery-20260924/foundations-evidence/14-live-scale1-main-crop.png"
+      ],
+      "reason": "ToolPreviewIcon caches one raster at app-scale size with theme-only invalidation; live 2->1 change keeps large previews. OS-scale blur is plausible, not tested, and default image at app scale 1 is 20x20, not the claimed universal 32x32."
+    },
+    {
+      "id": "codeaudit-v-12",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/ProjectExplorer.java:537"
+      ],
+      "reason": "Halo branch saves/clips/restores without drawing. A dead indicator path is confirmed from source; no standalone live halo test."
+    },
+    {
+      "id": "codeaudit-v-13",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/palette/49b-omni-mux-win.png"
+      ],
+      "reason": "Recovered Find Action screenshot exposes provider count and awkward plurals. Copy polish, not blocked search."
+    },
+    {
+      "id": "codeaudit-v-14",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/chrono/ChronoPanel.java:283"
+      ],
+      "reason": "Chrono error/unknown fills are static pastels. Contrast against actual waveforms in both themes not measured; retain source-supported theming follow-up, not confirmed unreadability."
+    },
+    {
+      "id": "codeaudit-v-15",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/reports/verify-codeaudit.json"
+      ],
+      "reason": "FPGA execution window not live tested or screenshot viewed; retain for FPGA/dialog owner."
+    }
+  ],
+  "newFindings": [],
+  "tested": [
+    "Read AGENTS.md, exact HEAD/status, assigned completed reports and updated interrupted-verifier extracts.",
+    "Read original QA harness before launch; used --fresh and unique private Java home on every launch.",
+    "Live 1.6 palette caption crop, mux empty result, and search Enter invocation; only mux fully assessed as a result set.",
+    "Live tree fallback at 1.6 and 2.0, native menu typography at 1.6, palette at 2.0.",
+    "One left-divider drag at scale 2.0; no widening observed.",
+    "Preferences 2.0, corrected scale keyword query, double Escape, and live 2.0->1.0 change.",
+    "Palette Down/Right and 35 Tab steps. Last Tab capture still has visible focus; offscreen behavior not claimed.",
+    "Viewed recovered 1.0 FP-name crop, Statistics native window, About credits, Hotkey form, checkbox crop and Find Action mux window.",
+    "Selected source claims including mutable renderers, LaF zoom API, themes, private-home autosaves, cache geometry and EDT polling.",
+    "No exceptions in current session app log; repository status unchanged (preexisting untracked AGENTS.md only).",
+    "Validated exact app/wrapper/session PIDs and ownership before qa.sh stop; subsequent ps found all exited."
+  ],
+  "notTested": [
+    "Physical desktop/mixed-DPI/Windows/macOS rendering; full jar reproducible-build equivalence.",
+    "Fresh runtime launches at 1.0/1.25/2.5, light-theme live round, low-resolution live round; 1.0 names reused from viewed source evidence.",
+    "Complete palette/library/subcircuit count, non-English locale, JAR libraries, screen readers.",
+    "Drag-to-place, output-pin placement, complete pin/unpin/recent/collapse persistence workflows, live offscreen keyboard selection.",
+    "Full FPGA/SoC/HDL/chrono/file-chooser/JavaHelp/canvas workflows and export/printing.",
+    "Actual data-loss reproduction, cross-session recovery deletion or any real autosave/user file operations.",
+    "Interrupted palette verifier circular-subcircuit placement lead: source/evidence remains provisional; no new confirmed finding added.",
+    "The initial settings screenshot 11-settings-filter-scale.png typed scalesleep0.5 because xdotool type consumed trailing arguments; invalid as scale-query evidence and superseded by 17-settings-scale-corrected.png."
+  ],
+  "cleanup": {
+    "sessionStopped": true,
+    "validatedPids": [
+      560972,
+      551192,
+      551230
+    ],
+    "compositorPidAlsoChecked": 551195,
+    "allExited": true,
+    "productionEdits": false,
+    "commits": false,
+    "pushes": false,
+    "realUserFilesOrPreferencesWritten": false,
+    "preserved": "QA captures, isolated preferences/home and fixture copy retained under /tmp; no material files deleted by review beyond own harness session lifecycle."
+  }
+}

@@ -1,0 +1,27 @@
+name: Lock merged discussions
+
+on:
+  pull_request_target:
+    types: [closed]
+
+permissions:
+  code: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  lock:
+    runs-on: ubuntu-latest
+    steps:
+      # Always execute the script from the trusted main branch.
+      - uses: https://github.com/actions/checkout@v4
+        with:
+          ref: main
+      - name: Lock merged PR and closed linked issues
+        env:
+          GITEA_EVENT_PATH: ${{ gitea.event_path }}
+          GITEA_SERVER_URL: ${{ gitea.server_url }}
+          GITEA_API_URL: ${{ gitea.api_url }}
+          GITEA_REPOSITORY: ${{ gitea.repository }}
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+        run: python3 scripts/ci/post_merge.py

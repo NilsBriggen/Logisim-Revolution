@@ -1,0 +1,103 @@
+name: Hosted Windows and macOS packages
+run-name: Gitea build ${{ inputs.release_tag }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Gitea main commit represented by this source snapshot
+        required: true
+      source_tree:
+        description: Git tree SHA from the Gitea commit
+        required: true
+      release_tag:
+        description: Unique Gitea draft release tag
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  windows_amd64:
+    runs-on: windows-2022
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          architecture: x64
+      - name: Verify the mirrored source tree and build MSI and portable ZIP
+        shell: pwsh
+        env:
+          SOURCE_TREE: ${{ inputs.source_tree }}
+        run: |
+          if ((git rev-parse 'HEAD^{tree}') -ne $env:SOURCE_TREE) { throw 'GitHub source tree differs from Gitea.' }
+          if ($env:PROCESSOR_ARCHITECTURE -ne 'AMD64') { throw 'An x86_64 Windows runner is required.' }
+          $wix = 'C:\Program Files (x86)\WiX Toolset v3.14\bin'
+          if (!(Test-Path "$wix\candle.exe") -or !(Test-Path "$wix\light.exe")) {
+            throw 'WiX Toolset 3 is unavailable.'
+          }
+          $env:PATH = "$wix;$env:PATH"
+          .\gradlew.bat clean createAll --no-daemon --console=plain
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-amd64
+          path: |
+            build/dist/*.msi
+            build/dist/*.zip
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+
+  macos_amd64:
+    runs-on: macos-15-intel
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          architecture: x64
+      - name: Verify the mirrored source tree and build Intel DMG
+        env:
+          SOURCE_TREE: ${{ inputs.source_tree }}
+        run: |
+          test "$(git rev-parse HEAD^{tree})" = "$SOURCE_TREE"
+          test "$(uname -m)" = x86_64
+          ./gradlew clean createDmg --no-daemon --console=plain
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-amd64
+          path: build/dist/*-x86_64.dmg
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+
+  macos_arm64:
+    runs-on: macos-15
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          architecture: aarch64
+      - name: Verify the mirrored source tree and build Apple Silicon DMG
+        env:
+          SOURCE_TREE: ${{ inputs.source_tree }}
+        run: |
+          test "$(git rev-parse HEAD^{tree})" = "$SOURCE_TREE"
+          test "$(uname -m)" = arm64
+          ./gradlew clean createDmg --no-daemon --console=plain
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-arm64
+          path: build/dist/*-aarch64.dmg
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0

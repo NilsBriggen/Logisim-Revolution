@@ -1,0 +1,454 @@
+{
+  "area": "Static audit: unscaled pixel sizes and hard-coded styling",
+  "verdicts": [
+    {
+      "id": "codeaudit-01",
+      "verdict": "CONFIRMED",
+      "severity": "blocker",
+      "note": "The code matches exactly (ComponentTile.java:45-50, 67-69, 164-188). Arithmetic at 1.6: xs=6, sm=13, small font 18px. The baseline lands at about 70px in a 62px tile. crop-palette.png and t1-menu-z.png are native 1x crops, and every caption shows only its top half ('NOT', 'Buffer', 'AND' as stubs)."
+    },
+    {
+      "id": "codeaudit-02",
+      "verdict": "CONFIRMED",
+      "severity": "blocker",
+      "note": "No flatlaf.uiScale / UIScale call exists anywhere in src (grepped). On KDE, FlatLaf 3.7.2 LinuxFontPolicy.getKDEFont takes its size from kdeglobals plus kcmfonts forceFontDPI (javap). The rig launches the app with the user's own XDG_CURRENT_DESKTOP=KDE and ~/.config, so its FlatLaf scale of 1.0 should match the laptop. Visually confirmed: 13px accelerators (t2-menu-z.png), check boxes and radios of about 12-15px beside 22px labels (critic/13z-prefs-tiny-checkbox.png), tiny title-bar glyphs (critic/01z-winctl.png), and 24px tree rows (palette/09z-tree-gates-2x.png)."
+    },
+    {
+      "id": "codeaudit-03",
+      "verdict": "CONFIRMED",
+      "severity": "major",
+      "note": "Startup.java:1161-1190 and AppPreferences.getScaledFont (446-460) ignore the incoming size and always return 14*1.6. In WelcomePanel.action(), name.setFont(body) and hintLabel.setFont(small) both run before text.add(), so both end up at 22.4px. probe-01.png shows the link and the hint at the same size. The listener also has a worse effect, reported separately as codeaudit-v-01: it grabs cell renderers as they are added to a CellRendererPane."
+    },
+    {
+      "id": "codeaudit-04",
+      "verdict": "CONFIRMED",
+      "severity": "major",
+      "note": "t2-menu-z.png (native): the item labels are about 22px, the accelerators about 13px, and 'Preferences... Ctrl+Comma'. The submenu arrow next to Open Recent is about 6px."
+    },
+    {
+      "id": "codeaudit-05",
+      "verdict": "CONFIRMED",
+      "severity": "major",
+      "note": "Visible at 1.6 in palette/08z-library-tree-2x.png and 09z-tree-gates-2x.png: descenders are cut in 'Wiring', 'Floating', 'mega' and 'Merger' (critic/16z-projopts-tree.png). critic/37z-stats-table.png clips 'Wiring' the same way, and the JavaHelp tree clips 'graphical'/'Logging' (dialogs/28-help-guide.png). The same trees have two further defects that this finding does not mention (codeaudit-v-02, codeaudit-v-03)."
+    },
+    {
+      "id": "codeaudit-06",
+      "verdict": "CONFIRMED",
+      "severity": "major",
+      "note": "LayoutPrefs.java:26-42 and ShellLayout.java:31/87-89/119 are as cited. More evidence at 1.6: in the 260px side panel, the Circuits view header title is cut to 'Cl...' by its six action icons (analyzer/72-inc16-analyzing.png, top left). The VHDL inspector cuts every label ('FPGA supp...', 'VHDL Entity...', hdl/30-vhdl-typed.png)."
+    },
+    {
+      "id": "codeaudit-07",
+      "verdict": "CONFIRMED",
+      "severity": "major",
+      "note": "Code is 13px while the UI is 22px (hdl/30-vhdl-typed.png). One detail is wrong: the gutter is not 13px. Theme.apply only changes the line-number size when the XML theme gives one (FontUtil.deriveFont on the existing font, javap). The gutter therefore keeps the 22.4px the Startup listener gave it, and the numbers overlap each other at the 13px line pitch. That is a separate defect, codeaudit-v-04."
+    },
+    {
+      "id": "codeaudit-08",
+      "verdict": "CONFIRMED",
+      "severity": "major",
+      "note": "Constants confirmed at ChronoPanel.java:58-60/98/116/129. critic/31z-drawer-chrono.png and simulation/47z-timing-tab.png (native) show the '4999 ns' cursor pill and the '0' tick label cut in half at the top of the header. Both column headers are truncated with clipped descenders ('Signal...', 'Signa...')."
+    },
+    {
+      "id": "codeaudit-09",
+      "verdict": "CONFIRMED",
+      "severity": "major",
+      "note": "Code confirmed (JHotkeyInput.java:42-43, 57-89, 111-154). One correction: the optimizeTimer grows each field's height to fit the text (the fields are about 40px tall in dialogs/12-prefs-hotkeys.png), so the text itself is not clipped. The 18x18 buttons are clipped: in edit mode the check and X icons overlap at the field's right edge (dialogs/12-hotkey-typed.png). The 11 JLabel(\" \") spacers are each forced to 22.4px, which is why about 330px of the page is empty above 'Reset to defaults'. The two key lists show only 5 rows each, and their field columns do not line up."
+    },
+    {
+      "id": "codeaudit-10",
+      "verdict": "CONFIRMED",
+      "severity": "major",
+      "note": "Every cited line checked: ExportSubcircuitDialog:99 DARK_GRAY (about 1.57:1 on #1e1f22), SelectionList:336-351, LayoutThumbnail:45/119-121, AssemblyWindow:343, TextLineNumber:52/100, Frame:242 setBackground(Color.white), LogisimToolbarItem:92-99 and HdlToolbarModel:156-160. Confirmed from the code; I had no screenshot of these dialogs."
+    },
+    {
+      "id": "codeaudit-11",
+      "verdict": "CONFIRMED",
+      "severity": "major",
+      "note": "All the colour and size literals exist. Two corrections. (1) The most visible use of HdlColorRenderer is not the FPGA windows: AttrTable.java:97 installs it for the main Properties inspector, which paints a #00FF00 'Supported' cell and orange 'Required f...' cells (critic/06z-inspector.png). That is reported as codeaudit-v-05. (2) The 12f console fonts are set on JTextArea/JList before their JScrollPane is added, so the Startup listener probably overrides them to 22.4 in practice. The visible result is inconsistent sizes rather than 12px text."
+    },
+    {
+      "id": "codeaudit-12",
+      "verdict": "CONFIRMED",
+      "severity": "major",
+      "note": "dialogs/27-about.png (native 668x559) and critic/27z-about-credits.png: the credit names are dark purple on #1e1f22 and essentially invisible. The logo is the green/red 2005 raster artwork. About.java:37-40 has PADDING 20, PANEL_WIDTH 600 and LOGO/SCROLLER 200, all unscaled."
+    },
+    {
+      "id": "codeaudit-13",
+      "verdict": "CONFIRMED",
+      "severity": "major",
+      "note": "There are 22 titled/etched borders: FpgaIoInformationSettingsDialog x11, PartialMapDialog x3, FpgaClockPanel x1, log/OptionsPanel x4, SocMemMapModel, TraceWindowTableModel and PlaTable x2. Visible in hdl/08-execute-win.png ('Clock settings' in a 13px etched group box) and critic/29z-drawer-titled.png ('Signals and Formats', 'Timing Options' boxes with 15px check boxes next to 22px labels)."
+    },
+    {
+      "id": "codeaudit-14",
+      "verdict": "CONFIRMED",
+      "severity": "major",
+      "note": "There are 26 GIFs plus por.png, upscaled by IconsUtil.java:28-38. In t1-menu-z.png, 'Do not connect' is a white square with a red X, and Splitter, Pull and PLA carry green blobs. subcirc.gif is also the white chip icon in every explorer and simulation tree row."
+    },
+    {
+      "id": "codeaudit-15",
+      "verdict": "CONFIRMED",
+      "severity": "minor",
+      "note": "crop-toolbar.png: the skin-tone poke hand, the green/yellow image icon and the green/purple wire tool sit beside monochrome gate glyphs."
+    },
+    {
+      "id": "codeaudit-16",
+      "verdict": "CONFIRMED",
+      "severity": "major",
+      "note": "Recomputed with FlatLaf HSL: dark muted #747d8e on #1e1f22 is about 4.0:1, light #808d9d on #f6f7f9 is 3.14:1. The Tokens.java fallback (0x9A9A9A) is more readable than the theme value. Minor citation drift: the muted key is at LogisimDarkLaf.properties:27, not 29."
+    },
+    {
+      "id": "codeaudit-17",
+      "verdict": "CONFIRMED",
+      "severity": "minor",
+      "note": "The background lightness is 12.5%, and darkening by 25% clamps it to #000000. The activity bar and the status bar are pure black in probe-01.png. The keys are at lines 30 and 34. Logisim.activityBar.selectedBackground is defined in neither theme file."
+    },
+    {
+      "id": "codeaudit-18",
+      "verdict": "CONFIRMED",
+      "severity": "major",
+      "note": "ActivityBar.java:151-156 calls setColor() and never fills anything. It activates on mouseClicked (136-140)."
+    },
+    {
+      "id": "codeaudit-19",
+      "verdict": "CONFIRMED",
+      "severity": "minor",
+      "note": "SectionPanel.java:61-67 has a mouseClicked-only header. setFocusable(false) is at Toolbox:63, HexFrame:82, Inspector:55, ToolbarOptions:65 and ZoomPill:94."
+    },
+    {
+      "id": "codeaudit-20",
+      "verdict": "CONFIRMED",
+      "severity": "minor",
+      "note": "palette/49b-omni-mux-win.png is exactly 680x440 native. Only 6 result rows are visible, there is a horizontal scrollbar, and matches get solid amber #FFA000 chips. The dialog's copy is poor too, reported as codeaudit-v-13."
+    },
+    {
+      "id": "codeaudit-21",
+      "verdict": "CONFIRMED",
+      "severity": "major",
+      "note": "The grep reproduces every literal. It also finds SelectionPanel.java:167 setSize(400,400) and TableTab.java:579 (tableWidth+40), which were not listed. The stock file chooser is sized the same way (codeaudit-v-06)."
+    },
+    {
+      "id": "codeaudit-22",
+      "verdict": "CONFIRMED",
+      "severity": "minor",
+      "note": "Spot-checked 10 of the cited lines. All are literal Insets or EmptyBorder values."
+    },
+    {
+      "id": "codeaudit-23",
+      "verdict": "CONFIRMED",
+      "severity": "minor",
+      "note": "The literals exist. Many of them (HexFile JTextArea/JTabbedPane, FPGA consoles) are overridden to 22.4 by the Startup listener, because they are set before add(). What the user sees is therefore arbitrary sizes rather than reliably small ones. The TableTab truth table is painted directly, so its 28.8px text is real: analyzer/05-analyzer-table-topleft-z2.png shows the table text larger than its own 22px tabs."
+    },
+    {
+      "id": "codeaudit-24",
+      "verdict": "CONFIRMED",
+      "severity": "minor",
+      "note": "AppIcons calls pass 14 (16 times), SIZE/16 (10), ICON_SIZE (7), 12 (3) and 10 (1). ToolboxToolbarModel uses 15."
+    },
+    {
+      "id": "codeaudit-25",
+      "verdict": "CONFIRMED",
+      "severity": "minor",
+      "note": "The mechanism is real: FlatSVGIcon.getIconWidth calls scaleSize (javap), and UiFonts.scale multiplies Label.font by UiScale. Severity is lowered because this user is not affected. The session reports Xft.dpi 144, but on KDE FlatLaf reads kdeglobals/kcmfonts, not Xft.dpi, so the cited Xft.dpi trigger is wrong for KDE. It applies to GNOME via XSETTINGS Xft/DPI. Also, UiFonts.java has 93 lines; the multiplication is at 89-92, not 251-260."
+    },
+    {
+      "id": "codeaudit-26",
+      "verdict": "CONFIRMED",
+      "severity": "minor",
+      "note": "AppPreferences.java:1028-1034 as described. There is a concrete aggravation on this machine: the user's desktop reports Xft.dpi 144, which is a 1.5 system scale, while the app picks 1.6. Logisim is therefore larger than every other app on the laptop."
+    },
+    {
+      "id": "codeaudit-27",
+      "verdict": "CONFIRMED",
+      "severity": "minor",
+      "note": "WindowOptions.java:103-125 (6 JLabel spacers and an italic JTextArea note), :133-141 (English theme names) and :272-282 (sets SCALE_FACTOR and only revalidates)."
+    },
+    {
+      "id": "codeaudit-28",
+      "verdict": "CONFIRMED",
+      "severity": "minor",
+      "note": "MainToolbar.java:45-53 splits the spare width between the glue and two JPanel toolbars whose maximum size is unbounded. The simulation group sits at about x=1500-1640 native in probe-01.png."
+    },
+    {
+      "id": "codeaudit-29",
+      "verdict": "CONFIRMED",
+      "severity": "minor",
+      "note": "Frame.java:651-672. The title reads 'main of Untitled · Logisim-evolution v5.1.0dev (ID:main/2532c84d, BUILT:...)' and 'Untitled · ... [UNSAVED] (ID:...)' (hdl/30-vhdl-typed.png). The floppy-emoji dirty marker does not render at all in the FlatLaf title pane."
+    },
+    {
+      "id": "codeaudit-30",
+      "verdict": "CONFIRMED",
+      "severity": "major",
+      "note": "Raised from minor. dialogs/28-help-guide.png shows unscaled 16px GIF toolbar and tab icons, a navy H1 that is nearly invisible on the dark page, the white raster logo, and a Windows-XP screenshot of the old Logisim as the guide's hero image. The nav tree clips its descenders. Under the user's bar ('If I can still recognize parts of the old software'), this window alone fails."
+    },
+    {
+      "id": "codeaudit-31",
+      "verdict": "CONFIRMED",
+      "severity": "minor",
+      "note": "ChronoPanel:129 prints 'chrono clear'. gui/log/TablePanel has no references (PlaTable's TablePanel is its own inner class). TikZWriter has 18 prints. Project.java:218-247 also prints 'Circuit Lock Bug Diagnostics' blocks to stdout."
+    },
+    {
+      "id": "codeaudit-32",
+      "verdict": "CONFIRMED",
+      "severity": "polish",
+      "note": "EditorTabs:202 (' — appearance'), TestPanel:189/193/200 ('Show', 'Set', 'Set: n'), SelectionList:115 JPopupMenu(\"Options\") and FpgaReportTabbedPane:126/152/373/385."
+    },
+    {
+      "id": "codeaudit-33",
+      "verdict": "CONFIRMED",
+      "severity": "polish",
+      "note": "Tokens.java:108-111 allocates new Color(getRGB(), true) on every call, and fallback() allocates too. The cost is small."
+    },
+    {
+      "id": "codeaudit-34",
+      "verdict": "CONFIRMED",
+      "severity": "polish",
+      "note": "LayoutToolbarModel.java:219-235 uses an unscaled ICON_BORDER inset and arc 8. KarnaughMapPanel has BasicStroke(2) at :677/894/915, and ColorChooserButton uses arc 4."
+    },
+    {
+      "id": "codeaudit-35",
+      "verdict": "CONFIRMED",
+      "severity": "minor",
+      "note": "BasicZoomModel starts at the stored zoom with no interface-scale factor. CanvasStyle HANDLE_SIZE 7 and SELECTION_INSET 3 are in circuit units. Confirmed from the code; a design decision is needed."
+    },
+    {
+      "id": "codeaudit-36",
+      "verdict": "CONFIRMED",
+      "severity": "minor",
+      "note": "probe-01.png shows an empty bordered PROPERTIES box, a collapsed STATE section, and 'main' / '100%' in the status bar while Welcome is showing. Frame.showWelcome (783-799) only hides the tabs and the zoom pill."
+    }
+  ],
+  "newFindings": [
+    {
+      "id": "codeaudit-v-01",
+      "title": "Table headers render column 1 at 22px and every other column at 13px (the Startup listener catches renderer components)",
+      "severity": "major",
+      "category": "visual-consistency",
+      "surface": "Every JTable header: Statistics dialog, Open/Save file chooser details view, and likely Mouse mappings, logging and SoC tables",
+      "observed": "In critic/37z-stats-table.png the first header 'Component' is about 22px, while 'Library', 'Simple', 'Unique' and 'Recur...' are about 13px. The file chooser shows the same pattern: 'Name' is large and 'Size' / 'Date Modified' are tiny (dialogs/32-open-chooser-pair.png). Two unrelated tables with the same symptom point to a common cause.",
+      "expected": "All header cells in one font, one step below or equal to the body text.",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/critic/37z-stats-table.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/dialogs/32-open-chooser-pair.png"
+      ],
+      "rootCause": "gui/start/Startup.java:1161-1190. CellRendererPane.paintComponent add()s the shared header renderer (a JLabel) the first time it paints. That add raises COMPONENT_ADDED, so the listener sets the renderer's font to 22.4 just before the first cell is painted. The next cells are reconfigured from JTableHeader.getFont(), which is still 13px because the header is added to the column-header viewport as a JTableHeader, a type the listener ignores. Result: only the first painted cell is large (and it can flip size on the next repaint).",
+      "systemic": true,
+      "fixIdea": "Remove the listener (with codeaudit-02/03). At minimum, skip any child whose parent is a CellRendererPane, and set the TableHeader.font role explicitly."
+    },
+    {
+      "id": "codeaudit-v-02",
+      "title": "Project explorer tree turns every row bold after the current circuit, and names get ellipsized despite free space",
+      "severity": "major",
+      "category": "bug-interaction",
+      "surface": "Library panel tree view, Project Options > Toolbar and Mouse trees, and any ProjectExplorer",
+      "observed": "At 1.6 every node is bold ('Untitled', 'Wiring', 'Gates', all gate names, all subcircuits: palette/09z-tree-gates-2x.png, critic/16z-projopts-tree.png). At scale 2.0 subcircuit names are cut to 'CX...', 'CM...', 'MUX4WAY...' with plenty of empty space to their right (scaling/36z-s2.0-projopts-mouse-tree-table.png).",
+      "expected": "Only the circuit being viewed is bold and accent-coloured. Other rows are regular weight, and names are never ellipsized when there is room.",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/palette/09z-tree-gates-2x.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/critic/16z-projopts-tree.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/scaling/36z-s2.0-projopts-mouse-tree-table.png"
+      ],
+      "rootCause": "gui/generic/ProjectExplorer.java:288-291 computes plainFont = getScaledFont(ret.getFont()). DefaultTreeCellRenderer is one reused JLabel, and getFont() returns whatever font the previous cell left on it. Once the 'viewed' row sets boldFont (:315), every later call derives its 'plain' font from bold. The tree caches row widths from earlier (plain) measurements, then paints wider bold text, so JLabel ellipsizes it. SimulationTreeRenderer avoids this by deriving from tree.getFont().",
+      "systemic": false,
+      "fixIdea": "Derive both fonts from tree.getFont() (or UiFonts.body()) on every call, never from the renderer's current font. Invalidate row sizes (treeDidChange) when the viewed circuit changes."
+    },
+    {
+      "id": "codeaudit-v-03",
+      "title": "Tree icons are bigger than their rows: subcircuit icons stack into a ladder and simulation-tree icons overlap the labels",
+      "severity": "major",
+      "category": "scaling-layout",
+      "surface": "Library/project tree, Project Options trees, Simulation tree",
+      "observed": "critic/16z-projopts-tree.png: the white chip icons of consecutive subcircuits touch and overlap vertically, forming one continuous film-strip. simulation/12z-sim-tree-expanded.png: each chip icon runs into the first letters of 'main', 'ALU(680,140)', 'REG16(...)', and the magnifier on 'CPU' is a tiny unscaled glyph.",
+      "expected": "Icons sized to the row (for example 16-20 design px inside a row sized from the font), with a scaled icon-text gap.",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/critic/16z-projopts-tree.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/simulation/12z-sim-tree-expanded.png"
+      ],
+      "rootCause": "gui/generic/ProjectExplorer.java:521-529: ToolIcon reports scaled BOX_SIZE, 32px at 1.6, while FlatLaf's Tree.rowHeight is 24 (FlatLaf.properties:38, unscaled). gui/main/SimulationTreeRenderer.java:92-100: RendererIcon reports a literal 20x20, but factory.paintIcon draws the scaled icon (25-32px), so it spills over the label. :109-116 draws the magnifier at literal offsets (x+13, 10px oval).",
+      "systemic": true,
+      "fixIdea": "Report the true painted size (UiScale.scaled(16..20)) and have the tool paint into that box. Derive tree row height from max(icon, font line) plus padding. Scale the magnifier geometry, or replace it with the accent dot already used for the current circuit."
+    },
+    {
+      "id": "codeaudit-v-04",
+      "title": "HDL editor line numbers are 22px on a 13px line pitch, so the gutter is an overlapping smear",
+      "severity": "major",
+      "category": "legibility-contrast",
+      "surface": "VHDL/Verilog entity editor (and probably the SoC assembler/breakpoint editors that use EditorTheme)",
+      "observed": "In hdl/30-vhdl-typed.png lines 1-40 of code are tiny (~13px). Their gutter numbers are drawn at about 22px, so consecutive numbers overlap into an unreadable column. The overlap is visible even in the downsampled frame; no native crop was possible in this pass.",
+      "expected": "Gutter numbers in the editor's font size (or one step smaller), with one number per line.",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/hdl/30-vhdl-typed.png"
+      ],
+      "rootCause": "vhdl/gui/HdlContentView.java:171-180 adds the RTextScrollPane (a JScrollPane) to the view. The Startup listener (Startup.java:1183) then recursively sets 22.4px on the Gutter and its LineNumberList. EditorTheme.apply (gui/generic/EditorTheme.java:69-79) then resets the text area to 13px via Theme.load(in). rsyntaxtextarea 4.0.1 Theme.apply only changes the gutter font size when the XML theme specifies one (FontUtil.deriveFont on the existing font, javap), so the gutter keeps 22.4.",
+      "systemic": true,
+      "fixIdea": "Load the theme with Theme.load(in, UiFonts.mono()) and call gutter.setLineNumberFont(UiFonts.mono() at the same size) afterwards. Removing the Startup listener prevents the recurrence."
+    },
+    {
+      "id": "codeaudit-v-05",
+      "title": "Properties inspector shows a neon #00FF00 'Supported' cell and neon-orange 'Required for FPGA' cells on every component",
+      "severity": "major",
+      "category": "legibility-contrast",
+      "surface": "Main Properties inspector (right panel), for every selected component",
+      "observed": "critic/06z-inspector.png: the first row, 'FPGA supp...', has a pure-green Color.GREEN background ('Supported'). An empty Label shows an orange Color.ORANGE block reading 'Required f...' instead of an empty editable value. These are by far the most saturated pixels in the whole window. The first inspector attributed this renderer only to the FPGA windows.",
+      "expected": "A quiet status chip (Tokens.success/warning text, or a subtle tint), and an empty Label field with a muted placeholder. The FPGA row belongs in an FPGA section or a tooltip, not as the first row of every component.",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/critic/06z-inspector.png"
+      ],
+      "rootCause": "gui/generic/AttrTable.java:97 installs fpga/gui/HdlColorRenderer as the String renderer. HdlColorRenderer.java:61 setCellColors(Color.ORANGE) for REQUIRED_FIELD_STRING; :103-106 sets bg to Color.RED/Color.GREEN for the FPGA support row. The values come from gui/generic/AttributeSetTableModel.java:237,296-299.",
+      "systemic": false,
+      "fixIdea": "Replace these with Tokens.success()/warning()/error() foreground text on the normal cell background (or a 15% alpha tint). Render REQUIRED as placeholder text in the muted colour. Consider moving the FPGA support row into a collapsible 'FPGA' group."
+    },
+    {
+      "id": "codeaudit-v-06",
+      "title": "Open/Save dialogs are the stock Swing JFileChooser at its unscaled default size (921x393 at 1.6)",
+      "severity": "major",
+      "category": "old-look",
+      "surface": "File > Open, Save As, Export, Load library and every other file chooser",
+      "observed": "dialogs/32-open-chooser-pair.png (native): the dialog is 921x393. The file list is about 100px tall and shows one file. The toolbar icons (up, home, new folder, list/details) are unscaled 16px. The Size and Date columns are cut to '17....' and '9/24/26, ...'. The 'Look in:' combo and list/details toggles are the classic 2005 Metal layout, and the header fonts are mixed (codeaudit-v-01).",
+      "expected": "The platform's native dialog (FileDialog / XDG portal on Linux), or a restyled chooser sized in design units (for example 760x520 design px) with scaled icons and a sidebar of places and recent folders.",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/dialogs/32-open-chooser-pair.png"
+      ],
+      "rootCause": "util/JFileChoosers.java:36 (LogisimFileChooser extends JFileChooser, with no size and no icon or UI customisation). Other raw new JFileChooser() calls: fpga/gui/BoardManipulator.java:380, soc/data/SocUpMenuProvider.java:188, gui/test/TestFrame.java:47. Only the strings are localised (util/LocaleManager.java:159-178).",
+      "systemic": true,
+      "fixIdea": "Route every chooser through one factory that sets a scaled preferred size and uses FlatLaf's FileChooser icon keys with scaled SVGs, or switch to java.awt.FileDialog / the XDG desktop portal on Linux."
+    },
+    {
+      "id": "codeaudit-v-07",
+      "title": "Page descriptions in Preferences and Project Options are one-line labels cut off mid-sentence; page titles are the smallest, dimmest text on the page",
+      "severity": "minor",
+      "category": "scaling-layout",
+      "surface": "Preferences and Project Options page header (PanelHeader)",
+      "observed": "The Hotkey page's instructions read 'To set the key bindings, click the bordered area right-side and press your expected keys in the keypad. Click the c...'. The rest of the instructions cannot be read anywhere (dialogs/12-prefs-hotkeys.png). The page title 'HOTKEY SETTINGS' is 18px muted small caps, while the nav items and body labels are 22px, so the hierarchy is upside down.",
+      "expected": "The subtitle wraps to as many lines as needed. The page title is a real heading (UiFonts.heading, primary foreground), as in VS Code and JetBrains settings.",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/dialogs/12-prefs-hotkeys.png"
+      ],
+      "rootCause": "gui/shell/PanelHeader.java:36 (subtitleLabel is a plain single-line JLabel), :60-63 (title and subtitle both UiFonts.small in muted colours) and :83-88 (setSubtitle does not wrap).",
+      "systemic": true,
+      "fixIdea": "Use a wrapping text component (a JTextArea with lineWrap, non-editable and transparent, or an HTML label with a width set from the parent). Give page headers a heading role separate from side-panel section headers."
+    },
+    {
+      "id": "codeaudit-v-08",
+      "title": "Preferences navigation list truncates 'FPGA Commander Setti...' and shows a useless horizontal scrollbar",
+      "severity": "minor",
+      "category": "scaling-layout",
+      "surface": "Preferences window, left page list",
+      "observed": "At 1.6 the page list is 304px wide. 'FPGA Commander Settings' is ellipsized, and a horizontal scrollbar appears under the list, scrolling only a few pixels (dialogs/12-prefs-hotkeys.png, bottom left).",
+      "expected": "A nav column wide enough for its longest entry (or wrapped entries), and never a horizontal scrollbar in a navigation list.",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/dialogs/12-prefs-hotkeys.png"
+      ],
+      "rootCause": "gui/prefs/PreferencesFrame.java:111-112 (NAV_WIDTH 190 design px) with 22.4px list text forced by the Startup listener. gui/shell/SettingsNav.java:78-79 wraps the list in a JScrollPane with the default AS_NEEDED horizontal policy, and each row has Spacing.md() padding on both sides (:155-156). OptionsFrame.java uses the same width.",
+      "systemic": false,
+      "fixIdea": "Set HORIZONTAL_SCROLLBAR_NEVER. Compute the nav width from the widest title's FontMetrics plus padding (or allow 2-line items). Shorten the label to 'FPGA'."
+    },
+    {
+      "id": "codeaudit-v-09",
+      "title": "'Follow system' theme polls the desktop every 20 s by starting two gsettings processes on the event thread",
+      "severity": "minor",
+      "category": "performance",
+      "surface": "Whole UI when Theme = System",
+      "observed": "Theme.updateSystemPoll starts a javax.swing.Timer, so it fires on the EDT, and the timer calls apply(Mode.SYSTEM) every 20 s. That calls SystemTheme.isSystemDark(), which on Linux runs `gsettings get ... color-scheme` and `gsettings get ... gtk-theme` synchronously before reading kdeglobals. On KDE both gsettings calls return nothing useful, so both processes are paid for on every tick. SystemTheme.run() reads stdout to EOF before its 2 s waitFor timeout, so a hung gsettings/dconf freezes the whole UI with no upper bound. Not visually verified.",
+      "expected": "Probe off the EDT (SwingWorker or executor) and apply the result on the EDT only when it changed. Prefer an event source (XSETTINGS / portal color-scheme) over polling.",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/theme/Theme.java",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/theme/SystemTheme.java"
+      ],
+      "rootCause": "gui/theme/Theme.java:61 (SYSTEM_POLL_MS 20000), :176-192 (Swing Timer calling apply). gui/theme/SystemTheme.java:58-70 (two gsettings probes before kdeglobals), :162-181 (blocking readLine before waitFor).",
+      "systemic": false,
+      "fixIdea": "Run SystemTheme.isSystemDark() on a background executor, compare it with the cached value, and invokeLater apply() only when it differs. On KDE, check kdeglobals first."
+    },
+    {
+      "id": "codeaudit-v-10",
+      "title": "AppIcons.accented()/disabled() recolour the shared cached icon for every user of that glyph",
+      "severity": "polish",
+      "category": "bug-interaction",
+      "surface": "Any future caller of AppIcons.accented / AppIcons.disabled (none today: latent)",
+      "observed": "icon(id,size,null) returns the one cached FlatSVGIcon for that id and size. accented() and disabled() then call setColorFilter on it, and FlatSVGIcon.setColorFilter mutates and returns this (javap). The first control to ask for an accented or disabled glyph would turn every other plain use of that glyph accent or grey.",
+      "expected": "Variants are separate instances, e.g. new FlatSVGIcon(base).setColorFilter(...) cached under their own key.",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/theme/AppIcons.java"
+      ],
+      "rootCause": "gui/theme/AppIcons.java:147-154 (accented/disabled mutate the cache entry created at :156-166).",
+      "systemic": false,
+      "fixIdea": "Cache variants under keys like id#size#accent / id#size#disabled, each built from a copy of the icon (FlatSVGIcon.derive or new instance)."
+    },
+    {
+      "id": "codeaudit-v-11",
+      "title": "Palette previews are rasterised into a 1x BufferedImage and will be blurry on every OS-scaled display",
+      "severity": "minor",
+      "category": "scaling-layout",
+      "surface": "Component palette tiles on Windows 125-200%, macOS Retina and GNOME/KDE with Java2D scaling",
+      "observed": "When the platform scales Java2D (for example Windows 150%), getAutoScaleFactor() returns 1.0 (AppPreferences.java:1030). ToolPreviewIcon then paints into a 32x32 device-pixel TYPE_INT_ARGB image that Java2D upscales by 1.5-2x when drawn, giving soft previews next to crisp vector text and SVG icons. The image is regenerated only on theme change, never on a scale change. This does not affect this laptop, where Java2D is 1.0; latent.",
+      "expected": "Previews painted directly as vector each time, or cached at the device transform (a MultiResolutionImage, or an image sized by g.getTransform().getScaleX()).",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/palette/ToolPreviewIcon.java"
+      ],
+      "rootCause": "gui/shell/palette/ToolPreviewIcon.java:53-55 (fixed device size), :74-80 (drawImage of cached raster), :84-88 (new BufferedImage(size,size) with no device transform), :43-45 (invalidated only by Theme).",
+      "systemic": false,
+      "fixIdea": "Create the cache image at size*deviceScale and draw it with a scaled drawImage, or keep the vector paint and cache only per (theme, scale, transform)."
+    },
+    {
+      "id": "codeaudit-v-12",
+      "title": "The 'attribute halo' marker in the explorer tree is dead code (clip set and restored, nothing drawn)",
+      "severity": "minor",
+      "category": "bug-interaction",
+      "surface": "Library/Project tree, for the tool whose attributes the inspector shows",
+      "observed": "When a tool is haloed, ToolIcon.paintIcon calls clipRect(...) and immediately setClip(s) with nothing painted in between, so the halo preference has no effect in the tree. Meanwhile the toolbar paints its own accent halo (LayoutToolbarModel), which makes the two views inconsistent.",
+      "expected": "The same accent tint/outline as the toolbar and palette 'current' state, or no halo option at all.",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/ProjectExplorer.java"
+      ],
+      "rootCause": "gui/generic/ProjectExplorer.java:537-547 (the haloed branch only saves, clips and restores the clip).",
+      "systemic": false,
+      "fixIdea": "Paint fillRoundRect with the accent colour at alpha 46 inside the clip, as LayoutToolbarModel:215-226 does, or delete the branch."
+    },
+    {
+      "id": "codeaudit-v-13",
+      "title": "Search dialog copy is developer jargon: '21 result(s) · 5 provider(s)', 'ENTER to execute', 'Find Action…'",
+      "severity": "polish",
+      "category": "copy-wording",
+      "surface": "Search everywhere / Find Action dialog (double Shift)",
+      "observed": "The status line reads '21 result(s) · 5 provider(s)'. The footer reads '↑ ↓ to select · ENTER to execute · ESC to close'. The title reads 'Find Action…' although the dialog also finds components and circuits (palette/49b-omni-mux-win.png).",
+      "expected": "'21 results' with real pluralisation and no internal 'provider' count, a footer like '↑↓ Navigate  ↵ Open  Esc Close' with key caps, and a title such as 'Search'.",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/palette/49b-omni-mux-win.png"
+      ],
+      "rootCause": "resources/resources/logisim/strings/gui/gui.properties:894 (searchTitle), :896-897 (searchNoResults/searchResultCount with provider(s)), :900 (searchFooter). The same English text is copied as comments into the other locales.",
+      "systemic": false,
+      "fixIdea": "Rewrite the strings with ChoiceFormat plurals, drop the provider count, and render the footer keys as small key-cap chips."
+    },
+    {
+      "id": "codeaudit-v-14",
+      "title": "Timing-diagram error/unknown segment colours are fixed light pastels, independent of theme",
+      "severity": "minor",
+      "category": "legibility-contrast",
+      "surface": "Timing diagram (chrono) rows containing X/E values",
+      "observed": "ChronoPanel.rowColors uses constant light pastels for error and unknown backgrounds (#db9d9d, #eaaa6c, #f97676, #ea9849, #e58080, #ee9944) in both themes. The waveform line on top uses the theme's chrono signal colour, which is light in dark mode, so light-on-pastel is likely. Not visually verified: no captured timing diagram contained X or E values.",
+      "expected": "Error and unknown fills derived from Tokens.error/warning at low alpha over the row background, with the line colour contrasting in both themes.",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/chrono/ChronoPanel.java"
+      ],
+      "rootCause": "gui/chrono/ChronoPanel.java:283-288 (static final pastel Colors), :299-312 (used for every theme).",
+      "systemic": false,
+      "fixIdea": "Compute them from Tokens: errorBg = alpha(Tokens.error(), 60), unknownBg = alpha(Tokens.warning(), 60), and register them with ThemeColorPrefs like the other chrono colours."
+    },
+    {
+      "id": "codeaudit-v-15",
+      "title": "FPGA 'Synthesize & Download' window has no padding or gaps: controls touch the window edge and buttons stretch 750px",
+      "severity": "minor",
+      "category": "old-look",
+      "surface": "FPGA > Synthesize & Download",
+      "observed": "hdl/08-execute-win.png (native 1140x787): 'Toplevel:' starts at x=0. The Annotate and Execute buttons are full-width 750px bars. Groups have no vertical gaps. The only grouping is the etched 'Clock settings' box with a 13px title beside 22px fields, mixed with muted small-caps SectionPanel headers.",
+      "expected": "A padded form with Spacing gaps, right-aligned primary and secondary buttons at natural width, and one heading style.",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/hdl/08-execute-win.png"
+      ],
+      "rootCause": "fpga/gui/FpgaCommander.java:160-300: GridBag/BorderLayout panels with no setBorder and no gbc.insets anywhere in the file, and fill=HORIZONTAL on the buttons. fpga/gui/FpgaClockPanel.java:52 (titled border).",
+      "systemic": true,
+      "fixIdea": "Wrap the content in Spacing.panelBorder(), give gbc insets from Spacing.formGaps(), use fill=NONE plus a right-aligned button row, and replace the titled border with a SectionPanel."
+    }
+  ],
+  "missedSummary": "The first inspector's architectural diagnosis is correct: three scalers, the Startup font listener, and FlatLaf left at 1.0. All 36 findings check out against the code. But the audit ran on grep and never looked at trees, tables or editors in other agents' native crops, so it missed the most visible side effects. The same listener also grabs cell renderers, so every table header shows column 1 at 22px and the rest at 13px. The project-explorer renderer turns every row bold after the current circuit and ellipsizes names. Tree icons are 32px in 24px rows, so subcircuit icons stack into a ladder, and simulation-tree icons overlap their labels. The HDL gutter keeps 22px numbers on a 13px pitch, producing an unreadable smear; the first inspector wrongly said the gutter was small. It also filed the neon #00FF00/orange HdlColorRenderer cells under FPGA windows, when they actually sit at the top of the main Properties inspector for every component. It overlooked the stock unscaled JFileChooser, the one-line truncated page descriptions in Preferences, the settings-nav scrollbar, the FPGA Commander dialog's missing padding, and the EDT-blocking system-theme poll. Note: plan mode was active for this verifier too, so no rig was started and no new crops were written. Every visual verdict relies on native-resolution crops that the other area agents had already captured in qa/out, cited by path; the HDL gutter observation comes from a full native frame viewed downsampled, with no crop."
+}
