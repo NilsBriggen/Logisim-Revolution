@@ -1033,6 +1033,11 @@ public class AppPreferences {
     return (height >= TALL_SCREEN_THRESHOLD) ? height / 1000.0 : 1.0;
   }
 
+  /** The legacy value, exposed for the development scale probe. */
+  public static double getLegacyAutoScaleFactorForProbe() {
+    return getLegacyAutoScaleFactor();
+  }
+
   /** Returns the scale the old screen-height heuristic would have produced, for migration. */
   static double getLegacyAutoScaleFactor() {
     return (GraphicsEnvironment.isHeadless()

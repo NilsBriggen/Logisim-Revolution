@@ -73,9 +73,17 @@ class PrefMonitorDouble extends AbstractPrefMonitor<Double> {
    * @param newValue The new double value to set.
    */
   public void set(Double newValue) {
+    final var oldValue = value;
     final var newVal = newValue;
-    if (value != newVal) {
+    if (oldValue != newVal) {
+      // The cached value is updated here rather than being left to the preference-change
+      // listener, which runs on another thread. Without this the monitor kept answering with the
+      // value it was constructed with until that listener happened to fire -- and, worse, the
+      // constructor's own `set(stored)` wrote the stored value back while leaving the cache on
+      // the default, so the interface scale reported one number and the store held another.
+      value = newVal;
       AppPreferences.getPrefs().putDouble(getIdentifier(), newVal);
+      AppPreferences.firePropertyChange(getIdentifier(), oldValue, newVal);
     }
   }
 }

@@ -13,6 +13,8 @@ import static com.cburch.logisim.gui.Strings.S;
 
 import com.cburch.logisim.gui.generic.ProjectExplorer;
 import com.cburch.logisim.gui.generic.ProjectExplorerToolNode;
+import com.cburch.logisim.gui.theme.AppIcons;
+import com.cburch.logisim.gui.theme.Tokens;
 import com.cburch.logisim.tools.Tool;
 import com.cburch.logisim.util.TableLayout;
 import java.awt.GridBagConstraints;
@@ -49,13 +51,22 @@ class ToolbarOptions extends OptionsPanel {
 
     list = new ToolbarList(getOptions().getToolbarData());
 
+    // Five stacked text buttons between the two lists made the page read as a 1990s transfer
+    // widget. They are the same actions as icons, labelled by their tooltips.
+    addTool.setIcon(AppIcons.get(AppIcons.Id.ADD, 14));
+    addSeparator.setIcon(AppIcons.colored(AppIcons.Id.MORE, 14, Tokens.mutedForeground()));
+    moveUp.setIcon(AppIcons.get(AppIcons.Id.MOVE_UP, 14));
+    moveDown.setIcon(AppIcons.get(AppIcons.Id.MOVE_DOWN, 14));
+    remove.setIcon(AppIcons.colored(AppIcons.Id.DELETE, 14, Tokens.error()));
+
     final var middleLayout = new TableLayout(1);
     final var middle = new JPanel(middleLayout);
-    middle.add(addTool);
-    middle.add(addSeparator);
-    middle.add(moveUp);
-    middle.add(moveDown);
-    middle.add(remove);
+    for (final var button : new JButton[] {addTool, addSeparator, moveUp, moveDown, remove}) {
+      button.setFocusable(false);
+      button.setBorderPainted(false);
+      button.setContentAreaFilled(false);
+      middle.add(button);
+    }
     middleLayout.setRowWeight(4, 1.0);
 
     explorer.setListener(listener);
@@ -73,12 +84,12 @@ class ToolbarOptions extends OptionsPanel {
     final var explorerPane =
         new JScrollPane(
             explorer,
-            ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS,
+            ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
             ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
     final var listPane =
         new JScrollPane(
             list,
-            ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS,
+            ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
             ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
     gbc.fill = GridBagConstraints.BOTH;
     gbc.weightx = 1.0;
@@ -108,11 +119,11 @@ class ToolbarOptions extends OptionsPanel {
 
   @Override
   public void localeChanged() {
-    addTool.setText(S.get("toolbarAddTool"));
-    addSeparator.setText(S.get("toolbarAddSeparator"));
-    moveUp.setText(S.get("toolbarMoveUp"));
-    moveDown.setText(S.get("toolbarMoveDown"));
-    remove.setText(S.get("toolbarRemove"));
+    addTool.setToolTipText(S.get("toolbarAddTool"));
+    addSeparator.setToolTipText(S.get("toolbarAddSeparator"));
+    moveUp.setToolTipText(S.get("toolbarMoveUp"));
+    moveDown.setToolTipText(S.get("toolbarMoveDown"));
+    remove.setToolTipText(S.get("toolbarRemove"));
     list.localeChanged();
   }
 

@@ -3,6 +3,26 @@
 # Changes #
 
 * @dev (????-??-??)
+  * Fixed: the interface came up far too small on a high-resolution display. Two of the five
+    preference types wrote a new value to the store and never updated their own cached copy, so
+    the value only caught up when a listener fired on another thread -- and the scale monitor's
+    own constructor wrote the stored value back while leaving its cache on the automatic guess,
+    so the program reported one size and the store held another. Every boolean preference in the
+    program behaved the same way (@NilsBriggen).
+  * Fixed: running the test suite or the development snapshot tool overwrote the developer's own
+    interface scale and left it at 1.0, which is why the automatic guess never got another chance
+    -- a stored value had appeared. Both now put the original back (@NilsBriggen).
+  * Every colour the program draws with is on one Colors page, grouped into Canvas, Components,
+    Signal values, Problems and a folded-away set of Karnaugh map covers, with a single reset
+    offering the shipped and colour-blind palettes. They had been thirty-five controls split
+    across the Window and Simulation pages -- two pages with nothing else in common -- with three
+    separate reset buttons between them (@NilsBriggen).
+  * The hex editor's controls are a heading rather than a centred strip along the bottom that
+    reflowed on every resize and ended in a button that closed the window it was in; the address
+    box commits on Enter, so the Go button is gone (@NilsBriggen).
+  * The toolbar options page uses icon buttons instead of five stacked text buttons, and a
+    separator in the toolbar list is drawn as a rule rather than the literal characters "---"
+    (@NilsBriggen).
   * The timing diagram and the test-vector view open in the bottom drawer instead of each being a
     second operating-system window with its own menu bar and taskbar entry, placed under the main
     window from the raw screen size. Watching a waveform beside the circuit no longer means tiling

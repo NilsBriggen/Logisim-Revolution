@@ -45,21 +45,6 @@ class WindowOptions extends OptionsPanel {
   private final PrefOptionList toolbarPlacement;
 
   private final JButton resetWindowLayoutButton;
-  private final ColorChooserButton canvasBgColor;
-  private final JLabel canvasBgColorTitle;
-  private final ColorChooserButton gridBgColor;
-  private final JLabel gridBgColorTitle;
-  private final ColorChooserButton gridDotColor;
-  private final JLabel gridDotColorTitle;
-  private final ColorChooserButton gridZoomedDotColor;
-  private final JLabel gridZoomedDotColorTitle;
-  private final ColorChooserButton componentColor;
-  private final JLabel componentColorTitle;
-  private final ColorChooserButton componentIconColor;
-  private final JLabel componentIconColorTitle;
-  private final ColorChooserButton textToolColor;
-  private final JLabel textToolColorTitle;
-  private final JButton gridColorsResetButton;
 
   private final ZoomSlider zoomValue;
   private final JButton zoomAutoButton;
@@ -77,7 +62,6 @@ class WindowOptions extends OptionsPanel {
   private String initialAppFont;
 
   protected final String cmdResetWindowLayout = "reset-window-layout";
-  protected final String cmdResetGridColors = "reset-grid-colors";
   protected final String cmdSetAutoScaleFactor = "set-auto-scale-factor";
 
   /** Kept so the theme combo can be relabelled without the relabel looking like a user choice. */
@@ -112,41 +96,9 @@ class WindowOptions extends OptionsPanel {
     panel.add(toolbarPlacement.getJLabel());
     panel.add(toolbarPlacement.getJComboBox());
 
-    canvasBgColorTitle = new JLabel(S.get("windowCanvasBgColor"));
-    canvasBgColor = new ColorChooserButton(window, AppPreferences.CANVAS_BG_COLOR);
-    panel.add(canvasBgColorTitle);
-    panel.add(canvasBgColor);
-    gridBgColorTitle = new JLabel(S.get("windowGridBgColor"));
-    gridBgColor = new ColorChooserButton(window, AppPreferences.GRID_BG_COLOR);
-    panel.add(gridBgColorTitle);
-    panel.add(gridBgColor);
-    gridDotColorTitle = new JLabel(S.get("windowGridDotColor"));
-    gridDotColor = new ColorChooserButton(window, AppPreferences.GRID_DOT_COLOR);
-    panel.add(gridDotColorTitle);
-    panel.add(gridDotColor);
-    gridZoomedDotColorTitle = new JLabel(S.get("windowGridZoomedDotColor"));
-    gridZoomedDotColor = new ColorChooserButton(window, AppPreferences.GRID_ZOOMED_DOT_COLOR);
-    panel.add(gridZoomedDotColorTitle);
-    panel.add(gridZoomedDotColor);
-    componentColorTitle = new JLabel(S.get("windowComponentColor"));
-    componentColor = new ColorChooserButton(window, AppPreferences.COMPONENT_COLOR);
-    panel.add(componentColorTitle);
-    panel.add(componentColor);
-    componentIconColorTitle = new JLabel(S.get("windowComponentIconColor"));
-    componentIconColor = new ColorChooserButton(window, AppPreferences.COMPONENT_ICON_COLOR);
-    panel.add(componentIconColorTitle);
-    panel.add(componentIconColor);
-    textToolColorTitle = new JLabel(S.get("windowTextToolColor"));
-    textToolColor = new ColorChooserButton(window, AppPreferences.TEXT_TOOL_COLOR);
-    panel.add(textToolColorTitle);
-    panel.add(textToolColor);
-
-    gridColorsResetButton = new JButton();
-    gridColorsResetButton.addActionListener(listener);
-    gridColorsResetButton.setActionCommand(cmdResetGridColors);
-    gridColorsResetButton.setText(S.get("windowGridColorsReset"));
-    panel.add(new JLabel());
-    panel.add(gridColorsResetButton);
+    // The seven colour controls that were here have moved to the Colors page, which owns every
+    // colour in one grouped list. They had been split across this page and Simulation, with three
+    // separate reset buttons between them.
 
     panel.add(new JLabel(" "));
     panel.add(new JLabel(" "));
@@ -314,14 +266,6 @@ class WindowOptions extends OptionsPanel {
     restartWarning.setText(S.get("windowRestartWarning"));
     zoomFactorImportant.setText(S.get("windowToolbarImportant"));
     resetWindowLayoutButton.setText(S.get("windowToolbarReset"));
-    canvasBgColorTitle.setText(S.get("windowCanvasBgColor"));
-    gridBgColorTitle.setText(S.get("windowGridBgColor"));
-    gridDotColorTitle.setText(S.get("windowGridDotColor"));
-    gridZoomedDotColorTitle.setText(S.get("windowGridZoomedDotColor"));
-    componentColorTitle.setText(S.get("windowComponentColor"));
-    componentIconColorTitle.setText(S.get("windowComponentIconColor"));
-    textToolColorTitle.setText(S.get("windowTextToolColor"));
-    gridColorsResetButton.setText(S.get("windowGridColorsReset"));
     zoomAutoButton.setText(S.get("windowSetAutoScaleFactor"));
   }
 
@@ -370,13 +314,6 @@ class WindowOptions extends OptionsPanel {
         for (final var proj : nowOpen) {
           proj.getFrame().resetLayout();
           proj.getFrame().revalidate();
-          proj.getFrame().repaint();
-        }
-      } else if (e.getActionCommand().equals(cmdResetGridColors)) {
-        //        AppPreferences.resetWindow();
-        final var nowOpen = Projects.getOpenProjects();
-        AppPreferences.setDefaultGridColors();
-        for (final var proj : nowOpen) {
           proj.getFrame().repaint();
         }
       } else if (e.getActionCommand().equals(cmdSetAutoScaleFactor)) {

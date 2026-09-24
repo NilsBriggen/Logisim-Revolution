@@ -124,7 +124,27 @@ public final class UiSnapshot {
 
     // Judge the design at its reference size: this machine's own interface scale would otherwise
     // decide how large everything in the picture looks.
+    //
+    // This writes to the developer's own preference store, so the previous value is put back when
+    // the picture has been taken. Without that, every snapshot left the interface scale pinned at
+    // the reference 1.0 and the application came up uncomfortably small afterwards.
     final var scale = Double.parseDouble(System.getProperty("snapshot.scale", "1.0"));
+    final var storedScale = AppPreferences.getPrefs().getDouble("Scale", Double.NaN);
+    Runtime.getRuntime()
+        .addShutdownHook(
+            new Thread(
+                () -> {
+                  if (Double.isNaN(storedScale)) {
+                    AppPreferences.getPrefs().remove("Scale");
+                  } else {
+                    AppPreferences.getPrefs().putDouble("Scale", storedScale);
+                  }
+                  try {
+                    AppPreferences.getPrefs().flush();
+                  } catch (java.util.prefs.BackingStoreException ignored) {
+                    // Nothing useful to do while the process is going away.
+                  }
+                }));
     AppPreferences.SCALE_FACTOR.set(scale);
     final var scaleDeadline = System.currentTimeMillis() + 5_000;
     while (Math.abs(UiScale.factor() - scale) > 0.001
@@ -157,8 +177,10 @@ public final class UiSnapshot {
     }
 
     if (Boolean.getBoolean("snapshot.preferences")) {
-      captureWindow(
-          com.cburch.logisim.gui.prefs.PreferencesFrame.buildForSnapshot(), output, mode);
+      final var preferences = com.cburch.logisim.gui.prefs.PreferencesFrame.buildForSnapshot();
+      final var page = Integer.getInteger("snapshot.page", -1);
+      if (page >= 0) preferences.showPageForSnapshot(page);
+      captureWindow(preferences, output, mode);
       System.exit(0);
     }
 

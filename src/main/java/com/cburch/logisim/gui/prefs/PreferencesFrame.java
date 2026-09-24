@@ -52,6 +52,7 @@ public class PreferencesFrame extends LFrame.Dialog {
           new Tab(S.getter("windowTitle"), WindowOptions::new),
           new Tab(S.getter("layoutTitle"), LayoutOptions::new),
           new Tab(S.getter("simTitle"), SimOptions::new),
+          new Tab(S.getter("colorsTitle"), ColorOptions::new),
           new Tab(S.getter("experimentTitle"), ExperimentalOptions::new),
           new Tab(com.cburch.logisim.fpga.Strings.S.getter("softwaresTitle"), SoftwaresOptions::new),
           new Tab(com.cburch.logisim.fpga.Strings.S.getter("FPGATitle"), FpgaOptions::new),
@@ -123,6 +124,11 @@ public class PreferencesFrame extends LFrame.Dialog {
     pageHeader.setTitle(panels[index].getTitle());
     pageHeader.setSubtitle(panels[index].getHelpText());
     nav.setSelectedIndex(index);
+  }
+
+  /** Opens a page by position, for the development snapshot tool. */
+  public void showPageForSnapshot(int index) {
+    showPage(index);
   }
 
   /** Builds a window without showing it, for the development snapshot tool. */

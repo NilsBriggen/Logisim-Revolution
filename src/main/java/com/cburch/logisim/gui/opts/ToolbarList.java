@@ -12,8 +12,9 @@ package com.cburch.logisim.gui.opts;
 import com.cburch.logisim.comp.ComponentDrawContext;
 import com.cburch.logisim.data.AttributeEvent;
 import com.cburch.logisim.data.AttributeListener;
-import com.cburch.logisim.file.ToolbarData;
 import com.cburch.logisim.file.ToolbarData.ToolbarListener;
+import com.cburch.logisim.file.ToolbarData;
+import com.cburch.logisim.gui.theme.Tokens;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.tools.Tool;
 import java.awt.Component;
@@ -60,7 +61,13 @@ class ToolbarList extends JList {
         ret = super.getListCellRendererComponent(list, t.getDisplayName(), index, isSelected, cellHasFocus);
         icon = new ToolIcon(t);
       } else if (value == null) {
-        ret = super.getListCellRendererComponent(list, "---", index, isSelected, cellHasFocus);
+        // A separator was drawn as the literal characters "---" in the list of tools.
+        ret = super.getListCellRendererComponent(list, " ", index, isSelected, cellHasFocus);
+        if (ret instanceof JLabel separator) {
+          separator.setBorder(
+              javax.swing.BorderFactory.createMatteBorder(
+                  0, 0, 1, 0, Tokens.divider()));
+        }
         icon = null;
       } else {
         ret = super.getListCellRendererComponent(list, value.toString(), index, isSelected, cellHasFocus);

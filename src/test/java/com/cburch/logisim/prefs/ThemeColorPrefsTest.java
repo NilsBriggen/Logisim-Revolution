@@ -80,9 +80,16 @@ class ThemeColorPrefsTest {
     }
   }
 
-  /** Switches theme and loads that theme's colours, as a preference change would. */
+  /**
+   * Switches theme and loads that theme's colours, the way the application does.
+   *
+   * <p>The theme has to be installed, not merely preferred: once any look and feel has been
+   * installed, {@code Theme.isDark()} answers from the installed one and ignores the preference,
+   * so setting the preference alone leaves this depending on whichever test ran first.
+   */
   private static void useTheme(String mode) {
     AppPreferences.THEME_MODE.set(mode);
+    com.cburch.logisim.gui.theme.Theme.install();
     AppPreferences.applyThemeColors();
   }
 

@@ -1096,6 +1096,7 @@ tasks.register<JavaExec>("uiSnapshot") {
   systemProperty("snapshot.scale", project.findProperty("scale") ?: "1.0")
   systemProperty("snapshot.welcome", project.findProperty("welcome") ?: "false")
   systemProperty("snapshot.preferences", project.findProperty("preferences") ?: "false")
+  systemProperty("snapshot.page", project.findProperty("page") ?: "-1")
   systemProperty("snapshot.file", project.findProperty("file") ?: "")
   systemProperty("snapshot.print", project.findProperty("print") ?: "false")
   systemProperty("snapshot.side", project.findProperty("side") ?: "")
@@ -1106,6 +1107,12 @@ tasks.register<JavaExec>("optionsProbe") {
   classpath = sourceSets["test"].runtimeClasspath
   mainClass.set("com.cburch.logisim.gui.OptionsProbe")
   args(project.findProperty("file")?.toString() ?: "")
+}
+
+tasks.register<JavaExec>("scaleProbe") {
+  group = "verification"
+  classpath = sourceSets["test"].runtimeClasspath
+  mainClass.set("com.cburch.logisim.gui.ScaleProbe")
 }
 
 tasks.register<JavaExec>("themeProbe") {

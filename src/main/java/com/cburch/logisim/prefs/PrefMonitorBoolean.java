@@ -91,8 +91,14 @@ public class PrefMonitorBoolean extends AbstractPrefMonitor<Boolean> implements 
    * @param newValue The new value to set.
    */
   public void set(Boolean newValue) {
-    if (value != newValue) {
-      AppPreferences.getPrefs().putBoolean(getIdentifier(), newValue);
+    final boolean oldValue = value;
+    final boolean newVal = newValue;
+    if (oldValue != newVal) {
+      // Updated here, not left to the preference-change listener on another thread: a caller that
+      // sets a preference and reads it straight back would otherwise get the previous answer.
+      value = newVal;
+      AppPreferences.getPrefs().putBoolean(getIdentifier(), newVal);
+      AppPreferences.firePropertyChange(getIdentifier(), oldValue, newVal);
     }
   }
 
