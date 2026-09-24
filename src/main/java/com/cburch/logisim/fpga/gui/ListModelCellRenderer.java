@@ -65,10 +65,6 @@ public class ListModelCellRenderer extends JLabel implements ListCellRenderer<Ob
         default -> setForeground(darkBackground ? NORMAL_ON_DARK : NORMAL_ON_LIGHT);
       }
     }
-    if (value.toString().contains("BUG")) {
-      setBackground(Color.MAGENTA);
-      setForeground(Color.black);
-    }
     if (CountLines) {
       if (msg != null) {
         if (msg.getSuppressCount()) {

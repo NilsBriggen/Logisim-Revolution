@@ -9,6 +9,8 @@
 
 package com.cburch.logisim.gui.log;
 
+import com.cburch.logisim.gui.theme.Tokens;
+import com.cburch.logisim.gui.theme.AppIcons;
 import com.cburch.logisim.circuit.Circuit;
 import com.cburch.logisim.circuit.CircuitEvent;
 import com.cburch.logisim.circuit.CircuitListener;
@@ -340,7 +342,7 @@ public class ComponentSelector extends JTable {
 
     @Override
     public void paintIcon(java.awt.Component c, Graphics g, int x, int y) {
-      g.setColor(Color.GRAY);
+      g.setColor(Tokens.divider());
       for (int i = 1; i < node.depth; i++) {
         g.drawLine(x + 5, 0, x + 5, 20);
         x += 10;
@@ -363,19 +365,13 @@ public class ComponentSelector extends JTable {
 
       if (!needsTriangle()) return;
 
-      int[] xp;
-      int[] yp;
-      if (node.expanded) {
-        xp = new int[] {x + 0, x + 10, x + 5};
-        yp = new int[] {y + 9, y + 9, y + 14};
-      } else {
-        xp = new int[] {x + 3, x + 3, x + 8};
-        yp = new int[] {y + 5, y + 15, y + 10};
-      }
-      g.setColor(new Color(51, 102, 255));
-      g.fillPolygon(xp, yp, 3);
-      g.setColor(Color.BLACK);
-      g.drawPolygon(xp, yp, 3);
+      // The same chevron the side panel's sections use, rather than a hand-drawn blue triangle
+      // outlined in black — the one widget in the program still drawing its own disclosure arrow.
+      AppIcons.colored(
+              node.expanded ? AppIcons.Id.CHEVRON_DOWN : AppIcons.Id.CHEVRON_RIGHT,
+              12,
+              Tokens.iconForeground())
+          .paintIcon(c, g, x, y + 4);
     }
   }
 

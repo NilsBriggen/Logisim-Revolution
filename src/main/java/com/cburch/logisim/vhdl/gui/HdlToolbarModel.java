@@ -13,7 +13,7 @@ import static com.cburch.logisim.vhdl.Strings.S;
 
 import com.cburch.draw.toolbar.AbstractToolbarModel;
 import com.cburch.draw.toolbar.ToolbarItem;
-import com.cburch.logisim.gui.icons.HdlIcon;
+import com.cburch.logisim.gui.theme.AppIcons;
 import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.util.StringGetter;
 import com.cburch.logisim.vhdl.base.HdlModel;
@@ -45,9 +45,9 @@ public class HdlToolbarModel extends AbstractToolbarModel implements HdlModelLis
     this.editor = editor;
 
     final var rawItems = new ArrayList<ToolbarItem>();
-    hdlImport = new HdlToolbarItem(new HdlIcon(HDL_IMPORT), HDL_IMPORT, S.getter("hdlOpenButton"));
-    hdlExport = new HdlToolbarItem(new HdlIcon(HDL_EXPORT), HDL_EXPORT, S.getter("hdlSaveButton"));
-    hdlValidate = new HdlToolbarItem(new HdlIcon(HDL_VALIDATE), HDL_VALIDATE, S.getter("validateButton"));
+    hdlImport = new HdlToolbarItem(AppIcons.get(AppIcons.Id.OPEN, 16), HDL_IMPORT, S.getter("hdlOpenButton"));
+    hdlExport = new HdlToolbarItem(AppIcons.get(AppIcons.Id.EXPORT, 16), HDL_EXPORT, S.getter("hdlSaveButton"));
+    hdlValidate = new HdlToolbarItem(AppIcons.get(AppIcons.Id.CHECK, 16), HDL_VALIDATE, S.getter("validateButton"));
     rawItems.add(hdlImport);
     rawItems.add(hdlExport);
     rawItems.add(hdlValidate);

@@ -11,6 +11,8 @@ package com.cburch.logisim.analyze.gui;
 
 import static com.cburch.logisim.analyze.Strings.S;
 
+import com.cburch.logisim.gui.theme.Tokens;
+import com.cburch.logisim.gui.theme.AppIcons;
 import com.cburch.logisim.analyze.model.Entry;
 import com.cburch.logisim.analyze.model.TruthTable;
 import com.cburch.logisim.analyze.model.TruthTableEvent;
@@ -263,8 +265,8 @@ class TableTab extends AnalyzerTab implements Entry.EntryChangedListener {
   private final SquareButton dontcare = new SquareButton(Entry.DONT_CARE);
   private final TightButton expand = new TightButton(S.get("tableExpand"));
   private final TightButton compact = new TightButton(S.get("tableCompact"));
-  private final JButton zoomIn = new JButton(new ZoomIcon(ZoomIcon.ZOOMIN));
-  private final JButton zoomOut = new JButton(new ZoomIcon(ZoomIcon.ZOOMOUT));
+  private final JButton zoomIn = new JButton(AppIcons.get(AppIcons.Id.ZOOM_IN, 14));
+  private final JButton zoomOut = new JButton(AppIcons.get(AppIcons.Id.ZOOM_OUT, 14));
   private final JLabel count = new JLabel(S.get("tableRowsShown", 0, 0), SwingConstants.CENTER);
 
   private static class TightButton extends JButton {
@@ -766,7 +768,7 @@ class TableTab extends AnalyzerTab implements Entry.EntryChangedListener {
       final var left = Math.max(0, (canvasWidth - tableWidth) / 2);
       final var mid = left + inDim.width + headerHorizSep;
 
-      g.setColor(Color.GRAY);
+      g.setColor(printView ? Color.BLACK : Tokens.divider());
       final var lineX = left + inDim.width + headerHorizSep / 2;
       g.drawLine(lineX, top, lineX, top + bodyHeight);
 
@@ -808,7 +810,7 @@ class TableTab extends AnalyzerTab implements Entry.EntryChangedListener {
       final var top = canvasHeight - cellHeight - headerVertSep;
       final var left = Math.max(0, (canvasWidth - tableWidth) / 2);
 
-      g.setColor(Color.GRAY);
+      g.setColor(printView ? Color.BLACK : Tokens.divider());
       final var lineX = left + inDim.width + headerHorizSep / 2;
       final var lineY = top + cellHeight + headerVertSep / 2;
       g.drawLine(left, lineY, left + tableWidth, lineY);

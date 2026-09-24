@@ -33,6 +33,7 @@ import com.cburch.logisim.file.LibraryListener;
 import com.cburch.logisim.file.LogisimFile;
 import com.cburch.logisim.file.MouseMappings;
 import com.cburch.logisim.file.Options;
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.gui.generic.CanvasPane;
 import com.cburch.logisim.gui.generic.CanvasPaneContents;
 import com.cburch.logisim.gui.generic.GridPainter;
@@ -83,7 +84,6 @@ import javax.swing.event.PopupMenuListener;
 
 public class Canvas extends JPanel implements LocaleListener, CanvasPaneContents, AdjustmentListener {
 
-  public static final Color HALO_COLOR = new Color(255, 0, 255);
   // don't bother to update the size if it hasn't changed more than this
   static final double SQRT_2 = Math.sqrt(2.0);
   private static final long serialVersionUID = 1L;
@@ -95,12 +95,8 @@ public class Canvas extends JPanel implements LocaleListener, CanvasPaneContents
   private static final int AUTO_PAN_MIN_STEP = 4;
   private static final int AUTO_PAN_MAX_STEP = 16;
   private static final int AUTO_PAN_DELAY = 40;
-  private static final Color DEFAULT_ERROR_COLOR = new Color(192, 0, 0);
-  private static final Color OSC_ERR_COLOR = DEFAULT_ERROR_COLOR;
-  private static final Color SIM_EXCEPTION_COLOR = DEFAULT_ERROR_COLOR;
   private static final Font ERR_MSG_FONT =
       AppPreferences.getScaledFont(new Font(Font.SANS_SERIF, Font.BOLD, 18));
-  private static final Color TICK_RATE_COLOR = new Color(0, 0, 92, 92);
   // public static BufferedImage image;
   private final Project proj;
   private final Selection selection;
@@ -1198,7 +1194,7 @@ public class Canvas extends JPanel implements LocaleListener, CanvasPaneContents
     private static final long serialVersionUID = 1L;
     StringGetter errorMessage = null;
     String widthMessage = null;
-    Color errorColor = DEFAULT_ERROR_COLOR;
+    Color errorColor = null;
     boolean isNorth = false;
     boolean isSouth = false;
     boolean isWest = false;
@@ -1256,17 +1252,18 @@ public class Canvas extends JPanel implements LocaleListener, CanvasPaneContents
       int msgY = getHeight() - 23;
       final var message = errorMessage;
       if (message != null) {
-        g.setColor(errorColor);
+        // No colour set by the caller means the ordinary error colour, which follows the theme.
+        g.setColor(errorColor == null ? Value.errorColor() : errorColor);
         msgY = paintString(g, msgY, message.toString());
       }
 
       if (proj.getSimulator().isOscillating()) {
-        g.setColor(OSC_ERR_COLOR);
+        g.setColor(Value.errorColor());
         msgY = paintString(g, msgY, S.get("canvasOscillationError"));
       }
 
       if (proj.getSimulator().isExceptionEncountered()) {
-        g.setColor(SIM_EXCEPTION_COLOR);
+        g.setColor(Value.errorColor());
         final var exceptionMessage = proj.getSimulator().getExceptionMessage();
         msgY =
             paintString(
@@ -1283,7 +1280,11 @@ public class Canvas extends JPanel implements LocaleListener, CanvasPaneContents
       if (widthMessage != null) {
         g.setColor(Value.widthErrorColor());
         msgY = paintString(g, msgY, widthMessage);
-      } else g.setColor(TICK_RATE_COLOR);
+      } else {
+        // The arrows point at work that is off screen, which is the same class of hint as a
+        // selection marker; they used to be a navy so dark and so translucent as to be a smudge.
+        g.setColor(CanvasStyle.marker(AppPreferences.inPrintView()));
+      }
 
       if (isNorth
           || isSouth
@@ -1361,7 +1362,7 @@ public class Canvas extends JPanel implements LocaleListener, CanvasPaneContents
     void setErrorMessage(StringGetter msg, Color color) {
       if (errorMessage != msg) {
         errorMessage = msg;
-        errorColor = color == null ? DEFAULT_ERROR_COLOR : color;
+        errorColor = color;
         paintCoordinator.requestRepaint();
       }
     }

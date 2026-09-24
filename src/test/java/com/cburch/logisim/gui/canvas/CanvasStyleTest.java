@@ -69,6 +69,28 @@ class CanvasStyleTest {
     assertTrue(CanvasStyle.highlightWidth(Wire.WIDTH_BUS) > Wire.WIDTH_BUS);
   }
 
+  /**
+   * The simulator's three markers were raw RED, BLUE and MAGENTA painted straight onto the canvas,
+   * the last of them with the author's "fixme" beside it.
+   */
+  @Test
+  void simulationMarkersAreDistinctOnScreen() {
+    final var oscillation = CanvasStyle.oscillationMarker(false);
+    final var step = CanvasStyle.stepMarker(false);
+    final var pending = CanvasStyle.pendingInputMarker(false);
+    assertNotEquals(oscillation, step);
+    assertNotEquals(step, pending);
+    assertNotEquals(oscillation, pending);
+  }
+
+  /** On paper they all become ink: a marker pointing at a running simulation means nothing there. */
+  @Test
+  void simulationMarkersBecomeInkWhenPrinting() {
+    assertEquals(CanvasStyle.componentColor(), CanvasStyle.oscillationMarker(true));
+    assertEquals(CanvasStyle.componentColor(), CanvasStyle.stepMarker(true));
+    assertEquals(CanvasStyle.componentColor(), CanvasStyle.pendingInputMarker(true));
+  }
+
   /** A bus has to be tellable from a wire at a glance, which one pixel of difference is not. */
   @Test
   void busIsClearlyHeavierThanWire() {

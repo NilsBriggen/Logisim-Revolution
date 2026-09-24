@@ -11,21 +11,24 @@ package com.cburch.logisim.gui.chrono;
 
 import static com.cburch.logisim.gui.Strings.S;
 
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.gui.log.Model;
 import com.cburch.logisim.gui.log.Signal;
+import com.cburch.logisim.gui.theme.Tokens;
 import com.cburch.logisim.prefs.AppPreferences;
+import com.cburch.logisim.util.UiFonts;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
-import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Graphics;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.beans.PropertyChangeListener;
 import java.awt.image.BufferedImage;
+import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
 import javax.swing.DefaultListSelectionModel;
 import javax.swing.JPanel;
@@ -36,10 +39,20 @@ import javax.swing.UIManager;
 
 public class RightPanel extends JPanel {
 
-  private static final Font MSG_FONT =
-      AppPreferences.getScaledFont(new Font("Serif", Font.ITALIC, 12));
-  private static final Font TIME_FONT =
-      AppPreferences.getScaledFont(new Font("Serif", Font.ITALIC, 9));
+  /**
+   * The diagram's two faces, read per call so a change of theme or scale is picked up.
+   *
+   * <p>This was the only place in the program still asking for a serif face, in italic, at a size
+   * that ignored the interface scale. The ruler is a column of figures, so it gets the monospaced
+   * face and its digits line up.
+   */
+  private static Font msgFont() {
+    return UiFonts.small();
+  }
+
+  private static Font timeFont() {
+    return UiFonts.mono();
+  }
   private static final long serialVersionUID = 1L;
   private static final int WAVE_HEIGHT = ChronoPanel.SIGNAL_HEIGHT;
   private static final int EXTRA_SPACE = 40;
@@ -333,7 +346,7 @@ public class RightPanel extends JPanel {
     gfx.setColor(labelColor());
     if (rows.isEmpty()) {
       final var f = gfx.getFont();
-      gfx.setFont(MSG_FONT);
+      gfx.setFont(msgFont());
       final var lines = S.get("NoSignalsSelected");
       final var x = AppPreferences.getScaled(15);
       var y = AppPreferences.getScaled(15);
@@ -346,7 +359,7 @@ public class RightPanel extends JPanel {
     }
     if (width > 32000) {
       gfx.setColor(labelColor());
-      gfx.setFont(MSG_FONT);
+      gfx.setFont(msgFont());
       gfx.drawString(S.get("chronoTooLargeMessage"), 15, 15);
       gfx.drawString(S.get("chronoTooLargeHint"), 15, 29);
     } else {
@@ -360,8 +373,8 @@ public class RightPanel extends JPanel {
 
   private void paintCursor(Graphics2D g) {
     final var x = getSignalCursorX();
-    g.setColor(Color.RED);
-    g.setStroke(new BasicStroke(1));
+    g.setColor(Tokens.accent());
+    g.setStroke(CanvasStyle.stroke(1));
     g.drawLine(x, 0, x, getHeight());
   }
 
@@ -729,7 +742,7 @@ public class RightPanel extends JPanel {
   static final long[] subd = new long[] {4, 4, 5, 5};
 
   private class Timeline extends JPanel {
-    final Color borderColor = UIManager.getDefaults().getColor("InternalFrame.borderDarkShadow");
+    final Color borderColor = Tokens.divider();
     final int height = ChronoPanel.HEADER_HEIGHT;
 
     @Override
@@ -750,21 +763,24 @@ public class RightPanel extends JPanel {
     void paintCursorWithLabel(Graphics2D g) {
       final var x = getSignalCursorX();
       final var t = getCurrentTime();
-      g.setFont(TIME_FONT);
+      g.setFont(timeFont());
 
       final var s = Model.formatDuration(t);
       final var fm = g.getFontMetrics();
       final var r = fm.getStringBounds(s, g);
-      g.setColor(Color.YELLOW);
       final var y = (height - ChronoPanel.GAP) / 2;
-      g.fillRect(
-          x + 2 + (int) r.getX() - 1,
-          y + (int) r.getY() - 1,
-          (int) r.getWidth() + 2,
-          (int) r.getHeight() + 2);
-      g.setColor(Color.RED);
+      g.setColor(Tokens.accent());
+      g.fillRoundRect(
+          x + 2 + (int) r.getX() - 3,
+          y + (int) r.getY() - 2,
+          (int) r.getWidth() + 6,
+          (int) r.getHeight() + 4,
+          CanvasStyle.bodyRadius(),
+          CanvasStyle.bodyRadius());
+      g.setColor(Tokens.accentText());
       g.drawString(s, x + 2, y);
-      g.setStroke(new BasicStroke(1));
+      g.setColor(Tokens.accent());
+      g.setStroke(CanvasStyle.stroke(1));
       g.drawLine(x, 0, x, height);
     }
 
@@ -790,11 +806,11 @@ public class RightPanel extends JPanel {
       long divMinor = divMajor / numMinor;
 
       final var f = g.getFont();
-      g.setFont(TIME_FONT);
+      g.setFont(timeFont());
       final var time0 = model.getStartTime();
       final var timeL = (time0 / divMajor) * divMajor;
       final var h = ChronoPanel.HEADER_HEIGHT - ChronoPanel.GAP;
-      g.setColor(Color.BLACK);
+      g.setColor(labelColor());
       g.drawLine(0, height - 2, width, height - 2);
       for (var i = 0; true; i++) {
         final var t = timeL + divMinor * i;

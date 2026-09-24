@@ -14,8 +14,8 @@ import com.cburch.logisim.circuit.WireSet;
 import com.cburch.logisim.comp.Component;
 import com.cburch.logisim.comp.ComponentDrawContext;
 import com.cburch.logisim.data.Value;
-import com.cburch.logisim.gui.generic.GridPainter;
 import com.cburch.logisim.gui.canvas.CanvasStyle;
+import com.cburch.logisim.gui.generic.GridPainter;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.tools.PokeTool;
@@ -211,11 +211,12 @@ class CanvasPainter implements PropertyChangeListener {
     final var circState = proj.getCircuitState();
     final var ptContext = new ComponentDrawContext(canvas, circ, circState, g, gfxScaled);
     ptContext.setHighlightedWires(highlightedWires);
-    gfxScaled.setColor(Color.RED);
+    final var printing = ptContext.isPrintView();
+    gfxScaled.setColor(CanvasStyle.oscillationMarker(printing));
     circState.drawOscillatingPoints(ptContext);
-    gfxScaled.setColor(Color.BLUE);
+    gfxScaled.setColor(CanvasStyle.stepMarker(printing));
     proj.getSimulator().drawStepPoints(ptContext);
-    gfxScaled.setColor(Color.MAGENTA); // fixme
+    gfxScaled.setColor(CanvasStyle.pendingInputMarker(printing));
     proj.getSimulator().drawPendingInputs(ptContext);
     gfxScaled.dispose();
   }

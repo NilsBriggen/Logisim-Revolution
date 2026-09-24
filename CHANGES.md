@@ -3,6 +3,29 @@
 # Changes #
 
 * @dev (????-??-??)
+  * The last of the 2005 palette is gone from the windows around the canvas. The main toolbar
+    filled a solid magenta square behind the tool whose properties were showing -- hiding the icon
+    it was meant to point at -- and now tints it the way a palette tile does. The simulator's three
+    canvas markers were raw red, blue and magenta, the last with the original author's "fixme"
+    beside it; they are now error, accent and warning from the design system, and become plain ink
+    when printing. The off-screen-content arrows were a 36%-alpha navy still named after the tick
+    rate (@YOUR_GITHUB_HANDLE).
+  * The timing diagram was the only part of the program still asking for a serif face: italic Serif
+    for its messages and for the whole time ruler, at a size that ignored the interface scale. It
+    now uses the interface font, and the ruler the monospaced one so its figures line up. Its ruler
+    drew in black and its cursor was a red hairline with a yellow badge; both follow the theme
+    (@YOUR_GITHUB_HANDLE).
+  * Fixed: the Test Vector table drew every value, heading and rule in black, so on a dark window
+    it was black on black. Its three status colours were pastels chosen by colour name -- pink,
+    mint, lavender -- and are now error, success and the badge colour (@YOUR_GITHUB_HANDLE).
+  * K-map entries were drawn in pure blue, the original Logisim colour; the truth table's rules
+    were hardcoded grey next to a themed selection; the timing signal tree hand-drew its own blue
+    disclosure triangle outlined in black; a sub-signal was a magenta placeholder square positioned
+    with its x coordinate passed for y; and the HDL toolbar's three buttons were hand-painted white
+    pages with a red tick and a magenta arrow. All now come from the design system
+    (@YOUR_GITHUB_HANDLE).
+  * Removed a magenta-on-black debug marker that was still live in the FPGA report list, colouring
+    any row whose text happened to contain "BUG" (@YOUR_GITHUB_HANDLE).
   * Fixed: turning the mouse wheel over a numeric property wrote every value it passed through, so
     spinning a bit width from 1 to 16 left fifteen separate entries in the undo history and asked
     the circuit to re-fit its wires fifteen times. The number now moves as the wheel turns and is

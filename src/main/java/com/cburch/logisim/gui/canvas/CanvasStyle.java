@@ -128,6 +128,21 @@ public final class CanvasStyle {
     return new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 96);
   }
 
+  /** Where the simulator found a signal that will not settle. */
+  public static Color oscillationMarker(boolean printView) {
+    return printView ? componentColor() : Tokens.error();
+  }
+
+  /** Where the simulator has got to, while stepping. */
+  public static Color stepMarker(boolean printView) {
+    return printView ? componentColor() : Tokens.accent();
+  }
+
+  /** An input the simulator has not carried through yet. */
+  public static Color pendingInputMarker(boolean printView) {
+    return printView ? componentColor() : Tokens.warning();
+  }
+
   /** The colour of a component being dragged or about to be placed. */
   public static Color ghost() {
     return new Color(AppPreferences.COMPONENT_GHOST_COLOR.get());

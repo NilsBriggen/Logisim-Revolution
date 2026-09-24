@@ -9,6 +9,7 @@
 
 package com.cburch.logisim.gui.generic;
 
+import com.cburch.logisim.gui.theme.Tokens;
 import com.cburch.logisim.circuit.Circuit;
 import com.cburch.logisim.circuit.CircuitEvent;
 import com.cburch.logisim.circuit.CircuitListener;
@@ -51,8 +52,9 @@ public class RegTabContent extends JScrollPane
   private final JPanel panel = new JPanel(new GridBagLayout());
   private final GridBagConstraints gridConstraints = new GridBagConstraints();
   private final Project proj;
-  private final MyLabel hdrName = new MyLabel("", Font.ITALIC | Font.BOLD, false, Color.LIGHT_GRAY);
-  private final MyLabel hdrValue = new MyLabel("", Font.BOLD, false, Color.LIGHT_GRAY);
+  // Column headings, not Windows-3.x grey bands set in bold italic.
+  private final MyLabel hdrName = new MyLabel("", Font.BOLD, false, Tokens.badgeBackground());
+  private final MyLabel hdrValue = new MyLabel("", Font.BOLD, false, Tokens.badgeBackground());
   private boolean showing = false;
   private CircuitState circuitState;
   private final ArrayList<Circuit> circuits = new ArrayList<>();

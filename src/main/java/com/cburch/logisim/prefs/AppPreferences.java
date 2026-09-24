@@ -702,8 +702,8 @@ public class AppPreferences {
   public static final int DEFAULT_EXPRESSION_OVERLINE_COLOR = 0xFF000000;
   public static final int DARK_EXPRESSION_OVERLINE_COLOR = 0xFFFFFFFF;
   // default kmap cell text colors
-  public static final int DEFAULT_KMAP_CELL_TEXT_COLOR = 0xFF0000FF;
-  public static final int DARK_KMAP_CELL_TEXT_COLOR = 0xFFFFFFFF;
+  public static final int DEFAULT_KMAP_CELL_TEXT_COLOR = 0xFF222831;
+  public static final int DARK_KMAP_CELL_TEXT_COLOR = 0xFFE2E6ED;
   // default table caret colors
   public static final int DEFAULT_TABLE_CURSOR_COLOR = 0xFFFFFFFF;
   public static final int DARK_TABLE_CURSOR_COLOR = 0xFF666666;

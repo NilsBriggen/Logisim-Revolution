@@ -11,6 +11,7 @@ package com.cburch.logisim.gui.log;
 
 import static com.cburch.logisim.gui.Strings.S;
 
+import com.cburch.logisim.gui.theme.Tokens;
 import com.cburch.logisim.data.BitWidth;
 import com.cburch.logisim.data.Value;
 import com.cburch.logisim.util.GraphicsUtil;
@@ -385,7 +386,7 @@ public class ValueTable extends JPanel {
 
       final var sz = getSize();
 
-      g.setColor(Color.BLACK);
+      g.setColor(getForeground());
       g.setFont(bodyFont());
 
       final var columns = model == null ? 0 : model.getColumnCount();
@@ -412,9 +413,9 @@ public class ValueTable extends JPanel {
 
       for (int col = 0; col < columns; col++) {
         int y = top + firstRow * cellHeight;
-        g.setColor(Color.GRAY);
+        g.setColor(Tokens.divider());
         g.drawLine(x - COLUMN_SEP / 2, clip.y, x - COLUMN_SEP / 2, clip.y + clip.height);
-        g.setColor(Color.BLACK);
+        g.setColor(getForeground());
         final var cellWidth = columnWidth[col];
         final var radix = model.getColumnValueRadix(col);
 
@@ -426,7 +427,7 @@ public class ValueTable extends JPanel {
 
           g.setColor(cell.bg == null ? bg : cell.bg);
           g.fillRect(x - COLUMN_SEP / 2 + 1, y, cellWidth + COLUMN_SEP - 1, cellHeight);
-          g.setColor(Color.BLACK);
+          g.setColor(getForeground());
 
           if (cell.value != null) {
             final var label =
@@ -439,13 +440,14 @@ public class ValueTable extends JPanel {
 
             g.drawString(label, x + (cellWidth - width) / 2, y + bodyMetric.getAscent());
 
-            if (cell.fg != null) g.setColor(Color.BLACK);
+            // Restore the table's own colour, not black: the cell may have set its own.
+            if (cell.fg != null) g.setColor(getForeground());
           }
           y += cellHeight;
         }
         x += cellWidth + COLUMN_SEP;
       }
-      g.setColor(Color.GRAY);
+      g.setColor(Tokens.divider());
       g.drawLine(x - COLUMN_SEP / 2, clip.y, x - COLUMN_SEP / 2, clip.y + clip.height);
     }
   }
@@ -475,7 +477,7 @@ public class ValueTable extends JPanel {
       super.paintComponent(g);
 
       final var sz = getSize();
-      g.setColor(Color.GRAY);
+      g.setColor(Tokens.divider());
 
       final var columns = model == null ? 0 : model.getColumnCount();
       if (columns == 0) {
@@ -494,9 +496,9 @@ public class ValueTable extends JPanel {
       final var y = top + headerMetric.getAscent() + 1;
 
       for (var i = 0; i < columns; i++) {
-        g.setColor(Color.GRAY);
+        g.setColor(Tokens.divider());
         g.drawLine(x - COLUMN_SEP / 2, 0, x - COLUMN_SEP / 2, cellHeight);
-        g.setColor(Color.BLACK);
+        g.setColor(getForeground());
         final var label = model.getColumnName(i);
         final var cellWidth = columnWidth[i];
         final var width = headerMetric.stringWidth(label);
@@ -504,7 +506,7 @@ public class ValueTable extends JPanel {
         x += cellWidth + COLUMN_SEP;
       }
 
-      g.setColor(Color.GRAY);
+      g.setColor(Tokens.divider());
       g.drawLine(x - COLUMN_SEP / 2, 0, x - COLUMN_SEP / 2, cellHeight);
     }
 

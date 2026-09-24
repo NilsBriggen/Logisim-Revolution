@@ -17,6 +17,7 @@ import com.cburch.logisim.data.AttributeEvent;
 import com.cburch.logisim.data.AttributeListener;
 import com.cburch.logisim.file.LogisimFile;
 import com.cburch.logisim.file.ToolbarData;
+import com.cburch.logisim.gui.theme.Tokens;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.proj.ProjectEvent;
@@ -26,6 +27,8 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
@@ -206,14 +209,23 @@ class LayoutToolbarModel extends AbstractToolbarModel {
 
     @Override
     public void paintIcon(Component destination, Graphics gfx) {
-      // draw halo
+      // The tool whose properties are showing is tinted, the way a palette tile is. It used to be
+      // filled with solid magenta, which hid the icon it was meant to point at.
       if (tool == haloedTool && AppPreferences.ATTRIBUTE_HALO.getBoolean()) {
-        gfx.setColor(Canvas.HALO_COLOR);
-        gfx.fillRect(
-            AppPreferences.ICON_BORDER,
-            AppPreferences.ICON_BORDER,
-            AppPreferences.getIconSize(),
-            AppPreferences.getIconSize());
+        final var marker = (Graphics2D) gfx.create();
+        try {
+          marker.setRenderingHint(
+              RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+          final var accent = Tokens.accent();
+          final var size = AppPreferences.getIconSize();
+          final var inset = AppPreferences.ICON_BORDER;
+          marker.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 46));
+          marker.fillRoundRect(inset, inset, size, size, 8, 8);
+          marker.setColor(accent);
+          marker.drawRoundRect(inset, inset, size - 1, size - 1, 8, 8);
+        } finally {
+          marker.dispose();
+        }
       }
 
       // draw tool icon

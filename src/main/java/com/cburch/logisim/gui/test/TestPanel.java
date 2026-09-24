@@ -11,6 +11,7 @@ package com.cburch.logisim.gui.test;
 
 import static com.cburch.logisim.gui.Strings.S;
 
+import com.cburch.logisim.gui.theme.Tokens;
 import com.cburch.logisim.gui.generic.OptionPane;
 import com.cburch.logisim.circuit.CircuitState;
 import com.cburch.logisim.circuit.Simulator;
@@ -41,9 +42,25 @@ import org.slf4j.LoggerFactory;
 
 public class TestPanel extends JPanel implements ValueTable.Model, Simulator.Listener {
 
-  static final Color failColor = new Color(0xff9999);
-  static final Color activeButtonColor = new Color(0x99ff99); // Light green
-  static final Color inactiveButtonColor = new Color(0xE0E0FF); // Light blue
+  /**
+   * The three status colours, read per call so a change of theme is picked up.
+   *
+   * <p>They used to be three pastels chosen by colour name — pink for a failure, mint for the
+   * running test, lavender for an idle one — which said nothing on their own and were illegible
+   * against a dark window.
+   */
+  static Color failColor() {
+    final var error = Tokens.error();
+    return new Color(error.getRed(), error.getGreen(), error.getBlue(), 56);
+  }
+
+  static Color activeButtonColor() {
+    return Tokens.success();
+  }
+
+  static Color inactiveButtonColor() {
+    return Tokens.badgeBackground();
+  }
   private static final long serialVersionUID = 1L;
   private static final Logger logger = LoggerFactory.getLogger(TestPanel.class);
 
@@ -168,15 +185,15 @@ public class TestPanel extends JPanel implements ValueTable.Model, Simulator.Lis
       }
 
       // Show button column (column 0)
-      Color showButtonBg = activeShowRows.contains(row) ? activeButtonColor : inactiveButtonColor;
+      Color showButtonBg = activeShowRows.contains(row) ? activeButtonColor() : inactiveButtonColor();
       rowData[outRow][0] = new ValueTable.Cell("Show", showButtonBg, null, S.get("toolTipShow"));
 
       // Set button column (column 1)
-      Color setButtonBg = activeSetRows.contains(row) ? activeButtonColor : inactiveButtonColor;
+      Color setButtonBg = activeSetRows.contains(row) ? activeButtonColor() : inactiveButtonColor();
       rowData[outRow][1] = new ValueTable.Cell("Set", setButtonBg, null, S.get("toolTipSet"));
 
       // Status column (column 2)
-      rowData[outRow][2] = new ValueTable.Cell(status, rowmsg != null ? failColor : null, null, rowmsg);
+      rowData[outRow][2] = new ValueTable.Cell(status, rowmsg != null ? failColor() : null, null, rowmsg);
 
       // <set> column (column 3)
       int setValue = vec.setNumbers[row];
@@ -193,7 +210,7 @@ public class TestPanel extends JPanel implements ValueTable.Model, Simulator.Lis
         int colIndex = col + specialHeaders.length;
         String tooltip = msg[col];
         String displayText;
-        Color bgColor = msg[col] != null ? failColor : null;
+        Color bgColor = msg[col] != null ? failColor() : null;
 
         // Check for special values first
         if (vec.isDontCare(row, col)) {

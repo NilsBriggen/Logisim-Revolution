@@ -9,6 +9,8 @@
 
 package com.cburch.logisim.gui.log;
 
+import com.cburch.logisim.gui.theme.Tokens;
+import com.cburch.logisim.gui.theme.AppIcons;
 import com.cburch.logisim.circuit.Circuit;
 import com.cburch.logisim.circuit.CircuitEvent;
 import com.cburch.logisim.circuit.CircuitListener;
@@ -324,8 +326,9 @@ public class SignalInfo implements AttributeListener, CircuitListener, Location.
   public static void paintIcon(Component comp, Object opt, java.awt.Component c, Graphics g, int x, int y) {
     if (comp == null) return;
     if (opt != null) {
-      g.setColor(Color.MAGENTA);
-      g.fillRect(x + 3, x + 3, 15, 15);
+      // A real glyph for a sub-signal. This was a magenta placeholder, and it was positioned with
+      // the x coordinate passed for y, so it drifted diagonally down the tree.
+      AppIcons.colored(AppIcons.Id.PIN, 14, Tokens.accent()).paintIcon(c, g, x + 3, y + 3);
     } else {
       final var g2 = g.create();
       final var context = new ComponentDrawContext(c, null, null, g, g2);

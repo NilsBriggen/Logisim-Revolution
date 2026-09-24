@@ -75,7 +75,7 @@ public final class ThemeColorPrefs {
    * would never reach anyone who had already run the program. Raising this number retires the
    * stored colours once so that the new ones are seen.
    */
-  private static final int PALETTE_VERSION = 5;
+  private static final int PALETTE_VERSION = 6;
 
   private static final String PALETTE_VERSION_KEY = "canvasPaletteVersion";
 
