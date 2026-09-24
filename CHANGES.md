@@ -3,6 +3,11 @@
 # Changes #
 
 * @dev (????-??-??)
+  * The timing diagram and the test-vector view open in the bottom drawer instead of each being a
+    second operating-system window with its own menu bar and taskbar entry, placed under the main
+    window from the raw screen size. Watching a waveform beside the circuit no longer means tiling
+    two windows by hand, and the test view's own "Close Window" button -- which sat inside the
+    thing it closed -- is gone (@YOUR_GITHUB_HANDLE).
   * Deleted a second, unreferenced copy of the HDL editor -- 310 lines duplicating the live one,
     reachable from nowhere (@YOUR_GITHUB_HANDLE).
   * The Synthesize & Download window can be resized, and its five heavy 2px-outlined boxes with

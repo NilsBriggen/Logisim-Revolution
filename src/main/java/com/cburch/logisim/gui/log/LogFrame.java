@@ -158,6 +158,15 @@ public class LogFrame extends LFrame.SubWindowWithSimulation {
   // private SelectionPanel selPanel;
   private final JTabbedPane tabbedPane;
 
+  /**
+   * Set while the drawer is holding this window's contents.
+   *
+   * <p>The timing diagram and the logging options used to be a second OS window with its own menu
+   * bar and taskbar entry, placed below the main window from the raw screen size, so watching a
+   * waveform next to the circuit meant tiling two windows by hand.
+   */
+  private boolean dockedInDrawer;
+
   static class SelectionDialog extends JDialogOk {
     private static final long serialVersionUID = 1L;
     final SelectionPanel selPanel;
@@ -188,6 +197,13 @@ public class LogFrame extends LFrame.SubWindowWithSimulation {
     return button;
   }
 
+  /** The contents, for the drawer to hold. Building this marks the window as docked. */
+  public javax.swing.JComponent dockedContent() {
+    dockedInDrawer = true;
+    if (tabbedPane.getParent() != null) tabbedPane.getParent().remove(tabbedPane);
+    return tabbedPane;
+  }
+
   public LogFrame(Project project) {
     super(project);
     windowManager = new WindowMenuManager(project);
@@ -212,7 +228,7 @@ public class LogFrame extends LFrame.SubWindowWithSimulation {
     final var w = Math.max(550, project.getFrame().getWidth());
     var h = 300;
     tabbedPane.setPreferredSize(new Dimension(w, h));
-    contents.add(tabbedPane, BorderLayout.CENTER);
+    if (!dockedInDrawer) contents.add(tabbedPane, BorderLayout.CENTER);
 
     LocaleManager.addLocaleListener(myListener);
     myListener.localeChanged();

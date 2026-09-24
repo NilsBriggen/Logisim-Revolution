@@ -373,9 +373,9 @@ public class MenuSimulate extends Menu {
           || src == LogisimMenuBar.GENERATE_VHDL_SIM_FILES)) {
         vhdl.restart();
       } else if (src == log) {
-        proj.getLogFrame().setVisible(true);
+        proj.getFrame().showLogPanel();
       } else if (src == test) {
-        proj.getTestFrame().setVisible(true);
+        proj.getFrame().showTestPanel();
       }
 
       final var sim = proj.getSimulator();

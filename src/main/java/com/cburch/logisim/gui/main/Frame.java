@@ -129,6 +129,8 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
   public static final String SIMULATION_SIDE_VIEW = "simulation";
   /** Identifier of the VHDL console in the drawer below the canvas. */
   private static final String VHDL_BOTTOM_PANEL = "vhdlConsole";
+  private static final String LOG_BOTTOM_PANEL = "log";
+  private static final String TEST_BOTTOM_PANEL = "test";
   private final Timer timer = new Timer();
   private final Project project;
   private final MyProjectListener myProjectListener = new MyProjectListener();
@@ -853,6 +855,42 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
         names, index -> project.setCircuitState(ancestors.get(index)));
   }
 
+  /**
+   * Shows the timing diagram and logging options in the drawer.
+   *
+   * <p>They were a second OS window with a menu bar and a taskbar entry of their own, placed under
+   * the main window from the raw screen size, so watching a waveform beside the circuit meant
+   * tiling two windows by hand.
+   */
+  public void showLogPanel() {
+    showDockedPanel(
+        LOG_BOTTOM_PANEL,
+        S.get("logPanelTab"),
+        AppIcons.Id.WAVEFORM,
+        () -> project.getLogFrame().dockedContent());
+  }
+
+  /** The same for the test-vector view. */
+  public void showTestPanel() {
+    showDockedPanel(
+        TEST_BOTTOM_PANEL,
+        S.get("testPanelTab"),
+        AppIcons.Id.TEST,
+        () -> project.getTestFrame().dockedContent());
+  }
+
+  private void showDockedPanel(
+      String id, String title, AppIcons.Id icon, java.util.function.Supplier<JComponent> content) {
+    if (!dockedPanels.contains(id)) {
+      bottomPanel.addPanel(id, title, AppIcons.get(icon, 14), content.get());
+      dockedPanels.add(id);
+    }
+    shell.showBottomPanel(id);
+  }
+
+  /** Which drawer panels have been built. They are made the first time they are asked for. */
+  private final java.util.Set<String> dockedPanels = new java.util.HashSet<>();
+
   /** Brings one of the side panels to the front, as clicking its button in the activity bar does. */
   public void showSideView(String id) {
     shell.showSideView(id);
@@ -999,6 +1037,8 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     inspector.setTitle(inspectorTitle());
     stateSection.setTitle(S.get("stateTab"));
     bottomPanel.setTitle(VHDL_BOTTOM_PANEL, S.get("vhdlConsoleTab"));
+    bottomPanel.setTitle(LOG_BOTTOM_PANEL, S.get("logPanelTab"));
+    bottomPanel.setTitle(TEST_BOTTOM_PANEL, S.get("testPanelTab"));
     editorTabs.refresh();
   }
 

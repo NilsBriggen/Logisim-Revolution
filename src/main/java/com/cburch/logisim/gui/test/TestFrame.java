@@ -21,6 +21,7 @@ import com.cburch.logisim.proj.ProjectEvent;
 import com.cburch.logisim.proj.ProjectListener;
 import com.cburch.logisim.util.LocaleListener;
 import com.cburch.logisim.util.LocaleManager;
+import com.cburch.logisim.util.UiScale;
 import com.cburch.logisim.util.WindowMenuItemManager;
 import java.awt.BorderLayout;
 import java.awt.Container;
@@ -57,6 +58,20 @@ public class TestFrame extends LFrame.SubWindowWithSimulation {
   private int count;
   private File curFile;
 
+  /**
+   * The contents, for the drawer to hold.
+   *
+   * <p>The window's own Close button goes with it: the drawer tab closes the drawer, and a button
+   * that closes the thing it is sitting inside reads as a mistake.
+   */
+  public javax.swing.JComponent dockedContent() {
+    close.setVisible(false);
+    if (body.getParent() != null) body.getParent().remove(body);
+    return body;
+  }
+
+  private final JPanel body = new JPanel(new BorderLayout());
+
   public TestFrame(Project project) {
     super(project);
     this.windowManager = new WindowMenuManager();
@@ -89,11 +104,12 @@ public class TestFrame extends LFrame.SubWindowWithSimulation {
     stop.setEnabled(false);
     reset.setEnabled(false);
 
-    Container contents = getContentPane();
-    panel.setPreferredSize(new Dimension(450, 300));
-    contents.add(statusPanel, BorderLayout.NORTH);
-    contents.add(panel, BorderLayout.CENTER);
-    contents.add(buttonPanel, BorderLayout.SOUTH);
+    panel.setPreferredSize(
+        new Dimension(UiScale.scaled(450), UiScale.scaled(300)));
+    body.add(statusPanel, BorderLayout.NORTH);
+    body.add(panel, BorderLayout.CENTER);
+    body.add(buttonPanel, BorderLayout.SOUTH);
+    getContentPane().add(body, BorderLayout.CENTER);
 
     LocaleManager.addLocaleListener(myListener);
     myListener.localeChanged();

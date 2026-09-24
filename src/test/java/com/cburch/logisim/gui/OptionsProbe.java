@@ -27,6 +27,16 @@ public final class OptionsProbe {
           com.cburch.logisim.analyze.gui.AnalyzerManager.getAnalyzer(project.getFrame());
           System.out.println("PROBE analyzer ok");
         });
+    SwingUtilities.invokeAndWait(
+        () -> {
+          project.getFrame().showLogPanel();
+          System.out.println("PROBE log drawer ok");
+        });
+    SwingUtilities.invokeAndWait(
+        () -> {
+          project.getFrame().showTestPanel();
+          System.out.println("PROBE test drawer ok");
+        });
     System.exit(0);
   }
 }
