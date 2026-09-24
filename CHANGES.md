@@ -3,6 +3,11 @@
 # Changes #
 
 * @dev (????-??-??)
+  * Descending into a subcircuit now leaves a trail. The status bar shows the chain of circuits
+    you went through, each one clickable to go back up. Before this the bar showed only the
+    subcircuit's name -- identical to opening that circuit on its own -- so nothing said you were
+    inside one particular instance, and the only way back was a submenu of the Simulate menu
+    (@YOUR_GITHUB_HANDLE).
   * The circuit analysis window was missed by the wording pass and has been brought in line: it is
     "Circuit Analysis" rather than "Combinational Analysis", its tabs are Signals and Simplified,
     and "Optimize minterms" / "Optimize maxterms" now name the form you get

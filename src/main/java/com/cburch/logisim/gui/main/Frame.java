@@ -396,7 +396,7 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     toolbox.updateStructure();
 
     syncEditorTabs();
-    statusBar.setCircuitName(circuitName());
+    updateCircuitTrail();
     updateZoomStatus();
     layoutZoomModel.addPropertyChangeListener(ZoomModel.ZOOM, event -> updateZoomStatus());
     restoreLayoutView(project.getCurrentCircuit());
@@ -829,6 +829,30 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     return circuit == null ? "" : circuit.getName();
   }
 
+  /**
+   * Updates the status bar's name and the trail of circuits above it.
+   *
+   * <p>The trail is the chain of instances the user descended through, which is what tells them
+   * they are inside one particular subcircuit rather than looking at that circuit on its own.
+   */
+  private void updateCircuitTrail() {
+    statusBar.setCircuitName(circuitName());
+
+    final var ancestors = new java.util.ArrayList<CircuitState>();
+    for (var state = project.getCircuitState(); state != null; state = state.getParentState()) {
+      ancestors.add(0, state);
+    }
+    // The last entry is the circuit on screen, which the name beside the trail already gives.
+    if (!ancestors.isEmpty()) ancestors.remove(ancestors.size() - 1);
+
+    final var names = new java.util.ArrayList<String>(ancestors.size());
+    for (final var state : ancestors) {
+      names.add(state.getCircuit().getName());
+    }
+    statusBar.setCircuitTrail(
+        names, index -> project.setCircuitState(ancestors.get(index)));
+  }
+
   /** Brings one of the side panels to the front, as clicking its button in the activity bar does. */
   public void showSideView(String id) {
     shell.showSideView(id);
@@ -1133,7 +1157,7 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
       if (event.getAction() == CircuitEvent.ACTION_SET_NAME) {
         buildTitleString();
         editorTabs.refresh();
-        statusBar.setCircuitName(circuitName());
+        updateCircuitTrail();
       }
     }
 
@@ -1176,6 +1200,8 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
         // An edit landed: mark the circuit it changed, so its tab says so.
         editorTabModel.setDirty(project.getCurrentCircuit(), true);
       } else if (action == ProjectEvent.ACTION_SET_STATE) {
+        // The trail is how the user knows which instance they are inside, and how they get back.
+        updateCircuitTrail();
         if (event.getData() instanceof CircuitState state) {
           if (state.getParentState() != null) {
             // Looking inside a subcircuit: show the simulation tree, which is where that state is.
@@ -1198,7 +1224,7 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
           viewAttributes(project.getTool());
         }
         syncEditorTabs();
-        statusBar.setCircuitName(circuitName());
+        updateCircuitTrail();
         buildTitleString();
       } else if (action == ProjectEvent.ACTION_SET_TOOL) {
         if (attrTable == null) {

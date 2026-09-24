@@ -33,6 +33,9 @@ public class StatusBar extends JPanel {
 
   private static final long serialVersionUID = 1L;
 
+  /** The chain from the top-level circuit down to the one on screen. */
+  private final JPanel breadcrumb = new JPanel();
+
   private final JLabel circuitLabel = new JLabel();
   private final JLabel coordsLabel = new JLabel();
   private final JLabel messageLabel = new JLabel();
@@ -47,6 +50,9 @@ public class StatusBar extends JPanel {
             Spacing.xs(), Spacing.sm(), Spacing.xs(), Spacing.sm()));
     setOpaque(true);
 
+    breadcrumb.setLayout(new BoxLayout(breadcrumb, BoxLayout.X_AXIS));
+    breadcrumb.setOpaque(false);
+    add(breadcrumb);
     add(circuitLabel);
     add(gap());
     add(coordsLabel);
@@ -85,6 +91,55 @@ public class StatusBar extends JPanel {
   /** The name of the circuit being edited. */
   public void setCircuitName(String name) {
     circuitLabel.setText(name == null ? "" : name);
+  }
+
+  /**
+   * The chain of circuits the user has descended through, each one clickable.
+   *
+   * <p>Descending into a subcircuit used to show its name and nothing else, identical to what is
+   * shown when that circuit is opened on its own. Nothing said the user was inside a particular
+   * instance three levels down, and the only way back up was a submenu of the Simulate menu.
+   *
+   * @param trail the names from the top down to, but not including, the circuit on screen
+   * @param ascend called with a position in {@code trail} to go back up to it
+   */
+  public void setCircuitTrail(java.util.List<String> trail, java.util.function.IntConsumer ascend) {
+    breadcrumb.removeAll();
+    if (trail != null) {
+      for (var index = 0; index < trail.size(); index++) {
+        final var step = index;
+        breadcrumb.add(crumb(trail.get(index), () -> ascend.accept(step)));
+        breadcrumb.add(separator());
+      }
+    }
+    breadcrumb.setVisible(breadcrumb.getComponentCount() > 0);
+    breadcrumb.revalidate();
+    breadcrumb.repaint();
+  }
+
+  private JLabel crumb(String name, Runnable onClick) {
+    final var label = new JLabel(name);
+    label.setFont(UiFonts.small());
+    label.setForeground(Tokens.accent());
+    label.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
+    label.setToolTipText(name);
+    label.addMouseListener(
+        new MouseAdapter() {
+          @Override
+          public void mouseClicked(MouseEvent event) {
+            onClick.run();
+          }
+        });
+    return label;
+  }
+
+  private JLabel separator() {
+    final var chevron = new JLabel("\u203a");
+    chevron.setFont(UiFonts.small());
+    chevron.setForeground(Tokens.mutedForeground());
+    chevron.setBorder(
+        javax.swing.BorderFactory.createEmptyBorder(0, Spacing.xs(), 0, Spacing.xs()));
+    return chevron;
   }
 
   /** The pointer's position on the canvas, in circuit coordinates. */
