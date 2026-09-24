@@ -307,10 +307,21 @@ public class Attributes {
     }
   }
 
-  private static class IntegerRangeAttribute extends Attribute<Integer> {
+  private static class IntegerRangeAttribute extends Attribute<Integer>
+      implements BoundedAttribute {
     Integer[] options = null;
     final int start;
     final int end;
+
+    @Override
+    public int minValue() {
+      return start;
+    }
+
+    @Override
+    public int maxValue() {
+      return end;
+    }
 
     private IntegerRangeAttribute(String name, StringGetter disp, int start, int end) {
       super(name, disp);

@@ -14,10 +14,21 @@ import com.cburch.logisim.util.StringGetter;
 import java.awt.Component;
 
 public class BitWidth implements Comparable<BitWidth> {
-  static class Attribute extends com.cburch.logisim.data.Attribute<BitWidth> {
+  static class Attribute extends com.cburch.logisim.data.Attribute<BitWidth>
+      implements BoundedAttribute {
     private final BitWidth[] choices;
     private final int min;
     private final int max;
+
+    @Override
+    public int minValue() {
+      return min;
+    }
+
+    @Override
+    public int maxValue() {
+      return max;
+    }
 
     public Attribute(String name, StringGetter disp) {
       super(name, disp);

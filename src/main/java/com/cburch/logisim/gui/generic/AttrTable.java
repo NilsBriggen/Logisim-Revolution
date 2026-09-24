@@ -109,12 +109,28 @@ public class AttrTable extends JPanel implements LocaleListener {
     localeChanged();
   }
 
-  private String scrollInitialValue = null;
-  private String scrollFinalValue = null;
-  private AttrTableModelRow scrollRow = null;
-  private Timer scrollTimer = null;
+  /**
+   * The row the wheel is currently being turned over, and the value it will be given.
+   *
+   * <p>A wheel gesture used to apply every intermediate value, so spinning a bit width from 1 to
+   * 16 left fifteen separate entries in the undo history and asked the circuit to re-fit its wires
+   * fifteen times. The value now moves in the table as the wheel turns but is written to the
+   * circuit once, when the wheel stops.
+   */
+  private AttrTableModelRow pendingRow = null;
+
+  private String pendingValue = null;
+  private Timer pendingTimer = null;
   private long lastWheelTime = 0;
-  private static final long WHEEL_THROTTLE_MS = 100;
+  private static final long WHEEL_THROTTLE_MS = 40;
+
+  /** How long the wheel must be still before the value is written to the circuit. */
+  private static final int WHEEL_SETTLE_MS = 350;
+
+  /** The value to paint for a row: the one being spun, if this is that row. */
+  String displayValueOf(AttrTableModelRow row) {
+    return (row == pendingRow && pendingValue != null) ? pendingValue : row.getValue();
+  }
 
   private void handleMouseWheel(MouseWheelEvent e) {
     final var rowIdx = table.rowAtPoint(e.getPoint());
@@ -126,91 +142,72 @@ public class AttrTable extends JPanel implements LocaleListener {
     final var row = attrModel.getRow(rowIdx);
     if (row == null || !row.isValueEditable()) return;
 
+    final var rotation = Integer.signum(e.getWheelRotation());
+    if (rotation == 0) return;
+
     final var now = System.currentTimeMillis();
     if (now - lastWheelTime < WHEEL_THROTTLE_MS) return;
     lastWheelTime = now;
 
+    // A list of choices has no arithmetic to do: step through the options instead.
     final var editorComp = row.getEditor(parent);
     if (editorComp instanceof JComboBox<?> box && !box.isEditable()) {
+      commitPendingNudge();
       final var count = box.getItemCount();
-      if (count <= 1) return;
-      final var rotation = Integer.signum(e.getWheelRotation());
-      if (rotation == 0) return;
-
-      int currentIdx = box.getSelectedIndex();
-      if (currentIdx < 0) return;
-
-      int newIdx = currentIdx + rotation;
-      if (newIdx < 0) newIdx = 0;
-      if (newIdx >= count) newIdx = count - 1;
+      final var currentIdx = box.getSelectedIndex();
+      if (count <= 1 || currentIdx < 0) return;
+      final var newIdx = Math.max(0, Math.min(count - 1, currentIdx + rotation));
       if (newIdx == currentIdx) return;
-
-      final var newItem = box.getItemAt(newIdx);
-      try {
-        row.setValue(parent, newItem);
-      } catch (Exception ignored) {
-      }
+      applyValue(row, box.getItemAt(newIdx));
       table.repaint();
       return;
     }
 
-    final var valStr = row.getValue();
-    if (valStr == null || valStr.isBlank()) return;
+    if (pendingRow != null && pendingRow != row) commitPendingNudge();
 
-    Integer currentVal = null;
-    boolean isHex = false;
-    try {
-      final var s = valStr.trim();
-      if (s.startsWith("0x") || s.startsWith("0X")) {
-        currentVal = Integer.parseInt(s.substring(2), 16);
-        isHex = true;
-      } else {
-        currentVal = Integer.parseInt(s);
-      }
-    } catch (NumberFormatException ex) {
-      return;
+    final var shown = (pendingRow == row && pendingValue != null) ? pendingValue : row.getValue();
+    final var nudged = AttrWheelNudge.nudge(shown, rotation, row.getAttribute());
+    if (nudged.isEmpty()) return;
+
+    pendingRow = row;
+    pendingValue = nudged.get();
+
+    if (pendingTimer == null) {
+      pendingTimer = new Timer(WHEEL_SETTLE_MS, evt -> commitPendingNudge());
+      pendingTimer.setRepeats(false);
     }
-
-    final var rotation = Integer.signum(e.getWheelRotation());
-    if (rotation == 0) return;
-
-    final var label = row.getLabel().toLowerCase();
-    int newVal = currentVal - rotation;
-    if (newVal < 1 && (label.contains("width") || label.contains("height") || label.contains("bit"))) {
-      newVal = 1;
-    }
-
-    final var finalValStr = isHex ? "0x" + Integer.toHexString(newVal).toUpperCase() : String.valueOf(newVal);
-
-    if (scrollTimer == null) {
-      scrollTimer = new Timer(500, evt -> finishMouseWheelScroll());
-      scrollTimer.setRepeats(false);
-    }
-
-    if (scrollRow != row || !scrollTimer.isRunning()) {
-      finishMouseWheelScroll();
-      scrollRow = row;
-      scrollInitialValue = valStr;
-    }
-
-    scrollFinalValue = finalValStr;
-
-    try {
-      row.setValue(parent, finalValStr);
-    } catch (Exception ignored) {
-    }
-
+    pendingTimer.restart();
     table.repaint();
-    scrollTimer.restart();
   }
 
-  private void finishMouseWheelScroll() {
-    if (scrollTimer != null && scrollTimer.isRunning()) {
-      scrollTimer.stop();
+  /** Writes the value the wheel arrived at, as a single change. */
+  private void commitPendingNudge() {
+    if (pendingTimer != null) pendingTimer.stop();
+    final var row = pendingRow;
+    final var value = pendingValue;
+    pendingRow = null;
+    pendingValue = null;
+    if (row == null || value == null) return;
+    applyValue(row, value);
+    table.repaint();
+  }
+
+  /**
+   * Sets a value and says so when it is refused.
+   *
+   * <p>Both wheel paths used to discard the exception, so a value the component would not accept
+   * simply snapped back with no explanation.
+   */
+  private void applyValue(AttrTableModelRow row, Object value) {
+    try {
+      row.setValue(parent, value);
+    } catch (AttrTableSetException refused) {
+      OptionPane.showMessageDialog(
+          parent,
+          refused.getMessage(),
+          S.get("attributeChangeInvalidTitle"),
+          OptionPane.WARNING_MESSAGE);
     }
-    scrollRow = null;
-    scrollInitialValue = null;
-    scrollFinalValue = null;
   }
 
   public AttrTableModel getAttrTableModel() {
@@ -218,6 +215,8 @@ public class AttrTable extends JPanel implements LocaleListener {
   }
 
   public void setAttrTableModel(AttrTableModel value) {
+    // Whatever the wheel was spinning belongs to the thing being shown now, not the next one.
+    commitPendingNudge();
     final var editor = table.getCellEditor();
     if (editor != null) table.getCellEditor().cancelCellEditing();
     tableModel.setAttrTableModel(value == null ? NULL_ATTR_MODEL : value);
@@ -469,7 +468,9 @@ public class AttrTable extends JPanel implements LocaleListener {
           rows = new AttrTableModelRow[rowIndexes.length];
           for (var i = 0; i < rowIndexes.length; i++) {
             rows[i] = attrModel.getRow(rowIndexes[i]);
-            if (!row.multiEditCompatible(rows[i])) {
+            // The model gets first say, then the general rule: same choices, same edit.
+            if (!row.multiEditCompatible(rows[i])
+                && !AttrMultiEdit.sameChoices(box, rows[i].getEditor(parent))) {
               multiEditActive = false;
               rowIndexes = null;
               rows = null;
@@ -656,9 +657,8 @@ public class AttrTable extends JPanel implements LocaleListener {
 
     @Override
     public Object getValueAt(int rowIndex, int columnIndex) {
-      return (columnIndex == 0)
-          ? attrModel.getRow(rowIndex).getLabel()
-          : attrModel.getRow(rowIndex).getValue();
+      final var row = attrModel.getRow(rowIndex);
+      return (columnIndex == 0) ? row.getLabel() : displayValueOf(row);
     }
 
     @Override

@@ -3,6 +3,22 @@
 # Changes #
 
 * @dev (????-??-??)
+  * Fixed: turning the mouse wheel over a numeric property wrote every value it passed through, so
+    spinning a bit width from 1 to 16 left fifteen separate entries in the undo history and asked
+    the circuit to re-fit its wires fifteen times. The number now moves as the wheel turns and is
+    written once, when the wheel stops (@YOUR_GITHUB_HANDLE).
+  * Fixed: the wheel decided whether a property could go below one by looking for the word "width"
+    in the property's *translated* name. It therefore did nothing in any language but English, and
+    clamped unrelated properties whose translated name happened to contain that word. Properties
+    that have limits now say so, through the new `BoundedAttribute` (@YOUR_GITHUB_HANDLE).
+  * Fixed: a value the component refused during a wheel change was discarded silently and the
+    number simply snapped back. It now says why (@YOUR_GITHUB_HANDLE).
+  * Selecting several rows and setting them together used to work only for a splitter's bit rows.
+    It now works for any rows offering the same choices -- eight pins' data widths, four gates'
+    facing (@YOUR_GITHUB_HANDLE).
+  * When several selected components disagree about a property, the panel says "(various)" instead
+    of showing an empty cell, which was indistinguishable from a property with no value
+    (@YOUR_GITHUB_HANDLE).
   * Fixed: twenty-seven places in the component painters drew in pure black whatever the theme, so
     on a dark canvas a register's contents, a counter's mode labels, a RAM's cells, the value on a
     poked memory or register, a probe's reading, a constant's value and the TTL chips' captions

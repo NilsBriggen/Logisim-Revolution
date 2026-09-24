@@ -18,6 +18,15 @@ public abstract class Attribute<V> {
   private final StringGetter displayName;
   private boolean hidden;
 
+  /**
+   * A sentence saying what this attribute does, or {@code null} when none has been written.
+   *
+   * <p>Attributes were a bare name and a value, so the only way to find out what one did was to
+   * change it and watch, or to go and read the documentation. Held lazily as a {@link
+   * StringGetter} like the display name, so it follows the chosen language.
+   */
+  private StringGetter description;
+
   public Attribute() {
     this("dummy", null, true);
   }
@@ -42,6 +51,24 @@ public abstract class Attribute<V> {
 
   public String getDisplayName() {
     return (displayName != null) ? displayName.toString() : name;
+  }
+
+  /**
+   * Adds the sentence describing this attribute.
+   *
+   * <p>Meant to be chained onto the declaration, which is run once for each attribute at class
+   * load: {@code Attributes.forBoolean("x", S.getter("xAttr")).withDescription(S.getter("xDesc"))}.
+   *
+   * @return this attribute, so the call can be chained
+   */
+  public Attribute<V> withDescription(StringGetter description) {
+    this.description = description;
+    return this;
+  }
+
+  /** What this attribute does, or {@code null} when nobody has written it down yet. */
+  public String getDescription() {
+    return (description == null) ? null : description.toString();
   }
 
   public String getName() {

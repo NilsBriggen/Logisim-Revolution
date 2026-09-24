@@ -17,6 +17,7 @@ import com.cburch.logisim.data.Attribute;
 import com.cburch.logisim.data.AttributeEvent;
 import com.cburch.logisim.data.AttributeListener;
 import com.cburch.logisim.data.AttributeSet;
+import com.cburch.logisim.data.VariousValues;
 import com.cburch.logisim.fpga.gui.HdlColorRenderer;
 import java.awt.Component;
 import java.awt.Window;
@@ -198,6 +199,11 @@ public abstract class AttributeSetTableModel implements AttrTableModel, Attribut
     }
 
     @Override
+    public Attribute<?> getAttribute() {
+      return attr;
+    }
+
+    @Override
     public Component getEditor(Window parent) {
       final var value = attrs.getValue(attr);
       return attr.getCellEditor(parent, value);
@@ -210,6 +216,11 @@ public abstract class AttributeSetTableModel implements AttrTableModel, Attribut
 
     @Override
     public String getValue() {
+      // Several things are selected and they do not agree: say so rather than show an empty cell,
+      // which is what a property with no value looks like.
+      if (attrs instanceof VariousValues various && various.isVarious(attr)) {
+        return S.get("attributeVarious");
+      }
       final var value = attrs.getValue(attr);
       if (value == null) {
         try {

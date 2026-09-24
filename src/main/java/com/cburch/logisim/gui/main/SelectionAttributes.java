@@ -16,6 +16,7 @@ import com.cburch.logisim.data.Attribute;
 import com.cburch.logisim.data.AttributeEvent;
 import com.cburch.logisim.data.AttributeListener;
 import com.cburch.logisim.data.AttributeOption;
+import com.cburch.logisim.data.VariousValues;
 import com.cburch.logisim.util.CollectionUtil;
 import com.cburch.logisim.util.UnmodifiableList;
 import java.util.Collection;
@@ -27,7 +28,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-class SelectionAttributes extends AbstractAttributeSet {
+class SelectionAttributes extends AbstractAttributeSet implements VariousValues {
 
   private static final Attribute<?>[] EMPTY_ATTRIBUTES = new Attribute<?>[0];
   private static final Object[] EMPTY_VALUES = new Object[0];
@@ -40,6 +41,14 @@ class SelectionAttributes extends AbstractAttributeSet {
   private boolean[] readOnly;
   private Object[] values;
   private List<Attribute<?>> attrsView;
+
+  /**
+   * The attributes the selected components disagree about.
+   *
+   * <p>Kept apart from the merged values because "they disagree" and "the value is genuinely
+   * null" both reduce to a null in the map, and the panel needs to tell them apart.
+   */
+  private Set<Attribute<?>> various = Collections.emptySet();
 
   public SelectionAttributes(Canvas canvas, Selection selection) {
     this.canvas = canvas;
@@ -59,6 +68,7 @@ class SelectionAttributes extends AbstractAttributeSet {
   private LinkedHashMap<Attribute<Object>, Object> computeAttributes(
       Collection<Component> newSel) {
     final var attrMap = new LinkedHashMap<Attribute<Object>, Object>();
+    final var disagreed = new HashSet<Attribute<?>>();
     final var sit = newSel.iterator();
     if (sit.hasNext()) {
       final var firstComp = sit.next();
@@ -99,6 +109,7 @@ class SelectionAttributes extends AbstractAttributeSet {
 
             if (v != null && !v.equals(nv)) {
               attrMap.put(attr, null);
+              disagreed.add(attr);
             }
           } else {
             ait.remove();
@@ -106,7 +117,13 @@ class SelectionAttributes extends AbstractAttributeSet {
         }
       }
     }
+    various = disagreed.isEmpty() ? Collections.emptySet() : disagreed;
     return attrMap;
+  }
+
+  @Override
+  public boolean isVarious(Attribute<?> attr) {
+    return various.contains(attr);
   }
 
   private boolean computeReadOnly(Collection<Component> sel, Attribute<?> attr) {

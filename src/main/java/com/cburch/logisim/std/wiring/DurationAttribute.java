@@ -12,13 +12,24 @@ package com.cburch.logisim.std.wiring;
 import static com.cburch.logisim.std.Strings.S;
 
 import com.cburch.logisim.data.Attribute;
+import com.cburch.logisim.data.BoundedAttribute;
 import com.cburch.logisim.util.StringGetter;
 import javax.swing.JTextField;
 
-public class DurationAttribute extends Attribute<Integer> {
+public class DurationAttribute extends Attribute<Integer> implements BoundedAttribute {
   private final int min;
   private final int max;
   private final boolean TickUnits;
+
+  @Override
+  public int minValue() {
+    return min;
+  }
+
+  @Override
+  public int maxValue() {
+    return max;
+  }
 
   public DurationAttribute(String name, StringGetter disp, int min, int max, boolean IsTicks) {
     super(name, disp);
