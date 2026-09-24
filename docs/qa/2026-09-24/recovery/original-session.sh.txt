@@ -1,0 +1,4 @@
+#!/bin/bash
+echo "export DISPLAY=$DISPLAY XAUTHORITY=$XAUTHORITY" > "$QA_ENVFILE"
+[ -n "${QA_PIDFILE:-}" ] && echo $$ > "$QA_PIDFILE"
+exec sleep 100000

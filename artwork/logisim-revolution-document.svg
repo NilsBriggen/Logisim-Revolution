@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Logisim Revolution circuit document icon. Copyright 2026 Logisim Revolution contributors. GPL-3.0-or-later. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">Logisim circuit document</title>
+  <path d="M104 32h208l104 104v328c0 15-12 28-28 28H104c-15 0-28-13-28-28V60c0-15 13-28 28-28z"
+        fill="#f7f9fd" stroke="#5676ae" stroke-width="18"/>
+  <path d="M312 32v104h104" fill="#d7e5ff" stroke="#5676ae" stroke-width="18" stroke-linejoin="round"/>
+  <path d="M148 268h58v-58h95v70h66M206 268v67h95" fill="none"
+        stroke="#2f6fed" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="148" cy="268" r="17" fill="#2f6fed"/>
+  <circle cx="301" cy="210" r="17" fill="#2f6fed"/>
+  <circle cx="301" cy="335" r="17" fill="#2f6fed"/>
+  <circle cx="367" cy="280" r="17" fill="#2f6fed"/>
+</svg>

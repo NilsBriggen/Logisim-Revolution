@@ -1,0 +1,1765 @@
+{
+  "reviewer": "editing",
+  "requestedHead": "0a62266649937f3c2cbcb1ef495b6d9be6ba2d5a",
+  "date": "2026-09-24",
+  "scope": [
+    "inspect-shell",
+    "inspect-inspector",
+    "inspect-canvas"
+  ],
+  "session": "cx-editing",
+  "provenance": {
+    "jarSha256": "c854edbbea34d6cfc0e53ac9cf70ef5b2a5dcf550a3959ff0ed99d852950d433",
+    "artifactValidation": "All 106 assigned IDs are present exactly once; all duplicate canonicals resolve; all cited evidence and source files exist.",
+    "liveJar": "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/logisim.jar",
+    "buildMetadata": "ID:main/2532c84d, BUILT:2026-09-24T16:07:16+0200",
+    "limitation": "The jar contains ColorOptions despite older build metadata (recovered verifier listing); do not assume it is exactly the parent commit or an exact HEAD build. Current source was reviewed at requested HEAD; close, AttrTable and ShellLayout are unchanged between HEAD parent and HEAD. No rebuild was performed.",
+    "originalReports": [
+      "/tmp/logisim-qa-recovery-20260924/reports/inspect-shell.json",
+      "/tmp/logisim-qa-recovery-20260924/reports/inspect-inspector.json",
+      "/tmp/logisim-qa-recovery-20260924/reports/inspect-canvas.json"
+    ],
+    "partialVerifiers": [
+      "/tmp/logisim-qa-recovery-20260924/reports/verify-shell-partial.md",
+      "/tmp/logisim-qa-recovery-20260924/reports/verify-inspector-partial.md",
+      "/tmp/logisim-qa-recovery-20260924/reports/verify-canvas-partial.md"
+    ],
+    "reusedEvidence": "Only the archived screenshots named in reviewedArchivedImages were independently viewed; source-only and unverified dispositions are explicitly distinguished. Recovered verifier commands were read as evidence, never replayed against their sessions.",
+    "display": "Private KWin/Xwayland; dark theme; UI scale 1.6; fresh startup 1280x1600 on a 2560x1600 display; later main window 2560x1066, as measured by win captures.",
+    "imageInspection": "view_image failed with mountinfo sandbox error. Screenshots were read by scoped escalated base64 commands and emitted as images, per user-approved fallback.",
+    "sandbox": "exec_command default sandbox failed with mountinfo path is not absolute; scoped require_escalated reads and private UI actions succeeded. Two first launches ended with tool lifetime; a kept-open PTY stabilized the final session.",
+    "isolation": {
+      "userHome": "/tmp/logisim-qa-recovery-20260924/editing-home",
+      "userPrefs": "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/run/cx-editing/prefs",
+      "systemPrefs": "/tmp/logisim-qa-recovery-20260924/editing-system-prefs",
+      "verified": "jcmd VM.system_properties; own PIDs and QA_ENVFILE/QA_PIDFILE checked before stopping.",
+      "realFilesUsed": "No real circuit files opened; all live tests used new scratch projects. No real preferences or autosaves intentionally read/changed."
+    },
+    "cleanup": "qa.sh stop cx-editing after PID checks; app 551969, wrapper 551909 and session 551947 absent on final ps; PTY 78224 exited. No other session stopped.",
+    "repository": "No production files changed, no build/tests run, no commit/push. AGENTS.md was untracked at entry. docs/qa appeared concurrently from other work and was left untouched."
+  },
+  "severityRubric": "P0 observed unsaved-project data loss; P1 normal workflow/cancellation or safe scrolling blocked; P2 usability/correctness with recovery/workaround; P3 polish. Unverified candidates have no accepted severity.",
+  "statusCounts": {
+    "confirmed-runtime": 6,
+    "confirmed-visual": 13,
+    "confirmed-source": 16,
+    "duplicate": 19,
+    "design-recommendation": 29,
+    "unverified": 23
+  },
+  "countCaveat": "106 candidate dispositions are not 106 independent bugs. Duplicate IDs reference a canonical candidate; work packages can contain multiple related root causes. Status counts are evidence bookkeeping only.",
+  "reviewedArchivedImages": [
+    "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/shell/41z-tabs-full.png",
+    "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/shell/48z-drawer-left.png",
+    "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/canvas/31-text-committed-z.png",
+    "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/canvas/15-pin1-z10.png",
+    "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/canvas/47-grid-compare.png",
+    "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/canvas/74-mux-fit.png",
+    "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/inspector/103-appearance-insp-z.png",
+    "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/canvas/07-and-ghost-z.png",
+    "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/canvas/08-and-placed-z.png"
+  ],
+  "tested": [
+    "Independent unsaved scratch File Close > Escape: edit discarded.",
+    "Independent unsaved scratch File Close > Save > Save chooser Cancel: edit discarded.",
+    "Multi-row Cancel after differing No/Yes values: changes to No/No; Undo restores Yes.",
+    "Multi-row commit and three successive Undos: Yes/Yes -> Yes/No -> Yes/No -> No/No.",
+    "Typed label followed by canvas click/reselect: draft lost.",
+    "Side/inspector drag: requested sizes not retained.",
+    "Unfocused Facing wheel: East -> North without clicking editor.",
+    "Last editor tab close: canvas remains with gate and no tab.",
+    "Fresh isolated shell visual inspection, menu/chooser metric comparison.",
+    "Targeted archived screenshot inspection and HEAD source review; no acceptance claim for fixes."
+  ],
+  "notTested": {
+    "candidateIds": [
+      "shell-15",
+      "shell-23",
+      "shell-24",
+      "shell-25",
+      "shell-27",
+      "shell-28",
+      "shell-32",
+      "shell-34",
+      "shell-35",
+      "shell-36",
+      "inspector-22",
+      "inspector-23",
+      "inspector-24",
+      "canvas-03",
+      "canvas-13",
+      "canvas-14",
+      "canvas-15",
+      "canvas-16",
+      "canvas-17",
+      "canvas-22",
+      "canvas-24",
+      "canvas-28",
+      "canvas-31"
+    ],
+    "workflows": [
+      "Exact-HEAD rebuilt runtime",
+      "Dialog-X and save I/O failure",
+      "Light theme and other UI scale factors",
+      "Actual data persistence after save/reload; autosave recovery",
+      "Drawer drag live",
+      "Long splitter wheel-scroll live",
+      "20-tab overflow live",
+      "Appearance editor live",
+      "Multiple-component mixed-value live edits",
+      "Tooltip screen-edge positioning",
+      "Full preference/help/palette tours",
+      "Race stress reproduction",
+      "Real hardware performance"
+    ]
+  },
+  "dispositions": [
+    {
+      "id": "shell-01",
+      "title": "Escape (or the dialog's x) on 'Confirm Close' discards unsaved work and closes the project",
+      "status": "confirmed-runtime",
+      "severity": "P0",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/02-before-close.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/03-confirm-close.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/04-after-escape.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/05-save-dialog.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/06-after-save-cancel.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/menu/MenuFile.java:137",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/Frame.java:683"
+      ],
+      "reason": "Independent scratch reproduction: unsaved AND gate disappeared after File Close > Escape. File Close > Save > cancel Save also disposed it. Both branches are unchanged at HEAD. Dialog-X and filesystem write failure were not separately exercised. The missing question mark is absent from the hard-coded source string, not proof of clipping."
+    },
+    {
+      "id": "shell-02",
+      "title": "FlatLaf metrics stay at 1x while fonts are forced to 1.6x: tiny accelerators, arrows, check marks, checkboxes, window buttons; clipped rows",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/08-after-multicancel-menu-crop.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/05-save-dialog.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/shell/48z-drawer-left.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/start/Startup.java:1161",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/LayoutPrefs.java:26"
+      ],
+      "reason": "Live Edit popup and Save dialog visibly mix large labels with small accelerators/icons; archived drawer also shows small captions. HEAD retains post-construction font scaling. Do not infer that every reported widget was retested, or prescribe a particular FlatLaf API without validating double scaling."
+    },
+    {
+      "id": "shell-03",
+      "title": "None of the three splitters (side panel, inspector, drawer) can be dragged",
+      "status": "confirmed-runtime",
+      "severity": "P1",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/20-label-reselected.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/21-divider-after.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/ShellLayout.java:166",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/ShellLayout.java:201"
+      ],
+      "reason": "Side and inspector divider drags failed to retain the requested hundreds-of-pixels change; inspector shifted only about five pixels. doLayout reapplies stored size during drag. Drawer was not dragged live; it uses the same SizedSplit path."
+    },
+    {
+      "id": "shell-04",
+      "title": "Once closed, the Properties panel can only come back through Preferences > Window > 'Reset window layout to Logisim's defaults'",
+      "status": "confirmed-source",
+      "severity": "P1",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/Frame.java:372",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/Frame.java:1182",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/ShellLayout.java:253",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/ShellLayout.java:332"
+      ],
+      "reason": "The normal Show Properties path only changes the attribute model; inspector visibility true is restored by reset/initial preference restoration, not that command. No live hide/reset cycle was needed after source tracing. Missing direct restore blocks the normal inspector workflow until layout reset."
+    },
+    {
+      "id": "shell-05",
+      "title": "Panel widths and heights are fixed in unscaled pixels, so every panel is too narrow at 1.6x and truncates its content",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/07-multiedit-panel.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/14-cancel-sequence.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/fpga/gui/HdlColorRenderer.java:58",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/fpga/gui/HdlColorRenderer.java:83",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/08-after-multicancel-menu-crop.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/05-save-dialog.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/shell/48z-drawer-left.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/start/Startup.java:1161",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/LayoutPrefs.java:26"
+      ],
+      "reason": "Live inspector truncates names and font values at 1.6 scale; LayoutPrefs retains device-pixel defaults. Fresh Circuits width was wider and its heading readable, so not every panel is always truncated. Separate this sizing defect from the divider interaction defect."
+    },
+    {
+      "id": "shell-06",
+      "title": "Properties inspector table is a raw legacy JTable: neon-green 'Supported' cell, no padding, a blank box when empty, raw coordinates in the header",
+      "status": "duplicate",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/07-multiedit-panel.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/14-cancel-sequence.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/fpga/gui/HdlColorRenderer.java:58",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/fpga/gui/HdlColorRenderer.java:83"
+      ],
+      "reason": "Compound inspector styling claim: FPGA fill overlaps inspector-03; padding overlaps inspector-13 and empty state inspector-10. No separate shell defect.",
+      "canonicalId": "inspector-03"
+    },
+    {
+      "id": "shell-07",
+      "title": "Editor tab overflow hides the active tab, with no scroll arrows or overflow list",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/shell/41z-tabs-full.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/EditorTabs.java:53",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/EditorTabs.java:174"
+      ],
+      "reason": "Reviewed the original overflow strip: clipped tabs without usable overflow controls. HEAD sets scroll-button policy but not SCROLL_TAB_LAYOUT. Original active-ALU context is inherited from the report; no new 14-tab live reproduction."
+    },
+    {
+      "id": "shell-08",
+      "title": "Closing the last tab leaves the circuit on screen with no tab; the circuit list selection goes stale",
+      "status": "confirmed-runtime",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/23-last-tab.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/EditorTabModel.java:151",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/EditorTabs.java:184"
+      ],
+      "reason": "Closing the sole tab live removed its strip while leaving the gate editable and project title intact. Circuit-list staleness after Close Others was not independently reproduced."
+    },
+    {
+      "id": "shell-09",
+      "title": "The welcome screen covers a project that is already open; 'New project' opens a second window; the project's own circuit can't be reached",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/01-fresh.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/Frame.java:298",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/start/Startup.java:1125"
+      ],
+      "reason": "Fresh startup visibly overlays an existing Untitled circuit with Welcome. New callback calls doNew while recent-file callback uses doOpenReplacingBlank. Second-window and circuit-click recovery details are source/reported evidence, not a clean independent live comparison."
+    },
+    {
+      "id": "shell-10",
+      "title": "A new project starts with an invisible 'Load Library' undo step",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/start/Startup.java:1125"
+      ],
+      "reason": "Startup loads default libraries through proj.doAction, explaining a startup undo entry. No separate pristine Undo-history screenshot captured."
+    },
+    {
+      "id": "shell-11",
+      "title": "Simulation controls float in the middle of the toolbar and jump when tools change or the toolbar is hidden",
+      "status": "confirmed-visual",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/20-label-reselected.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/21-divider-after.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/ShellLayout.java:166",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/ShellLayout.java:201"
+      ],
+      "reason": "Live full-window screenshots show simulation controls starting well before the right edge with large unused toolbar space. Hide-toolbar jump not retested; alignment is usability polish."
+    },
+    {
+      "id": "shell-12",
+      "title": "Toolbar mixes 2005 pixel-art tool icons with thin line icons; simulation buttons have no hover and aren't focusable",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/01-fresh.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/Frame.java:298",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/start/Startup.java:1125"
+      ],
+      "reason": "Mixed legacy and line icon styles are visible. Replacement is a design decision; missing hover/focus behavior was not independently tested."
+    },
+    {
+      "id": "shell-13",
+      "title": "Tooltip and terminology inconsistencies between the toolbar, the menus and the tooltips themselves",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/ZoomPill.java:83"
+      ],
+      "reason": "Unify command names, distinguish pin presets, and rename Auto to Fit to contents. Other tooltip/shortcut claims remain reported rather than independently inspected."
+    },
+    {
+      "id": "shell-14",
+      "title": "Menus keep 2005-era wording, duplicates and inconsistent capitalisation",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/08-after-multicancel-menu-crop.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/05-save-dialog.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/shell/48z-drawer-left.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/start/Startup.java:1161",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/LayoutPrefs.java:26"
+      ],
+      "reason": "Live Edit popup confirms disabled appearance commands and verbose Undo wording. These are discoverability/copy choices, not blocked workflows. Other menu subclaims were not retoured."
+    },
+    {
+      "id": "shell-15",
+      "title": "Window > 'Show Navigation Pane' is out of sync with the activity bar; there are no toggles for the inspector, drawer or status bar",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [],
+      "reason": "Not independently reproduced, visually inspected, or source-traced in this bounded review. Retained as a candidate, not counted as a verified defect."
+    },
+    {
+      "id": "shell-16",
+      "title": "Bottom drawer: each tab's x hides the whole drawer, there is no drawer toggle, and the content is legacy (tabs inside tabs, titled borders)",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/shell/48z-drawer-left.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/BottomPanel.java:43"
+      ],
+      "reason": "BottomPanel close callback hides the entire drawer rather than removing its tab; archived nested controls are visible. The absolute claim that timing cannot reopen is too strong: the same Simulate command is an existing entry point."
+    },
+    {
+      "id": "shell-17",
+      "title": "STATE section expands to nothing (or a bare 'Name | Value' JTable header) with no empty state",
+      "status": "duplicate",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/RegTabContent.java:120",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/RegTabContent.java:178"
+      ],
+      "reason": "Same register-state empty-state claim, not another defect.",
+      "canonicalId": "inspector-27"
+    },
+    {
+      "id": "shell-18",
+      "title": "Status bar is almost empty: coordinates and messages are never set, simulation and tick-rate info never appears, and the zoom duplicates the pill",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/21-divider-after.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/StatusBar.java:146",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/Frame.java:803"
+      ],
+      "reason": "No callers of setCoordinates/setMessage were found; live bar stays sparse. Reject the blanket implication that simulation/tick information is never wired: Frame has explicit setTickRate/setSimulationState paths."
+    },
+    {
+      "id": "shell-19",
+      "title": "Dark chrome layering: activity and status bars are pure #000; panels are lighter than the editor; five unrelated greys",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/20-label-reselected.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/21-divider-after.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/ShellLayout.java:166",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/ShellLayout.java:201"
+      ],
+      "reason": "Black activity/status strips are visible, but the preferred tonal hierarchy is subjective. Group theme polish; do not score darker chrome as a functional failure."
+    },
+    {
+      "id": "shell-20",
+      "title": "Title bar shows the build hash, a shouted '[UNSAVED]', an invisible floppy emoji and the old 'main of Untitled' wording",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/02-before-close.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/Frame.java:651"
+      ],
+      "reason": "Long development-build title and UNSAVED indicator are visible. Hiding debug metadata outside About is polish; a dev build ID is not intrinsically erroneous."
+    },
+    {
+      "id": "shell-21",
+      "title": "Circuits panel header is truncated to 'CI…' with its title misaligned against the action buttons",
+      "status": "duplicate",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/07-multiedit-panel.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/14-cancel-sequence.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/fpga/gui/HdlColorRenderer.java:58",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/fpga/gui/HdlColorRenderer.java:83",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/08-after-multicancel-menu-crop.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/05-save-dialog.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/shell/48z-drawer-left.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/start/Startup.java:1161",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/LayoutPrefs.java:26"
+      ],
+      "reason": "Header crowding is part of scale/minimum-width policy. Fresh 1.6 session displayed CIRCUITS fully, so the original truncation is configuration-dependent.",
+      "canonicalId": "shell-05"
+    },
+    {
+      "id": "shell-22",
+      "title": "Activity bar: Search and Settings open modal dialogs instead of views; no hover state; no shortcut hints",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/01-fresh.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/Frame.java:298",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/start/Startup.java:1125"
+      ],
+      "reason": "Bottom action icons may legitimately open dialogs while top icons switch views. Standardize affordances if desired; the behavior alone is not a bug. Hover/tooltip details not retested."
+    },
+    {
+      "id": "shell-23",
+      "title": "Find Action palette: small fixed window, a stray horizontal scrollbar, debug footer text, low-contrast selected row, garish orange match chips",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [],
+      "reason": "Not independently reproduced, visually inspected, or source-traced in this bounded review. Retained as a candidate, not counted as a verified defect."
+    },
+    {
+      "id": "shell-24",
+      "title": "Simulate side view duplicates the toolbar controls and uses a raw JTree with unscaled overlapping icons",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [],
+      "reason": "Not independently reproduced, visually inspected, or source-traced in this bounded review. Retained as a candidate, not counted as a verified defect."
+    },
+    {
+      "id": "shell-25",
+      "title": "Library 'tree' toggle uses a folder icon and opens a 2005-style JTree with overlapping icons and clipped names",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [],
+      "reason": "Not independently reproduced, visually inspected, or source-traced in this bounded review. Retained as a candidate, not counted as a verified defect."
+    },
+    {
+      "id": "shell-26",
+      "title": "Startup 'Autosave found' prompts: raw file names, unclear choices, hidden behind the splash, triggered by pristine blank projects",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/file/Loader.java:175",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/qa.sh",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/02-before-close.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/03-confirm-close.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/04-after-escape.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/05-save-dialog.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/06-after-save-cancel.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/menu/MenuFile.java:137",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/Frame.java:683"
+      ],
+      "reason": "Unnamed autosaves target user.home; QA isolation failure amplifies recovered prompts. Per-file recovery/splash-overlap behavior was not independently replayed. Keep application recovery UX distinct from the harness defect."
+    },
+    {
+      "id": "shell-27",
+      "title": "Splash and About screens are the unchanged 2005 artwork; About credits are unreadable on the dark theme",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [],
+      "reason": "Not independently reproduced, visually inspected, or source-traced in this bounded review. Retained as a candidate, not counted as a verified defect."
+    },
+    {
+      "id": "shell-28",
+      "title": "Help > User's Guide opens JavaHelp with Windows-XP-era screenshots and a legacy viewer",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [],
+      "reason": "Not independently reproduced, visually inspected, or source-traced in this bounded review. Retained as a candidate, not counted as a verified defect."
+    },
+    {
+      "id": "shell-29",
+      "title": "File > Open uses the stock Swing JFileChooser at 1x size: 3 visible rows, horizontal list, no places",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/05-save-dialog.png"
+      ],
+      "reason": "Live Save chooser confirms compact legacy controls, but native places/sidebar/preview are feature requests. Open chooser's claimed row count was not independently tested."
+    },
+    {
+      "id": "shell-30",
+      "title": "First launch opens a half-width, full-height, non-maximised window at 0,0 on the Circuits view",
+      "status": "confirmed-visual",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/01-fresh.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/Frame.java:298",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/start/Startup.java:1125"
+      ],
+      "reason": "Fresh isolated preferences produced a 1280x1600 window on a 2560x1600 private display at origin. This is a poor default layout preference, not a workflow blocker."
+    },
+    {
+      "id": "shell-31",
+      "title": "ConcurrentModificationException in hotkeySync on the preferences thread",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/shell/log-cme-hotkeysync.txt",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/prefs/HotkeyOptions.java:194",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/prefs/AppPreferences.java:1704"
+      ],
+      "reason": "Recovered log contains ConcurrentModificationException in hotkeySync on java.util.prefs dispatcher. HEAD retains an unfiltered preference listener and iteration of mutable gui_sync_objects off EDT. No independent race reproduction; frequency and user impact remain unknown."
+    },
+    {
+      "id": "shell-32",
+      "title": "Preferences (seen along the way): content floats mid-page, tiny checkboxes, stray horizontal scrollbar, 'Zoom factor' means UI scale",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [],
+      "reason": "Not independently reproduced, visually inspected, or source-traced in this bounded review. Retained as a candidate, not counted as a verified defect."
+    },
+    {
+      "id": "shell-33",
+      "title": "Canvas at '100%' ignores the 1.6 interface scale: circuits render tiny, black labels vanish, white REG boxes and a neon ALU",
+      "status": "duplicate",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/canvas/31-text-committed-z.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/tools/TextTool.java:155",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/prefs/AppPreferences.java:690"
+      ],
+      "reason": "Compound canvas claim repeats annotation contrast (canvas-02) and default zoom/readability (canvas-01). Custom appearance colors in loaded files are not automatically theme bugs.",
+      "canonicalId": "canvas-02"
+    },
+    {
+      "id": "shell-34",
+      "title": "Welcome screen disappears (blank editor) while the Preferences window is open",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [],
+      "reason": "Not independently reproduced, visually inspected, or source-traced in this bounded review. Retained as a candidate, not counted as a verified defect."
+    },
+    {
+      "id": "shell-35",
+      "title": "Auto-Tick (Ctrl+K) on a circuit without a clock opens a fixed 300x400 dialog with an empty list",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [],
+      "reason": "Not independently reproduced, visually inspected, or source-traced in this bounded review. Retained as a candidate, not counted as a verified defect."
+    },
+    {
+      "id": "shell-36",
+      "title": "Tooltips near the right screen edge are cut off",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [],
+      "reason": "Not independently reproduced, visually inspected, or source-traced in this bounded review. Retained as a candidate, not counted as a verified defect."
+    },
+    {
+      "id": "shell-37",
+      "title": "Editor tabs and zoom pill: tiny low-contrast close x, dirty dot in the wrong place, no hover in the pill, 10% zoom steps",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/23-last-tab.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/EditorTabModel.java:151",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/EditorTabs.java:184",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/ZoomPill.java:91"
+      ],
+      "reason": "Dirty dot placement and 10-percent zoom steps are choices. Live tabs/pill exist and source confirms unfocusable, unfilled pill buttons; missing hover and empty-canvas scrollbar behavior were not retested. Group small-target and zoom usability work."
+    },
+    {
+      "id": "shell-38",
+      "title": "Side-panel list and filter polish: placeholder touches its icon, redundant 'main (main)', weak selected-row contrast",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/01-fresh.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/Frame.java:298",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/start/Startup.java:1125"
+      ],
+      "reason": "Fresh screenshot shows close icon/placeholder spacing and main (main) redundancy. Treat this as list/filter copy and spacing polish; reported selected-row contrast ratio not independently measured."
+    },
+    {
+      "id": "inspector-01",
+      "title": "Inspector is 280 unscaled px wide with a fixed 50/50 column split, so about half of all labels and values are cut off at 1.6x",
+      "status": "duplicate",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/07-multiedit-panel.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/14-cancel-sequence.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/fpga/gui/HdlColorRenderer.java:58",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/fpga/gui/HdlColorRenderer.java:83",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/08-after-multicancel-menu-crop.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/05-save-dialog.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/shell/48z-drawer-left.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/start/Startup.java:1161",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/LayoutPrefs.java:26"
+      ],
+      "reason": "Same device-pixel width and clipped two-column inspector, visually confirmed live.",
+      "canonicalId": "shell-05"
+    },
+    {
+      "id": "inspector-02",
+      "title": "The Properties panel cannot be resized: dragging the divider snaps back, and the divider is a 5 px unscaled target",
+      "status": "duplicate",
+      "severity": "P1",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/20-label-reselected.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/21-divider-after.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/ShellLayout.java:166",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/ShellLayout.java:201"
+      ],
+      "reason": "Same SizedSplit drag snapback, independently reproduced on the inspector.",
+      "canonicalId": "shell-03"
+    },
+    {
+      "id": "inspector-03",
+      "title": "Neon full-cell colour blocks: pure #00FF00 / #FF0000 FPGA row, orange 'Required f...', and every colour attribute painted as a saturated cell",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/07-multiedit-panel.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/14-cancel-sequence.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/fpga/gui/HdlColorRenderer.java:58",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/fpga/gui/HdlColorRenderer.java:83"
+      ],
+      "reason": "Live full-cell green support status dominates the panel. HdlColorRenderer source confirms saturated status/required/color fills. Other color-attribute stacks were not independently viewed."
+    },
+    {
+      "id": "inspector-04",
+      "title": "The 'FPGA supported' row is pinned first for everything, including wires, text labels, drawing shapes and mixed selections, where it is meaningless or wrong",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/AttributeSetTableModel.java:295",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/AttrTableSelectionModel.java:65"
+      ],
+      "reason": "HDL row queries compInst; mixed-selection title setup chooses one encountered component factory. It does not aggregate support across selected factories. Always-show styling is design; misleading aggregate status is the correctness concern."
+    },
+    {
+      "id": "inspector-05",
+      "title": "The mouse wheel never scrolls the property list; over the value column it silently changes values (scroll-jacking)",
+      "status": "confirmed-runtime",
+      "severity": "P1",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/21-divider-after.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/22-wheel-facing-panel.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/AttrTable.java:135",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/AttrTable.java:98"
+      ],
+      "reason": "Without clicking the value editor, two wheel-up notches over Facing changed East to North and rotated the gate. Table consumes wheel handling at the component level; long splitter-list scrolling was source-assessed, not live-reproduced."
+    },
+    {
+      "id": "inspector-06",
+      "title": "Wheel gestures behave inconsistently: dropdown rows record one undo step per notch, and wheel direction is inverted between row types",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/21-divider-after.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/22-wheel-facing-panel.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/AttrTable.java:135"
+      ],
+      "reason": "Option-combo branch immediately applies each notch, numeric branch uses pending settle timer. Throttle ignores close events. Exact lost-notch count and pen-width direction were not independently replayed."
+    },
+    {
+      "id": "inspector-07",
+      "title": "A half-typed value is silently discarded when the user clicks the canvas",
+      "status": "confirmed-runtime",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/20-label-sequence.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/AttrTable.java:217",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/AttrTable.java:415"
+      ],
+      "reason": "Typed ScratchLabel was visible in the editor; clicking empty canvas then reselecting the gate left Label empty. The uncommitted draft is cancelled when the model changes before focusLost commits. No saved project content was lost."
+    },
+    {
+      "id": "inspector-08",
+      "title": "Validation happens after the fact in modal dialogs; invalid input is thrown away and messages are inconsistent",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/AttributeSetTableModel.java:260",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/AttrTable.java:201"
+      ],
+      "reason": "AttributeSetTableModel exposes NumberFormatException messages; AttrTable shows modal warnings. Broad claim that every invalid field discards drafts or has the same icon was not live verified."
+    },
+    {
+      "id": "inspector-09",
+      "title": "Error and validation copy is old-Logisim wording: shouting, duplicated 'Error:', missing spaces, invisible characters",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [],
+      "reason": "The recovered validation wording merits plain-language revision, but individual error dialogs were not independently opened. Bundle with validation UX, not a separate functional bug."
+    },
+    {
+      "id": "inspector-10",
+      "title": "On a fresh window, clicking components shows a completely blank Properties panel (Poke tool is the default), with no empty state; files without a toolbar have no visible Select tool at all",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/01-fresh.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/Frame.java:298",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/start/Startup.java:1125"
+      ],
+      "reason": "Fresh window has active Poke tool and a blank bordered Properties panel without guidance. Missing Select tool in files with custom/empty toolbars was not independently tested."
+    },
+    {
+      "id": "inspector-11",
+      "title": "Closing the Properties panel is a one-way trip: no menu item or shortcut brings it back, 'Show Properties' does nothing, and the hidden state persists across restarts",
+      "status": "duplicate",
+      "severity": "P1",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/Frame.java:372",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/Frame.java:1182",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/ShellLayout.java:253",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/ShellLayout.java:332"
+      ],
+      "reason": "Same missing direct Properties-panel restore path.",
+      "canonicalId": "shell-04"
+    },
+    {
+      "id": "inspector-12",
+      "title": "The inspector is still the 2005 raw two-column JTable: no groups, no search, no descriptions, no editor affordances, booleans as Yes/No dropdowns",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/07-multiedit-panel.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/14-cancel-sequence.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/fpga/gui/HdlColorRenderer.java:58",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/fpga/gui/HdlColorRenderer.java:83"
+      ],
+      "reason": "Live table lacks persistent editor affordances and grouping. Sections, search and property help are improvements; a two-column table itself is not a bug."
+    },
+    {
+      "id": "inspector-13",
+      "title": "Cells have no padding: text is flush to the cell edges and labels run into values ('Output Value0/1', 'Circuit Namemain')",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/07-multiedit-panel.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/14-cancel-sequence.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/fpga/gui/HdlColorRenderer.java:58",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/fpga/gui/HdlColorRenderer.java:83"
+      ],
+      "reason": "Output Value0/1 and neighboring labels/values visibly run together. HdlColorRenderer removes cell borders/insets; fix padding separately from total panel width."
+    },
+    {
+      "id": "inspector-14",
+      "title": "Heavy selection and focus styling: saturated full-width blue row bars and a blue rectangle around the whole table",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/14-cancel-sequence.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/18-multi-undo-sequence.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/AttrTable.java:378",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/AttrTableSelectionModel.java:157"
+      ],
+      "reason": "Strong blue row/focus styling is visible during multi-edit, but heaviness is aesthetic. Retain visible keyboard focus while improving contrast and restraint."
+    },
+    {
+      "id": "inspector-15",
+      "title": "Panel title uppercases everything (misrepresenting case-sensitive names), shows raw coordinates, truncates, and says 'VARIOUS ITEMS × 3'",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/PanelHeader.java:68",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/AttrTableSelectionModel.java:106"
+      ],
+      "reason": "PanelHeader uppercases user content as well as labels, so identifier casing is misrepresented. Coordinates and Various items wording are lower-priority design choices."
+    },
+    {
+      "id": "inspector-16",
+      "title": "In the Appearance editor the panel header is stale: it keeps the last layout selection ('LED (1170,970)') while showing circuit or shape attributes",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/inspector/103-appearance-insp-z.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/Frame.java:947",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/Frame.java:1085"
+      ],
+      "reason": "Archived crop shows LED (1170,970) header over circuit attributes. HEAD appearance path sets AttrTable through its manager, bypassing the Frame method that updates Inspector title. No live appearance retest."
+    },
+    {
+      "id": "inspector-17",
+      "title": "Any selection that includes a wire loses every shared property: rubber-band selecting pins + gates shows only the FPGA row",
+      "status": "design-recommendation",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/SelectionAttributes.java:68"
+      ],
+      "reason": "Source confirms intersection includes wire attributes. This is mathematically correct for all selected objects, but component-only aggregate editing may be more useful. Define scope explicitly before excluding wires; do not silently pretend a change applied to everything."
+    },
+    {
+      "id": "inspector-18",
+      "title": "Multi-select editing: '(various)' looks like a real value, the editor pre-fills the first item's value, and labels are silently auto-numbered",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/SelectionAttributes.java:110",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/AttributeSetTableModel.java:207",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/AttrTableSelectionModel.java:167"
+      ],
+      "reason": "Mixed values are displayed as a plain string and multi-label edits use AutoLabel. Correct the claimed cause: SelectionAttributes stores null on disagreement, not the first component's value; editor defaults can still turn opening/committing a mixed field into a concrete value. No independent multi-component live test."
+    },
+    {
+      "id": "inspector-19",
+      "title": "Editing several table rows at once creates three undo entries, including an empty one",
+      "status": "confirmed-runtime",
+      "severity": "P1",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/14-cancel-sequence.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/18-multi-undo-sequence.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/AttrTable.java:378",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/AttrTableSelectionModel.java:157"
+      ],
+      "reason": "Two-row Yes commit required three Undos to restore No/No; observed sequence Yes/Yes -> Yes/No -> Yes/No -> No/No (the original report's no-op position differs). More seriously, Escape cancelling a No/Yes multi-edit changed it to No/No. One Undo restored the changed Yes. Same cancel-handler writes explain both symptoms."
+    },
+    {
+      "id": "inspector-20",
+      "title": "Undo history is useless for property edits: every entry reads 'Change Selection Property'",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/08-after-multicancel-menu-crop.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/AttrTableSelectionModel.java:157"
+      ],
+      "reason": "Property actions share one generic label in source and the live menu. Improve names with attribute/selection scope; this is undo discoverability, not undo failure."
+    },
+    {
+      "id": "inspector-21",
+      "title": "Tooltips for cut-off values are themselves cut off at the screen edge (and so is the close-button tooltip)",
+      "status": "duplicate",
+      "severity": null,
+      "evidence": [],
+      "reason": "Same right-edge tooltip clipping claim. Canonical remains unverified because heavyweight popup bounds and harness composition were not isolated.",
+      "canonicalId": "shell-36"
+    },
+    {
+      "id": "inspector-22",
+      "title": "Font picker is an unlabelled legacy dialog titled 'Select Value' with unscaled checkboxes and a clipped preview",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [],
+      "reason": "Not independently reproduced, visually inspected, or source-traced in this bounded review. Retained as a candidate, not counted as a verified defect."
+    },
+    {
+      "id": "inspector-23",
+      "title": "Colour picker is a bulky modal colour-wheel dialog with no swatches, unlabelled tiny radio buttons and redundant controls",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [],
+      "reason": "Not independently reproduced, visually inspected, or source-traced in this bounded review. Retained as a candidate, not counted as a verified defect."
+    },
+    {
+      "id": "inspector-24",
+      "title": "Property naming is inconsistent: Title Case vs sentence case, trailing colons, Java font names, instruction text as a value",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [],
+      "reason": "Not independently reproduced, visually inspected, or source-traced in this bounded review. Retained as a candidate, not counted as a verified defect."
+    },
+    {
+      "id": "inspector-25",
+      "title": "Keyboard editing barely works: no type-to-edit, F2 dead after clicking a label, no visible focused cell",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/AttrTable.java:528"
+      ],
+      "reason": "CellEditor rejects typed KeyEvents except Space, confirming no normal type-to-edit. F2 on the noneditable label column is not itself proof of failure. Add a clear focus/edit path and retest keyboard-only workflow."
+    },
+    {
+      "id": "inspector-26",
+      "title": "Tool defaults and a selected component look identical; nothing says you are editing defaults for new parts",
+      "status": "design-recommendation",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/AttrTableToolModel.java:49"
+      ],
+      "reason": "Tool-default versus instance editing needs an explicit scope label. Source has a separate ToolAttributeAction route; no independent comparative screenshot of tool defaults."
+    },
+    {
+      "id": "inspector-27",
+      "title": "The STATE section expands into an empty strip with no explanation",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/RegTabContent.java:120",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/RegTabContent.java:178"
+      ],
+      "reason": "Register list filters on ATTR_SHOW_IN_TAB and reconstructs a header even when there are no rows. Missing explanatory empty state is supported; an actual opted-in register failing to appear was not established."
+    },
+    {
+      "id": "inspector-28",
+      "title": "Default colours shown and edited in the inspector are invisible on the dark canvas (#000000 text/pen, #0000FF LED label)",
+      "status": "duplicate",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/canvas/31-text-committed-z.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/tools/TextTool.java:155",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/prefs/AppPreferences.java:690"
+      ],
+      "reason": "Annotation black-on-dark is confirmed under canvas-02. LED-label and appearance-pen variants were not independently checked; do not expand the confirmed scope to all saved custom colors.",
+      "canonicalId": "canvas-02"
+    },
+    {
+      "id": "inspector-29",
+      "title": "Editor types behave inconsistently on click: some dropdowns open immediately, the editable Data Bits combo does not, numbers are bare text",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/07-multiedit-panel.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/14-cancel-sequence.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/fpga/gui/HdlColorRenderer.java:58",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/fpga/gui/HdlColorRenderer.java:83"
+      ],
+      "reason": "Editable numeric combo and finite-choice combo legitimately differ. Persistent affordances/range hints would help; different editor types alone are not a functional bug."
+    },
+    {
+      "id": "inspector-30",
+      "title": "Labels must be HDL identifiers even for users who never target an FPGA ('my gate', 'Clock A', circuit 'main 2' rejected)",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [],
+      "reason": "Separating display labels from HDL identifiers is a product/data-format decision. The report does not establish accidental regression; retain as a design proposal with export/name compatibility tests."
+    },
+    {
+      "id": "inspector-31",
+      "title": "Other things noticed along the way: autosave dialog copy, Project Options scaling, splitter fan-out, appearance-view chrome, toolbar icon",
+      "status": "duplicate",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/file/Loader.java:175",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/qa.sh",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/02-before-close.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/03-confirm-close.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/04-after-escape.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/05-save-dialog.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/06-after-save-cancel.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/menu/MenuFile.java:137",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/Frame.java:683"
+      ],
+      "reason": "Mixed catch-all: autosave repeats shell-26, icon style shell-12, options scaling shell-02. Splitter fan-out preserving existing mappings is not demonstrated faulty; appearance tab naming and options subclaims remain unverified.",
+      "canonicalId": "shell-26"
+    },
+    {
+      "id": "canvas-01",
+      "title": "Canvas '100%' ignores the 1.6 UI scale – circuits, values and labels render at 1/1.6 size and files open tiny",
+      "status": "design-recommendation",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/02-before-close.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/ZoomControl.java:177"
+      ],
+      "reason": "Live 100-percent gate size is small relative to 1.6-scale chrome. Canvas zoom and interface scale are separate concepts; automatically multiplying serialized circuit coordinates is not an established fix. Calibrate initial viewport/readability as a design change."
+    },
+    {
+      "id": "canvas-02",
+      "title": "Text-tool annotations are drawn black on the dark canvas (effectively invisible)",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/canvas/31-text-committed-z.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/tools/TextTool.java:155",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/prefs/AppPreferences.java:690"
+      ],
+      "reason": "Reviewed archived committed text: black on dark canvas is difficult to read. HEAD TextTool stamps a black default and does not register it as a themed color. Preserve explicit file colors when designing a theme-aware default/migration."
+    },
+    {
+      "id": "canvas-03",
+      "title": "Inline canvas text editor is the legacy yellow sticky note (#FFFF99, black text) in dark mode, and leaves a stale halo",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [],
+      "reason": "Not independently reproduced, visually inspected, or source-traced in this bounded review. Retained as a candidate, not counted as a verified defect."
+    },
+    {
+      "id": "canvas-04",
+      "title": "Pin values: pure-blue radix letter and white-on-bright-green bit ovals are unreadable",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/canvas/15-pin1-z10.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/wiring/Pin.java:875"
+      ],
+      "reason": "Archived pin crop shows dark-blue radix letter and pale digit on bright green. HEAD hard-codes Color.BLUE and Color.WHITE. Exact contrast ratio not recomputed; legibility problem is visually clear."
+    },
+    {
+      "id": "canvas-05",
+      "title": "Bus wires are the same colour as component outlines in dark theme",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/canvas/74-mux-fit.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/ZoomControl.java:420",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/BasicZoomModel.java:114",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/Canvas.java:213"
+      ],
+      "reason": "Light bus and component outlines are visible in the archived fit image. Similar hue alone is not a bug; width and junction geometry also encode meaning. Consider an additional distinction after testing schematic clarity."
+    },
+    {
+      "id": "canvas-06",
+      "title": "Double-click opens a modal 'Edit/specify a components label' dialog, even on subcircuits, with a looping error dialog",
+      "status": "design-recommendation",
+      "severity": "P2",
+      "evidence": [],
+      "reason": "Double-click navigation versus label editing is a convention choice. The modal-label workflow was not independently replayed; propose a deliberate shortcut policy, retaining access to label editing."
+    },
+    {
+      "id": "canvas-07",
+      "title": "Rotating a component pivots about its anchor and disconnects every wire",
+      "status": "design-recommendation",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/tools/EditTool.java:109"
+      ],
+      "reason": "Source confirms Facing-only rotation without rerouting. Reconnection is a feature decision with risk of unintended net changes; do not automatically rotate about center or reconnect nearest wires without a defined electrical-connectivity policy."
+    },
+    {
+      "id": "canvas-08",
+      "title": "Keyboard model is legacy: arrows re-face, no nudge, Escape doesn't deselect, no Ctrl+Y / Ctrl+0 / Ctrl+=",
+      "status": "design-recommendation",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/tools/EditTool.java:131"
+      ],
+      "reason": "Arrow-key facing and alternative redo/zoom shortcuts are compatibility/discoverability choices. Add discoverable commands and optional aliases; do not call every departure from another editor a broken workflow."
+    },
+    {
+      "id": "canvas-09",
+      "title": "Context menus are nearly empty, missing on empty canvas, and Ctrl+click opens a menu instead of toggling selection",
+      "status": "design-recommendation",
+      "severity": "P2",
+      "evidence": [],
+      "reason": "Richer context menus and Ctrl-click additive selection are proposals. Saved mouse mappings must be respected; a configured context-menu gesture is not intrinsically defective."
+    },
+    {
+      "id": "canvas-10",
+      "title": "Grid rendering is inconsistent across zoom: two-level only at exactly 100%, square blobs when zoomed in, grey moiré wash when zoomed out",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/canvas/47-grid-compare.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/GridPainter.java:138"
+      ],
+      "reason": "Reviewed archived grid comparison: hierarchy changes and low-zoom dense mesh are visible. Source has two-level rendering only at f==1.0 and no general screen-density threshold."
+    },
+    {
+      "id": "canvas-11",
+      "title": "Zoom steps are linear 5/10/20 %: ~55 wheel notches from 100% to 1000%, and 5% minimum is useless",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/Frame.java:563"
+      ],
+      "reason": "Additive zoom steps exist in the source; choosing multiplicative steps is usability work. The precise reported wheel count was not rerun."
+    },
+    {
+      "id": "canvas-12",
+      "title": "Zoom-to-fit hugs the top-left edge, keeps a huge scroll range, and is labelled just 'Auto'",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/canvas/74-mux-fit.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/ZoomControl.java:420",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/BasicZoomModel.java:114",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/Canvas.java:213"
+      ],
+      "reason": "Archived fit result has substantial unused right space and content near the left edge. Reject the alleged missing-centering call: ZoomControl calls setZoomFactorCenter, CanvasPane handles CENTER, and Canvas.center calculates offsets. Near-origin negative-scroll clamping and unchanged-factor skipping are candidates, not proven causes."
+    },
+    {
+      "id": "canvas-13",
+      "title": "Selection feedback: wires show only endpoint dots; handles pile up, scale with zoom and hide small parts",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [],
+      "reason": "Not independently reproduced, visually inspected, or source-traced in this bounded review. Retained as a candidate, not counted as a verified defect."
+    },
+    {
+      "id": "canvas-14",
+      "title": "Rubber-band live preview highlights wires and pins but not gates",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [],
+      "reason": "Not independently reproduced, visually inspected, or source-traced in this bounded review. Retained as a candidate, not counted as a verified defect."
+    },
+    {
+      "id": "canvas-15",
+      "title": "Port hover ring leaves stale blue pixels after the mouse moves away",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [],
+      "reason": "Not independently reproduced, visually inspected, or source-traced in this bounded review. Retained as a candidate, not counted as a verified defect."
+    },
+    {
+      "id": "canvas-16",
+      "title": "Splitter is an illegible 20 px blob with 7-unit bit labels printed over its own stubs",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [],
+      "reason": "Not independently reproduced, visually inspected, or source-traced in this bounded review. Retained as a candidate, not counted as a verified defect."
+    },
+    {
+      "id": "canvas-17",
+      "title": "Width-mismatch badges use light-theme colours (dark red on peach) and overlap other labels",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [],
+      "reason": "Not independently reproduced, visually inspected, or source-traced in this bounded review. Retained as a candidate, not counted as a verified defect."
+    },
+    {
+      "id": "canvas-18",
+      "title": "Placement ghost of gates looks exactly like a placed gate",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/canvas/07-and-ghost-z.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/canvas/08-and-placed-z.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/gates/AbstractGate.java:383",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/gates/AbstractGate.java:436"
+      ],
+      "reason": "Gate paintGhost calls paintBase, whose color assignment overrides the requested ghost color. Archived ghost outline is the same bright family as a placed gate, but the provided placed crop is selected, so pixel-identical complete rendering is not established."
+    },
+    {
+      "id": "canvas-19",
+      "title": "Components are unfilled wireframes – grid dots show through gate, pin and tunnel bodies",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/canvas/07-and-ghost-z.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/canvas/08-and-placed-z.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/gates/AbstractGate.java:383",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/gates/AbstractGate.java:436"
+      ],
+      "reason": "Transparent schematic symbols are a valid established design. Body fill is optional polish; do not count wireframe styling or visible grid inside gates as a defect."
+    },
+    {
+      "id": "canvas-20",
+      "title": "Input and output pins look the same; unconnected output shows 'U'; pin labels cramped and bottom-aligned",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/canvas/15-pin1-z10.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/wiring/Pin.java:875"
+      ],
+      "reason": "Input/output differentiation and label spacing merit design review. U denotes undefined state, not an error in itself. No independent full pin-variant comparison."
+    },
+    {
+      "id": "canvas-21",
+      "title": "Port markers are 4 px specks in low-contrast grey/red",
+      "status": "design-recommendation",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/02-before-close.png"
+      ],
+      "reason": "Larger or zoom-adaptive hit/port affordances may improve use; tiny marker and error-signaling interpretations were not independently measured for every component."
+    },
+    {
+      "id": "canvas-22",
+      "title": "Ctrl+D duplicates exactly on top of the original (looks like nothing happened)",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [],
+      "reason": "Not independently reproduced, visually inspected, or source-traced in this bounded review. Retained as a candidate, not counted as a verified defect."
+    },
+    {
+      "id": "canvas-23",
+      "title": "No drag-and-drop from the parts palette to the canvas",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/palette/ComponentTile.java:86"
+      ],
+      "reason": "ComponentTile arms tools on mousePressed and has no drag-transfer handlers. The promised drag/drop interaction is absent in that path; click-then-place remains usable. No live palette drag repeated."
+    },
+    {
+      "id": "canvas-24",
+      "title": "Palette content jumps ~125 px after the first placement ('Recently used' inserted at top)",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [],
+      "reason": "Not independently reproduced, visually inspected, or source-traced in this bounded review. Retained as a candidate, not counted as a verified defect."
+    },
+    {
+      "id": "canvas-25",
+      "title": "Welcome 'New project' opens a second window and leaves the blank one stuck on the welcome page",
+      "status": "duplicate",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/01-fresh.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/Frame.java:298",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/start/Startup.java:1125"
+      ],
+      "reason": "Same startup Welcome/New project ownership mismatch.",
+      "canonicalId": "shell-09"
+    },
+    {
+      "id": "canvas-26",
+      "title": "Legacy wording and irrelevant items in the Edit menu / undo names",
+      "status": "duplicate",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/08-after-multicancel-menu-crop.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/05-save-dialog.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/shell/48z-drawer-left.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/start/Startup.java:1161",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/LayoutPrefs.java:26"
+      ],
+      "reason": "Same legacy Edit-menu wording and appearance-only command visibility.",
+      "canonicalId": "shell-14"
+    },
+    {
+      "id": "canvas-27",
+      "title": "Off-screen indicators look like crop-mark brackets, are unscaled, and collide with content/zoom pill",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [],
+      "reason": "Edge-indicator shape, scale and placement need visual design review. Reported collisions were not independently inspected; no blanket removal recommendation."
+    },
+    {
+      "id": "canvas-28",
+      "title": "Tunnel label is crammed against the tunnel outline",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [],
+      "reason": "Not independently reproduced, visually inspected, or source-traced in this bounded review. Retained as a candidate, not counted as a verified defect."
+    },
+    {
+      "id": "canvas-29",
+      "title": "Window title shows debug build ID plus a 💾 emoji plus '[UNSAVED]'",
+      "status": "duplicate",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/02-before-close.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/Frame.java:651"
+      ],
+      "reason": "Same development title/dirty-indicator polish.",
+      "canonicalId": "shell-20"
+    },
+    {
+      "id": "canvas-30",
+      "title": "Canvas toolbar mixes legacy colour bitmaps with line icons; 'Add Register' icon unreadable; both pin tools say 'Add Pin'",
+      "status": "duplicate",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/01-fresh.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/Frame.java:298",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/start/Startup.java:1125"
+      ],
+      "reason": "Same mixed toolbar icon styles. Identical pin tooltips also overlap shell-13 and were not independently hovered.",
+      "canonicalId": "shell-12"
+    },
+    {
+      "id": "canvas-31",
+      "title": "Branching from a wire routes horizontal-first, overlapping the existing wire and cutting across others",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [],
+      "reason": "Not independently reproduced, visually inspected, or source-traced in this bounded review. Retained as a candidate, not counted as a verified defect."
+    },
+    {
+      "id": "canvas-32",
+      "title": "No hover affordances on the canvas: components don't highlight, ports/wires show no tooltip",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [],
+      "reason": "Hover highlight and generic net-value tooltips are useful additions, not proof of an existing functional failure. Absence was not independently timed."
+    },
+    {
+      "id": "canvas-33",
+      "title": "Autosave recovery prompt is developer-worded, appears once per file, hides behind the splash, and writes dotfiles into $HOME",
+      "status": "duplicate",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/file/Loader.java:175",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/qa.sh",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/02-before-close.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/03-confirm-close.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/04-after-escape.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/05-save-dialog.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/06-after-save-cancel.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/menu/MenuFile.java:137",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/Frame.java:683"
+      ],
+      "reason": "Same recovery/autosave behavior; original parallel sessions shared real user.home and may have contaminated frequency.",
+      "canonicalId": "shell-26"
+    },
+    {
+      "id": "canvas-34",
+      "title": "Splash screen is the old graffiti logo with tiny unscaled status text",
+      "status": "duplicate",
+      "severity": null,
+      "evidence": [],
+      "reason": "Same splash artwork/style claim; canonical remains unverified in this bounded review.",
+      "canonicalId": "shell-27"
+    },
+    {
+      "id": "canvas-35",
+      "title": "Inspector noise seen while editing: neon 'FPGA supported' row, amber 'Required fo…', truncated keys, raw coordinates",
+      "status": "duplicate",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/07-multiedit-panel.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/14-cancel-sequence.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/fpga/gui/HdlColorRenderer.java:58",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/fpga/gui/HdlColorRenderer.java:83"
+      ],
+      "reason": "Same saturated inspector status styling, with truncation already covered by shell-05 and padding by inspector-13.",
+      "canonicalId": "inspector-03"
+    },
+    {
+      "id": "canvas-36",
+      "title": "Status bar and activity bar are pure #000000, clashing with #1E1F22 chrome and #292A2D panels",
+      "status": "duplicate",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/20-label-reselected.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/21-divider-after.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/ShellLayout.java:166",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/ShellLayout.java:201"
+      ],
+      "reason": "Same dark chrome tonal preference; no new defect.",
+      "canonicalId": "shell-19"
+    },
+    {
+      "id": "canvas-37",
+      "title": "Editor tab shows both a dirty dot and a close × next to the name",
+      "status": "duplicate",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/23-last-tab.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/EditorTabModel.java:151",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/EditorTabs.java:184",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/ZoomPill.java:91"
+      ],
+      "reason": "Same dirty-marker/close-button placement preference; both controls existing is not a functional bug.",
+      "canonicalId": "shell-37"
+    }
+  ],
+  "newFindings": [
+    {
+      "id": "editing-new-01",
+      "canonicalId": "inspector-19",
+      "status": "confirmed-runtime",
+      "severity": "P1",
+      "title": "Cancelling a multi-row attribute edit mutates differing values",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/14-cancel-sequence.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/18-multi-undo-sequence.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/AttrTable.java:378",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/AttrTableSelectionModel.java:157"
+      ],
+      "reason": "Extension of the same cancellation/undo root cause, not an additional independent bug count.",
+      "reproduction": "AND gate: Negate 1=No, Negate 2=Yes. Select both label rows, open Negate 1 value, Escape to dismiss popup then Escape to cancel editing. For undo test start both No, multi-set Yes, undo three times.",
+      "fix": "Cancellation must only discard the draft. Capture target rows and pre-edit values before editor teardown. Commit compatible targets through one atomic SetAttributeAction; suppress no-op mutations and reentrant commits.",
+      "acceptance": "Cancel with mixed values leaves all values and undo depth unchanged. One Enter commit creates one undo item; one Undo restores all original values and one Redo reapplies them. Cover popup Escape, editor Escape, focus loss, model switch and mixed component selections."
+    },
+    {
+      "id": "editing-harness-01",
+      "canonicalId": "qa-isolation",
+      "status": "confirmed-source",
+      "severity": "P1",
+      "scope": "QA harness only",
+      "title": "Preferences isolation does not isolate unnamed autosaves",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/file/Loader.java:175",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/qa.sh"
+      ],
+      "reason": "Original harness leaves user.home unchanged. Private Java home was supplied and verified for this review; no real autosave cleanup was attempted.",
+      "fix": "In a scratch harness set user.home=$D/home plus private preference/config roots; validate effective JVM properties. Capture actual display/window geometry, handle heavyweight popups explicitly, keep the launch terminal alive and record jar hash/build provenance. Never clear real autosaves.",
+      "acceptance": "Creating/closing/recovering disposable projects touches only the session tree. Nondefault-size captures include correct bounds. Session stop validates PIDs and leaves every other compositor/app untouched."
+    }
+  ],
+  "fixPlan": [
+    {
+      "id": "close-guard",
+      "severity": "P0",
+      "candidates": [
+        "shell-01"
+      ],
+      "title": "Make project close cancellation safe",
+      "reproduction": "New scratch project; place an AND gate; File > Close; Escape. Repeat with Save, then cancel the Save chooser.",
+      "observed": "Both routes dispose the edited project and leave a blank replacement. Only disposable unsaved in-memory content was lost; recoverability from autosave was not tested.",
+      "cause": "MenuFile only excludes result 2, so CLOSED_OPTION (-1) proceeds; it also ignores doSave's false result. Frame.confirmClose is safer for dismissal but stops autosave even after a cancelled/failed Save, so blindly routing to it is insufficient.",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/02-before-close.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/03-confirm-close.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/04-after-escape.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/05-save-dialog.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/06-after-save-cancel.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/menu/MenuFile.java:137",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/Frame.java:683"
+      ],
+      "fix": "Use one close-decision routine for menu/window/quit entry points. Proceed only on explicit discard or successful save; keep project, undo history and autosave running on Escape, dialog X, Cancel and failed/cancelled Save. Dispose and clean autosave only after an accepted decision. Localize the prompt.",
+      "acceptance": "Run scratch tests for Escape, dialog X, Cancel, Save success, Save chooser Cancel, unwritable target, Discard, one-window and multiple-window cases. Cancel/failure preserves the exact component/attribute model, dirty state, frame and running autosave; success closes exactly the intended project."
+    },
+    {
+      "id": "attribute-transaction",
+      "severity": "P1",
+      "candidates": [
+        "inspector-19"
+      ],
+      "title": "Remove writes from attribute cancellation; batch multi-row commits",
+      "reproduction": "AND gate: Negate 1=No, Negate 2=Yes. Select both label rows, open Negate 1 value, Escape to dismiss popup then Escape to cancel editing. For undo test start both No, multi-set Yes, undo three times.",
+      "observed": "Cancel makes both No; one Undo restores the changed Yes. Multi-commit sequence is Yes/Yes -> Yes/No -> Yes/No -> No/No over three Undos.",
+      "cause": "AttrTable.fireEditingCanceled notifies listeners, then writes the editor value to every selected row. JTable has already cleared editing-row state, defeating the skip. Each setValueAt generates a separate project action.",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/14-cancel-sequence.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/18-multi-undo-sequence.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/AttrTable.java:378",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/AttrTableSelectionModel.java:157"
+      ],
+      "fix": "Cancellation must only discard the draft. Capture target rows and pre-edit values before editor teardown. Commit compatible targets through one atomic SetAttributeAction; suppress no-op mutations and reentrant commits.",
+      "acceptance": "Cancel with mixed values leaves all values and undo depth unchanged. One Enter commit creates one undo item; one Undo restores all original values and one Redo reapplies them. Cover popup Escape, editor Escape, focus loss, model switch and mixed component selections."
+    },
+    {
+      "id": "attribute-wheel",
+      "severity": "P1",
+      "candidates": [
+        "inspector-05",
+        "inspector-06"
+      ],
+      "title": "Make property scrolling safe",
+      "reproduction": "Select the gate, leave canvas focus, hover Facing value without clicking and scroll up twice.",
+      "observed": "East changes to North and the gate rotates. A normal wheel gesture can edit the circuit unexpectedly.",
+      "cause": "AttrTable installs a wheel listener and applies values under the pointer; non-value paths return without forwarding to the enclosing scrollpane. Combo changes bypass numeric-gesture batching.",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/21-divider-after.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/22-wheel-facing-panel.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/AttrTable.java:135"
+      ],
+      "fix": "Default wheel input scrolls the table. Require an explicitly active editor or documented modifier for value nudging; forward unused events. Use one direction convention and one gesture transaction across editor types.",
+      "acceptance": "A 64-bit splitter property list scrolls over both columns without changing circuit attributes or undo depth. Explicit numeric/enum nudge has predictable direction and one Undo per gesture; rapid/high-resolution wheel events are handled deterministically."
+    },
+    {
+      "id": "attribute-draft",
+      "severity": "P2",
+      "candidates": [
+        "inspector-07",
+        "inspector-08"
+      ],
+      "title": "Preserve drafts across selection/focus changes",
+      "reproduction": "Type ScratchLabel in the selected gate's Label field, click empty canvas, then reselect the gate.",
+      "observed": "The visible draft disappears and the label remains empty.",
+      "cause": "setAttrTableModel cancels the editor before focusLost can commit; validation messages separately expose raw conversion text.",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/20-label-sequence.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/AttrTable.java:217",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/AttrTable.java:415",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/AttributeSetTableModel.java:260"
+      ],
+      "fix": "Resolve the active editor before changing models. Commit valid drafts once; retain invalid text with an inline error and a defined focus policy. Escape alone discards the draft. Avoid raw Java exception copy.",
+      "acceptance": "Enter, Tab and valid canvas-focus transfer persist the same value exactly once; Escape does not. Invalid text remains editable and associated with its field; changing selection never applies a draft to the wrong object."
+    },
+    {
+      "id": "divider-layout",
+      "severity": "P1",
+      "candidates": [
+        "shell-03",
+        "inspector-02"
+      ],
+      "title": "Stop restoring divider preferences during user drags",
+      "reproduction": "Drag inspector left about 300 px and side panel right about 230 px, slowly then release.",
+      "observed": "Requested sizes do not persist; only a small incidental divider change is possible.",
+      "cause": "SizedSplit.doLayout repeatedly reapplies storedSize while continuousLayout runs, before mouseReleased stores the result.",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/20-label-reselected.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/21-divider-after.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/ShellLayout.java:166",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/ShellLayout.java:201"
+      ],
+      "fix": "Apply stored dimensions on initialization or explicit restore, not every layout. Track active drag if needed; persist the actual final child size. Scale divider hit targets.",
+      "acceptance": "All three dividers follow the pointer, retain the final size, survive window resize and isolated restart, and keep both panes usable at 1.0/1.6/2.0 UI scale. Drawer drag remains a required acceptance test, not a live test completed here."
+    },
+    {
+      "id": "scale-layout",
+      "severity": "P2",
+      "candidates": [
+        "shell-02",
+        "shell-05",
+        "shell-21",
+        "inspector-01"
+      ],
+      "title": "Use one scale policy and readable panel minimums",
+      "reproduction": "Open a fresh dark window at UI scale 1.6; inspect gate properties, Edit menu and Save chooser.",
+      "observed": "Inspector names/values elide; menu shortcuts and chooser icons are much smaller than labels. Original drawer crop shows the same metric mismatch.",
+      "cause": "Late font-only resizing coexists with device-pixel LayoutPrefs and custom metrics. Do not assume simply multiplying everything by 1.6 is safe.",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/08-after-multicancel-menu-crop.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/05-save-dialog.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/shell/48z-drawer-left.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/start/Startup.java:1161",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/LayoutPrefs.java:26",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/07-multiedit-panel.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/14-cancel-sequence.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/fpga/gui/HdlColorRenderer.java:58",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/fpga/gui/HdlColorRenderer.java:83"
+      ],
+      "fix": "Define logical UI dimensions, integrate font and Look-and-Feel metrics once, remove double scaling, migrate stored sizes and add content-aware column widths/padding. Use accessible elision disclosure where finite width remains necessary.",
+      "acceptance": "Rendered 1.0/1.6/2.0 dark/light matrix includes long circuit names, a 64-row splitter, menus, chooser and drawer at narrow/default/maximized widths. Labels and accelerator regions must not overlap; major controls and complete values remain reachable."
+    },
+    {
+      "id": "panel-lifecycle",
+      "severity": "P1",
+      "candidates": [
+        "shell-04",
+        "inspector-11",
+        "shell-16",
+        "inspector-27",
+        "shell-17"
+      ],
+      "title": "Give hidden panels a direct restore path",
+      "reproduction": "Close Properties; invoke a component's Show Properties. For drawer, close one timing tab.",
+      "observed": "Source shows Show Properties only changes its model, while drawer tab X hides the whole drawer. State list lacks guidance when nothing is opted in.",
+      "cause": "Visibility state is separate from the actions that target those panels. BottomPanel deliberately maps tab close to drawer hide.",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/Frame.java:372",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/Frame.java:1182",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/ShellLayout.java:253",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/ShellLayout.java:332",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/shell/48z-drawer-left.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/BottomPanel.java:43",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/RegTabContent.java:178"
+      ],
+      "fix": "Add synchronized Window menu toggles and make Show Properties reveal Inspector. Separate hide-drawer from close-tab affordances, retaining existing reopen commands. Explain empty STATE and how to enable a register.",
+      "acceptance": "Hide and reopen every panel without resetting unrelated sizes, before/after restart; menu checks agree with visibility. Closing one tab has the documented scope. Empty and opted-in-register state views both render useful content."
+    },
+    {
+      "id": "tab-lifecycle",
+      "severity": "P2",
+      "candidates": [
+        "shell-07",
+        "shell-08"
+      ],
+      "title": "Keep active tabs reachable and final-tab state coherent",
+      "reproduction": "Open enough circuits to overflow the strip (archived evidence), and close the sole tab (independently reproduced).",
+      "observed": "Archived overflow has no usable scroll controls; live last-tab close leaves the editor active without a tab.",
+      "cause": "Scroll-button properties do not switch JTabbedPane to scroll layout. Empty EditorTabModel clears only selection; the canvas keeps current circuit.",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/shell/41z-tabs-full.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/EditorTabs.java:53",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/EditorTabs.java:174",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/23-last-tab.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/EditorTabModel.java:151",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/EditorTabs.java:184"
+      ],
+      "fix": "Use scroll layout with active-tab reveal and overflow picker; avoid rebuilding the entire strip unnecessarily. Define last-tab policy: retain the current tab or show an empty-editor view. Synchronize circuit list and tabs.",
+      "acceptance": "Open at least 20 long-named layout/appearance/HDL tabs, navigate by mouse and keyboard, close active/other/all tabs, and rename/reorder circuits. The active editor is always identifiable and reachable."
+    },
+    {
+      "id": "inspector-model",
+      "severity": "P2",
+      "candidates": [
+        "inspector-04",
+        "inspector-15",
+        "inspector-16",
+        "inspector-18"
+      ],
+      "title": "Keep inspector identity and aggregate values truthful",
+      "reproduction": "View a mixed selection; switch from an instance to Appearance; compare a mixed-case circuit/label with the panel title.",
+      "observed": "Source uses one factory for aggregate HDL support and uppercases identifiers. Archived Appearance screenshot shows a stale LED title over circuit attributes. Mixed-value editor defaults are ambiguous.",
+      "cause": "Header updates are owned by Frame while another manager swaps AttrTable directly; aggregation/display policy is embedded in generic rendering.",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/AttributeSetTableModel.java:295",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/AttrTableSelectionModel.java:65",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/inspector/103-appearance-insp-z.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/Frame.java:947",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/Frame.java:1085",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/PanelHeader.java:68",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/SelectionAttributes.java:110"
+      ],
+      "fix": "Make model/title/scope updates atomic and preserve user-entered casing. Aggregate HDL capability across applicable objects or show Mixed/Not applicable. Represent mixed values as a typed state and require an explicit change before applying defaults.",
+      "acceptance": "Titles match actual tool/instance/shape/circuit scope after every switch. Mixed supported/unsupported selections never show uniformly Supported. Opening and cancelling a mixed field changes nothing; bulk label numbering is previewed/documented."
+    },
+    {
+      "id": "inspector-presentation",
+      "severity": "P2",
+      "candidates": [
+        "inspector-03",
+        "inspector-10",
+        "inspector-13",
+        "inspector-25"
+      ],
+      "title": "Improve property readability and keyboard access",
+      "reproduction": "Inspect fresh Poke state, an AND gate and keyboard entry into the property table.",
+      "observed": "Blank Properties has no instruction; saturated status fill dominates; labels run into values. Typed KeyEvents except Space are rejected by the editor.",
+      "cause": "Generic HdlColorRenderer removes insets and overloads background colors; Null model has no empty state; CellEditor blocks ordinary typed starts.",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/07-multiedit-panel.png",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/14-cancel-sequence.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/fpga/gui/HdlColorRenderer.java:58",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/fpga/gui/HdlColorRenderer.java:83",
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/01-fresh.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/Frame.java:298",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/start/Startup.java:1125",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/AttrTable.java:528"
+      ],
+      "fix": "Use padded cells, small status/color swatches, an explanatory empty state and persistent editable/read-only affordances. Provide visible keyboard focus, type-to-edit and a shortcut to reach Inspector.",
+      "acceptance": "Keyboard-only user can enter, edit, commit and cancel supported values with visible focus. Long values are accessible. Dark/light views preserve readable contrast without relying on saturated fills."
+    },
+    {
+      "id": "canvas-contrast",
+      "severity": "P2",
+      "candidates": [
+        "canvas-02",
+        "canvas-04",
+        "inspector-28"
+      ],
+      "title": "Separate themed defaults from explicit schematic colors",
+      "reproduction": "Review dark-canvas text annotation and a binary input with value 1; archived images were inspected.",
+      "observed": "Default annotation is black on dark; radix letter is pure blue and the digit has weak contrast over green.",
+      "cause": "TextTool stores black as an explicit color; Pin uses literal blue and white independent of theme/fill.",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/canvas/31-text-committed-z.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/tools/TextTool.java:155",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/prefs/AppPreferences.java:690",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/canvas/15-pin1-z10.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/wiring/Pin.java:875"
+      ],
+      "fix": "Introduce a semantic automatic text default with a compatible serialization/migration policy, while preserving intentional custom colors. Choose pin text/radix colors from background-aware theme tokens.",
+      "acceptance": "New and legacy fixtures with automatic and explicit colors remain readable in dark/light modes and after save/load/export. Explicit user colors are not silently rewritten. Validate small binary/hex pins at common zooms."
+    },
+    {
+      "id": "canvas-rendering",
+      "severity": "P2",
+      "candidates": [
+        "canvas-10",
+        "canvas-18"
+      ],
+      "title": "Keep grid density and placement preview stable",
+      "reproduction": "Compare archived 100-percent, intermediate, large and very small zoom grids; compare gate ghost with placed outline.",
+      "observed": "Grid hierarchy exists only at exactly 100%; low zoom becomes a dense mesh. Gate ghost overrides the requested preview color.",
+      "cause": "GridPainter branches on f==1.0 and draws every point; AbstractGate.paintBase replaces the ghost painter's color.",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/canvas/47-grid-compare.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/GridPainter.java:138",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/canvas/07-and-ghost-z.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/canvas/08-and-placed-z.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/gates/AbstractGate.java:383",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/gates/AbstractGate.java:436"
+      ],
+      "fix": "Choose grid detail from screen-pixel spacing, retaining major/minor hierarchy across zooms. Pass explicit normal/ghost/selection paint style to gate painters instead of overriding color.",
+      "acceptance": "Rendered 5/25/50/100/110/160/200/1000-percent views avoid mesh aliasing and excessive squares. A placement preview is distinguishable from a committed part in both themes without hiding ports."
+    },
+    {
+      "id": "zoom-fit",
+      "severity": "P2",
+      "candidates": [
+        "canvas-01",
+        "canvas-11",
+        "canvas-12",
+        "shell-37"
+      ],
+      "title": "Validate fit near the circuit origin before changing zoom policy",
+      "reproduction": "Archived MUX4WAY16 Fit image shows a left-hugging circuit and unused right space. No new live fit test.",
+      "observed": "Asymmetry is visible, but the original 'never centers' source explanation is false.",
+      "cause": "Center calls exist. Negative scroll offsets near origin and skipping center when zoom changes by less than 0.01 are hypotheses requiring a fixture reproduction.",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/canvas/74-mux-fit.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/ZoomControl.java:420",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/BasicZoomModel.java:114",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/Canvas.java:213"
+      ],
+      "fix": "First reproduce at origin and at translated positive coordinates. If confirmed, add viewport padding/origin translation and center even at unchanged zoom. Rename Auto to Fit to contents. Decide initial zoom and multiplicative steps as separate design choices.",
+      "acceptance": "Fit keeps all labels within padded viewport and centers near-origin/translated circuits at unchanged and changed factors. Panning, hit testing and serialized coordinates remain correct; empty circuit has a defined harmless result."
+    },
+    {
+      "id": "startup-ownership",
+      "severity": "P2",
+      "candidates": [
+        "shell-09",
+        "shell-10",
+        "canvas-25"
+      ],
+      "title": "Make Welcome own a consistent project lifecycle",
+      "reproduction": "Start without a file using fresh isolated preferences; choose New or a recent file.",
+      "observed": "Welcome sits over an existing Untitled project; callbacks use different ownership policies. Default library loading is recorded as an action.",
+      "cause": "Startup constructs a project before Welcome, and New always allocates another frame; bootstrap work uses user-action history.",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/01-fresh.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/Frame.java:298",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/start/Startup.java:1125"
+      ],
+      "fix": "Either make Welcome a projectless view or reuse its known blank project consistently. Do not place bootstrap library loading on the user undo stack. Circuit selection must enter an editor.",
+      "acceptance": "Fresh New produces one intended editable project/window; open/recent/new follow the documented policy. The pristine project has no user-visible undo action and does not produce spurious recovery work."
+    },
+    {
+      "id": "status-wiring",
+      "severity": "P2",
+      "candidates": [
+        "shell-18"
+      ],
+      "title": "Wire the status fields that are actually intended",
+      "reproduction": "Move around a circuit and inspect status source callers.",
+      "observed": "Coordinates/messages have no callers; tick/simulation setters do exist.",
+      "cause": "Partially integrated StatusBar API, not proof all simulator status is broken.",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing-evidence/21-divider-after.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/StatusBar.java:146",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/Frame.java:803"
+      ],
+      "fix": "Connect pointer coordinates and actionable editor messages if they are part of the design; otherwise remove unused API. Preserve and test existing simulator paths.",
+      "acceptance": "Coordinates update in circuit units and clear when appropriate; messages reflect current operation. Auto-tick/propagation state transitions are independently exercised without duplicating stale information."
+    },
+    {
+      "id": "hotkey-threading",
+      "severity": "P2",
+      "candidates": [
+        "shell-31"
+      ],
+      "title": "Confine hotkey UI updates to the EDT",
+      "reproduction": "Recovered log from Preferences/New/close sequence; no new stress reproduction.",
+      "observed": "Recorded ConcurrentModificationException; live HEAD source permits the same cross-thread mutation pattern.",
+      "cause": "Unfiltered preference callback invokes hotkeySync over a mutable menu registry outside Swing EDT.",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/shell/log-cme-hotkeysync.txt",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/prefs/HotkeyOptions.java:194",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/prefs/AppPreferences.java:1704"
+      ],
+      "fix": "Filter relevant preference keys, marshal UI updates to EDT, and manage menu/listener registration lifetime safely. Avoid a global flush/update for unrelated layout writes.",
+      "acceptance": "Stress preferences changes while creating/closing scratch windows; no CME, stale menu callbacks or off-EDT Swing access. Closing preference windows releases listeners."
+    },
+    {
+      "id": "qa-isolation",
+      "severity": "P1",
+      "scope": "QA harness",
+      "candidates": [
+        "shell-26",
+        "canvas-33"
+      ],
+      "title": "Isolate homes and make screenshots/build provenance reliable",
+      "reproduction": "Read qa.sh launchapp and Loader.determineAutosaveName; compare userRoot redirection with user.home behavior.",
+      "observed": "Original harness redirects preferences only, while unnamed autosaves target real user.home. Its shot canvas is hard-coded 2560x1600. This review supplied private Java home and used win for app/dialog captures.",
+      "cause": "Incomplete harness isolation and screenshot dimension assumptions. This is not an extra production UI bug or evidence that real user data was modified in this review.",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/file/Loader.java:175",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/qa.sh"
+      ],
+      "fix": "In a scratch harness set user.home=$D/home plus private preference/config roots; validate effective JVM properties. Capture actual display/window geometry, handle heavyweight popups explicitly, keep the launch terminal alive and record jar hash/build provenance. Never clear real autosaves.",
+      "acceptance": "Creating/closing/recovering disposable projects touches only the session tree. Nondefault-size captures include correct bounds. Session stop validates PIDs and leaves every other compositor/app untouched."
+    },
+    {
+      "id": "design-backlog",
+      "severity": "P3",
+      "candidates": [
+        "shell-12",
+        "shell-13",
+        "shell-14",
+        "shell-19",
+        "shell-20",
+        "shell-22",
+        "shell-29",
+        "shell-37",
+        "shell-38",
+        "inspector-09",
+        "inspector-12",
+        "inspector-14",
+        "inspector-17",
+        "inspector-20",
+        "inspector-26",
+        "inspector-29",
+        "inspector-30",
+        "canvas-01",
+        "canvas-05",
+        "canvas-06",
+        "canvas-07",
+        "canvas-08",
+        "canvas-09",
+        "canvas-11",
+        "canvas-19",
+        "canvas-20",
+        "canvas-21",
+        "canvas-27",
+        "canvas-32"
+      ],
+      "title": "Treat optional convention/style changes as a design backlog",
+      "reproduction": "Review the per-ID design recommendations against live/archived evidence and desired product behavior.",
+      "observed": "Reports mix functional defects with preferences for icon style, toolbar alignment, label wording, dot placement, shortcuts and schematic fill.",
+      "cause": "Different conventions or legacy styling are not independent bugs without an agreed behavior/quality criterion.",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/editing.json"
+      ],
+      "fix": "Choose a coherent icon/copy/keyboard/zoom policy, prototype representative examples, and preserve project mappings and explicit schematic styling. Add scope labels, inline validation and property help where they reduce ambiguity.",
+      "acceptance": "Accept a small dark/light, mouse/keyboard prototype at 1.0 and 1.6 before broad rollout. Record the chosen policy and require visual review; do not change data formats, electrical connectivity or saved gestures merely to match another editor."
+    }
+  ]
+}

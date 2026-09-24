@@ -1,0 +1,1400 @@
+{
+  "reviewer": "dialogs",
+  "date": "2026-09-24",
+  "repository": "/home/nilsb/Documents/projects/logisim-revolution/",
+  "head": "0a62266649937f3c2cbcb1ef495b6d9be6ba2d5a",
+  "scope": [
+    "inspect-analyzer",
+    "inspect-dialogs",
+    "inspect-light"
+  ],
+  "assignedClaimCount": 86,
+  "interpretation": "Dispositions are claims, not independent bug counts. Twelve fix workstreams include both defects and recommendations; compound claims are explicitly qualified.",
+  "provenance": {
+    "jar": "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/logisim.jar",
+    "sha256": "c854edbbea34d6cfc0e53ac9cf70ef5b2a5dcf550a3959ff0ed99d852950d433",
+    "buildInfo": "main/2532c84d, 2026-09-24T16:07:16+0200",
+    "identityLimit": "BuildInfo differs from checkout HEAD. The artifact includes the Colors page present at HEAD, so metadata mismatch alone does not establish all classes are from the older commit. No clean rebuild or complete bytecode/source equivalence verification performed.",
+    "runtime": "Real jar in private KWin/Xwayland, 2560x1600, application scale 1.6, fresh preferences, cx-dialogs; dark, live light, then dark.",
+    "harness": "/tmp/logisim-qa-recovery-20260924/dialogs-qa.sh",
+    "isolation": "Original harness initially encountered a real unnamed-autosave prompt. No action was taken on it. Restarted with private user.home and prefs before any workflow mutations. Only disposable copied PC.circ was edited, then Undo restored it; no Save.",
+    "fixtureSource": "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/run/analyzer/work/PC.circ",
+    "fixtureCopy": "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/run/cx-dialogs/work/PC.circ",
+    "fixtureSha256Both": "6eb2351cd56ddb6402ddb191f7ff000e15e0ed89131225bd3c511f3f92295dcf",
+    "imageInspection": "view_image was attempted but failed with mountinfo sandbox error. Actual PNG bytes were read with local node_repl and emitted through functions image helper; every image cited as visual evidence was personally inspected. Inherited screenshots are labeled by Q/out path.",
+    "partialVerifiers": "Read corrected partial-dialogs log and selected Analyzer partial source/results. Partial verifiers are interrupted tool histories, not completed verdicts. Did not adopt their assertions as proof.",
+    "cleanup": "Validated app 557259, wrapper 557194, compositor 557197 and session 557246; stopped only cx-dialogs. Subsequent ps returned no rows. Owned terminal keepalives exited.",
+    "repositoryState": "Initial and immediate post-cleanup status contained only pre-existing untracked AGENTS.md. Final validation also showed untracked docs/qa/, which this reviewer did not create or modify. This reviewer wrote only /tmp artifacts; no production edits, commit, push or child agents."
+  },
+  "severityPolicy": "P0 requires demonstrated actual data loss; none established. P1 is reserved here for unreadable palette identification and source-confirmed inability to leave a long optimizer job normally. Reversible build replacement and resize/scroll workarounds are P2; optional visual/editorial work P3.",
+  "summaryCounts": {
+    "confirmed-runtime": 4,
+    "confirmed-visual": 18,
+    "design-recommendation": 20,
+    "confirmed-source": 10,
+    "unverified": 16,
+    "duplicate": 18
+  },
+  "dispositions": [
+    {
+      "id": "analyzer-01",
+      "title": "Build Circuit defaults to overwriting the circuit being analyzed; two keystrokes replace the user's circuit",
+      "status": "confirmed-runtime",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/07-build-default.png",
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/08-build-after-Q.png",
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/09-confirm-after-space.png",
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/10-replaced-edit-menu.png",
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/11-undo-restored.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/analyze/gui/BuildCircuitButton.java:69"
+      ],
+      "reason": "Initial Q typing did not change FULLADDER. Space then Enter replaced its layout. Undo restored the original layout and clean title. This is an unsafe, recoverable default; no irreversible or saved-file loss demonstrated."
+    },
+    {
+      "id": "analyzer-02",
+      "title": "Overlines float ~8px above the letters and are shifted left, so negated variables are ambiguous",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/analyzer/35-overline-z5.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/analyze/data/ExpressionRenderData.java:214",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/analyze/data/ExpressionRenderData.java:345"
+      ],
+      "reason": "Personally inspected recovered overline crop: bars have excessive gap and mismatched horizontal spans. HEAD double-scales notSep; the precise horizontal metric failure remains a hypothesis."
+    },
+    {
+      "id": "analyzer-03",
+      "title": "Analyzer opens as a small packed window (1473x492): 4–5 table rows visible, K-map and expression cut off",
+      "status": "confirmed-runtime",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/05-analysis-main.png",
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/23-kmap.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/analyze/gui/Analyzer.java:192"
+      ],
+      "reason": "Live window measured 1473x492; five table rows and the Simplified expression below the visible viewport. Resizing or scrolling is a workaround."
+    },
+    {
+      "id": "analyzer-04",
+      "title": "At the window's own minimum width the action buttons overflow: Build Circuit and both Export buttons go off-screen; 'Help' menu clipped",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/analyzer/80-analyzer-narrow.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/analyze/gui/Analyzer.java:198"
+      ],
+      "reason": "Recovered 720px capture visibly omits trailing actions and clips title. Source uses nonwrapping BoxLayout at a smaller permitted minimum. Not retested live at that width."
+    },
+    {
+      "id": "analyzer-05",
+      "title": "K-map covers in dark theme: white digits on pale olive/tan covers at 1.9:1 contrast, muddy overlaps, cover box offset from its digit",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/analyzer/34-kmap-z4.png",
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/23-kmap.png"
+      ],
+      "reason": "Light digits on olive/tan covers are visibly weak in recovered and live maps. Original exact contrast ratios were not independently remeasured."
+    },
+    {
+      "id": "analyzer-06",
+      "title": "K-map does not scale with the window; header labels shrunk to ~2/3 size; huge dead space",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/23-kmap.png"
+      ],
+      "reason": "Live map remains small with reduced header type, but expansion to fill a large window is a design choice, not a demonstrated failure."
+    },
+    {
+      "id": "analyzer-07",
+      "title": "No undo anywhere in the analyzer; K-map clicks silently edit the truth table and rewrite the expression",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/analyze/gui/KarnaughMapPanel.java:1039"
+      ],
+      "reason": "HEAD directly cycles truth-table entries on map clicks; no undo references found in analyze package. Did not independently reproduce all variable/expression edits or irreversible loss."
+    },
+    {
+      "id": "analyzer-08",
+      "title": "With more than 6 inputs, the Expression and Simplified tabs are disabled without explanation, and the Simplify result can't be viewed anywhere",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/05-analysis-main.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/analyze/gui/Analyzer.java:114"
+      ],
+      "reason": "Tab enablement is solely gated on <=6 inputs; live 8-input table showed disabled tabs. Completed manual optimization and inability to view its result were not rerun."
+    },
+    {
+      "id": "analyzer-09",
+      "title": "Optimizer: debug-log progress dialog, 'click here to close window' button, no Cancel for an 'hours'-long job; warning defaults to Yes",
+      "status": "confirmed-source",
+      "severity": "P1",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/analyze/gui/MinimizeButton.java:41"
+      ],
+      "reason": "A running optimizer has DO_NOTHING_ON_CLOSE, hidden done button until completion, no cancellation path here, and Swing changes on raw threads. No hours-long optimization was run; severity applies if a long optimization is entered."
+    },
+    {
+      "id": "analyzer-10",
+      "title": "CSV import dialog is untitled, off-centre and edge-to-edge; a normal CSV is then rejected with jargon",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/analyzer/55-csv-dialog.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/analyze/gui/CsvReadParameterDialog.java:52"
+      ],
+      "reason": "Recovered CSV screenshot verifies untitled edge-touching form and 4x4 preview. HEAD centers before packing. Escape-to-close is implemented, so absence of a Cancel button does not prove no cancellation. General CSV incompatibility was not independently tested."
+    },
+    {
+      "id": "analyzer-11",
+      "title": "Analyzer window carries the whole main menu bar: canvas commands, dead menus, and a Window>Show Toolbar that hides the MAIN window's toolbar",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/05-analysis-main.png"
+      ],
+      "reason": "Live Analyzer has disabled Project/Simulate/FPGA menus. Context-specific menus are reasonable; global toolbar side effect and close-shortcut conflict were not retested."
+    },
+    {
+      "id": "analyzer-12",
+      "title": "Analyzer doesn't say which circuit it shows and keeps stale data when the user switches circuits",
+      "status": "design-recommendation",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/07-build-default.png"
+      ],
+      "reason": "Analyzer title lacks circuit identity in live captures. Keeping a separate analysis snapshot after a main-window switch can be intentional; automatic synchronization is not established as required."
+    },
+    {
+      "id": "analyzer-13",
+      "title": "Truth-table toolbar: unlabeled '-', '1', '0' buttons with no tooltips; zero-margin buttons whose text touches the border; centred FlowLayout strip",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/05-analysis-main.png"
+      ],
+      "reason": "Live '- 1 0' strip and zero-space collapse button are cramped. Missing tooltips and no-op collapse feedback were not tested."
+    },
+    {
+      "id": "analyzer-14",
+      "title": "A single click in an output cell selects the whole column below it",
+      "status": "design-recommendation",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/analyze/gui/TableTabCaret.java:304"
+      ],
+      "reason": "Source explicitly selects the output column from clicked row downward; this is intentional behavior. Make bulk fill explicit or single-cell selection the default; not a random drag bug."
+    },
+    {
+      "id": "analyzer-15",
+      "title": "Truth table rendering looks old: narrow centred column in empty space, no zebra/hover, no bit grouping, off-theme selection and cursor colours",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/05-analysis-main.png"
+      ],
+      "reason": "Narrow centered table is visible live; zebra stripes, hex mode and expansion are proposed enhancements. Off-theme cursor and selection measurements not revalidated."
+    },
+    {
+      "id": "analyzer-16",
+      "title": "Signals tab: no visible add/remove/reorder controls, no context menu, unscaled row metrics, English-only bit-width dropdown, cryptic error",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/20-signals.png",
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/21-bitwidth-editor.png",
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/22-bitwidth-popup.png"
+      ],
+      "reason": "Live Signals view lacks visible remove/reorder buttons and has compact editing rows. Its bit-width popup has 20 fully readable rows; do not infer blank-row failure. Keyboard reorder and localization were not retested."
+    },
+    {
+      "id": "analyzer-17",
+      "title": "Expression tab: monospace logical font with tiny fallback glyphs; editor switches notation and font; separate notation settings per tab",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [],
+      "reason": "Logical fallback glyphs and notation changes during editing were not inspected in this bounded review."
+    },
+    {
+      "id": "analyzer-18",
+      "title": "Simplified tab looks dated: boxed 'No group selected.' panel, ragged centred combos, whole-panel focus border, orphan diagonal in Lined style",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/23-kmap.png"
+      ],
+      "reason": "Live Simplified view has ragged control widths and a whole-panel focus border. Lined-map orphan diagonal and selected-group rendering were not checked."
+    },
+    {
+      "id": "analyzer-19",
+      "title": "Build Circuit dialog: label abuts combo, unscaled 13px checkboxes, low-contrast check mark, ragged field widths, question icon on a form",
+      "status": "duplicate",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/08-build-after-Q.png"
+      ],
+      "reason": "Small widgets are the same scaling issue as dialogs-01; form padding and explicit Build action belong in analyzer-01's dialog redesign.",
+      "canonicalId": "dialogs-01"
+    },
+    {
+      "id": "analyzer-20",
+      "title": "Import/Export file choosers: 10px icons, 3-row list, open in home dir, bogus prefill, no success feedback",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [],
+      "reason": "Chooser default directory, nonexistent prefill, export completion and success feedback were not exercised. Do not promote inherited narrative to runtime proof."
+    },
+    {
+      "id": "analyzer-21",
+      "title": "Print from the analyzer opens the Swing cross-platform print dialog (etched titled borders) in the screen corner",
+      "status": "duplicate",
+      "severity": "P3",
+      "evidence": [],
+      "reason": "Legacy print-dialog redesign repeats dialogs-14; no printer output or live printing tested.",
+      "canonicalId": "dialogs-14"
+    },
+    {
+      "id": "analyzer-22",
+      "title": "Modal 'Expression Not Determined' interrupts every analysis of arithmetic circuits; the 'Cannot Analyze' message lacks specifics",
+      "status": "confirmed-runtime",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/04-analyzer.png"
+      ],
+      "reason": "8-input subtractor produced the modal 'Expression Not Determined' before analysis. CPU input-count error wording was not tested."
+    },
+    {
+      "id": "analyzer-23",
+      "title": "Copy and wording problems across analyzer dialogs and files",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [],
+      "reason": "Copy cleanup is editorial; parser diagnostics and exported-file typo were not independently checked."
+    },
+    {
+      "id": "analyzer-24",
+      "title": "Constant component paints a hard-coded light-grey box in dark theme (visible in circuits the analyzer builds)",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [],
+      "reason": "Constant contrast capture and constant-generation placement were not inspected here; keep for component owner verification."
+    },
+    {
+      "id": "analyzer-25",
+      "title": "Please-wait dialog has a fixed unscaled 300x70 size (code-verified)",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/analyze/gui/Analyzer.java:321"
+      ],
+      "reason": "Fixed 300x70 preferred size exists. Runtime clipping was not observed. Source explicitly calls setLocationRelativeTo(parentComponent), so the original owner-implies-wrong-centering inference is unsupported."
+    },
+    {
+      "id": "analyzer-26",
+      "title": "Selection and primary-button styling inconsistent within the analyzer and between themes",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [],
+      "reason": "Selection and primary-button consistency is a style recommendation, not a proven loss of interaction. Exact per-theme states not reviewed."
+    },
+    {
+      "id": "analyzer-27",
+      "title": "Menu accelerator text is rendered much smaller than the menu item text",
+      "status": "duplicate",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/10-replaced-edit-menu.png"
+      ],
+      "reason": "Live Edit menu shows small accelerators alongside large labels, sharing the split font/widget scaling cause.",
+      "canonicalId": "dialogs-01"
+    },
+    {
+      "id": "analyzer-28",
+      "title": "Window title shows debug build info and duplicate unsaved markers",
+      "status": "duplicate",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/10-replaced-edit-menu.png"
+      ],
+      "reason": "Build/dirty-title presentation repeats light-26.",
+      "canonicalId": "light-26"
+    },
+    {
+      "id": "analyzer-29",
+      "title": "Circuits explorer header truncated to 'CI…'",
+      "status": "duplicate",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/06-filter.png"
+      ],
+      "reason": "Narrow explorer heading is part of fixed shell geometry in light-03. Fresh owned session at its wider sidebar showed CIRCUITS fully, so this is width-dependent.",
+      "canonicalId": "light-03"
+    },
+    {
+      "id": "dialogs-01",
+      "title": "Text is scaled 1.6x but every widget stays at 1.0x: tiny checkboxes, radios, slider thumbs, chevrons, title-bar buttons, chooser icons",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/08-build-after-Q.png",
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/13-window-dark.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/start/Startup.java:1161"
+      ],
+      "reason": "Tiny checkbox/radio boxes and arrows coexist with large 1.6x text in live Preferences and Build. HEAD scales fonts on component-add; it does not establish a unified widget metric scale. 'Every widget' is too broad."
+    },
+    {
+      "id": "dialogs-02",
+      "title": "Live theme switch permanently shrinks title-bar and section-header fonts and leaves stale colours",
+      "status": "confirmed-runtime",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/13-window-dark.png",
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/15-window-light.png",
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/17-window-dark-again.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/theme/Theme.java:104"
+      ],
+      "reason": "Preferences and main titles shrink visibly after Dark to Light and remain small on Dark return. Not every listed header/background was measured."
+    },
+    {
+      "id": "dialogs-03",
+      "title": "Preference pages overflow sideways: Select…/Browse… buttons and combos pushed off-screen, horizontal scrollbars everywhere",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/dialogs/03-prefs-template.png",
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/19-software.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/prefs/PreferencesFrame.java:79"
+      ],
+      "reason": "Template selector is outside viewport in recovered image; live Software VHDL control and Browse edges clip. Horizontal scrolling offers a workaround; not categorically unreachable."
+    },
+    {
+      "id": "dialogs-04",
+      "title": "Preference and Project Options pages use old GridBag/TableLayout forms: floating centred blocks, stretched buttons, spacer labels",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/12-prefs.png",
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/13-window-dark.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/dialogs/03-prefs-template.png"
+      ],
+      "reason": "Centered forms, full-width reset buttons and loose page hierarchy are visible. Consolidating layout is a design recommendation; GridBagLayout itself is not a defect."
+    },
+    {
+      "id": "dialogs-05",
+      "title": "Hotkey capture: Escape throws 'Must contain the Ctrl key' and then closes Preferences, leaving the binding blank",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/util/JHotkeyInput.java:289"
+      ],
+      "reason": "Escape lacks a cancel case and can enter modifier validation. Persistent blank editor state and dismissal sequence not rerun; no evidence that a saved binding was erased."
+    },
+    {
+      "id": "dialogs-06",
+      "title": "Hotkey page is two tiny nested scroll boxes with clipped fields, truncated header and ASCII compass",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/dialogs/12-prefs-hotkeys.png"
+      ],
+      "reason": "Recovered hotkey page visibly clips subtitle, lower fields and lower rows inside nested scroll panes. No interaction retest."
+    },
+    {
+      "id": "dialogs-07",
+      "title": "'Filter settings' only matches page names; 'theme', 'font', 'zoom' return an empty list with no empty state",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/SettingsNav.java:116"
+      ],
+      "reason": "Filter compares title strings only and does not clear content for zero results. Keyboard transfer and German placeholder behavior not retested."
+    },
+    {
+      "id": "dialogs-08",
+      "title": "Toolbar/Mouse library trees: names truncated with '…', clipped rows, and the selected current circuit's name vanishes",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/dialogs/22-projopts-toolbar.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/ProjectExplorer.java:289",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/ProjectExplorer.java:321"
+      ],
+      "reason": "Recovered tree labels clip despite free width; source changes renderer font and forces accent on active circuit even when selected. Selection invisibility itself was not clicked live."
+    },
+    {
+      "id": "dialogs-09",
+      "title": "Project Options Toolbar and Mouse pages are the original Logisim editors: unlabeled icon column, raw 'Button1' JTable, hidden Remove, repaint garbage",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/dialogs/22-projopts-toolbar.png"
+      ],
+      "reason": "Recovered Toolbar uses icon-only actions and ambiguous Pin labels. Mouse repaint debris and hidden Remove not inspected."
+    },
+    {
+      "id": "dialogs-10",
+      "title": "User's Guide / Library Reference is the old JavaHelp browser: navy links on dark, offset search highlights, XP screenshots, opens at 0,0",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/dialogs/28-help-guide.png"
+      ],
+      "reason": "Recovered guide has dark navy heading on dark background and obsolete screenshot. Offset search highlighting, exact color values and window origin not independently checked."
+    },
+    {
+      "id": "dialogs-11",
+      "title": "About dialog: credits drawn in dark purple/red on dark (unreadable); old logo, dead URL, Escape doesn't close",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [],
+      "reason": "About credits, Escape handling, version availability and allegedly dead URL not checked. No network request made for URL validity."
+    },
+    {
+      "id": "dialogs-12",
+      "title": "File choosers are Swing's Metal-layout JFileChooser: cramped, tiny icons, no sidebar, truncated details view",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/dialogs/61-lookin-popup-z.png"
+      ],
+      "reason": "Recovered file chooser shows small icons, short file pane and compact dimensions. Lack of places sidebar is an enhancement; persistence and chooser variants not retested."
+    },
+    {
+      "id": "dialogs-13",
+      "title": "Dialogs open in the wrong place: Open/Merge bottom-right, Statistics and Help at 0,0, Print at 50,50",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [],
+      "reason": "Multiple chooser/help/statistics/print positioning claims not reproduced; a cropped window image alone cannot establish screen origin."
+    },
+    {
+      "id": "dialogs-14",
+      "title": "Printing is two old dialogs: a Print Parameters option pane with raw '%n (%p of %P)', then the JDK etched-border print dialog",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [],
+      "reason": "Print UI modernization and human-readable header tokens are proposals. No independent print-dialog inspection or physical printing."
+    },
+    {
+      "id": "dialogs-15",
+      "title": "Form dialogs are bare JOptionPanes: '?' icon beside forms, OK instead of verbs, Yes/No confirmations with the destructive action as default",
+      "status": "duplicate",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/09-confirm-after-space.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/prefs/ColorOptions.java:183"
+      ],
+      "reason": "Unsafe confirm default demonstrated specifically by analyzer-01. Broader reset/export/unload examples not all checked and should not be counted separately.",
+      "canonicalId": "analyzer-01"
+    },
+    {
+      "id": "dialogs-16",
+      "title": "Circuit name validation is a second modal exposing a regex: '([a-zA-Z]+\\w*)', 'Error: Detected invalid characters!'",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [],
+      "reason": "Name-validation error and reprompt sequence not tested; no independent proof of regex exposure in this review."
+    },
+    {
+      "id": "dialogs-17",
+      "title": "Circuits side list does not update when circuits are added or renamed",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [],
+      "reason": "Stale list after add/rename was not rerun; original root-cause explanation is explicitly speculative."
+    },
+    {
+      "id": "dialogs-18",
+      "title": "Dark theme inherits light-theme colours: black text-tool default, dark-red/peach/yellow width-error colours; 'Color blind colors' sets buses black",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/prefs/SimOptions.java:142",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/prefs/ColorOptions.java:169"
+      ],
+      "reason": "Preset writes BUS_COLOR=1 and applies immediately without a confirm path; this is a dark-contrast/preset consistency issue. Black saved annotations and all warning-color examples not inspected."
+    },
+    {
+      "id": "dialogs-19",
+      "title": "Colors page: swatch columns misaligned between groups, no hex or per-row reset, colour/colour spelling mix, resets below the fold",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/prefs/ColorOptions.java:101"
+      ],
+      "reason": "Source builds independent swatch grids. Shared alignment, hex values and per-row reset are reasonable improvements; numeric x positions not measured here."
+    },
+    {
+      "id": "dialogs-20",
+      "title": "Mouse-wheel scrolling in settings pages moves about 3 px per notch",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/prefs/PreferencesFrame.java:79"
+      ],
+      "reason": "Preferences wraps JPanel pages in ordinary JScrollPanes with no unit increment set here. Exact 3px/notch timing is inherited, not independently measured."
+    },
+    {
+      "id": "dialogs-21",
+      "title": "FPGA Commander Settings page: hard-coded black 2 px box, full-width board buttons, pure-RGB swatches glued to labels",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [],
+      "reason": "FPGA board-box rendering and swatch spacing were not personally inspected; form clipping is already covered by dialogs-03."
+    },
+    {
+      "id": "dialogs-22",
+      "title": "Etched TitledBorders with tiny unscaled titles and zero window padding survive in FPGA and logging dialogs",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [],
+      "reason": "FPGA/logging window title borders and progress layout were not inspected in this assigned bounded run."
+    },
+    {
+      "id": "dialogs-23",
+      "title": "Circuit Statistics is a raw JTable with mismatched header fonts and truncated cells in a tiny window",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/dialogs/35-statistics.png"
+      ],
+      "reason": "Recovered statistics window has mixed header sizes and truncated totals/column captions. Position at 0,0 was not verified by the cropped image."
+    },
+    {
+      "id": "dialogs-24",
+      "title": "Colour chooser: brightness thumb starts at the wrong end, tiny hollow-triangle thumb, unlabeled radios",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/dialogs/08-colorchooser.png"
+      ],
+      "reason": "Recovered chooser shows Brightness=100 with thumb at black end. Tiny radio/thumb visuals also visible; constructor timing and post-click repair remain unverified."
+    },
+    {
+      "id": "dialogs-25",
+      "title": "Preferences organisation and wording carried over from old Logisim, with duplicates and misleading names",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/12-prefs.png",
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/13-window-dark.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/prefs/PreferencesFrame.java:104"
+      ],
+      "reason": "Live page opens on International and calls interface scale Zoom factor. Reorganization/copy cleanup proposed; German localization clauses not tested."
+    },
+    {
+      "id": "dialogs-26",
+      "title": "Preferences chrome: page title is the weakest text on the page; boxed content; whole-list focus rectangle; pointless nav scrollbar",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/12-prefs.png"
+      ],
+      "reason": "Live page title is visually secondary and nav has a horizontal scrollbar. Focus rectangles are accessibility affordances; do not remove them without a replacement."
+    },
+    {
+      "id": "dialogs-27",
+      "title": "Menu and dialog wording inconsistencies: ellipsis on submenus, mixed case, duplicate entries",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [],
+      "reason": "Terminology/ellipsis cleanup is editorial. Individual original menu clauses were not independently inspected."
+    },
+    {
+      "id": "light-01",
+      "title": "Palette: every component caption cut in half; TTL/PC sections become rows of identical unlabeled tiles",
+      "status": "confirmed-visual",
+      "severity": "P1",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/light/07z-palette-top.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/palette/ComponentTile.java:45",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/palette/ComponentTile.java:188"
+      ],
+      "reason": "Recovered light palette captions are visibly sliced below the icons. Fixed 68x62 tile plus scaled caption baseline explains it at HEAD. Blocks reliable visual part identification."
+    },
+    {
+      "id": "light-02",
+      "title": "None of the shell dividers can be dragged (side panel, inspector, bottom drawer)",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/ShellLayout.java:166",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/ShellLayout.java:201"
+      ],
+      "reason": "SizedSplit.doLayout unconditionally reapplies stored divider size and saves only on mouse release, supporting snapback. No independent live drag retest; do not claim all dividers experimentally verified."
+    },
+    {
+      "id": "light-03",
+      "title": "Side panel and inspector widths are unscaled 260/280 px, so labels and values truncate everywhere",
+      "status": "confirmed-source",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/LayoutPrefs.java:40",
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/06-filter.png"
+      ],
+      "reason": "Default panel dimensions are fixed 260/280/200. Original truncation breadth was not inspected; owned fresh sidebar width differed and title was readable."
+    },
+    {
+      "id": "light-04",
+      "title": "Inspector is a raw legacy JTable: garish #00FF00/orange cells, no column gap, coordinates as title",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [],
+      "reason": "Inspector cell fills, padding and coordinate headings not inspected in this bounded pass."
+    },
+    {
+      "id": "light-05",
+      "title": "Bottom drawer opens at an unscaled 200 px and cannot be resized: timing diagram is unusable",
+      "status": "duplicate",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/LayoutPrefs.java:42"
+      ],
+      "reason": "Drawer undersizing depends on fixed defaults and divider persistence in light-02/light-03. Timing-specific ruler overlap not independently reviewed.",
+      "canonicalId": "light-02"
+    },
+    {
+      "id": "light-06",
+      "title": "Live theme switch permanently shrinks every window title and other fonts to unscaled size",
+      "status": "duplicate",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/15-window-light.png",
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/17-window-dark-again.png"
+      ],
+      "reason": "Same runtime title shrink as dialogs-02; not an additional theme bug.",
+      "canonicalId": "dialogs-02"
+    },
+    {
+      "id": "light-07",
+      "title": "FlatLaf UIScale never set: checkboxes, radios, accelerators, icons, tab close buttons and chooser icons stay 1x next to 1.6x text",
+      "status": "duplicate",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/15-window-light.png"
+      ],
+      "reason": "Same split font/widget scaling issue as dialogs-01; does not independently establish every listed widget's size.",
+      "canonicalId": "dialogs-01"
+    },
+    {
+      "id": "light-08",
+      "title": "Preferences pages overflow horizontally: fields and Browse buttons cut off at the dialog edge",
+      "status": "duplicate",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/dialogs/03-prefs-template.png",
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/19-software.png"
+      ],
+      "reason": "Same Preferences viewport overflow as dialogs-03.",
+      "canonicalId": "dialogs-03"
+    },
+    {
+      "id": "light-09",
+      "title": "Preferences pages still look like 2005 Logisim (floating centred GridBag blocks, raw lists, scary copy)",
+      "status": "duplicate",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/12-prefs.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/dialogs/12-prefs-hotkeys.png"
+      ],
+      "reason": "Same form organization/design concerns as dialogs-04; hotkey clipping has its own canonical dialogs-06.",
+      "canonicalId": "dialogs-04"
+    },
+    {
+      "id": "light-10",
+      "title": "\"Filter settings\" only matches page titles; searching \"theme\" shows an empty nav and a stale page",
+      "status": "duplicate",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/SettingsNav.java:116"
+      ],
+      "reason": "Same page-title-only filtering as dialogs-07; extra reopen-focus claim not retested.",
+      "canonicalId": "dialogs-07"
+    },
+    {
+      "id": "light-11",
+      "title": "Saturated 2005 primaries in the light theme (pure #0000FF labels, blue arrows, #00FF00/#FF00FF defaults, black 2px border)",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [],
+      "reason": "Saturated semantic colors are not inherently defects. Contrast-sensitive dark rendering is separately covered by light-30 and dialogs-18; light palette redesign needs measured requirements."
+    },
+    {
+      "id": "light-12",
+      "title": "Canvas \"100%\" draws at 1x device pixels while the chrome is 1.6x, so circuits look tiny and faint",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/11-undo-restored.png"
+      ],
+      "reason": "Independent canvas zoom is intentional unless product specifies physical-size matching. Small circuit is visible live, but 100% need not equal application UI scale."
+    },
+    {
+      "id": "light-13",
+      "title": "Zoom-to-fit (tooltip \"Auto\") clips the circuit and a second click does nothing",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [],
+      "reason": "Fit-to-circuit clipping and second-click behavior not reproduced or source-audited in this bounded pass."
+    },
+    {
+      "id": "light-14",
+      "title": "Every subcircuit icon contains hard-coded text \"main\"; tree icons overlap their labels and each other",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [],
+      "reason": "Hardcoded main text and every tree icon slot not inspected; toolbar overlap shares dialogs-08 but this broader claim remains unchecked."
+    },
+    {
+      "id": "light-15",
+      "title": "Project Options Toolbar and Mouse pages are raw 2005 Swing (bold tree, overlapping rows, 'Button1' jargon)",
+      "status": "duplicate",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/dialogs/22-projopts-toolbar.png"
+      ],
+      "reason": "Project Options clipping overlaps dialogs-08; icon-only toolbar design overlaps dialogs-09. Mouse-specific symptoms not reviewed.",
+      "canonicalId": "dialogs-08"
+    },
+    {
+      "id": "light-16",
+      "title": "Circuit Analysis opens as a cramped 1473x492 window with legacy chrome",
+      "status": "duplicate",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/05-analysis-main.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/analyze/gui/Analyzer.java:198"
+      ],
+      "reason": "Same packed Analyzer size as analyzer-03. Bottom row is BoxLayout at HEAD, not the claimed FlowLayout.",
+      "canonicalId": "analyzer-03"
+    },
+    {
+      "id": "light-17",
+      "title": "Hex editor window is tiny, loses its title, and typing does not advance to the next byte",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [],
+      "reason": "Hex editor size, title and nibble entry behavior not retested. Non-advancing entry may be an intentional editing model; do not call byte loss without checking semantics."
+    },
+    {
+      "id": "light-18",
+      "title": "Dialogs open uncentred or undersized: Statistics at screen (0,0), file chooser 921x393 in Metal layout",
+      "status": "duplicate",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/dialogs/35-statistics.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/dialogs/61-lookin-popup-z.png"
+      ],
+      "reason": "Statistics clipping overlaps dialogs-23 and chooser dimensions dialogs-12; offscreen-origin component remains unverified.",
+      "canonicalId": "dialogs-23"
+    },
+    {
+      "id": "light-19",
+      "title": "Explorer: right-click opens the circuit; list selection does not follow the active tab",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [],
+      "reason": "Context-menu activation and tab/list selection synchronization not tested or source-audited here."
+    },
+    {
+      "id": "light-20",
+      "title": "Muted grey text is below 4.5:1 contrast in light theme (captions, section headers, panel titles, subtitles)",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/light/07z-palette-top.png"
+      ],
+      "reason": "Recovered muted palette captions are visibly weak, independently of clipping. Original 3:1/hex measurements not remeasured; require actual composited contrast measurement before choosing replacement tokens."
+    },
+    {
+      "id": "light-21",
+      "title": "Find Action misses core commands and matches scattered letters; debug wording",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/light/87z-findaction.png"
+      ],
+      "reason": "Recovered 'zoom' query returns an irrelevant TTL item and provider-count copy. Other query coverage and provider root cause not independently audited."
+    },
+    {
+      "id": "light-22",
+      "title": "Inconsistent terminology, capitalisation and old wording across menus, tooltips and settings",
+      "status": "duplicate",
+      "severity": "P3",
+      "evidence": [],
+      "reason": "Glossary/capitalization work overlaps dialogs-27; detailed tooltip mapping not independently checked.",
+      "canonicalId": "dialogs-27"
+    },
+    {
+      "id": "light-23",
+      "title": "Legacy Logisim artwork is still everywhere (hand poke icon, gate glyphs, coloured bitmap-style palette icons, About splash)",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/11-undo-restored.png"
+      ],
+      "reason": "Icon/artwork modernization is aesthetic. No blanket requirement to replace all functional schematic glyphs with monochrome SVGs is justified by this pass."
+    },
+    {
+      "id": "light-24",
+      "title": "Inspector STATE section expands to nothing: no rows, no empty state",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [],
+      "reason": "Expanded STATE empty view and circuit-specific availability were not checked."
+    },
+    {
+      "id": "light-25",
+      "title": "Empty surfaces with no guidance: blank Properties at start, always-present empty VHDL Console with an unlabeled dot",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/11-undo-restored.png"
+      ],
+      "reason": "Empty Properties is visible live and would benefit from guidance. VHDL console lifecycle and dot were not checked; hiding it must preserve discovery for valid projects."
+    },
+    {
+      "id": "light-26",
+      "title": "Five different 'unsaved' markers and build metadata in the title bar",
+      "status": "design-recommendation",
+      "severity": "P3",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/10-replaced-edit-menu.png"
+      ],
+      "reason": "Live dirty title plus tab dot and dev-build metadata are redundant. Metadata is conditional development-build information, not necessarily a release-title bug; other markers not reviewed."
+    },
+    {
+      "id": "light-27",
+      "title": "Secondary dialogs: Signal Selection is legacy, About ignores Escape, colour chooser controls are thin",
+      "status": "unverified",
+      "severity": null,
+      "evidence": [],
+      "reason": "Compound Signal Selection/About/color-dialog interaction claim not independently tested. Color chooser visuals are specifically covered by dialogs-24."
+    },
+    {
+      "id": "light-28",
+      "title": "Colors and FPGA preference pages: swatch columns misaligned, inconsistent heading punctuation",
+      "status": "duplicate",
+      "severity": "P3",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/prefs/ColorOptions.java:101"
+      ],
+      "reason": "Shared swatch alignment recommendation overlaps dialogs-19; FPGA heading clauses not checked.",
+      "canonicalId": "dialogs-19"
+    },
+    {
+      "id": "light-29",
+      "title": "Preferences pages scroll about 3px per wheel notch",
+      "status": "duplicate",
+      "severity": "P2",
+      "evidence": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/prefs/PreferencesFrame.java:79"
+      ],
+      "reason": "Same default scroll increment issue as dialogs-20; 15-notch measurement not rerun.",
+      "canonicalId": "dialogs-20"
+    },
+    {
+      "id": "light-30",
+      "title": "Dark-theme leaks spotted during the live switch: unreadable ROM contents, blue radix on dark, white-box icons",
+      "status": "confirmed-visual",
+      "severity": "P2",
+      "evidence": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/light/73z-rom.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/memory/MemState.java:227"
+      ],
+      "reason": "Recovered ROM capture has pale hex text on light-gray fill; HEAD mixes fixed LIGHT_GRAY with theme-aware foreground. Pin radix and palette white-box variants not independently inspected."
+    }
+  ],
+  "fixWorkstreams": [
+    {
+      "id": "D1",
+      "title": "Build Circuit: safe destination and keyboard focus",
+      "severity": "P2",
+      "ids": [
+        "analyzer-01",
+        "analyzer-19",
+        "dialogs-15"
+      ],
+      "rootCause": "BuildCircuitButton selects the analyzed project/name, shows an OK-default generic confirm, then a Yes-default replacement confirm. name.selectAll() does not transfer focus. The replacement is an undoable project action.",
+      "reproduction": "Analyze FULLADDER in the copied PC fixture, click Build Circuit, type Q, press Space, then Enter. Observe changed gate layout; main Edit > Undo Replace Circuit restores it.",
+      "screenshots": [
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/08-build-after-Q.png",
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/09-confirm-after-space.png",
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/10-replaced-edit-menu.png",
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/11-undo-restored.png"
+      ],
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/analyze/gui/BuildCircuitButton.java:69",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/analyze/gui/BuildCircuitButton.java:142",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/analyze/gui/BuildCircuitButton.java:193",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/analyze/gui/BuildCircuitButton.java:259"
+      ],
+      "fix": "Propose a unique <source>_built name, focus/select its field on show, label the primary action Build, and use explicit Replace/Cancel with Cancel the collision default. Keep replacement undoable and disclose that.",
+      "acceptance": "Keyboard-only opening and typing changes the name; Space while editing cannot submit; Enter on an untouched collision prompt cancels. Explicit replacement works and Undo restores topology, pin attributes and wiring. No disk write before Save.",
+      "limits": "P2 under requested rubric: unsafe interaction reproduced but recoverable; no demonstrated irreversible loss or saved-file overwrite."
+    },
+    {
+      "id": "D2",
+      "title": "Analyzer window and action-row geometry",
+      "severity": "P2",
+      "ids": [
+        "analyzer-03",
+        "analyzer-04",
+        "analyzer-06",
+        "analyzer-13",
+        "analyzer-15",
+        "analyzer-18",
+        "analyzer-25",
+        "light-16"
+      ],
+      "rootCause": "Packed initial geometry leaves little content height, while a nonwrapping six-button BoxLayout is wider than the permitted minimum. Fixed wait-dialog dimensions and locally assigned metrics compound scaling problems.",
+      "reproduction": "Open Analyzer at 1.6x: 1473x492. Select Simplified: expression lies below viewport. Recovered 720px window omits Build and exports.",
+      "screenshots": [
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/05-analysis-main.png",
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/23-kmap.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/analyzer/80-analyzer-narrow.png"
+      ],
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/analyze/gui/Analyzer.java:192",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/analyze/gui/Analyzer.java:198",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/analyze/gui/Analyzer.java:321"
+      ],
+      "fix": "Choose a work-area-bounded initial content size, retain user size, and wrap or overflow secondary actions while keeping Build reachable. Size wait dialogs from contents. Give table controls padding and descriptive tooltips; make optional table/map zoom explicit.",
+      "acceptance": "At 1.0/1.6/2.0x and minimum/default/maximized widths, every primary action remains reachable, map and expression can be accessed, and no half-row is the only representation. Verify wait-dialog rendering with a controlled slow fixture.",
+      "limits": "Narrow-window evidence is inherited but personally inspected. User can currently resize/scroll; not P1. Map expansion, zebra rows and hex display remain optional design work."
+    },
+    {
+      "id": "D3",
+      "title": "One scale policy across startup and theme changes",
+      "severity": "P2",
+      "ids": [
+        "dialogs-01",
+        "dialogs-02",
+        "analyzer-27",
+        "light-06",
+        "light-07"
+      ],
+      "rootCause": "Startup rescales selected components on COMPONENT_ADDED. Theme.apply reinstalls UI delegates through FlatLaf.updateUI and updateComponentTreeUI; regenerated title fonts lose application scaling. Font-only adjustment leaves widget metrics inconsistent.",
+      "reproduction": "Fresh 1.6x dark session, Preferences > Window > Light > Dark. Compare title text before and after while content labels remain large.",
+      "screenshots": [
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/13-window-dark.png",
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/15-window-light.png",
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/17-window-dark-again.png",
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/08-build-after-Q.png"
+      ],
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/start/Startup.java:1161",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/theme/Theme.java:104"
+      ],
+      "fix": "Establish one supported scaling path for fonts, UI defaults, icons, insets, renderer measurements and title panes. Remove or adapt the container-add workaround only after a small representative prototype proves no double scaling. Reapply theme-dependent custom colors during UI updates.",
+      "acceptance": "Repeat Light/Dark/System transitions with Preferences, Analyzer and a main window open at 1.0/1.6/2.0x. Same label retains font size/bounds, controls retain usable hit areas, and nothing double-scales. Test newly opened and already-open windows.",
+      "limits": "Title shrink verified live; stale hotkey background and every claimed widget class not rechecked."
+    },
+    {
+      "id": "D4",
+      "title": "Fixed shell metrics obscure component identification",
+      "severity": "P1",
+      "ids": [
+        "light-01",
+        "light-02",
+        "light-03",
+        "light-05",
+        "analyzer-29"
+      ],
+      "rootCause": "ComponentTile fixes dimensions at 68x62 but paints scaled text beneath a fixed preview area. LayoutPrefs uses device-pixel defaults. SizedSplit reapplies stored dimensions during every layout and records on release, supporting divider snapback.",
+      "reproduction": "At 1.6x light, open the library; recovered captions are cut vertically. Independently inspect default panel values and divider layout path.",
+      "screenshots": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/light/07z-palette-top.png"
+      ],
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/palette/ComponentTile.java:45",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/palette/ComponentTile.java:188",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/LayoutPrefs.java:40",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/ShellLayout.java:166",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/ShellLayout.java:201"
+      ],
+      "fix": "Derive tile height and caption bounds from final metrics; allow readable wrapping or a labeled list mode. Scale default/minimum panel dimensions once and migrate stored dimensions carefully. Track drag state so layout does not restore stale positions while dragging.",
+      "acceptance": "Identify a gate, TTL part and user subcircuit by visible name at each supported scale without hovering. Drag all three dividers and verify the new position persists across relayout/reopen. Render timing content after resizing.",
+      "limits": "P1 applies to unreadable component captions; divider and default-size concerns are P2/source-confirmed, not independently live-retested."
+    },
+    {
+      "id": "D5",
+      "title": "Expression and K-map rendering must communicate the function",
+      "severity": "P2",
+      "ids": [
+        "analyzer-02",
+        "analyzer-05",
+        "analyzer-26"
+      ],
+      "rootCause": "ExpressionRenderData scales notSep twice and measures spans separately from the final attributed drawing. K-map covers alpha-composite light fills under light text. Horizontal metric mismatch is a candidate cause, not fully isolated.",
+      "reproduction": "Analyze FULLADDER > Simplified at 1.6x; inspect mathematical overbars and digits inside tan/olive cover groups.",
+      "screenshots": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/analyzer/35-overline-z5.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/analyzer/34-kmap-z4.png",
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/23-kmap.png"
+      ],
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/analyze/data/ExpressionRenderData.java:66",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/analyze/data/ExpressionRenderData.java:214",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/analyze/data/ExpressionRenderData.java:345",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/analyze/data/ExpressionRenderData.java:368",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/analyze/data/KarnaughMapGroups.java:134"
+      ],
+      "fix": "Use one TextLayout/attributed geometry for both glyphs and negation spans, with one scaling conversion for gap/stroke. Select cover/text pairs based on final composited contrast; keep grouping intelligible without color alone.",
+      "acceptance": "Render nested NOT, SOP/POS, XOR and subscripts at 1.0/1.6/2.0x in both themes. Each bar covers exactly its operand. Measure at least 4.5:1 for normal text on every cover/overlap and visually inspect real captures.",
+      "limits": "Original numerical contrast ratios not independently measured; functional truth-table computation was not challenged."
+    },
+    {
+      "id": "D6",
+      "title": "Analyzer editing history and optimization lifecycle",
+      "severity": "P1",
+      "ids": [
+        "analyzer-07",
+        "analyzer-08",
+        "analyzer-09",
+        "analyzer-12",
+        "analyzer-14",
+        "analyzer-16"
+      ],
+      "rootCause": "Map clicks directly mutate TruthTable; fill-down selection is intentional; analysis lacks an evident edit-history path. Expression visibility is gated on input count. Optimizer hides its only completion button during work, refuses close and updates Swing from raw threads.",
+      "reproduction": "Source-confirmed: start a sufficiently expensive >6-input optimization to expose uncancellable progress. Click a K-map cell or table output region to exercise direct editing/fill-down. Long run not performed here.",
+      "screenshots": [
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/05-analysis-main.png",
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/20-signals.png",
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/22-bitwidth-popup.png"
+      ],
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/analyze/gui/KarnaughMapPanel.java:1039",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/analyze/gui/TableTabCaret.java:304",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/analyze/gui/Analyzer.java:114",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/analyze/gui/MinimizeButton.java:41"
+      ],
+      "fix": "Add transactional Analyzer undo/redo and an explicit fill-down affordance. Label the source project/circuit and snapshot state. Run optimization in a cancellable worker with cooperative cancellation, EDT-only presentation, structured progress, and an accessible result view independent of automatic-minimization limits.",
+      "acceptance": "Cancel a deliberately bounded slow optimization promptly without losing prior results. Undo/redo table, variable, expression and map edits. Manually optimize an 8-input table and inspect/export the result. Popup rows remain readable after theme transitions.",
+      "limits": "P1 applies to inability to exit long optimization normally, confirmed in source; no hours-long run or proven scratch-data loss. Other usability concerns P2. No blank bit-width rows reproduced."
+    },
+    {
+      "id": "D7",
+      "title": "Preferences forms, scrolling and settings discovery",
+      "severity": "P2",
+      "ids": [
+        "dialogs-03",
+        "dialogs-04",
+        "dialogs-06",
+        "dialogs-07",
+        "dialogs-19",
+        "dialogs-20",
+        "dialogs-25",
+        "dialogs-26",
+        "light-08",
+        "light-09",
+        "light-10",
+        "light-28",
+        "light-29"
+      ],
+      "rootCause": "Plain JScrollPane views honor large text-field preferred widths, producing horizontal overflow; unit increments are not configured. Hotkeys use fixed nested panes. SettingsNav matches only page titles and retains the old page on no results.",
+      "reproduction": "At 1.6x inspect Template/Software and Hotkey pages. Search 'theme': source match function excludes Window. Compare separate swatch grids.",
+      "screenshots": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/dialogs/03-prefs-template.png",
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/19-software.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/dialogs/12-prefs-hotkeys.png"
+      ],
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/prefs/PreferencesFrame.java:79",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/prefs/HotkeyOptions.java:82",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/util/JHotkeyInput.java:113",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/shell/SettingsNav.java:116",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/prefs/ColorOptions.java:101"
+      ],
+      "fix": "Create viewport-tracking forms with flexible path fields, visible browse controls and a scaled scroll increment. Use one main scroll surface for key bindings. Index setting labels/keywords and show an explicit no-result state. Align swatch columns and distinguish UI scale from canvas zoom.",
+      "acceptance": "At 1.0/1.6/2.0x, no required form action needs horizontal scrolling. Wheel movement advances a useful row. Queries theme/font/zoom reach Window; nonsense query shows no results and clear recovery. Long localized labels wrap without truncating controls.",
+      "limits": "Overflow visual confirmed; exact wheel distance and filter keyboard handoff were not live-tested. Page hierarchy and swatch enhancements are design choices."
+    },
+    {
+      "id": "D8",
+      "title": "Tree measurement and active-selection contrast",
+      "severity": "P2",
+      "ids": [
+        "dialogs-08",
+        "dialogs-09",
+        "light-15"
+      ],
+      "rootCause": "ProjectExplorer sets scaled renderer fonts after tree sizing, and active-circuit foreground overrides selected foreground. Renderer and layout must share metrics. Toolbar actions and duplicate Pin labels add discoverability problems.",
+      "reproduction": "Open Project Options > Toolbar at 1.6x; inspect recovered truncated library rows. Select the active circuit as a follow-up acceptance case.",
+      "screenshots": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/dialogs/22-projopts-toolbar.png"
+      ],
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/ProjectExplorer.java:289",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/generic/ProjectExplorer.java:321"
+      ],
+      "fix": "Set tree font/row/icon metrics before size caching and invalidate measurements after scale/theme changes. Preserve contrasting selection foreground, using a separate current-circuit marker. Add distinguishable Input/Output pin labels and accessible action names.",
+      "acceptance": "Collapsed and newly expanded nodes have the same readable layout; descenders fit; selected active circuit name remains legible in both themes. Keyboard navigation reaches all editing actions.",
+      "limits": "Tree clipping visually confirmed; active selected invisibility is source-supported but not live clicked. Mouse repaint debris unverified."
+    },
+    {
+      "id": "D9",
+      "title": "Secondary dialog layout and contrast",
+      "severity": "P2",
+      "ids": [
+        "analyzer-10",
+        "dialogs-10",
+        "dialogs-12",
+        "dialogs-23",
+        "dialogs-24",
+        "light-18"
+      ],
+      "rootCause": "Independent local defects: CSV centers before pack and omits title/padding; Help CSS hardcodes navy headings; statistics uses compact unscaled caps/mixed renderers; recovered color chooser thumb disagrees with numeric brightness. Chooser layout also reflects shared scaling problems.",
+      "reproduction": "Inspect recovered CSV, Help, file chooser, Statistics and Color chooser captures. Source-check CSV positioning, Help colors and Statistics caps.",
+      "screenshots": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/analyzer/55-csv-dialog.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/dialogs/28-help-guide.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/dialogs/61-lookin-popup-z.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/dialogs/35-statistics.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/dialogs/08-colorchooser.png"
+      ],
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/analyze/gui/CsvReadParameterDialog.java:52",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/resources/doc/en/html/style.css:89",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/main/StatisticsDialog.java:59"
+      ],
+      "fix": "Give CSV import a titled padded form, scrollable data preview, documented input/output split and explicit Cancel; pack before centering. Supply theme-aware Help CSS. Size Statistics columns from final fonts. Trace color-picker thumb initialization after layout before selecting a library patch/replacement. Apply shared chooser sizing improvements.",
+      "acceptance": "CSV import can be cancelled with button/Escape without model mutation and supported exported CSV round-trips. Help headings/links meet contrast targets. All statistics headers/totals fit or expose full accessible text. Opening #FF00B4 shows the brightness thumb at 100% before interaction.",
+      "limits": "Legacy aesthetics alone are not bugs. CSV includes header in its four previewed rows, so 'only three data rows' is not inherently wrong. Missing Cancel button is not missing Escape cancellation. Screen positions cannot be inferred from cropped windows."
+    },
+    {
+      "id": "D10",
+      "title": "Color tokens must cover component subpanels and presets",
+      "severity": "P2",
+      "ids": [
+        "dialogs-18",
+        "light-20",
+        "light-30"
+      ],
+      "rootCause": "MemState fills LIGHT_GRAY then draws theme-aware light foreground. Colorblind preset writes a near-black bus color independent of theme and immediately overwrites palette choices. Muted light captions need composited contrast measurement.",
+      "reproduction": "Inspect recovered dark ROM values; source-check MemState and colorblind preset. Review muted light palette captions.",
+      "screenshots": [
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/light/73z-rom.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/light/07z-palette-top.png"
+      ],
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/std/memory/MemState.java:227",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/prefs/SimOptions.java:142",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/prefs/ColorOptions.java:169"
+      ],
+      "fix": "Define paired semantic fill/text/highlight colors for memory data regions and use theme-aware preset variants. Preview/revert preset application or give an explicit confirmation consistent with other resets. Measure muted text before adjusting tokens.",
+      "acceptance": "Read ROM/RAM bytes in both themes before/after transitions; maintain contrast across selection/highlight states. Apply and revert the accessibility preset without losing a saved custom scheme. Verify visibility rather than equating low saturation with accessibility.",
+      "limits": "No visual proof here for all black text annotations, pin radix variants or every preset color."
+    },
+    {
+      "id": "D11",
+      "title": "Hotkey Escape should cancel capture",
+      "severity": "P2",
+      "ids": [
+        "dialogs-05"
+      ],
+      "rootCause": "JHotkeyInput.keyPressed validates Escape as a candidate key instead of handling edit cancellation first, and creates null-parent validation dialogs. Persistent blank display is inherited, not independently reproduced.",
+      "reproduction": "Follow-up: Preferences > Hotkeys > edit Auto-Propagate > Escape, with and without a prior conflict.",
+      "screenshots": [],
+      "sourcePointers": [
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/util/JHotkeyInput.java:289",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/util/JHotkeyInput.java:314"
+      ],
+      "fix": "Handle and consume Escape before modifier validation, restore prior displayed value and focus, and parent validation feedback to the editor. Keep temporary capture text separate from committed bindings.",
+      "acceptance": "Escape cancels capture once without closing Preferences or changing the stored binding; conflicts preserve the old shortcut, and reopening shows it correctly.",
+      "limits": "Source-confirmed escape-validation problem; not proven persisted binding loss."
+    },
+    {
+      "id": "D12",
+      "title": "Copy, workflow affordances and optional visual modernization",
+      "severity": "P3",
+      "ids": [
+        "analyzer-11",
+        "analyzer-22",
+        "analyzer-23",
+        "analyzer-28",
+        "dialogs-14",
+        "dialogs-27",
+        "light-11",
+        "light-12",
+        "light-21",
+        "light-22",
+        "light-23",
+        "light-25",
+        "light-26"
+      ],
+      "rootCause": "Mixed terminology and generic dialog/menu reuse reduce clarity. Recovered Find Action 'zoom' output visibly misses relevant commands, but provider cause is unaudited. Independent canvas zoom and dev build metadata can be intentional.",
+      "reproduction": "Inspect the live table-fallback notice, menu/title chrome and recovered 'zoom' action search.",
+      "screenshots": [
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/04-analyzer.png",
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/10-replaced-edit-menu.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/light/87z-findaction.png"
+      ],
+      "sourcePointers": [],
+      "fix": "Create a concise UI glossary, use action verbs and contextual menus, add guidance for empty panels, and audit search providers/ranking before changing them. Keep physical canvas zoom independent unless product requirements explicitly change it. Modernize artwork and print dialogs after functional/legibility fixes.",
+      "acceptance": "Common search terms reach their actions before irrelevant subsequences; control names match menus/tooltips; empty content explains next steps. Preserve keyboard focus visibility and semantic schematic glyphs. Verify release and dev-title requirements separately.",
+      "limits": "This is mostly recommendation work, not a pile of independently confirmed defects. Do not spend redesign effort ahead of caption clipping or inaccessible optimization cancellation."
+    }
+  ],
+  "newFindings": [
+    {
+      "id": "dialogs-new-01",
+      "scope": "qa-harness",
+      "status": "confirmed-runtime",
+      "severity": "P1",
+      "title": "Original QA harness exposes user-home autosaves despite isolated Java preferences",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/02-autosave.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/qa.sh",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/file/Loader.java:175",
+        "/tmp/logisim-qa-recovery-20260924/dialogs-qa.sh"
+      ],
+      "reproduction": "Launch original harness with --fresh: an existing unnamed autosave from real user.home is discovered before fixture load.",
+      "reason": "Loader derives unnamed autosave path from user.home; userRoot alone isolates only preferences. Discovery was observed; real autosave mutation was not performed.",
+      "fix": "Set and create private -Duser.home as well as java.util.prefs.userRoot; ensure named fixtures are copied; add fail-fast isolation check and explicit PID ownership. Also correct shot's hardcoded dimensions and record artifact SHA/BuildInfo at capture time.",
+      "acceptance": "A seeded real-home autosave is neither read for recovery nor changed by QA; unnamed autosaves are written only under session home. Nondefault display capture uses actual dimensions. Teardown targets validated owned PIDs only.",
+      "duplicateNote": "Parent independently identified the same harness issue during this review; count once globally."
+    }
+  ],
+  "targetedChecks": [
+    {
+      "name": "Build keyboard replacement and recovery",
+      "result": "reproduced and undone",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/07-build-default.png",
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/08-build-after-Q.png",
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/09-confirm-after-space.png",
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/10-replaced-edit-menu.png",
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/11-undo-restored.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/analyze/gui/BuildCircuitButton.java:69"
+      ]
+    },
+    {
+      "name": "Live Dark-Light-Dark title shrink",
+      "result": "reproduced",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/13-window-dark.png",
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/15-window-light.png",
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/17-window-dark-again.png",
+        "/home/nilsb/Documents/projects/logisim-revolution/src/main/java/com/cburch/logisim/gui/theme/Theme.java:104"
+      ]
+    },
+    {
+      "name": "Blank or clipped popup rows",
+      "result": "not reproduced in tested popup lists; form clipping independently confirmed",
+      "evidence": [
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/14-theme-popup-dark.png",
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/16-theme-popup-light.png",
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/18-font-popup.png",
+        "/tmp/logisim-qa-recovery-20260924/dialogs-evidence/22-bitwidth-popup.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/analyzer/92-bitwidth-popup.png",
+        "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/dialogs/61-lookin-popup-z.png"
+      ],
+      "reason": "Theme and font lists and all 20 bit-width rows readable at 1.6x, including after transitions. This is not proof about every combo or custom renderer."
+    }
+  ],
+  "tested": [
+    "Real isolated jar; copied FULLADDER Analyze -> Build -> Q typing -> Space/Enter -> Undo",
+    "8-input subtractor notice and Analyzer packed geometry",
+    "Fresh dark Preferences; live Light then Dark; theme/font dropdowns",
+    "Software form clipping; signal bit-width popup after transitions",
+    "Selected recovered screenshots personally rendered and inspected",
+    "Current HEAD source anchors listed in workstreams",
+    "Owned fixture source/copy hash comparison; clean application log during targeted run; exact owned PID cleanup"
+  ],
+  "notTested": [
+    "Clean rebuild proving jar equivalence to HEAD",
+    "Other scales, operating systems, localization and real-hardware performance",
+    "Hours-long optimizer or cancellation at runtime",
+    "Physical printing, CSV import/export round-trip, LaTeX export, saved project overwrite",
+    "Persisted hotkey loss, list add/rename synchronization, zoom-to-fit, hex editor semantics",
+    "Every screenshot and every clause of all 86 compound claims",
+    "All individual dropdowns or custom-renderer blank-row cases"
+  ],
+  "reviewedRecoveredScreenshots": [
+    "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/analyzer/35-overline-z5.png",
+    "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/analyzer/80-analyzer-narrow.png",
+    "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/analyzer/34-kmap-z4.png",
+    "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/analyzer/55-csv-dialog.png",
+    "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/dialogs/03-prefs-template.png",
+    "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/dialogs/12-prefs-hotkeys.png",
+    "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/dialogs/22-projopts-toolbar.png",
+    "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/dialogs/28-help-guide.png",
+    "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/dialogs/61-lookin-popup-z.png",
+    "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/dialogs/35-statistics.png",
+    "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/dialogs/08-colorchooser.png",
+    "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/light/07z-palette-top.png",
+    "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/light/87z-findaction.png",
+    "/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/light/73z-rom.png"
+  ],
+  "pendingVerification": [
+    {
+      "id": "analyzer-17",
+      "reason": "Logical fallback glyphs and notation changes during editing were not inspected in this bounded review."
+    },
+    {
+      "id": "analyzer-20",
+      "reason": "Chooser default directory, nonexistent prefill, export completion and success feedback were not exercised. Do not promote inherited narrative to runtime proof."
+    },
+    {
+      "id": "analyzer-24",
+      "reason": "Constant contrast capture and constant-generation placement were not inspected here; keep for component owner verification."
+    },
+    {
+      "id": "dialogs-11",
+      "reason": "About credits, Escape handling, version availability and allegedly dead URL not checked. No network request made for URL validity."
+    },
+    {
+      "id": "dialogs-13",
+      "reason": "Multiple chooser/help/statistics/print positioning claims not reproduced; a cropped window image alone cannot establish screen origin."
+    },
+    {
+      "id": "dialogs-16",
+      "reason": "Name-validation error and reprompt sequence not tested; no independent proof of regex exposure in this review."
+    },
+    {
+      "id": "dialogs-17",
+      "reason": "Stale list after add/rename was not rerun; original root-cause explanation is explicitly speculative."
+    },
+    {
+      "id": "dialogs-21",
+      "reason": "FPGA board-box rendering and swatch spacing were not personally inspected; form clipping is already covered by dialogs-03."
+    },
+    {
+      "id": "dialogs-22",
+      "reason": "FPGA/logging window title borders and progress layout were not inspected in this assigned bounded run."
+    },
+    {
+      "id": "light-04",
+      "reason": "Inspector cell fills, padding and coordinate headings not inspected in this bounded pass."
+    },
+    {
+      "id": "light-13",
+      "reason": "Fit-to-circuit clipping and second-click behavior not reproduced or source-audited in this bounded pass."
+    },
+    {
+      "id": "light-14",
+      "reason": "Hardcoded main text and every tree icon slot not inspected; toolbar overlap shares dialogs-08 but this broader claim remains unchecked."
+    },
+    {
+      "id": "light-17",
+      "reason": "Hex editor size, title and nibble entry behavior not retested. Non-advancing entry may be an intentional editing model; do not call byte loss without checking semantics."
+    },
+    {
+      "id": "light-19",
+      "reason": "Context-menu activation and tab/list selection synchronization not tested or source-audited here."
+    },
+    {
+      "id": "light-24",
+      "reason": "Expanded STATE empty view and circuit-specific availability were not checked."
+    },
+    {
+      "id": "light-27",
+      "reason": "Compound Signal Selection/About/color-dialog interaction claim not independently tested. Color chooser visuals are specifically covered by dialogs-24."
+    }
+  ]
+}

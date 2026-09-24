@@ -1,0 +1,50 @@
+[
+  {
+    "id":"qa-new-01", "title":"Disabled and accented SVG variants mutate the shared regular icon", "severity":"P2", "status":"confirmed-runtime", "workstream":"W2",
+    "observed":"AppIcons.disabled(ADD,16) returns exactly the cached regular icon and replaces its colour filter. A later regular lookup retains that modified filter.",
+    "source":"src/main/java/com/cburch/logisim/gui/theme/AppIcons.java:147",
+    "evidence":["/tmp/logisim-qa-recovery-20260924/ThemeLifecycleProbe.java","/tmp/logisim-qa-recovery-20260924/theme-probe-result.txt"],
+    "fix":"Give regular/disabled/accent variants separate immutable cache entries or copies. Never mutate an icon already handed to another component.",
+    "acceptance":"Acquire all three variants in each order; existing regular icon retains its original filter. Check enabled/disabled toolbars across theme changes."
+  },
+  {
+    "id":"qa-new-02", "title":"System-theme timeout does not bound subprocess output reads", "severity":"P1", "status":"confirmed-runtime", "workstream":"W2",
+    "observed":"SystemTheme.run waits for readLine EOF before the timed waitFor. A silent three-second process completes successfully after 3004ms despite a two-second timeout. Theme's Swing Timer invokes this path on the EDT; an unresponsive desktop command can freeze the UI.",
+    "source":"src/main/java/com/cburch/logisim/gui/theme/SystemTheme.java:162",
+    "evidence":["/tmp/logisim-qa-recovery-20260924/ThemeLifecycleProbe.java","/tmp/logisim-qa-recovery-20260924/theme-probe-result.txt"],
+    "fix":"Move desktop discovery off EDT, bound the whole subprocess lifetime including output collection, cap output and cancel/kill timed-out children. Apply only the latest result on EDT.",
+    "acceptance":"A silent or never-ending test process respects the deadline; typing and repainting remain responsive during the probe. No physical OS-theme hang was reproduced in this audit."
+  },
+  {
+    "id":"qa-new-03", "title":"Palette rebuilds retain discarded tiles through strong theme listeners", "severity":"P2", "status":"confirmed-source", "workstream":"W2",
+    "observed":"Each ComponentTile registers this::repaint in Theme's static strong listener list. ComponentPalette.rebuild removes tiles and constructs new ones without unregistering; palette and shell callbacks also need lifecycle ownership. Growth follows rebuilds; user-visible slowdown was not measured.",
+    "source":"src/main/java/com/cburch/logisim/gui/shell/palette/ComponentTile.java:122",
+    "evidence":["src/main/java/com/cburch/logisim/gui/shell/palette/ComponentPalette.java:169","src/main/java/com/cburch/logisim/gui/theme/Theme.java:60"],
+    "fix":"Use paired attach/detach subscriptions with stable listener identity, or a palette-owned theme subscription that repaints current tiles. Dispose project/library listeners too.",
+    "acceptance":"After repeated filter/pin/theme/window cycles, retained listeners return to the live-component baseline; removed tiles can be collected."
+  },
+  {
+    "id":"qa-new-04", "title":"Automatic OS-theme changes bypass the canvas palette refresh path", "severity":"P1", "status":"confirmed-source", "workstream":"W2",
+    "observed":"The System Theme timer calls Theme.apply, which changes LaF and fires listeners. AppPreferences.applyThemeColors and refreshProjectsForTheme are only called separately by the preference combo and startup; the automatic path has no equivalent palette update.",
+    "source":"src/main/java/com/cburch/logisim/gui/theme/Theme.java:188",
+    "evidence":["src/main/java/com/cburch/logisim/gui/prefs/WindowOptions.java:293","src/main/java/com/cburch/logisim/Main.java:40"],
+    "fix":"Use one ordered theme transaction for startup, preference changes and OS notifications: resolve mode, load theme-specific palette, update UI and editors, repaint all document views, notify listeners on EDT.",
+    "acceptance":"A simulated OS-theme change updates chrome, canvas, values, diagram, editor and cached previews together; explicit user colours remain preserved. Physical OS-switch path remains to be tested."
+  },
+  {
+    "id":"qa-new-05", "title":"Generated build ID can identify a previous commit", "severity":"P2", "status":"confirmed-source", "workstream":"W0",
+    "observed":"QA jar and current build jar have identical SHA256, but generated title reports main/2532c84d while repository HEAD is 0a6226664. genBuildInfo inputs omit Git revision/ref, so a commit with unchanged source need not regenerate metadata.",
+    "source":"build.gradle.kts:877",
+    "evidence":["build/generated/logisim/java/com/cburch/logisim/generated/BuildInfo.java","/tmp/logisim-qa-recovery-20260924/theme-probe-result.txt"],
+    "fix":"Include resolved Git revision/branch as task input, or another reproducible revision provider. Record commit, dirty status and jar hash in QA manifests independently of UI title.",
+    "acceptance":"Building after a commit-only change reports the new revision; clean and dirty QA binaries are distinguishable without exposing build noise in the normal title."
+  },
+  {
+    "id":"qa-new-06", "title":"Recovered QA harness does not fully isolate home or faithfully capture all window sizes", "severity":"P1", "status":"confirmed-source", "workstream":"W0",
+    "observed":"Original qa.sh isolates preferences but not user.home, while unnamed autosaves use user.home. Its shot command hardcodes a 2560x1600 black canvas and composites windows by area rather than stacking order. Old recent lists contain assistant scratch files. Screenshot-edge and first-launch claims need special care.",
+    "source":"recovery/original-qa.sh.txt",
+    "evidence":["src/main/java/com/cburch/logisim/file/Loader.java:175","/tmp/claude-1000/-home-nilsb/aa97432b-04cd-4681-802b-fbefae8bfa3e/scratchpad/qa/out/critic/01z-welcome.png"],
+    "fix":"Isolate home, prefs, documents and autosaves; validate session IDs/PIDs; never recursively reset a broad/unvalidated path; capture actual window geometry and stacking or native compositor output. Archive metadata and unscaled crops. Preserve existing user recents/autosaves.",
+    "acceptance":"QA leaves user preference and autosave checksums unchanged, refuses unsafe session IDs and stale PIDs, and captures 1280x800 and 2560x1600 without artificial clipping."
+  }
+]

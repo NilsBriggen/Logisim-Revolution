@@ -1,0 +1,4 @@
+extension=circ
+mime-type=application/x-logisim-circuit
+icon=support/jpackage/windows/Logisim-Revolution-circ.ico
+description=Logisim circuit file
