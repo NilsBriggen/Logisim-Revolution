@@ -50,10 +50,10 @@ jobs:
           test "$(uname -m)" = x86_64
           if [ "$(id -u)" -eq 0 ]; then
             apt-get update
-            DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends fakeroot rpm
+            DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends fakeroot rpm xxd
           else
             sudo apt-get update
-            sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends fakeroot rpm
+            sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends fakeroot rpm xxd
           fi
           command -v fakeroot
           command -v dpkg-deb

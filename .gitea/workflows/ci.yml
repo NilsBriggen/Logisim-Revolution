@@ -22,6 +22,17 @@ jobs:
           java-version: '21'
       - name: Check workflow policy and release completeness rules
         run: python3 -m unittest discover -s scripts/ci -p 'test_*.py'
+      - name: Install test dependency
+        run: |
+          if ! command -v xxd >/dev/null; then
+            if [ "$(id -u)" -eq 0 ]; then
+              apt-get update
+              DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends xxd
+            else
+              sudo apt-get update
+              sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends xxd
+            fi
+          fi
       - name: Build, test and check Java style
         run: ./gradlew build --no-daemon --console=plain
 

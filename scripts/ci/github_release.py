@@ -59,7 +59,7 @@ def mirror_and_dispatch():
     with tempfile.TemporaryDirectory() as temporary:
         # GitHub contains source snapshots, never the inherited Gitea history.
         mirror = Path(temporary) / "mirror"
-        git("clone", "--depth=1", f"https://github.com/{GITHUB_REPOSITORY}.git", str(mirror))
+        git("clone", "--quiet", "--depth=1", f"https://github.com/{GITHUB_REPOSITORY}.git", str(mirror))
         for path in mirror.iterdir():
             if path.name != ".git":
                 if path.is_dir() and not path.is_symlink():
@@ -76,7 +76,7 @@ def mirror_and_dispatch():
             raise ValueError("GitHub snapshot does not match the Gitea source tree.")
         if subprocess.run(["git", "-C", str(mirror), "diff", "--cached", "--quiet"]).returncode:
             git("-C", str(mirror), "-c", "user.name=Logisim Revolution CI",
-                "-c", "user.email=ci@users.noreply.github.com", "commit",
+                "-c", "user.email=ci@users.noreply.github.com", "commit", "--quiet",
                 "-m", f"Build snapshot of Gitea {sha}")
         mirror_sha = git_output("-C", str(mirror), "rev-parse", "HEAD")
         askpass = Path(temporary) / "askpass.sh"
