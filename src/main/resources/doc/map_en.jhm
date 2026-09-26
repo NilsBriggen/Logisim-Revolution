@@ -25,6 +25,7 @@
 	<mapID target="gui-attribut"        url="en/html/guide/gui/gui-attribut.html" />
 	<mapID target="gui-attrcomp"        url="en/html/guide/gui/gui-attrcomp.html" />
 	<mapID target="gui_search"          url="en/html/guide/gui/gui-search.html" />
+	<mapID target="gui-lock"            url="en/html/guide/gui/gui-lock.html" />
 	<mapID target="subcirc"             url="en/html/guide/subcirc/index.html" />
 	<mapID target="subcirc_creating"    url="en/html/guide/subcirc/sub-creating.html" />
 	<mapID target="subcirc_using"       url="en/html/guide/subcirc/sub-using.html" />
@@ -81,6 +82,7 @@
 	<mapID target="prefs_cmdline"       url="en/html/guide/prefs/pref-cmdline.html" />
 	<mapID target="opts"                url="en/html/guide/opts/index.html" />
 	<mapID target="opts_simulate"       url="en/html/guide/opts/opts-simulate.html" />
+	<mapID target="opts_style"          url="en/html/guide/opts/opts-style.html" />
 	<mapID target="opts_toolbar"        url="en/html/guide/opts/opts-toolbar.html" />
 	<mapID target="opts_mouse"          url="en/html/guide/opts/opts-mouse.html" />
 	<mapID target="prop"                url="en/html/guide/prop/index.html" />

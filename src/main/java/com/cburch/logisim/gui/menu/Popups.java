@@ -12,9 +12,11 @@ package com.cburch.logisim.gui.menu;
 import static com.cburch.logisim.gui.Strings.S;
 
 import com.cburch.logisim.circuit.Circuit;
+import com.cburch.logisim.circuit.EditLockAction;
 import com.cburch.logisim.file.LoadedLibrary;
 import com.cburch.logisim.gui.main.Frame;
 import com.cburch.logisim.gui.main.StatisticsDialog;
+import com.cburch.logisim.gui.theme.AppIcons;
 import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.tools.AddTool;
 import com.cburch.logisim.tools.Library;
@@ -29,6 +31,17 @@ import javax.swing.JPopupMenu;
 import javax.swing.SwingUtilities;
 
 public class Popups {
+  /**
+   * "Lock Circuit" with a closed padlock, or "Unlock Circuit" with an open one, for a circuit's
+   * context menu.
+   */
+  public static JMenuItem circuitLockItem(Circuit circuit) {
+    final var locked = circuit.isEditLocked();
+    final var item = new JMenuItem(S.get(locked ? "circuitUnlockItem" : "circuitLockItem"));
+    item.setIcon(AppIcons.get(locked ? AppIcons.Id.UNLOCK : AppIcons.Id.LOCK, AppIcons.SIZE));
+    return item;
+  }
+
   public static JPopupMenu forCircuit(Project proj, AddTool tool, Circuit circ) {
     return new CircuitPopup(proj, tool, circ);
   }
@@ -62,6 +75,7 @@ public class Popups {
     final JMenuItem editLayout = new JMenuItem(S.get("projectEditCircuitLayoutItem"));
     final JMenuItem editAppearance = new JMenuItem(S.get("projectEditCircuitAppearanceItem"));
     final JMenuItem exportCircuit = new JMenuItem(S.get("projectExportCircuitItem"));
+    final JMenuItem lock;
 
     CircuitPopup(Project proj, Tool tool, Circuit circuit) {
       super(S.get("circuitMenu"));
@@ -84,6 +98,11 @@ public class Popups {
       main.addActionListener(this);
       add(remove);
       remove.addActionListener(this);
+      addSeparator();
+      lock = circuitLockItem(circuit);
+      add(lock);
+      lock.addActionListener(this);
+      lock.setEnabled(proj.getLogisimFile().contains(circuit));
 
       final var canChange = proj.getLogisimFile().contains(circuit);
       final var file = proj.getLogisimFile();
@@ -118,6 +137,8 @@ public class Popups {
         ProjectCircuitActions.doSetAsMainCircuit(proj, circuit);
       } else if (source == remove) {
         ProjectCircuitActions.doRemoveCircuit(proj, circuit);
+      } else if (source == lock) {
+        proj.doAction(EditLockAction.setCircuitLocked(circuit, !circuit.isEditLocked()));
       }
     }
   }

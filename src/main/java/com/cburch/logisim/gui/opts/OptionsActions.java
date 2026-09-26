@@ -27,7 +27,8 @@ class OptionsActions {
 
   public static Action setAttribute(AttributeSet attrs, Attribute<?> attr, Object value) {
     Object oldValue = attrs.getValue(attr);
-    if (!oldValue.equals(value)) {
+    // A project style setting may be unset (null) on either side.
+    if (!java.util.Objects.equals(oldValue, value)) {
       return new SetAction(attrs, attr, value);
     } else {
       return null;

@@ -149,6 +149,52 @@ public class CircuitChange {
     return false;
   }
 
+  /**
+   * The refusal this change runs into when its circuit, or a component it touches, is locked, or
+   * {@code null} when it may go ahead.
+   *
+   * <p>Adding or removing anything, wires included, needs an unlocked circuit. Removing, moving
+   * (a replacement) or changing a component also needs that component to be unlocked.
+   */
+  EditLockedException editLockViolation() {
+    if (circuit == null) return null;
+    return switch (type) {
+      case CLEAR -> circuit.isEditLocked()
+          ? new EditLockedException(circuit, null)
+          : firstLocked(circuit.getNonWires());
+      case ADD, ADD_ALL -> circuit.isEditLocked() ? new EditLockedException(circuit, null) : null;
+      case REMOVE -> circuit.isEditLocked()
+          ? new EditLockedException(circuit, null)
+          : firstLocked(java.util.List.of(comp));
+      case REMOVE_ALL -> circuit.isEditLocked()
+          ? new EditLockedException(circuit, null)
+          : firstLocked(comps);
+      case REPLACE -> {
+        final var repl = (ReplacementMap) newValue;
+        if (repl.isEmpty()) yield null;
+        yield circuit.isEditLocked()
+            ? new EditLockedException(circuit, null)
+            : firstLocked(repl.getRemovals());
+      }
+      case SET -> {
+        if (circuit.isEditLocked()) yield new EditLockedException(circuit, null);
+        yield circuit.isComponentEditLocked(comp) ? new EditLockedException(circuit, comp) : null;
+      }
+      case SET_FOR_CIRCUIT ->
+          circuit.isEditLocked() ? new EditLockedException(circuit, null) : null;
+      default -> null;
+    };
+  }
+
+  private EditLockedException firstLocked(Collection<? extends Component> components) {
+    for (final var candidate : components) {
+      if (circuit.isComponentEditLocked(candidate)) {
+        return new EditLockedException(circuit, candidate);
+      }
+    }
+    return null;
+  }
+
   void execute(CircuitMutator mutator, ReplacementMap prevReplacements) {
     switch (type) {
       case CLEAR:

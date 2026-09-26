@@ -26,6 +26,8 @@ public record CircuitEvent(int getAction, Circuit getCircuit, Object getData) {
   public static final int CHANGE_DEFAULT_BOX_APPEARANCE = 7;
   public static final int ACTION_CHECK_NAME = 8;
   public static final int ACTION_DISPLAY_CHANGE = 9; // viewed/haloed status change
+  /** The circuit, or some of its components, were locked or unlocked. */
+  public static final int ACTION_SET_EDIT_LOCK = 10;
 
   public CircuitTransactionResult getResult() {
     return (CircuitTransactionResult) getData;
@@ -43,6 +45,7 @@ public record CircuitEvent(int getAction, Circuit getCircuit, Object getData) {
       case CHANGE_DEFAULT_BOX_APPEARANCE -> "DEFAULT_BOX_APPEARANCE";
       case ACTION_CHECK_NAME -> "CHECK_NAME";
       case ACTION_DISPLAY_CHANGE -> "ACTION_DISPLAY_CHANGE";
+      case ACTION_SET_EDIT_LOCK -> "ACTION_SET_EDIT_LOCK";
       default -> "UNKNOWN_ACTION(" + getAction + ")";
     };
     return LineBuffer.format("{{1}}{\n  circuit={{2}}\n  data={{3}}\n}", s, getCircuit, getData);

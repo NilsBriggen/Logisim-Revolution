@@ -73,7 +73,10 @@ public class OptionsFrame extends LFrame.Dialog {
     // held a single button, in a window fixed at 450x300 whose tab names did not fit.
     panels =
         new OptionsPanel[] {
-          new SimulateOptions(this), new ToolbarOptions(this), new MouseOptions(this)
+          new SimulateOptions(this),
+          new StyleOptions(this),
+          new ToolbarOptions(this),
+          new MouseOptions(this)
         };
     forms = new ScrollableForm[panels.length];
     for (var index = 0; index < panels.length; index++) {

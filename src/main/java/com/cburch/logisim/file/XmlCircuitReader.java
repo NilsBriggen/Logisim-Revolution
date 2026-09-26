@@ -229,6 +229,7 @@ public class XmlCircuitReader extends CircuitTransaction {
     }
 
     final var componentsAt = new HashMap<Bounds, Component>();
+    final var lockedComponents = new ArrayList<Component>();
     final var overlapComponents = new ArrayList<Component>();
     for (final var subElement : XmlIterator.forChildElements(element)) {
       final var subEltName = subElement.getTagName();
@@ -256,6 +257,7 @@ public class XmlCircuitReader extends CircuitTransaction {
             } else {
               mutator.add(dest, comp);
               componentsAt.put(bds, comp);
+              if (isEditLocked(subElement)) lockedComponents.add(comp);
             }
           }
         } catch (XmlReaderException e) {
@@ -289,6 +291,14 @@ public class XmlCircuitReader extends CircuitTransaction {
       componentsAt.put(comp.getBounds(), comp);
       mutator.add(dest, comp);
     }
+    // Only once the circuit is built: a lock refuses edits, and building it is one.
+    dest.setComponentsEditLocked(lockedComponents, true);
+    if (isEditLocked(element)) dest.setEditLocked(true);
+  }
+
+  /** Whether a {@code circuit} or {@code comp} element is marked as locked against edits. */
+  private static boolean isEditLocked(Element elt) {
+    return "true".equalsIgnoreCase(elt.getAttribute(XmlWriter.EDIT_LOCK_ATTRIBUTE).trim());
   }
 
   private void buildDynamicAppearance(XmlReader.CircuitData circData) {

@@ -15,6 +15,7 @@ import com.cburch.draw.model.CanvasObject;
 import com.cburch.logisim.circuit.Circuit;
 import com.cburch.logisim.circuit.CircuitMutator;
 import com.cburch.logisim.circuit.CircuitTransaction;
+import com.cburch.logisim.circuit.EditLockedException;
 import com.cburch.logisim.proj.Action;
 import com.cburch.logisim.proj.Project;
 import java.util.ArrayList;
@@ -31,6 +32,7 @@ public class RevertAppearanceAction extends Action {
 
   @Override
   public void doIt(Project proj) {
+    if (circuit.isEditLocked()) throw new EditLockedException(circuit, null);
     final var xn = new ActionTransaction(true);
     xn.execute();
   }

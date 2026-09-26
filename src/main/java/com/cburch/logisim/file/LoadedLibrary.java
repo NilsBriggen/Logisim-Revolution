@@ -79,16 +79,22 @@ public class LoadedLibrary extends Library implements LibraryEventSource {
       }
     }
     if (toReplace != null) {
-      final var xn = new CircuitMutation(circuit);
+      // Swapping in the reloaded library's components is not an edit: it reaches locked circuits
+      // and components too, and a locked component's replacement stays locked.
+      final var xn = new CircuitMutation(circuit).ignoringEditLocks();
+      final var stillLocked = new ArrayList<Component>();
       for (final var comp : toReplace) {
         xn.remove(comp);
         final var factory = compMap.get(comp.getFactory());
         if (factory != null) {
           final var newAttrs = createAttributes(factory, comp.getAttributeSet());
-          xn.add(factory.createComponent(comp.getLocation(), newAttrs));
+          final var replacement = factory.createComponent(comp.getLocation(), newAttrs);
+          xn.add(replacement);
+          if (circuit.isComponentEditLocked(comp)) stillLocked.add(replacement);
         }
       }
       xn.execute();
+      circuit.setComponentsEditLocked(stillLocked, true);
     }
   }
 

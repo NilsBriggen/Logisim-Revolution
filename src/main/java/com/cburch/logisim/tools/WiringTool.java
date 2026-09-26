@@ -13,6 +13,7 @@ import static com.cburch.logisim.tools.Strings.S;
 
 import com.cburch.logisim.circuit.Circuit;
 import com.cburch.logisim.circuit.CircuitMutation;
+import com.cburch.logisim.circuit.EditLockedException;
 import com.cburch.logisim.circuit.Wire;
 import com.cburch.logisim.circuit.WireInfo;
 import com.cburch.logisim.comp.Component;
@@ -310,6 +311,12 @@ public class WiringTool extends Tool {
     if (!canvas.getProject().getLogisimFile().contains(canvas.getCircuit())) {
       exists = false;
       canvas.setErrorMessage(S.getter("cannotModifyError"));
+      return;
+    }
+    if (canvas.getCircuit().isEditLocked()) {
+      // Refused now, rather than after a whole wire has been dragged out.
+      exists = false;
+      canvas.getProject().reportRefusedEdit(new EditLockedException(canvas.getCircuit(), null));
       return;
     }
 

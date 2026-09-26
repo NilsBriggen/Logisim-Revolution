@@ -38,6 +38,16 @@ public class AttrTableCircuitModel extends AttributeSetTableModel {
   }
 
   @Override
+  protected boolean isEditLocked() {
+    return circ.isEditLocked();
+  }
+
+  @Override
+  public String getEditLockNote() {
+    return circ.isEditLocked() ? S.get("attrLockedCircuitNote", circ.getName()) : null;
+  }
+
+  @Override
   public void setValueRequested(final Attribute<Object> attr, Object value)
       throws AttrTableSetException {
     setValuesRequested(Map.of(attr, value));

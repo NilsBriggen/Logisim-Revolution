@@ -13,6 +13,7 @@ import com.cburch.draw.model.CanvasModelEvent;
 import com.cburch.draw.model.CanvasModelListener;
 import com.cburch.logisim.circuit.Circuit;
 import com.cburch.logisim.circuit.CircuitState;
+import com.cburch.logisim.circuit.EditLockAction;
 import com.cburch.logisim.circuit.Simulator;
 import com.cburch.logisim.file.LibraryEvent;
 import com.cburch.logisim.file.LibraryListener;
@@ -115,6 +116,15 @@ public class MainMenuListener extends MenuListener {
         ProjectCircuitActions.doAnalyze(proj, cur);
       } else if (src == LogisimMenuBar.CIRCUIT_STATS) {
         StatisticsDialog.show(frame, proj.getLogisimFile(), cur);
+      } else if (src == LogisimMenuBar.LOCK_CIRCUIT) {
+        if (cur != null) proj.doAction(EditLockAction.setCircuitLocked(cur, !cur.isEditLocked()));
+      } else if (src == LogisimMenuBar.LOCK_SELECTION) {
+        if (cur != null) {
+          final var selected = proj.getSelection().getComponents();
+          proj.doAction(
+              EditLockAction.setComponentsLocked(
+                  cur, selected, !EditLockAction.allLocked(cur, selected)));
+        }
       }
     }
 
@@ -161,6 +171,8 @@ public class MainMenuListener extends MenuListener {
       menubar.setEnabled(LogisimMenuBar.REVERT_APPEARANCE, canRevert);
       menubar.setEnabled(LogisimMenuBar.ANALYZE_CIRCUIT, true);
       menubar.setEnabled(LogisimMenuBar.CIRCUIT_STATS, true);
+      menubar.setEnabled(LogisimMenuBar.LOCK_CIRCUIT, curIndex >= 0);
+      menubar.setEnabled(LogisimMenuBar.LOCK_SELECTION, curIndex >= 0);
       fireEnableChanged();
     }
 
@@ -238,6 +250,8 @@ public class MainMenuListener extends MenuListener {
       menubar.addActionListener(LogisimMenuBar.REVERT_APPEARANCE, this);
       menubar.addActionListener(LogisimMenuBar.ANALYZE_CIRCUIT, this);
       menubar.addActionListener(LogisimMenuBar.CIRCUIT_STATS, this);
+      menubar.addActionListener(LogisimMenuBar.LOCK_CIRCUIT, this);
+      menubar.addActionListener(LogisimMenuBar.LOCK_SELECTION, this);
 
       computeEnabled();
     }

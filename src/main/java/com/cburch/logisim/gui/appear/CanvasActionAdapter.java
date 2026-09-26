@@ -15,6 +15,7 @@ import com.cburch.logisim.circuit.Circuit;
 import com.cburch.logisim.circuit.CircuitAttributes;
 import com.cburch.logisim.circuit.CircuitMutator;
 import com.cburch.logisim.circuit.CircuitTransaction;
+import com.cburch.logisim.circuit.EditLockedException;
 import com.cburch.logisim.circuit.appear.AppearanceElement;
 import com.cburch.logisim.data.AttributeOption;
 import com.cburch.logisim.proj.Project;
@@ -44,6 +45,7 @@ public class CanvasActionAdapter extends com.cburch.logisim.proj.Action {
 
   @Override
   public void doIt(Project proj) {
+    if (circuit.isEditLocked()) throw new EditLockedException(circuit, null);
     if (affectsPorts()) {
       final var xn = new ActionTransaction(true);
       xn.execute();

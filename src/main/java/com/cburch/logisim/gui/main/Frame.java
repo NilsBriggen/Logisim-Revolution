@@ -47,6 +47,7 @@ import com.cburch.logisim.gui.shell.EditorTabModel;
 import com.cburch.logisim.gui.shell.EditorTabs;
 import com.cburch.logisim.gui.shell.Inspector;
 import com.cburch.logisim.gui.shell.LayoutPrefs;
+import com.cburch.logisim.gui.shell.LockNotice;
 import com.cburch.logisim.gui.shell.MainToolbar;
 import com.cburch.logisim.gui.shell.SectionPanel;
 import com.cburch.logisim.gui.shell.ShellLayout;
@@ -56,6 +57,7 @@ import com.cburch.logisim.gui.shell.StatusBar;
 import com.cburch.logisim.gui.shell.WelcomePanel;
 import com.cburch.logisim.gui.shell.ZoomPill;
 import com.cburch.logisim.gui.theme.AppIcons;
+import com.cburch.logisim.gui.theme.Tokens;
 import com.cburch.logisim.gui.prefs.PreferencesFrame;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.formdev.flatlaf.FlatClientProperties;
@@ -154,6 +156,10 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
   private final Inspector inspector;
   private final BottomPanel bottomPanel;
   private final StatusBar statusBar;
+  /** Above the properties: why they cannot be changed, when what is shown is locked. */
+  private final LockNotice lockNotice = new LockNotice();
+  /** Takes a refused-edit remark off the status bar after a while. */
+  private final javax.swing.Timer noticeTimer = new javax.swing.Timer(8000, e -> clearNotice());
   private final SectionPanel stateSection;
   private final ZoomPill zoomPill;
   private final WelcomePanel welcomePanel;
@@ -375,12 +381,18 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     attrTable.setTitleEnabled(false);
     stateSection = new SectionPanel(S.get("stateTab"), regTabContent, false);
     final var inspectorBody = new JPanel(new BorderLayout());
+    inspectorBody.add(lockNotice, BorderLayout.NORTH);
     inspectorBody.add(attrTable, BorderLayout.CENTER);
     inspectorBody.add(stateSection, BorderLayout.SOUTH);
     inspector = new Inspector(S.get("propertiesTab"));
     inspector.setContent(inspectorBody);
     // Follows every model the table shows, including the appearance editor's, and their renames.
-    attrTable.setTitleListener(() -> inspector.setTitle(inspectorTitle()));
+    attrTable.setTitleListener(
+        () -> {
+          inspector.setTitle(inspectorTitle());
+          updateLockNotice();
+        });
+    noticeTimer.setRepeats(false);
 
     bottomPanel = new BottomPanel();
     bottomPanel.addPanel(
@@ -993,6 +1005,54 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     return (title == null || title.isBlank()) ? S.get("propertiesTab") : title;
   }
 
+  /**
+   * Says in the status bar why an edit did not happen, for a few seconds.
+   *
+   * <p>A dialog would be out of proportion: a refused edit is usually a stray drag or key press in
+   * a circuit someone locked on purpose.
+   */
+  public void showEditLockNotice(String message) {
+    statusBar.setNotice(message, AppIcons.colored(AppIcons.Id.LOCK, 12, Tokens.warning()));
+    noticeTimer.restart();
+  }
+
+  /** The remark in the status bar, for tests; empty when there is none. */
+  public String getStatusMessage() {
+    return statusBar.getMessage();
+  }
+
+  private void clearNotice() {
+    statusBar.setMessage("", false);
+  }
+
+  /** Shows or hides the note above the properties, after a lock changed or the table did. */
+  private void updateLockNotice() {
+    final var model = attrTable.getAttrTableModel();
+    lockNotice.setNote(model == null ? null : model.getEditLockNote());
+  }
+
+  /** The note above the properties, for tests; empty when there is none. */
+  public String getLockNote() {
+    return lockNotice.getNote();
+  }
+
+  /** A padlock beside the circuit's name in the status bar while the circuit is locked. */
+  private void updateCircuitLockMarker() {
+    final var circuit = project.getCurrentHdl() == null ? project.getCurrentCircuit() : null;
+    final var locked = circuit != null && circuit.isEditLocked();
+    statusBar.setCircuitLock(
+        AppIcons.colored(AppIcons.Id.LOCK, 12, Tokens.warning()),
+        locked ? S.get("statusCircuitLockedTip") : null);
+  }
+
+  /** Brings everything that shows a lock up to date after one was set or taken off. */
+  private void editLocksChanged() {
+    updateCircuitLockMarker();
+    updateLockNotice();
+    attrTable.repaint();
+    if (layoutCanvas != null) layoutCanvas.repaint();
+  }
+
   /** The name of whatever is being edited, for the status bar. */
   private String circuitName() {
     final var hdl = project.getCurrentHdl();
@@ -1009,6 +1069,7 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
    */
   private void updateCircuitTrail() {
     statusBar.setCircuitName(circuitName());
+    updateCircuitLockMarker();
 
     final var ancestors = new java.util.ArrayList<CircuitState>();
     for (var state = project.getCircuitState(); state != null; state = state.getParentState()) {
@@ -1301,6 +1362,7 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
   void setAttrTableModel(AttrTableModel value) {
     attrTable.setAttrTableModel(value);
     inspector.setTitle(inspectorTitle());
+    updateLockNotice();
     if (value instanceof AttrTableToolModel model) {
       final var tool = model.getTool();
       toolbox.setHaloedTool(tool);
@@ -1417,6 +1479,9 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
 
     @Override
     public void circuitChanged(CircuitEvent event) {
+      if (event.getAction() == CircuitEvent.ACTION_SET_EDIT_LOCK) {
+        editLocksChanged();
+      }
       if (event.getAction() == CircuitEvent.ACTION_SET_NAME) {
         buildTitleString();
         editorTabs.refresh();

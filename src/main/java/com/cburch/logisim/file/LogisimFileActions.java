@@ -14,6 +14,7 @@ import static com.cburch.logisim.file.Strings.S;
 import com.cburch.logisim.circuit.Circuit;
 import com.cburch.logisim.circuit.CircuitAttributes;
 import com.cburch.logisim.circuit.CircuitMutation;
+import com.cburch.logisim.circuit.EditLockedException;
 import com.cburch.logisim.circuit.SubcircuitFactory;
 import com.cburch.logisim.circuit.Wire;
 import com.cburch.logisim.comp.Component;
@@ -683,6 +684,7 @@ public final class LogisimFileActions {
 
     @Override
     public void doIt(Project proj) {
+      if (circuit.isEditLocked()) throw new EditLockedException(circuit, null);
       index = proj.getLogisimFile().indexOfCircuit(circuit);
       proj.getLogisimFile().removeCircuit(circuit);
     }

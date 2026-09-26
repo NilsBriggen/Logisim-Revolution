@@ -20,6 +20,7 @@ import com.cburch.logisim.circuit.Analyze;
 import com.cburch.logisim.circuit.AnalyzeException;
 import com.cburch.logisim.circuit.Circuit;
 import com.cburch.logisim.circuit.CircuitNameValidator;
+import com.cburch.logisim.circuit.EditLockedException;
 import com.cburch.logisim.circuit.SubcircuitFactory;
 import com.cburch.logisim.comp.Component;
 import com.cburch.logisim.file.Loader;
@@ -276,7 +277,10 @@ public class ProjectCircuitActions {
   }
 
   public static void doRemoveCircuit(Project proj, Circuit circuit) {
-    if (proj.getLogisimFile().getCircuits().size() == 1) {
+    if (circuit.isEditLocked()) {
+      // Said in the status bar, before any question is asked about a removal that cannot happen.
+      proj.reportRefusedEdit(new EditLockedException(circuit, null));
+    } else if (proj.getLogisimFile().getCircuits().size() == 1) {
       OptionPane.showMessageDialog(
           proj.getFrame(),
           S.get("circuitRemoveLastError"),

@@ -23,6 +23,7 @@
 			<tocitem target="gui-attribut" text="The attribute table" />
 			<tocitem target="gui-attrcomp" text="Tool and component attributes" />
 			<tocitem target="gui_search" text="Find Action" />
+			<tocitem target="gui-lock" text="Locking circuits and components" />
 		</tocitem>
 		<tocitem target="subcirc" text="Subcircuits">
 			<tocitem target="subcirc_creating" text="Creating circuits" />
@@ -102,6 +103,7 @@
 		</tocitem>
 		<tocitem target="opts" text="Project options">
 			<tocitem target="opts_simulate" text="The Simulation tab" />
+			<tocitem target="opts_style" text="The Style page" />
 			<tocitem target="opts_toolbar" text="The Toolbar tab" />
 			<tocitem target="opts_mouse" text="The Mouse tab" />
 		</tocitem>

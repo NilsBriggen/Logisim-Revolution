@@ -302,6 +302,11 @@ public class Circuit {
   private boolean labelChecksDeferred;
   private Project proj;
   private final SocSimulationManager socSim = new SocSimulationManager();
+  /** Whether the circuit is locked against edits; see {@link #isEditLocked}. */
+  private volatile boolean editLocked;
+  /** The components locked against edits, by identity; they keep no component alive. */
+  private final Set<Component> editLockedComponents =
+      Collections.synchronizedSet(Collections.newSetFromMap(new WeakHashMap<>()));
 
   private final LogisimFile logiFile;
 
@@ -483,6 +488,61 @@ public class Circuit {
 
   public boolean contains(Component c) {
     return comps.contains(c) || wires.getWires().contains(c);
+  }
+
+  /**
+   * Whether the whole circuit is locked: nothing in it can be added, removed, moved or changed,
+   * though its inputs can still be poked while simulating.
+   *
+   * <p>A lock guards against accidental edits, for instance in a circuit an instructor hands out.
+   * It is not a security feature: anyone can unlock the circuit again.
+   */
+  public boolean isEditLocked() {
+    return editLocked;
+  }
+
+  /**
+   * Locks or unlocks the whole circuit. This is not an undoable edit; use {@link EditLockAction}
+   * for a change the user makes.
+   */
+  public void setEditLocked(boolean locked) {
+    if (editLocked == locked) return;
+    editLocked = locked;
+    fireEvent(CircuitEvent.ACTION_SET_EDIT_LOCK, null);
+  }
+
+  /** Whether {@code comp} itself is locked, regardless of whether the circuit is. */
+  public boolean isComponentEditLocked(Component comp) {
+    return comp != null && editLockedComponents.contains(comp);
+  }
+
+  /** Whether {@code comp} may not be edited: it is locked, or the whole circuit is. */
+  public boolean isEditLockedFor(Component comp) {
+    return editLocked || isComponentEditLocked(comp);
+  }
+
+  /**
+   * Locks or unlocks single components. This is not an undoable edit; use {@link EditLockAction}
+   * for a change the user makes.
+   */
+  public void setComponentsEditLocked(Collection<? extends Component> components, boolean locked) {
+    var changed = false;
+    for (final var comp : components) {
+      if (comp == null || comp instanceof Wire) continue;
+      changed |= locked ? editLockedComponents.add(comp) : editLockedComponents.remove(comp);
+    }
+    if (changed) fireEvent(CircuitEvent.ACTION_SET_EDIT_LOCK, components);
+  }
+
+  /** The locked components currently in the circuit, in no particular order. */
+  public Set<Component> getEditLockedComponents() {
+    final var ret = new HashSet<Component>();
+    synchronized (editLockedComponents) {
+      for (final var comp : editLockedComponents) {
+        if (contains(comp)) ret.add(comp);
+      }
+    }
+    return ret;
   }
 
   /* The function will tick. Then once the tick was propagated

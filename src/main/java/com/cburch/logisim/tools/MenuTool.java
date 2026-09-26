@@ -13,6 +13,8 @@ import static com.cburch.logisim.tools.Strings.S;
 
 import com.cburch.logisim.circuit.Circuit;
 import com.cburch.logisim.circuit.CircuitMutation;
+import com.cburch.logisim.circuit.EditLockAction;
+import com.cburch.logisim.circuit.Wire;
 import com.cburch.logisim.comp.Component;
 import com.cburch.logisim.comp.ComponentDrawContext;
 import com.cburch.logisim.data.Location;
@@ -29,6 +31,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import javax.swing.JMenu;
+import java.util.List;
 import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
 
@@ -51,6 +54,7 @@ public class MenuTool extends Tool {
     final JMenuItem rotateRight = new JMenuItem(S.get("compRotateRight"));
     final JMenuItem rotateLeft = new JMenuItem(S.get("compRotateLeft"));
     final JMenuItem help = new JMenuItem();
+    final JMenuItem lock;
 
     MenuComponent(Project proj, Circuit circ, Component comp) {
       this.proj = proj;
@@ -59,19 +63,31 @@ public class MenuTool extends Tool {
       help.setText(
           S.get("compHelpItemFor", comp.getFactory().getDisplayGetter().toString()));
       boolean canChange = proj.getLogisimFile().contains(circ);
+      // A locked component offers no edits it would only refuse.
+      final var editable = canChange && !circ.isEditLockedFor(comp);
+      final var locked = circ.isComponentEditLocked(comp);
+      lock = lockItem(locked ? "compUnlockItem" : "compLockItem", locked);
 
       if (comp.getAttributeSet().containsAttribute(StdAttr.FACING)) {
         add(rotateLeft);
         rotateLeft.addActionListener(this);
+        rotateLeft.setEnabled(editable);
         add(rotateRight);
         rotateRight.addActionListener(this);
+        rotateRight.setEnabled(editable);
       }
 
       add(del);
       del.addActionListener(this);
-      del.setEnabled(canChange);
+      del.setEnabled(editable);
       add(attrs);
       attrs.addActionListener(this);
+      if (!(comp instanceof Wire)) {
+        addSeparator();
+        add(lock);
+        lock.addActionListener(this);
+        lock.setEnabled(canChange);
+      }
       addSeparator();
       add(help);
       help.addActionListener(this);
@@ -88,6 +104,10 @@ public class MenuTool extends Tool {
             xn.toAction(S.getter("removeComponentAction", comp.getFactory().getDisplayGetter())));
       } else if (src == attrs) {
         proj.getFrame().viewComponentAttributes(circ, comp);
+      } else if (src == lock) {
+        proj.doAction(
+            EditLockAction.setComponentsLocked(
+                circ, List.of(comp), !circ.isComponentEditLocked(comp)));
       } else if (src == help) {
         if (proj.getFrame().getJMenuBar() instanceof LogisimMenuBar menuBar) {
           final var target = ComponentHelp.getHelpTarget(comp.getFactory(), proj.getLogisimFile());
@@ -117,18 +137,29 @@ public class MenuTool extends Tool {
     final JMenuItem del = new JMenuItem(S.get("selDeleteItem"));
     final JMenuItem cut = new JMenuItem(S.get("selCutItem"));
     final JMenuItem copy = new JMenuItem(S.get("selCopyItem"));
+    final JMenuItem lock;
 
     MenuSelection(Project proj) {
       this.proj = proj;
-      boolean canChange = proj.getLogisimFile().contains(proj.getCurrentCircuit());
+      final var circ = proj.getCurrentCircuit();
+      boolean canChange = proj.getLogisimFile().contains(circ);
+      final var selected = proj.getSelection().getComponents();
+      var anyLocked = circ.isEditLocked();
+      for (final var comp : selected) anyLocked |= circ.isComponentEditLocked(comp);
+      final var allLocked = EditLockAction.allLocked(circ, selected);
+      lock = lockItem(allLocked ? "selUnlockItem" : "selLockItem", allLocked);
       add(del);
       del.addActionListener(this);
-      del.setEnabled(canChange);
+      del.setEnabled(canChange && !anyLocked);
       add(cut);
       cut.addActionListener(this);
-      cut.setEnabled(canChange);
+      cut.setEnabled(canChange && !anyLocked);
       add(copy);
       copy.addActionListener(this);
+      addSeparator();
+      add(lock);
+      lock.addActionListener(this);
+      lock.setEnabled(canChange && selected.stream().anyMatch(comp -> !(comp instanceof Wire)));
       addArrangeMenu();
     }
 
@@ -162,6 +193,11 @@ public class MenuTool extends Tool {
         proj.doAction(SelectionActions.cut(sel));
       } else if (src == copy) {
         proj.doAction(SelectionActions.copy(sel));
+      } else if (src == lock) {
+        final var circ = proj.getCurrentCircuit();
+        final var comps = sel.getComponents();
+        proj.doAction(
+            EditLockAction.setComponentsLocked(circ, comps, !EditLockAction.allLocked(circ, comps)));
       }
     }
 
@@ -172,6 +208,13 @@ public class MenuTool extends Tool {
   }
 
   public MenuTool() {}
+
+  /** "Lock ..." with a closed padlock, or "Unlock ..." with an open one. */
+  private static JMenuItem lockItem(String key, boolean locked) {
+    final var item = new JMenuItem(S.get(key));
+    item.setIcon(AppIcons.get(locked ? AppIcons.Id.UNLOCK : AppIcons.Id.LOCK, AppIcons.SIZE));
+    return item;
+  }
 
   @Override
   public boolean equals(Object other) {

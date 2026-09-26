@@ -14,6 +14,7 @@ import static com.cburch.logisim.tools.Strings.S;
 import com.cburch.logisim.LogisimVersion;
 import com.cburch.logisim.circuit.CircuitException;
 import com.cburch.logisim.circuit.CircuitMutation;
+import com.cburch.logisim.circuit.EditLockedException;
 import com.cburch.logisim.circuit.SubcircuitFactory;
 import com.cburch.logisim.comp.Component;
 import com.cburch.logisim.comp.ComponentDrawContext;
@@ -25,6 +26,7 @@ import com.cburch.logisim.data.AttributeSet;
 import com.cburch.logisim.data.Bounds;
 import com.cburch.logisim.data.Direction;
 import com.cburch.logisim.data.Location;
+import com.cburch.logisim.file.ProjectStyle;
 import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.gui.generic.OptionPane;
 import com.cburch.logisim.gui.icons.ComponentIcons;
@@ -593,6 +595,11 @@ public class AddTool extends Tool implements Transferable, PropertyChangeListene
     if (source == null) {
       return null;
     }
+    if (circ.isEditLocked()) {
+      // Said before the label prompt or the matrix dialog, not after them.
+      canvas.getProject().reportRefusedEdit(new EditLockedException(circ, null));
+      return null;
+    }
     String label = null;
     if (attrs.containsAttribute(StdAttr.LABEL)) {
       label = attrs.getValue(StdAttr.LABEL);
@@ -654,6 +661,8 @@ public class AddTool extends Tool implements Transferable, PropertyChangeListene
           final var loc = Location.create(x0 + (matrix.getDeltaX() * x),
               y0 + (matrix.getDeltaY() * y), true);
           final var attrsCopy = (AttributeSet) attrs.clone();
+          ProjectStyle.applyToNewComponent(
+              canvas.getProject().getOptions(), source, attrsCopy);
           if (matrix.getLabel() != null) {
             if (matrixPlace) {
               attrsCopy.setValue(StdAttr.LABEL, autoLabeler.getMatrixLabel(canvas.getCircuit(),

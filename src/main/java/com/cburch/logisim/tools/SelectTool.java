@@ -12,6 +12,7 @@ package com.cburch.logisim.tools;
 import static com.cburch.logisim.tools.Strings.S;
 
 import com.cburch.logisim.LogisimVersion;
+import com.cburch.logisim.circuit.EditLockedException;
 import com.cburch.logisim.circuit.ReplacementMap;
 import com.cburch.logisim.comp.Component;
 import com.cburch.logisim.comp.ComponentDrawContext;
@@ -440,9 +441,30 @@ public class SelectTool extends Tool {
     processKeyEvent(canvas, e, KeyConfigurationEvent.KEY_TYPED);
   }
 
+  /**
+   * Whether the selection cannot be moved because it, or its circuit, is locked. The drag then
+   * shows nothing moving; letting go reports why in the status bar.
+   */
+  private static boolean isMoveLocked(Canvas canvas) {
+    return moveRefusal(canvas) != null;
+  }
+
+  /** Why the selection cannot be moved, or {@code null} when it can. */
+  private static EditLockedException moveRefusal(Canvas canvas) {
+    final var circuit = canvas.getCircuit();
+    if (circuit == null) return null;
+    if (circuit.isEditLocked()) return new EditLockedException(circuit, null);
+    for (final var comp : canvas.getSelection().getComponents()) {
+      if (circuit.isComponentEditLocked(comp)) return new EditLockedException(circuit, comp);
+    }
+    return null;
+  }
+
   @Override
   public void mouseDragged(Canvas canvas, Graphics g, MouseEvent e) {
-    if (state == MOVING) {
+    if (state == MOVING && isMoveLocked(canvas)) {
+      return;
+    } else if (state == MOVING) {
       final var proj = canvas.getProject();
       computeDxDy(proj, e, g);
       handleMoveDrag(canvas, curDx, curDy, e.getModifiersEx());
@@ -523,8 +545,11 @@ public class SelectTool extends Tool {
       int dx = curDx;
       int dy = curDy;
       if (dx != 0 || dy != 0) {
+        final var refusal = moveRefusal(canvas);
         if (!proj.getLogisimFile().contains(canvas.getCircuit())) {
           canvas.setErrorMessage(S.getter("cannotModifyError"));
+        } else if (refusal != null) {
+          proj.reportRefusedEdit(refusal);
         } else if (proj.getSelection().hasConflictWhenMoved(dx, dy)) {
           canvas.setErrorMessage(S.getter("exclusiveError"));
         } else {

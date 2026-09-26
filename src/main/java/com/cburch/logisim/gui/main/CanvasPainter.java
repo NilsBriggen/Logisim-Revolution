@@ -22,9 +22,15 @@ import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.tools.PokeTool;
 import com.cburch.logisim.util.CollectionUtil;
 import com.cburch.logisim.util.GraphicsUtil;
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.geom.Arc2D;
+import java.awt.geom.Ellipse2D;
+import java.awt.geom.Line2D;
+import java.awt.geom.RoundRectangle2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.Collections;
@@ -179,6 +185,7 @@ class CanvasPainter implements PropertyChangeListener {
     final var showSelection = !(proj.getTool() instanceof PokeTool);
     if (showSelection) sel.drawUnderlay(context, hidden);
     circ.draw(context, hidden);
+    drawEditLockBadges(g, circ, hidden);
     if (showSelection) sel.draw(context, hidden);
 
     // draw tool
@@ -189,6 +196,43 @@ class CanvasPainter implements PropertyChangeListener {
       tool.draw(canvas, context);
       gfxCopy.dispose();
     }
+  }
+
+  /**
+   * A small padlock on the top-right corner of every locked component, so the user can tell before
+   * trying to move one. Only on screen: printing and image export do not come through here.
+   */
+  private static void drawEditLockBadges(Graphics g, Circuit circ, Set<Component> hidden) {
+    final var locked = circ.getEditLockedComponents();
+    if (locked.isEmpty()) return;
+    final var g2 = (Graphics2D) g.create();
+    try {
+      g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+      for (final var comp : locked) {
+        if (hidden.contains(comp)) continue;
+        final var bds = comp.getBounds(g);
+        // Just outside the corner, clear of the selection handle that sits on it.
+        paintLockBadge(g2, bds.getX() + bds.getWidth() + 6, bds.getY() - 6);
+      }
+    } finally {
+      g2.dispose();
+    }
+  }
+
+  /** Paints the padlock centred on ({@code x}, {@code y}), in circuit coordinates. */
+  static void paintLockBadge(Graphics2D g, int x, int y) {
+    // A disc in the canvas colour keeps the glyph legible over wires and component outlines.
+    g.setColor(new Color(AppPreferences.CANVAS_BG_COLOR.get()));
+    g.fill(new Ellipse2D.Double(x - 6.5, y - 6.5, 13, 13));
+    final var ink = CanvasStyle.lockBadge();
+    g.setColor(ink);
+    g.setStroke(new BasicStroke(1.3f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+    g.draw(new Ellipse2D.Double(x - 6.5, y - 6.5, 13, 13));
+    // Shackle, then body.
+    g.draw(new Arc2D.Double(x - 2.3, y - 4.6, 4.6, 5.2, 0, 180, Arc2D.OPEN));
+    g.draw(new Line2D.Double(x - 2.3, y - 2.0, x - 2.3, y - 0.8));
+    g.draw(new Line2D.Double(x + 2.3, y - 2.0, x + 2.3, y - 0.8));
+    g.fill(new RoundRectangle2D.Double(x - 3.6, y - 0.9, 7.2, 5.2, 1.6, 1.6));
   }
 
   private void exposeHaloedComponent(Graphics gfx) {

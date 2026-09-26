@@ -13,6 +13,7 @@ import com.cburch.logisim.circuit.Circuit;
 import com.cburch.logisim.circuit.CircuitListener;
 import com.cburch.logisim.circuit.CircuitLocker;
 import com.cburch.logisim.circuit.CircuitState;
+import com.cburch.logisim.circuit.EditLockedException;
 import com.cburch.logisim.circuit.Simulator;
 import com.cburch.logisim.circuit.SubcircuitFactory;
 import com.cburch.logisim.file.LibraryEvent;
@@ -225,6 +226,36 @@ public class Project {
     if (act == null) {
       return;
     }
+    // A locked circuit or component refuses the edit before it changes anything; leave the history
+    // exactly as it was and say why nothing happened.
+    final var undoBefore = new ArrayList<>(undoLog);
+    final var redoBefore = new ArrayList<>(redoLog);
+    final var undoModsBefore = undoMods;
+    final var forcedDirtyBefore = forcedDirty;
+    try {
+      doLoggedAction(act);
+    } catch (EditLockedException refused) {
+      undoLog.clear();
+      undoLog.addAll(undoBefore);
+      redoLog.clear();
+      redoLog.addAll(redoBefore);
+      undoMods = undoModsBefore;
+      forcedDirty = forcedDirtyBefore;
+      file.setDirty(isFileDirty());
+      fireEvent(new ProjectEvent(ProjectEvent.ACTION_COMPLETE, this, act));
+      reportRefusedEdit(refused);
+    }
+  }
+
+  /**
+   * Tells the user that a locked circuit or component turned an edit down: a short remark in the
+   * status bar, never a dialog, since it is usually a stray click or key.
+   */
+  public void reportRefusedEdit(EditLockedException refused) {
+    if (frame != null) frame.showEditLockNotice(refused.getMessage());
+  }
+
+  private void doLoggedAction(Action act) {
     Action toAdd = act;
     startupScreen = false;
     discardRedoLog();
@@ -477,6 +508,9 @@ public class Project {
   private void runMutation(Runnable mutation) {
     try {
       mutation.run();
+    } catch (EditLockedException refused) {
+      // Refused before anything changed.
+      throw refused;
     } catch (RuntimeException | Error e) {
       forcedDirty = true;
       file.setDirty(true);

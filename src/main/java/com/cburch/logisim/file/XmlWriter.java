@@ -274,9 +274,17 @@ final class XmlWriter {
     return null;
   }
 
+  /**
+   * Marks a {@code circuit} or {@code comp} element as locked against edits. Absent means
+   * unlocked, which is how every file written before locks existed reads.
+   */
+  static final String EDIT_LOCK_ATTRIBUTE = "locked";
+
   Element fromCircuit(Circuit circuit) {
     final var ret = doc.createElement("circuit");
     ret.setAttribute("name", circuit.getName());
+    // Optional, and written only when set: older versions ignore attributes they do not know.
+    if (circuit.isEditLocked()) ret.setAttribute(EDIT_LOCK_ATTRIBUTE, "true");
     addAttributeSetContent(ret, circuit.getStaticAttributes(), CircuitAttributes.DEFAULT_STATIC_ATTRIBUTES, false);
     final var appearance = circuit.getAppearance();
     final var usesLabelledDefault =
@@ -300,7 +308,10 @@ final class XmlWriter {
     }
     for (final var comp : circuit.getNonWires()) {
       final var elt = fromComponent(comp);
-      if (elt != null) ret.appendChild(elt);
+      if (elt != null) {
+        if (circuit.isComponentEditLocked(comp)) elt.setAttribute(EDIT_LOCK_ATTRIBUTE, "true");
+        ret.appendChild(elt);
+      }
     }
     for (final var board : circuit.getBoardMapNamestoSave()) {
       final var elt = fromMap(circuit, board);

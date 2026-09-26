@@ -252,6 +252,11 @@ public final class CanvasStyle {
     return printView ? componentColor() : Tokens.warning();
   }
 
+  /** The padlock marking a component that is locked against edits: quiet, like other chrome. */
+  public static Color lockBadge() {
+    return Tokens.mutedForeground();
+  }
+
   /** The colour of a component being dragged or about to be placed. */
   public static Color ghost() {
     return new Color(AppPreferences.COMPONENT_GHOST_COLOR.get());

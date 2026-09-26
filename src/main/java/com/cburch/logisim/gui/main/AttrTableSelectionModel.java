@@ -61,6 +61,33 @@ class AttrTableSelectionModel extends AttributeSetTableModel implements Selectio
   }
 
   @Override
+  protected boolean isEditLocked() {
+    final var circuit = frame.getCanvas().getCircuit();
+    if (circuit == null) return false;
+    if (circuit.isEditLocked()) return true;
+    for (final var comp : frame.getCanvas().getSelection().getComponents()) {
+      if (circuit.isComponentEditLocked(comp)) return true;
+    }
+    return false;
+  }
+
+  @Override
+  public String getEditLockNote() {
+    final var circuit = frame.getCanvas().getCircuit();
+    if (circuit == null) return null;
+    if (circuit.isEditLocked()) return S.get("attrLockedCircuitNote", circuit.getName());
+    final var selected = frame.getCanvas().getSelection().getComponents();
+    var locked = 0;
+    for (final var comp : selected) {
+      if (circuit.isComponentEditLocked(comp)) locked++;
+    }
+    if (locked == 0) return null;
+    return locked == 1 && selected.size() == 1
+        ? S.get("attrLockedComponentNote")
+        : S.get("attrLockedSelectionNote");
+  }
+
+  @Override
   public int getRowCount() {
     return super.getRowCount() + infoRows.size();
   }
