@@ -203,8 +203,8 @@ public class EditTool extends Tool {
     }
     final var bds = sel.getBounds(canvas.getGraphics());
     if (bds != com.cburch.logisim.data.Bounds.EMPTY_BOUNDS) {
-      dx = Math.max(dx, -bds.getX());
-      dy = Math.max(dy, -bds.getY());
+      dx = SelectTool.clampMove(dx, bds.getX());
+      dy = SelectTool.clampMove(dy, bds.getY());
     }
     if (dx == 0 && dy == 0) return;
     if (sel.hasConflictWhenMoved(dx, dy)) {

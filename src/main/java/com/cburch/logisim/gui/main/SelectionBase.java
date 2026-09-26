@@ -315,12 +315,12 @@ class SelectionBase {
     HashMap<Component, Component> newItem;
 
     if (mousePos != null) {
-      final double zoomFactor = canvas.getZoomFactor();
+      final var target = canvas.toCircuitPoint(mousePos);
       Bounds bds = computeBounds(comps);
       int centerX = bds.getX() + bds.getWidth() / 2;
       int centerY = bds.getY() + bds.getHeight() / 2;
-      int dx = ((int) Math.round((mousePos.x / zoomFactor - centerX) / 10)) * 10;
-      int dy = ((int) Math.round((mousePos.y / zoomFactor - centerY) / 10)) * 10;
+      int dx = ((int) Math.round((target.x - centerX) / 10.0)) * 10;
+      int dy = ((int) Math.round((target.y - centerY) / 10.0)) * 10;
       int newX = bds.getX() + dx;
       int newY = bds.getY() + dy;
       if (newX < 0) {

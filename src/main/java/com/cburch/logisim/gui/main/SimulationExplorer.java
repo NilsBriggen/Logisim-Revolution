@@ -43,6 +43,25 @@ class SimulationExplorer extends JPanel implements ProjectListener, BaseMouseLis
     tree.setToggleClickCount(3);
     add(new JScrollPane(tree), BorderLayout.CENTER);
     proj.addProjectListener(this);
+    showCurrentView();
+  }
+
+  /**
+   * Selects the row of the circuit being viewed. The tree's own selection used to stay on whatever
+   * was clicked last, so two rows looked highlighted once the view changed from the canvas.
+   */
+  private void showCurrentView() {
+    final var path = model.mapToPath(project.getCircuitState());
+    if (path == null) {
+      tree.clearSelection();
+    } else {
+      tree.setSelectionPath(path);
+      tree.scrollPathToVisible(path);
+    }
+  }
+
+  JTree getTree() {
+    return tree;
   }
 
   private void checkForPopup(MouseEvent e) {
@@ -81,10 +100,7 @@ class SimulationExplorer extends JPanel implements ProjectListener, BaseMouseLis
     if (action == ProjectEvent.ACTION_SET_STATE) {
       model.updateSimulationList(project.getRootCircuitStates());
       model.setCurrentView(project.getCircuitState());
-      TreePath path = model.mapToPath(project.getCircuitState());
-      if (path != null) {
-        tree.scrollPathToVisible(path);
-      }
+      showCurrentView();
     }
   }
 

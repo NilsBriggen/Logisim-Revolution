@@ -107,7 +107,8 @@ class ZoomPillTest {
               new Font(Font.DIALOG, Font.PLAIN, (int) Math.round(13 * nextScale)));
           Theme.fireChanged();
           final var percent = ShellChromeTest.components(pill, AbstractButton.class).get(1);
-          assertEquals("125%", percent.getText());
+          // The percentage is relative to the interface scale, and follows it.
+          assertEquals(Math.round(125 / UiScale.factor()) + "%", percent.getText());
           assertEquals(UiFonts.small(), percent.getFont());
           assertEquals(Spacing.XS, percent.getMargin().left);
           assertEquals(Spacing.xs(), pill.getInsets().top);

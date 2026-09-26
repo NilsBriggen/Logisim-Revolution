@@ -162,6 +162,7 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
   private boolean welcomeShowing;
   private boolean editorClosed;
   private final javax.swing.JLabel emptyEditorHint = new javax.swing.JLabel();
+  private final javax.swing.JLabel emptyEditorCloseHint = new javax.swing.JLabel();
   private boolean closeResourcesReleased;
 
   /** The editor the project asked for while the welcome screen was up. */
@@ -316,7 +317,12 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     mainPanel.addView(EDIT_WELCOME, welcomeScroll);
     final var emptyEditor = new JPanel(new java.awt.GridBagLayout());
     emptyEditor.setFocusable(true);
-    emptyEditor.add(emptyEditorHint);
+    final var hintConstraints = new java.awt.GridBagConstraints();
+    hintConstraints.gridx = 0;
+    emptyEditor.add(emptyEditorHint, hintConstraints);
+    // Ctrl+W closed the last tab and left the project open; say how to close the project itself.
+    hintConstraints.insets = new java.awt.Insets(com.cburch.logisim.util.UiScale.scaled(8), 0, 0, 0);
+    emptyEditor.add(emptyEditorCloseHint, hintConstraints);
     mainPanel.addView(EDIT_EMPTY, emptyEditor);
 
     editorTabModel.setNavigator(this::activateEditorTab);
@@ -393,6 +399,7 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     editorTabModel.setEmptyListener(() -> {
       editorClosed = true;
       welcomeShowing = false;
+      shell.setWelcomeMode(false);
       mainPanel.setView(EDIT_EMPTY);
       editorArea.setTabsVisible(false);
       zoomPill.setVisible(false);
@@ -922,6 +929,7 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     welcomePanel.refresh();
     editorArea.setTabsVisible(false);
     zoomPill.setVisible(false);
+    if (shell != null) shell.setWelcomeMode(true);
   }
 
   /** Puts the canvas back, once the user has something open. */
@@ -932,6 +940,7 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     pendingEditorView = null;
     editorArea.setTabsVisible(true);
     zoomPill.setVisible(true);
+    shell.setWelcomeMode(false);
   }
 
   /**
@@ -944,6 +953,14 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     if (ProjectActions.doNewReplacingBlank(project) != project) return;
     dismissWelcome();
     layoutCanvas.requestFocusInWindow();
+  }
+
+  /** A shortcut as the menus show it, for example "Ctrl+Shift+W". */
+  static String keyStrokeText(javax.swing.KeyStroke stroke) {
+    if (stroke == null) return "";
+    final var modifiers = java.awt.event.InputEvent.getModifiersExText(stroke.getModifiers());
+    final var key = java.awt.event.KeyEvent.getKeyText(stroke.getKeyCode());
+    return modifiers.isEmpty() ? key : modifiers + "+" + key;
   }
 
   /** Opens the help window at {@code target}, as the Help menu does. */
@@ -964,7 +981,7 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
   /** Shows the zoom level in the status bar, as a percentage. */
   private void updateZoomStatus() {
     final var active = zoom.getZoomModel();
-    statusBar.setZoom(active == null ? "" : Math.round(active.getZoomFactor() * 100) + "%");
+    statusBar.setZoom(active == null ? "" : ZoomControl.percentText(active.getZoomFactor()));
   }
 
   /**
@@ -1185,7 +1202,8 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
         ZoomControl.computeInitialZoomFactor(
             bounds,
             layoutCanvasPane.getViewport().getSize(),
-            layoutZoomModel.getZoomOptions());
+            layoutZoomModel.getZoomOptions(),
+            ZoomControl.actualSizeZoom());
     layoutZoomModel.setZoomFactor(initialZoom);
     SwingUtilities.invokeLater(
         () -> {
@@ -1219,6 +1237,8 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     editorTabs.refresh();
     welcomePanel.refresh();
     emptyEditorHint.setText(S.get("editorEmptyHint"));
+    emptyEditorCloseHint.setText(
+        S.get("editorEmptyCloseHint", keyStrokeText(AppPreferences.HOTKEY_WINDOW_CLOSE.get())));
     shell.getActivityBar().setTooltip("properties", S.get("propertiesTab"));
     shell.getActivityBar().setTooltip("timing", S.get("logPanelTab"));
     shell.getActivityBar().setTooltip("testVectors", S.get("testPanelTab"));
@@ -1262,7 +1282,7 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     if (loc != null) AppPreferences.WINDOW_LOCATION.set(loc.x + "," + loc.y);
     shell.savePreferences();
     savePanelVisibility(shell);
-    AppPreferences.WINDOW_EXPLORER_VISIBLE.set(shell.isSideVisible());
+    AppPreferences.WINDOW_EXPLORER_VISIBLE.set(shell.sideVisibleForPrefs());
     AppPreferences.DIALOG_DIRECTORY.set(JFileChoosers.getCurrentDirectory());
   }
 
@@ -1274,8 +1294,8 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
    * being saved means the next window, and the next run, opens as that window looked.
    */
   static void savePanelVisibility(ShellLayout shell) {
-    LayoutPrefs.setSideVisible(shell.isSideVisible());
-    LayoutPrefs.setInspectorVisible(shell.isInspectorVisible());
+    LayoutPrefs.setSideVisible(shell.sideVisibleForPrefs());
+    LayoutPrefs.setInspectorVisible(shell.inspectorVisibleForPrefs());
     LayoutPrefs.setBottomVisible(shell.isBottomVisible());
   }
 
@@ -1354,7 +1374,12 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     if (newAttrs == null) {
       final var oldModel = attrTable.getAttrTableModel();
       final var same = (oldModel instanceof AttrTableToolModel model) && model.getTool() == oldTool;
-      if (!force && !same && !(oldModel instanceof AttrTableCircuitModel)) return;
+      // A tool without attributes (Interact) leaves what is shown alone, unless nothing is shown:
+      // then the panel shows the circuit's attributes rather than an empty hint.
+      final var showsNothing = oldModel == null || oldModel.getRowCount() == 0;
+      if (!force && !same && !showsNothing && !(oldModel instanceof AttrTableCircuitModel)) {
+        return;
+      }
     }
     if (newAttrs == null) {
       viewCircuitAttributes();

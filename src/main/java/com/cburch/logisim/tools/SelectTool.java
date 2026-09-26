@@ -151,6 +151,15 @@ public class SelectTool extends Tool {
   }
 
 
+  /**
+   * Limits a drag so it does not carry the selection past zero, where {@code boundsMin} is where
+   * the selection starts. A selection already partly below zero (a label hanging off the edge) may
+   * stay put or move back; it is never pushed, so a click without a drag moves nothing.
+   */
+  static int clampMove(int delta, int boundsMin) {
+    return Math.max(delta, Math.min(0, -boundsMin));
+  }
+
   private void computeDxDy(Project proj, MouseEvent e, Graphics g) {
     final var bds = proj.getSelection().getBounds(g);
     int dx;
@@ -159,8 +168,8 @@ public class SelectTool extends Tool {
       dx = e.getX() - start.getX();
       dy = e.getY() - start.getY();
     } else {
-      dx = Math.max(e.getX() - start.getX(), -bds.getX());
-      dy = Math.max(e.getY() - start.getY(), -bds.getY());
+      dx = clampMove(e.getX() - start.getX(), bds.getX());
+      dy = clampMove(e.getY() - start.getY(), bds.getY());
     }
 
     final var sel = proj.getSelection();

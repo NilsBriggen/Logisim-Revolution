@@ -219,7 +219,10 @@ class CanvasPainter implements PropertyChangeListener {
     final var size = canvas.getSize();
     final double zoomFactor = canvas.getZoomFactor();
 
-    grid.paintGrid(g);
+    final var originX = canvas.getOriginX();
+    final var originY = canvas.getOriginY();
+    grid.paintGrid(
+        g, (int) Math.round(-originX * zoomFactor), (int) Math.round(-originY * zoomFactor));
     g.setColor(componentColor());
 
     final var gfxScaled = g.create();
@@ -227,6 +230,8 @@ class CanvasPainter implements PropertyChangeListener {
     if (zoomFactor != 1.0 && gfxScaled instanceof Graphics2D g2d) {
       g2d.scale(zoomFactor, zoomFactor);
     }
+    // Content above or left of zero extends the canvas instead of being clipped (see Canvas).
+    gfxScaled.translate(-originX, -originY);
     final var circ = proj.getCurrentCircuit();
     if (circ == null) {
       gfxScaled.dispose();

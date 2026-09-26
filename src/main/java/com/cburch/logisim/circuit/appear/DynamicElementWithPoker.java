@@ -63,6 +63,7 @@ public abstract class DynamicElementWithPoker extends DynamicElement {
   }
 
   public Boolean mouseInside(InstanceState state, MouseEvent e) {
+    if (anchorPosition == null) return false; // not painted yet, so nothing on screen to hit
     final var b = getScreenBounds(state);
     return b.contains(e.getX(), e.getY());
   }

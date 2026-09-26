@@ -12,9 +12,15 @@ package com.cburch.logisim.gui.shell;
 import com.cburch.logisim.util.UiFonts;
 import com.cburch.logisim.util.UiScale;
 import java.awt.BorderLayout;
+import java.awt.Component;
+import java.awt.Container;
+import java.util.Comparator;
+import java.util.List;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
 import javax.swing.JSplitPane;
+import javax.swing.SortingFocusTraversalPolicy;
+import javax.swing.SwingUtilities;
 
 /**
  * How the main window is put together: a toolbar across the top, an activity bar and side panel on
@@ -53,6 +59,10 @@ public class ShellLayout extends JPanel {
   private final SizedSplit sideSplit;
   private final SizedSplit inspectorSplit;
   private final SizedSplit bottomSplit;
+
+  private boolean welcomeMode;
+  private boolean sideBeforeWelcome;
+  private boolean inspectorBeforeWelcome;
 
   public ShellLayout(
       MainToolbar toolbar,
@@ -110,7 +120,41 @@ public class ShellLayout extends JPanel {
     add(middle, BorderLayout.CENTER);
     add(statusBar, BorderLayout.SOUTH);
 
+    // Tab moves through the window region by region, the way it reads. Swing's default ordered
+    // everything by position alone, so it wandered between the side panel, the inspector and the
+    // canvas row by row.
+    setFocusTraversalPolicy(
+        new RegionFocusPolicy(
+            this,
+            List.of(toolbar, activityBar, sidePanel, editorArea, inspector, bottomPanel,
+                statusBar)));
+    setFocusTraversalPolicyProvider(true);
+
     restoreFromPreferences();
+  }
+
+  /**
+   * Orders focus by region (toolbar, activity bar, side panel, editor, inspector, drawer, status
+   * bar), then top to bottom and left to right within a region.
+   */
+  static final class RegionFocusPolicy extends SortingFocusTraversalPolicy {
+    RegionFocusPolicy(Container root, List<? extends Component> regions) {
+      super(comparator(root, regions));
+    }
+
+    static Comparator<Component> comparator(Container root, List<? extends Component> regions) {
+      return Comparator.<Component>comparingInt(c -> regionOf(c, regions))
+          .thenComparingInt(c -> SwingUtilities.convertPoint(c, 0, 0, root).y)
+          .thenComparingInt(c -> SwingUtilities.convertPoint(c, 0, 0, root).x);
+    }
+
+    private static int regionOf(Component c, List<? extends Component> regions) {
+      for (var i = 0; i < regions.size(); i++) {
+        final var region = regions.get(i);
+        if (region != null && SwingUtilities.isDescendingFrom(c, region)) return i;
+      }
+      return regions.size();
+    }
   }
 
   /** Puts every divider back where the user left it, next time each pane lays itself out. */
@@ -396,6 +440,11 @@ public class ShellLayout extends JPanel {
   }
 
   public void setSideVisible(boolean visible) {
+    if (welcomeMode) sideBeforeWelcome = visible;
+    applySideVisible(visible, true);
+  }
+
+  private void applySideVisible(boolean visible, boolean remember) {
     if (visible == isSideVisible()) return;
     if (visible) {
       sideSplit.setLeftComponent(sidePanel);
@@ -406,7 +455,7 @@ public class ShellLayout extends JPanel {
       sideSplit.setLeftComponent(null);
       sideSplit.setDividerSize(0);
     }
-    LayoutPrefs.setSideVisible(visible);
+    if (remember) LayoutPrefs.setSideVisible(visible);
     activityBar.setSelected(visible ? sidePanel.activeId() : null);
     revalidate();
     repaint();
@@ -417,6 +466,11 @@ public class ShellLayout extends JPanel {
   }
 
   public void setInspectorVisible(boolean visible) {
+    if (welcomeMode) inspectorBeforeWelcome = visible;
+    applyInspectorVisible(visible, true);
+  }
+
+  private void applyInspectorVisible(boolean visible, boolean remember) {
     if (visible == isInspectorVisible()) return;
     if (visible) {
       inspectorSplit.setRightComponent(inspector);
@@ -427,9 +481,51 @@ public class ShellLayout extends JPanel {
       inspectorSplit.setRightComponent(null);
       inspectorSplit.setDividerSize(0);
     }
-    LayoutPrefs.setInspectorVisible(visible);
+    if (remember) LayoutPrefs.setInspectorVisible(visible);
     revalidate();
     repaint();
+  }
+
+  /**
+   * Puts the side panel and the inspector away while the welcome screen is up, and brings them
+   * back after.
+   *
+   * <p>The welcome screen covers the blank project Logisim starts with; that project's circuit
+   * list and properties beside it looked like a live, open document nobody had asked for. Nothing
+   * is written to the preferences, and a panel the user opens or closes meanwhile keeps that
+   * choice.
+   */
+  public void setWelcomeMode(boolean on) {
+    if (on == welcomeMode) return;
+    if (on) {
+      sideBeforeWelcome = isSideVisible();
+      inspectorBeforeWelcome = isInspectorVisible();
+      welcomeMode = true;
+      applySideVisible(false, false);
+      applyInspectorVisible(false, false);
+    } else {
+      welcomeMode = false;
+      applySideVisible(sideBeforeWelcome, false);
+      applyInspectorVisible(inspectorBeforeWelcome, false);
+      activityBar.setSelected(isSideVisible() ? sidePanel.activeId() : null);
+    }
+  }
+
+  public boolean isWelcomeMode() {
+    return welcomeMode;
+  }
+
+  /**
+   * Whether the side panel is meant to be open; unlike {@link #isSideVisible()}, the welcome
+   * screen hiding it does not count.
+   */
+  public boolean sideVisibleForPrefs() {
+    return welcomeMode ? sideBeforeWelcome : isSideVisible();
+  }
+
+  /** Whether the inspector is meant to be open, as {@link #sideVisibleForPrefs()}. */
+  public boolean inspectorVisibleForPrefs() {
+    return welcomeMode ? inspectorBeforeWelcome : isInspectorVisible();
   }
 
   public boolean isBottomVisible() {

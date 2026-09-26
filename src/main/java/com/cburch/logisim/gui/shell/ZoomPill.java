@@ -67,7 +67,9 @@ public class ZoomPill extends JPanel {
     setOpaque(false);
     add(button(AppIcons.Id.ZOOM_OUT, "zoomOutTip", control::zoomOut));
     percent.addActionListener(event -> {
-      if (ZoomPill.this.model != null) ZoomPill.this.model.setZoomFactorCenter(1.0);
+      if (ZoomPill.this.model != null) {
+        ZoomPill.this.model.setZoomFactorCenter(ZoomControl.actualSizeZoom());
+      }
     });
     add(percent);
     add(button(AppIcons.Id.ZOOM_IN, "zoomInTip", control::zoomIn));
@@ -171,7 +173,7 @@ public class ZoomPill extends JPanel {
   }
 
   private String zoomText() {
-    return model == null ? "" : Math.round(model.getZoomFactor() * 100) + "%";
+    return model == null ? "" : ZoomControl.percentText(model.getZoomFactor());
   }
 
   @Override

@@ -11,13 +11,11 @@ package com.cburch.logisim.gui.chrono;
 
 import static com.cburch.logisim.gui.Strings.S;
 
-import com.cburch.draw.toolbar.Toolbar;
 import com.cburch.logisim.gui.log.LogFrame;
 import com.cburch.logisim.gui.log.LogPanel;
 import com.cburch.logisim.gui.log.Model;
 import com.cburch.logisim.gui.log.Signal;
 import com.cburch.logisim.gui.log.SignalInfo;
-import com.cburch.logisim.gui.main.SimulationToolbarModel;
 import com.cburch.logisim.gui.menu.EditHandler;
 import com.cburch.logisim.gui.menu.LogisimMenuBar;
 import com.cburch.logisim.gui.menu.PrintHandler;
@@ -110,8 +108,8 @@ public class ChronoPanel extends LogPanel implements Model.Listener {
   private void configure() {
     setLayout(new BorderLayout());
     final var logFrame = getLogFrame();
-    final var simTools = new SimulationToolbarModel(getProject(), logFrame.getMenuListener());
-    final var toolbar = new Toolbar(simTools);
+    // The simulation controls live only in the main toolbar; the diagram sits in the same
+    // window's drawer, so repeating them here only showed a second (and third) identical cluster.
     final var toolpanel = new JPanel();
     final var gbl = new GridBagLayout();
     final var gbc = new GridBagConstraints();
@@ -119,14 +117,11 @@ public class ChronoPanel extends LogPanel implements Model.Listener {
     gbc.fill = GridBagConstraints.NONE;
     gbc.weightx = gbc.weighty = 0.0;
     gbc.gridx = gbc.gridy = 0;
-    gbl.setConstraints(toolbar, gbc);
-    toolpanel.add(toolbar);
 
     selButton = logFrame.makeSelectionButton();
     selButton.setFont(UiFonts.small());
     Insets insets = gbc.insets;
-    gbc.insets = new Insets(2, 0, 2, 0);
-    gbc.gridx = 1;
+    gbc.insets = new Insets(2, UiScale.scaled(4), 2, 0);
     gbl.setConstraints(selButton, gbc);
     toolpanel.add(selButton);
 
@@ -139,7 +134,7 @@ public class ChronoPanel extends LogPanel implements Model.Listener {
       if (model != null) printHandler.exportImage();
     });
     gbc.insets = new Insets(2, UiScale.scaled(4), 2, 0);
-    gbc.gridx = 2;
+    gbc.gridx = 1;
     gbl.setConstraints(exportButton, gbc);
     toolpanel.add(exportButton);
     gbc.insets = insets;
@@ -147,7 +142,7 @@ public class ChronoPanel extends LogPanel implements Model.Listener {
     final var filler = Box.createHorizontalGlue();
     gbc.fill = GridBagConstraints.HORIZONTAL;
     gbc.weightx = 1.0;
-    gbc.gridx = 3;
+    gbc.gridx = 2;
     gbl.setConstraints(filler, gbc);
     toolpanel.add(filler);
     add(toolpanel, BorderLayout.NORTH);

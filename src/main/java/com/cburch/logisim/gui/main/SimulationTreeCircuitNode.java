@@ -52,6 +52,10 @@ class SimulationTreeCircuitNode extends SimulationTreeNode
     Object attr = e.getAttribute();
     if (attr == CircuitAttributes.CIRCUIT_LABEL_ATTR || attr == StdAttr.LABEL) {
       model.fireNodeChanged(this);
+      // The label is the name the parent sorts by.
+      if (parent instanceof SimulationTreeCircuitNode node && node.computeChildren()) {
+        model.fireStructureChanged(node);
+      }
     }
   }
 
@@ -67,15 +71,43 @@ class SimulationTreeCircuitNode extends SimulationTreeNode
     }
   }
 
+  /**
+   * Orders subcircuit instances by the name shown for them (label, else circuit name), then top to
+   * bottom and left to right. Locations used to be compared as text, so (100,20) came before
+   * (20,20).
+   */
   @Override
   public int compare(Component a, Component b) {
-    if (a != b) {
-      final var nameA = a.getFactory().getDisplayName();
-      final var nameB = b.getFactory().getDisplayName();
-      final var ret = nameA.compareToIgnoreCase(nameB);
-      if (ret != 0) return ret;
-    }
-    return a.getLocation().toString().compareTo(b.getLocation().toString());
+    if (a == b) return 0;
+    final var ret = sortName(a).compareToIgnoreCase(sortName(b));
+    if (ret != 0) return ret;
+    final var locA = a.getLocation();
+    final var locB = b.getLocation();
+    if (locA.getY() != locB.getY()) return Integer.compare(locA.getY(), locB.getY());
+    return Integer.compare(locA.getX(), locB.getX());
+  }
+
+  private static String sortName(Component comp) {
+    final var label = comp.getAttributeSet().getValue(StdAttr.LABEL);
+    return label != null && !label.isEmpty() ? label : circuitName(comp);
+  }
+
+  private static String circuitName(Component comp) {
+    return comp.getFactory() instanceof SubcircuitFactory factory
+        ? factory.getSubcircuit().getName()
+        : comp.getFactory().getDisplayName();
+  }
+
+  /**
+   * The name a subcircuit instance is listed under: its label with the circuit name, or, when it
+   * has no label, the circuit name and where it sits.
+   */
+  static String displayName(Component comp) {
+    final var circuitName = circuitName(comp);
+    final var label = comp.getAttributeSet().getValue(StdAttr.LABEL);
+    if (label != null && !label.isEmpty()) return label + " (" + circuitName + ")";
+    final var loc = comp.getLocation();
+    return circuitName + " @ " + loc.getX() + "," + loc.getY();
   }
 
   // returns true if changed
@@ -136,17 +168,7 @@ class SimulationTreeCircuitNode extends SimulationTreeNode
 
   @Override
   public String toString() {
-    if (subcircComp != null) {
-      final var label = subcircComp.getAttributeSet().getValue(StdAttr.LABEL);
-      if (label != null && !label.isEmpty()) {
-        return label;
-      }
-    }
-    var ret = circuitState.getCircuit().getName();
-    if (subcircComp != null) {
-      ret += subcircComp.getLocation();
-    }
-    return ret;
+    return subcircComp == null ? circuitState.getCircuit().getName() : displayName(subcircComp);
   }
 
   private static class CompareByName implements Comparator<Object> {

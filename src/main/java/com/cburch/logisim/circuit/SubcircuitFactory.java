@@ -101,7 +101,8 @@ public class SubcircuitFactory extends InstanceFactory {
 
     @Override
     public String toString() {
-      return source.getName();
+      // The tooltip; it says how to open the circuit, since nothing on the instance shows it.
+      return S.get("subcircuitToolTip", source.getName());
     }
   }
 
