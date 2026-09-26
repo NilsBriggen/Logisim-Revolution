@@ -37,6 +37,7 @@
 	<mapID target="features_colors"     url="pt/html/guide/feature/fet-colors.html" />
 	<mapID target="features_autolabel"  url="pt/html/guide/feature/fet-autolabel.html" />
 	<mapID target="features_matrix"     url="pt/html/guide/feature/fet-matrix.html" />
+	<mapID target="features_arrange"    url="en/html/guide/feature/fet-arrange.html" />
     <mapID target="mem_guide"           url="pt/html/guide/mem/index.html"/>
     <mapID target="mem_poke"            url="pt/html/guide/mem/mem-poke.html" />
     <mapID target="mem_menu"            url="pt/html/guide/mem/mem-menu.html"/>

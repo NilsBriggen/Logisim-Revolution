@@ -27,6 +27,7 @@ import java.awt.Graphics;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
+import javax.swing.JMenu;
 import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
 
@@ -124,6 +125,27 @@ public class MenuTool extends Tool {
       cut.setEnabled(canChange);
       add(copy);
       copy.addActionListener(this);
+      addArrangeMenu();
+    }
+
+    /** Edit &gt; Arrange, run through the menu bar so the two stay in step. */
+    private void addArrangeMenu() {
+      final var frame = proj.getFrame();
+      if (frame == null || !(frame.getJMenuBar() instanceof LogisimMenuBar menuBar)) return;
+      final var arrange = new JMenu(com.cburch.logisim.gui.Strings.S.get("editArrangeMenu"));
+      var anyEnabled = false;
+      for (final var item : LogisimMenuBar.ARRANGE_ITEMS) {
+        if (item == LogisimMenuBar.DISTRIBUTE_HORIZONTAL) arrange.addSeparator();
+        final var entry = new JMenuItem(LogisimMenuBar.arrangeItemText(item));
+        final var enabled = menuBar.isEnabled(item);
+        entry.setEnabled(enabled);
+        anyEnabled |= enabled;
+        entry.addActionListener(e -> menuBar.doAction(item));
+        arrange.add(entry);
+      }
+      arrange.setEnabled(anyEnabled);
+      addSeparator();
+      add(arrange);
     }
 
     @Override

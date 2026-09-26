@@ -17,6 +17,7 @@ import com.cburch.logisim.file.LibraryEvent;
 import com.cburch.logisim.file.LibraryListener;
 import com.cburch.logisim.gui.menu.EditHandler;
 import com.cburch.logisim.gui.menu.LogisimMenuBar;
+import com.cburch.logisim.gui.menu.LogisimMenuItem;
 import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.proj.ProjectEvent;
 import com.cburch.logisim.proj.ProjectListener;
@@ -78,6 +79,7 @@ public class LayoutEditHandler extends EditHandler
       setEnabled(LogisimMenuBar.LOWER_BOTTOM, false);
       setEnabled(LogisimMenuBar.ADD_CONTROL, false);
       setEnabled(LogisimMenuBar.REMOVE_CONTROL, false);
+      for (final var item : LogisimMenuBar.ARRANGE_ITEMS) setEnabled(item, false);
       return;
     }
 
@@ -93,6 +95,49 @@ public class LayoutEditHandler extends EditHandler
     setEnabled(LogisimMenuBar.LOWER_BOTTOM, false);
     setEnabled(LogisimMenuBar.ADD_CONTROL, false);
     setEnabled(LogisimMenuBar.REMOVE_CONTROL, false);
+    for (final var item : LogisimMenuBar.ARRANGE_ITEMS) {
+      final var mode = arrangeMode(item);
+      setEnabled(
+          item, sel != null && selectAvailable && canChange && SelectionArrange.isApplicable(sel, mode));
+    }
+  }
+
+  /** The arrange command behind an Edit &gt; Arrange menu item. */
+  static SelectionArrange.Mode arrangeMode(LogisimMenuItem item) {
+    if (item == LogisimMenuBar.ALIGN_LEFT) return SelectionArrange.Mode.ALIGN_LEFT;
+    if (item == LogisimMenuBar.ALIGN_CENTER) return SelectionArrange.Mode.ALIGN_CENTER;
+    if (item == LogisimMenuBar.ALIGN_RIGHT) return SelectionArrange.Mode.ALIGN_RIGHT;
+    if (item == LogisimMenuBar.ALIGN_TOP) return SelectionArrange.Mode.ALIGN_TOP;
+    if (item == LogisimMenuBar.ALIGN_MIDDLE) return SelectionArrange.Mode.ALIGN_MIDDLE;
+    if (item == LogisimMenuBar.ALIGN_BOTTOM) return SelectionArrange.Mode.ALIGN_BOTTOM;
+    if (item == LogisimMenuBar.DISTRIBUTE_HORIZONTAL) {
+      return SelectionArrange.Mode.DISTRIBUTE_HORIZONTAL;
+    }
+    if (item == LogisimMenuBar.DISTRIBUTE_VERTICAL) {
+      return SelectionArrange.Mode.DISTRIBUTE_VERTICAL;
+    }
+    throw new IllegalArgumentException("not an arrange item: " + item);
+  }
+
+  @Override
+  public void arrange(LogisimMenuItem item) {
+    final var proj = frame.getProject();
+    final var canvas = frame.getCanvas();
+    final var sel = canvas.getSelection();
+    final var circuit = canvas.getCircuit();
+    final var mode = arrangeMode(item);
+    if (!proj.getLogisimFile().contains(circuit) || !SelectionArrange.isApplicable(sel, mode)) {
+      return;
+    }
+    switch (SelectionArrange.check(sel, circuit, mode)) {
+      case OK -> proj.doAction(SelectionArrange.createAction(sel, mode));
+      case CONFLICT -> canvas.setErrorMessage(S.getter("arrangeConflictError"));
+      case NOTHING_TO_DO -> {
+        // already arranged; an empty step in the undo history would only confuse
+      }
+      default -> throw new IllegalStateException();
+    }
+    proj.repaintCanvas();
   }
 
   @Override

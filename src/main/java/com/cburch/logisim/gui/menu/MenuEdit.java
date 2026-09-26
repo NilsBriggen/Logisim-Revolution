@@ -48,6 +48,8 @@ class MenuEdit extends Menu {
   private final MenuItemImpl lowerBottom = new MenuItemImpl(this, LogisimMenuBar.LOWER_BOTTOM);
   private final MenuItemImpl addCtrl = new MenuItemImpl(this, LogisimMenuBar.ADD_CONTROL);
   private final MenuItemImpl remCtrl = new MenuItemImpl(this, LogisimMenuBar.REMOVE_CONTROL);
+  private final JMenu arrange = new JMenu();
+  private final MenuItemImpl[] arrangeItems = new MenuItemImpl[LogisimMenuBar.ARRANGE_ITEMS.length];
   // Undo/Redo of a window with no project but a history of its own (such as the hex editor).
   private final MenuItemImpl windowUndo = new MenuItemImpl(this, LogisimMenuBar.UNDO);
   private final MenuItemImpl windowRedo = new MenuItemImpl(this, LogisimMenuBar.REDO);
@@ -87,6 +89,15 @@ class MenuEdit extends Menu {
     add(lower);
     add(raiseTop);
     add(lowerBottom);
+    add(arrange);
+    for (var i = 0; i < arrangeItems.length; i++) {
+      final var which = LogisimMenuBar.ARRANGE_ITEMS[i];
+      arrangeItems[i] = new MenuItemImpl(this, which);
+      // Align and distribute are separate groups inside the submenu.
+      if (which == LogisimMenuBar.DISTRIBUTE_HORIZONTAL) arrange.addSeparator();
+      arrange.add(arrangeItems[i]);
+      menubar.registerItem(which, arrangeItems[i]);
+    }
     addSeparator();
     add(addCtrl);
     add(remCtrl);
@@ -187,7 +198,15 @@ class MenuEdit extends Menu {
             || raiseTop.hasListeners()
             || lowerBottom.hasListeners()
             || addCtrl.hasListeners()
-            || remCtrl.hasListeners());
+            || remCtrl.hasListeners()
+            || arrangeHasListeners());
+  }
+
+  private boolean arrangeHasListeners() {
+    for (final var item : arrangeItems) {
+      if (item != null && item.hasListeners()) return true;
+    }
+    return false;
   }
 
   /**
@@ -204,9 +223,10 @@ class MenuEdit extends Menu {
           pendingSeparator = separator;
           itemSinceSeparator = false;
         }
-      } else if (component instanceof MenuItemImpl item) {
-        final var handled = item.hasListeners();
-        item.setVisible(handled);
+      } else if (component instanceof MenuItemImpl || component == arrange) {
+        final var handled =
+            component == arrange ? arrangeHasListeners() : ((MenuItemImpl) component).hasListeners();
+        ((JMenuItem) component).setVisible(handled);
         if (handled) {
           if (pendingSeparator != null) pendingSeparator.setVisible(true);
           pendingSeparator = null;
@@ -236,6 +256,10 @@ class MenuEdit extends Menu {
     lowerBottom.setText(S.get("editLowerBottomItem"));
     addCtrl.setText(S.get("editAddControlItem"));
     remCtrl.setText(S.get("editRemoveControlItem"));
+    arrange.setText(S.get("editArrangeMenu"));
+    for (var i = 0; i < arrangeItems.length; i++) {
+      arrangeItems[i].setText(LogisimMenuBar.arrangeItemText(LogisimMenuBar.ARRANGE_ITEMS[i]));
+    }
   }
 
   void refreshUndoRedoItems() {
