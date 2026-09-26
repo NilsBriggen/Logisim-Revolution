@@ -74,6 +74,71 @@ public final class UiSnapshot {
   }
 
   /**
+   * Renders the Print ({@code -Pdialog=print}) or Export Image ({@code -Pdialog=export}) dialog
+   * with its preview, once the preview has been rendered. {@code -PdialogAll=true} selects every
+   * circuit; {@code -PdialogPrinterView=false} unchecks printer view in the export dialog.
+   */
+  private static void captureDialog(
+      com.cburch.logisim.proj.Project project, String dialog, File output, Theme.Mode mode)
+      throws Exception {
+    final var all = Boolean.getBoolean("snapshot.dialogAll");
+    final var printerView =
+        Boolean.parseBoolean(System.getProperty("snapshot.dialogPrinterView", "true"));
+    final var window = new javax.swing.JFrame();
+    final var holder = new javax.swing.JComponent[1];
+    SwingUtilities.invokeAndWait(
+        () -> {
+          final var options =
+              "print".equals(dialog)
+                  ? com.cburch.logisim.gui.main.Print.buildForSnapshot(project, all)
+                  : com.cburch.logisim.gui.main.ExportImage.buildForSnapshot(
+                      project, all, printerView);
+          holder[0] = options;
+          final var pane =
+              new javax.swing.JOptionPane(
+                  options,
+                  javax.swing.JOptionPane.PLAIN_MESSAGE,
+                  javax.swing.JOptionPane.OK_CANCEL_OPTION);
+          window.setContentPane(pane);
+          window.pack();
+          window.validate();
+        });
+    final var preview = findPreview(holder[0]);
+    final var deadline = System.currentTimeMillis() + FRAME_TIMEOUT_MS;
+    // The first layout sizes the preview, which then renders on its own thread.
+    Thread.sleep(300);
+    while (System.currentTimeMillis() < deadline) {
+      final var busy = new boolean[1];
+      SwingUtilities.invokeAndWait(() -> busy[0] = preview != null && preview.isBusy());
+      if (!busy[0]) break;
+      Thread.sleep(50);
+    }
+    final var page = Integer.getInteger("snapshot.page", -1);
+    if (page > 0 && preview != null) {
+      SwingUtilities.invokeAndWait(() -> preview.showPage(page));
+      Thread.sleep(100);
+      while (System.currentTimeMillis() < deadline) {
+        final var busy = new boolean[1];
+        SwingUtilities.invokeAndWait(() -> busy[0] = preview.isBusy());
+        if (!busy[0]) break;
+        Thread.sleep(50);
+      }
+    }
+    captureWindow(window, output, mode);
+  }
+
+  private static com.cburch.logisim.gui.main.PreviewPane findPreview(java.awt.Container parent) {
+    for (final var child : parent.getComponents()) {
+      if (child instanceof com.cburch.logisim.gui.main.PreviewPane preview) return preview;
+      if (child instanceof java.awt.Container container) {
+        final var found = findPreview(container);
+        if (found != null) return found;
+      }
+    }
+    return null;
+  }
+
+  /**
    * Renders one page of a settings window ({@code -Ppage=N}), or every page ({@code -Ppage=all}),
    * the latter to {@code <out>-<N>.png} so a layout change can be checked on all pages at once.
    */
@@ -232,6 +297,12 @@ public final class UiSnapshot {
 
     if (Boolean.getBoolean("snapshot.print")) {
       capturePrintView(project, output);
+      System.exit(0);
+    }
+
+    final var dialog = System.getProperty("snapshot.dialog", "");
+    if (!dialog.isEmpty()) {
+      captureDialog(project, dialog, output, mode);
       System.exit(0);
     }
 

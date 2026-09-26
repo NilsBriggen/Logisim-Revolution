@@ -9,6 +9,7 @@
 
 package com.cburch.logisim.gui.main;
 
+import static com.cburch.logisim.gui.Strings.S;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
@@ -19,6 +20,7 @@ import com.cburch.logisim.circuit.Circuit;
 import com.cburch.logisim.circuit.CircuitMutation;
 import com.cburch.logisim.circuit.CircuitState;
 import com.cburch.logisim.comp.ComponentDrawContext;
+import com.cburch.logisim.data.Bounds;
 import com.cburch.logisim.data.Location;
 import com.cburch.logisim.data.Value;
 import com.cburch.logisim.file.Loader;
@@ -33,6 +35,7 @@ import com.cburch.logisim.std.io.IoLibrary;
 import com.cburch.logisim.std.wiring.Pin;
 import com.cburch.logisim.tools.AddTool;
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.image.BufferedImage;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -222,5 +225,101 @@ class ExportImageTest {
     }
     assertSame(project.getCircuitState(other), ExportImage.stateForExport(project, other, true));
     assertSame(project.getCircuitState(), ExportImage.stateForExport(project, main, false));
+  }
+
+  @Test
+  void imageSizeRoundsTheScaledBounds() {
+    final var bounds = Bounds.create(10, 20, 101, 51);
+
+    assertEquals(new Dimension(101, 51), ExportImage.imageSize(bounds, 1.0));
+    assertEquals(new Dimension(202, 102), ExportImage.imageSize(bounds, 2.0));
+    assertEquals(new Dimension(51, 26), ExportImage.imageSize(bounds, 0.5));
+    assertEquals(new Dimension(1, 1), ExportImage.imageSize(bounds, 0.001));
+  }
+
+  @Test
+  void sliderPositionsArePowersOfTwo() {
+    assertEquals(1.0, ExportImage.scaleForSlider(0), 1e-9);
+    assertEquals(2.0, ExportImage.scaleForSlider(6), 1e-9);
+    assertEquals(0.125, ExportImage.scaleForSlider(-18), 1e-9);
+    assertEquals(8.0, ExportImage.scaleForSlider(18), 1e-9);
+  }
+
+  @Test
+  void previewScaleFitsTheImageButNeverEnlargesIt() {
+    final var bounds = Bounds.create(0, 0, 400, 200);
+
+    assertEquals(0.5, ExportImage.previewScale(bounds, 1.0, 200, 200), 1e-9);
+    assertEquals(0.5, ExportImage.previewScale(bounds, 4.0, 200, 200), 1e-9);
+    assertEquals(0.25, ExportImage.previewScale(bounds, 0.25, 800, 800), 1e-9);
+  }
+
+  @Test
+  void rasterPreviewGivesThePixelSizeOfTheExportedImage() {
+    final var file = LogisimFile.createNew(new Loader(null), null);
+    final var project = new Project(file);
+    final var circuit = file.getMainCircuit();
+    circuit.setProject(project);
+    final var and = ((AddTool) new GatesLibrary().getTool("AND Gate")).getFactory();
+    final var mutation = new CircuitMutation(circuit);
+    mutation.add(and.createComponent(Location.create(100, 100, false), and.createAttributeSet()));
+    mutation.execute();
+    final var scale = ExportImage.scaleForSlider(6);
+    final var expected = ExportImage.imageSize(ExportImage.exportBounds(circuit), scale);
+
+    final var raster =
+        ExportImage.renderPreview(
+            null, project, circuit, ExportImage.FORMAT_PNG, scale, true, DARK_CANVAS, 40, 40);
+    assertEquals(
+        S.get("exportPreviewPixelSize", expected.width, expected.height), raster.caption());
+    assertTrue(raster.image().getWidth() <= 40 && raster.image().getHeight() <= 40);
+    assertTrue(hasNonWhitePixel(raster.image()));
+
+    final var large =
+        ExportImage.renderPreview(
+            null, project, circuit, ExportImage.FORMAT_PNG, 1.0, true, DARK_CANVAS, 1000, 1000);
+    final var actual = ExportImage.imageSize(ExportImage.exportBounds(circuit), 1.0);
+    assertEquals(actual.width, large.image().getWidth(), "shown at full size when it fits");
+    assertEquals(actual.height, large.image().getHeight());
+
+    final var vector =
+        ExportImage.renderPreview(
+            null, project, circuit, ExportImage.FORMAT_SVG, 1.0, true, DARK_CANVAS, 1000, 1000);
+    assertEquals(
+        S.get("exportPreviewVectorSize", actual.width, actual.height), vector.caption());
+    assertEquals(0, vector.image().getRGB(0, 0) >>> 24, "printer-view SVG has no background");
+  }
+
+  @Test
+  void previewAndExportDrawTheSamePixels() {
+    final var file = LogisimFile.createNew(new Loader(null), null);
+    final var project = new Project(file);
+    final var circuit = file.getMainCircuit();
+    circuit.setProject(project);
+    final var and = ((AddTool) new GatesLibrary().getTool("AND Gate")).getFactory();
+    final var mutation = new CircuitMutation(circuit);
+    mutation.add(and.createComponent(Location.create(100, 100, false), and.createAttributeSet()));
+    mutation.execute();
+    final var bounds = ExportImage.exportBounds(circuit);
+    final var size = ExportImage.imageSize(bounds, 1.0);
+    final var exported = new BufferedImage(size.width, size.height, BufferedImage.TYPE_INT_RGB);
+    final var base = exported.getGraphics();
+    final var g = base.create();
+    assertTrue(
+        ExportImage.paintExport(
+            base, g, null, project, circuit, bounds, 1.0, ExportImage.FORMAT_PNG, true,
+            DARK_CANVAS));
+    g.dispose();
+    base.dispose();
+
+    final var preview =
+        ExportImage.renderPreview(
+            null, project, circuit, ExportImage.FORMAT_PNG, 1.0, true, DARK_CANVAS, 1000, 1000)
+            .image();
+    for (var y = 0; y < size.height; y++) {
+      for (var x = 0; x < size.width; x++) {
+        assertEquals(exported.getRGB(x, y), preview.getRGB(x, y), "pixel " + x + "," + y);
+      }
+    }
   }
 }

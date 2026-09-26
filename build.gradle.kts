@@ -1102,6 +1102,8 @@ tasks {
  * Usage: ./gradlew uiSnapshot -Ptheme=dark -Pout=build/ui-dark.png
  * Settings windows: -Ppreferences=true (Preferences) or -Poptions=true (Project Options), with
  * -Ppage=N for one page or -Ppage=all to write every page to <out>-<N>.png.
+ * Print and Export Image dialogs with their previews: -Pdialog=print|export, with -PdialogAll=true
+ * to select every circuit, -Ppage=N to step the preview, -PdialogPrinterView=false for export.
  */
 tasks.register<JavaExec>("uiSnapshot") {
   group = "verification"
@@ -1125,6 +1127,9 @@ tasks.register<JavaExec>("uiSnapshot") {
   systemProperty("snapshot.drawer", project.findProperty("drawer") ?: "")
   systemProperty("snapshot.bottomHeight", project.findProperty("bottomHeight") ?: "0")
   systemProperty("snapshot.tool", project.findProperty("tool") ?: "")
+  systemProperty("snapshot.dialog", project.findProperty("dialog") ?: "")
+  systemProperty("snapshot.dialogAll", project.findProperty("dialogAll") ?: "false")
+  systemProperty("snapshot.dialogPrinterView", project.findProperty("dialogPrinterView") ?: "true")
 }
 
 tasks.register<JavaExec>("optionsProbe") {

@@ -103,6 +103,11 @@ public final class Tokens {
     return color("Logisim.icon.disabled", fallback(0x6E6E6E, 0xA6A6A6));
   }
 
+  /** The recessed well behind a print or export preview, which the white page stands out on. */
+  public static Color previewBackground() {
+    return color("Logisim.preview.background", fallback(0x181A1E, 0xE2E4E8));
+  }
+
   /** The ring drawn around a component the pointer is about to act on. */
   public static Color canvasHalo() {
     return color("Logisim.canvas.halo", accent());
