@@ -55,7 +55,7 @@ public class FpgaOptions extends OptionsPanel {
     public void preferenceChange(PreferenceChangeEvent pce) {
       String property = pce.getKey();
       if (property.equals(AppPreferences.FPGA_Workspace.getIdentifier())) {
-        WorkSpacePath.setText(AppPreferences.FPGA_Workspace.get());
+        showWorkspace();
       } else if (property.equals(AppPreferences.HdlType.getIdentifier())) {
         final var isVhdl = AppPreferences.HdlType.get().equals(HdlGeneratorFactory.VHDL);
         vhdlPan.setEnabled(isVhdl);
@@ -113,8 +113,8 @@ public class FpgaOptions extends OptionsPanel {
     AppPreferences.getPrefs().addPreferenceChangeListener(myListener);
 
     WorkSpacePath = new JTextField(32);
-    WorkSpacePath.setText(AppPreferences.FPGA_Workspace.get());
     WorkSpacePath.setEditable(false);
+    showWorkspace();
     WorkSpaceButton = new JButton();
     WorkSpaceButton.addActionListener(myListener);
     HDL_Used =
@@ -204,64 +204,60 @@ public class FpgaOptions extends OptionsPanel {
     return ReportPan;
   }
 
+  /**
+   * Shows the workspace from its start, with the full path as tooltip: a long path used to show a
+   * fragment from its middle with nothing saying it was cut.
+   */
+  private void showWorkspace() {
+    final var path = AppPreferences.FPGA_Workspace.get();
+    WorkSpacePath.setText(path);
+    WorkSpacePath.setToolTipText(path);
+    WorkSpacePath.setCaretPosition(0);
+  }
+
   private JPanel getEditCols() {
-    editPan = new JPanel();
-    editPan.setLayout(new GridBagLayout());
-    GridBagConstraints gbc = new GridBagConstraints();
-    gbc.gridx = 0;
-    gbc.gridy = 0;
-    gbc.fill = GridBagConstraints.HORIZONTAL;
-    editPan.add(EditSelectLabel, gbc);
-    gbc.gridx++;
+    editPan = new JPanel(new GridBagLayout());
     EditSelectColor = new ColorChooserButton(frame, AppPreferences.FPGA_DEFINE_COLOR);
-    editPan.add(EditSelectColor, gbc);
-    gbc.gridx++;
-    editPan.add(EditHighligtLabel, gbc);
     EditHighligtColor = new ColorChooserButton(frame, AppPreferences.FPGA_DEFINE_HIGHLIGHT_COLOR);
-    gbc.gridx++;
-    editPan.add(EditHighligtColor, gbc);
-    gbc.gridy++;
-    gbc.gridx = 0;
-    editPan.add(EditMoveLabel, gbc);
     EditMoveColor = new ColorChooserButton(frame, AppPreferences.FPGA_DEFINE_MOVE_COLOR);
-    gbc.gridx++;
-    editPan.add(EditMoveColor, gbc);
-    gbc.gridx++;
-    editPan.add(EditResizeLabel, gbc);
     EditResizeColor = new ColorChooserButton(frame, AppPreferences.FPGA_DEFINE_RESIZE_COLOR);
-    gbc.gridx++;
-    editPan.add(EditResizeColor, gbc);
+    addColorRow(editPan, 0, EditSelectLabel, EditSelectColor);
+    addColorRow(editPan, 1, EditHighligtLabel, EditHighligtColor);
+    addColorRow(editPan, 2, EditMoveLabel, EditMoveColor);
+    addColorRow(editPan, 3, EditResizeLabel, EditResizeColor);
     return editPan;
   }
 
   private JPanel getMapCols() {
-    mapPan = new JPanel();
-    mapPan.setLayout(new GridBagLayout());
-    GridBagConstraints gbc = new GridBagConstraints();
-    gbc.gridx = 0;
-    gbc.gridy = 0;
-    gbc.fill = GridBagConstraints.HORIZONTAL;
-    mapPan.add(MappedLabel);
-    gbc.gridx++;
+    mapPan = new JPanel(new GridBagLayout());
     MappedColor = new ColorChooserButton(frame, AppPreferences.FPGA_MAPPED_COLOR);
-    mapPan.add(MappedColor);
-    gbc.gridx++;
-    mapPan.add(SelMapLabel);
-    gbc.gridx++;
     SelMapColor = new ColorChooserButton(frame, AppPreferences.FPGA_SELECTED_MAPPED_COLOR);
-    mapPan.add(SelMapColor);
-    gbc.gridx = 0;
-    gbc.gridy++;
-    mapPan.add(SelectMapLabel, gbc);
-    gbc.gridx++;
     SelectMapColor = new ColorChooserButton(frame, AppPreferences.FPGA_SELECTABLE_MAPPED_COLOR);
-    mapPan.add(SelectMapColor, gbc);
-    gbc.gridx++;
-    mapPan.add(SelectLabel, gbc);
-    gbc.gridx++;
     SelectColor = new ColorChooserButton(frame, AppPreferences.FPGA_SELECT_COLOR);
-    mapPan.add(SelectColor, gbc);
+    addColorRow(mapPan, 0, MappedLabel, MappedColor);
+    addColorRow(mapPan, 1, SelMapLabel, SelMapColor);
+    addColorRow(mapPan, 2, SelectMapLabel, SelectMapColor);
+    addColorRow(mapPan, 3, SelectLabel, SelectColor);
     return mapPan;
+  }
+
+  /**
+   * One colour per row, caption left and swatch right, as on the Colors page. Two pairs per row
+   * left each swatch pressed against the next caption, with ragged columns.
+   */
+  private static void addColorRow(JPanel panel, int row, JLabel caption, ColorChooserButton swatch) {
+    final var gbc = new GridBagConstraints();
+    gbc.gridy = row;
+    gbc.gridx = 0;
+    gbc.weightx = 1.0;
+    gbc.anchor = GridBagConstraints.LINE_START;
+    gbc.insets = new Insets(2, 0, 2, 12);
+    panel.add(caption, gbc);
+    gbc.gridx = 1;
+    gbc.weightx = 0.0;
+    gbc.anchor = GridBagConstraints.LINE_END;
+    gbc.insets = new Insets(2, 0, 2, 0);
+    panel.add(swatch, gbc);
   }
 
   @Override

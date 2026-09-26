@@ -50,8 +50,11 @@ public class ListeningFrame extends JFrame
     return upName + title + " " + hierInfo.getName();
   }
 
+  // Registered on the main project window: follow it only once it has really closed, so that a
+  // cancelled close (or unsaved assembler source, see AssemblerPanel) keeps this window open.
   @Override
-  public void windowClosing(WindowEvent e) {
+  public void windowClosed(WindowEvent e) {
+    if (e.getWindow() == this) return;
     setVisible(false);
     dispose();
   }

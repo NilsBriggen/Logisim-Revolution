@@ -16,6 +16,7 @@ import com.cburch.draw.toolbar.ToolbarModel;
 import com.cburch.logisim.gui.generic.EditorTheme;
 import com.cburch.logisim.gui.generic.OptionPane;
 import com.cburch.logisim.gui.theme.Theme;
+import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.proj.Action;
 import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.util.FileUtil;
@@ -132,7 +133,19 @@ public class HdlContentView extends JPanel
     model.setContent(editor.getText());
     dirty = false;
     toolbar.setDirty(!model.isValid());
-    if (!model.isValid()) model.showErrors();
+    if (!model.isValid()) {
+      model.showErrors();
+    } else {
+      // Say what "valid" covers: without QuestaSim only the entity declaration is parsed.
+      OptionPane.showMessageDialog(
+          HdlContentView.this,
+          S.get(
+              AppPreferences.QUESTA_VALIDATION.get()
+                  ? "validationSuccessQuesta"
+                  : "validationSuccessEntityOnly"),
+          S.get("validationSuccessTitle"),
+          OptionPane.INFORMATION_MESSAGE);
+    }
   }
 
   public static boolean confirmImport(Component parent) {
@@ -170,7 +183,7 @@ public class HdlContentView extends JPanel
     this.model = null;
     this.toolbar = new HdlToolbarModel(proj, this);
     configure();
-    EditorTheme.install(editor);
+    EditorTheme.install(editor, true);
     refreshEditorMetrics();
     editor.addPropertyChangeListener("font", event -> queueMetricsRefresh());
     editor.addPropertyChangeListener(RSyntaxTextArea.SYNTAX_SCHEME_PROPERTY,

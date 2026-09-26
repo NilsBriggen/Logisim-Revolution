@@ -243,12 +243,10 @@ public class VhdlContent extends HdlContent {
   private final StringBuilder errTitle = new StringBuilder();
   private final StringBuilder errMessage = new StringBuilder();
   private int errCode = 0;
-  private Exception errException;
 
   @Override
   public void showErrors() {
     if (valid && errTitle.length() == 0 && errMessage.length() == 0) return;
-    if (errException != null) errException.printStackTrace();
     if (errCode == Softwares.ERROR) {
       final var message = new JTextArea();
       message.setText(errMessage.toString());
@@ -304,7 +302,6 @@ public class VhdlContent extends HdlContent {
         if (msg == null || msg.length() == 0) msg = ex.toString();
         errTitle.append(S.get("validationParseError"));
         errMessage.append(msg);
-        errException = ex;
         return false;
       }
       if (!parser.getName().equals(name)) {

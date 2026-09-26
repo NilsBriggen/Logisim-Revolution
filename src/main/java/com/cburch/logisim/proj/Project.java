@@ -40,6 +40,8 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Objects;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.BooleanSupplier;
 import javax.swing.JFileChooser;
 
 public class Project {
@@ -162,6 +164,7 @@ public class Project {
   private final MyListener myListener = new MyListener();
   private boolean startupScreen = false;
   private boolean forcedDirty = false;
+  private final List<BooleanSupplier> closeGuards = new CopyOnWriteArrayList<>();
 
   public Project(LogisimFile file) {
     addLibraryListener(myListener);
@@ -188,6 +191,28 @@ public class Project {
 
   public boolean confirmClose(String title) {
     return frame.confirmClose(title);
+  }
+
+  /**
+   * Registers a check that runs whenever this project is about to close or the application quits.
+   *
+   * <p>Auxiliary editors that hold unsaved text outside the project file (the SoC assembler, for
+   * instance) use it to offer Save, Discard or Cancel. The guard returns {@code false} to cancel.
+   */
+  public void addCloseGuard(BooleanSupplier guard) {
+    if (guard != null && !closeGuards.contains(guard)) closeGuards.add(guard);
+  }
+
+  public void removeCloseGuard(BooleanSupplier guard) {
+    closeGuards.remove(guard);
+  }
+
+  /** Asks every close guard in turn; stops and returns {@code false} at the first cancellation. */
+  public boolean confirmCloseGuards() {
+    for (final var guard : closeGuards) {
+      if (!guard.getAsBoolean()) return false;
+    }
+    return true;
   }
 
   public JFileChooser createChooser() {

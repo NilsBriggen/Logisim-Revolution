@@ -28,9 +28,13 @@ public class FpgaCommanderListModel extends AbstractListModel<Object> {
   private final ListModelCellRenderer myRender;
 
   public FpgaCommanderListModel(boolean CountLines) {
+    this(CountLines, false);
+  }
+
+  public FpgaCommanderListModel(boolean countLines, boolean warnings) {
     myData = new ArrayList<>();
     myListeners = new HashSet<>();
-    myRender = new ListModelCellRenderer(CountLines);
+    myRender = new ListModelCellRenderer(countLines, warnings);
   }
 
   public ListCellRenderer<Object> getMyRenderer() {

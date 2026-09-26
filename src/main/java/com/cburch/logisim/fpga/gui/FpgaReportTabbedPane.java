@@ -90,6 +90,8 @@ public class FpgaReportTabbedPane extends JTabbedPane
     textAreaInfo.setBackground(UIManager.getColor("TextArea.background"));
     textAreaInfo.setFont(UiFonts.mono().deriveFont((float) fontSize));
     textAreaInfo.setEditable(false);
+    textAreaInfo.setLineWrap(true);
+    textAreaInfo.setWrapStyleWord(true);
     textAreaInfo.setText(null);
     var caret = (DefaultCaret) textAreaInfo.getCaret();
     caret.setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);
@@ -103,7 +105,7 @@ public class FpgaReportTabbedPane extends JTabbedPane
     add(panelInfos, infoTabIndex);
 
     /* now we setup the Warning window */
-    warningsList = new FpgaCommanderListModel(true);
+    warningsList = new FpgaCommanderListModel(true, true);
     warnings = new JList<>();
     warnings.setBackground(UIManager.getColor("List.background"));
     warnings.setForeground(Color.ORANGE);

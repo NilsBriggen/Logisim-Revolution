@@ -15,9 +15,11 @@ import com.cburch.logisim.data.Attribute;
 import com.cburch.logisim.data.AttributeSet;
 import com.cburch.logisim.data.Value;
 import com.cburch.logisim.gui.icons.ArithmeticIcon;
+import com.cburch.logisim.instance.InstancePainter;
 import com.cburch.logisim.instance.InstanceState;
 import com.cburch.logisim.instance.StdAttr;
 import com.cburch.logisim.vhdl.base.VhdlSimConstants;
+import com.cburch.logisim.vhdl.base.VhdlSimulationFallback;
 import com.cburch.logisim.vhdl.sim.VhdlSimulatorTop;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -97,6 +99,12 @@ public class VhdlEntityComponent extends HdlCircuitComponent<VhdlContentComponen
     return getHDLName(attrs) + label;
   }
 
+  @Override
+  public void paintInstance(InstancePainter painter) {
+    super.paintInstance(painter);
+    VhdlSimulationFallback.paintBadge(painter);
+  }
+
   /**
    * Propagate signals through the VHDL component. Logisim doesn't have a VHDL simulation tool. So
    * we need to use an external tool. We send signals to Questasim/Modelsim through a socket and a
@@ -109,8 +117,7 @@ public class VhdlEntityComponent extends HdlCircuitComponent<VhdlContentComponen
   @Override
   public void propagate(InstanceState state) {
 
-    if (state.getProject().getVhdlSimulator().isEnabled()
-        && state.getProject().getVhdlSimulator().isRunning()) {
+    if (VhdlSimulationFallback.isSimulatorActive(state.getProject())) {
 
       VhdlSimulatorTop vhdlSimulator = state.getProject().getVhdlSimulator();
 
@@ -167,22 +174,8 @@ public class VhdlEntityComponent extends HdlCircuitComponent<VhdlContentComponen
 
       /* VhdlSimulation stopped/disabled */
     } else {
-
-      for (final var p : state.getInstance().getPorts()) {
-        int index = state.getPortIndex(p);
-
-        /* If it is an output */
-        if (p.getType() == 2) {
-          final var vector_values = new Value[p.getFixedBitWidth().getWidth()];
-          for (var k = 0; k < p.getFixedBitWidth().getWidth(); k++) {
-            vector_values[k] = Value.UNKNOWN;
-          }
-
-          state.setPort(index, Value.create(vector_values), 1);
-        }
-      }
-
-      throw new UnsupportedOperationException(S.get("vhdlSimulationNotEnabled"));
+      // Not an error of the circuit: keep the rest of it simulating (see VhdlSimulationFallback).
+      VhdlSimulationFallback.driveOutputsUnknown(state);
     }
   }
 

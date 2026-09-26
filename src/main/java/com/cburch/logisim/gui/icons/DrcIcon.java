@@ -15,16 +15,28 @@ import java.awt.Graphics2D;
 
 public class DrcIcon extends BaseIcon {
   public final boolean drawEmpty;
+  private final boolean warning;
 
   public DrcIcon(boolean isDrcError) {
-    drawEmpty = !isDrcError;
+    this(isDrcError, false);
+  }
+
+  /** A DRC marker; warnings get the warning icon rather than the error icon. */
+  public DrcIcon(boolean isDrcIssue, boolean warning) {
+    drawEmpty = !isDrcIssue;
+    this.warning = warning;
+  }
+
+  public boolean isWarning() {
+    return warning;
   }
 
   @Override
   protected void paintIcon(Graphics2D graphics) {
     // An absent DRC error is not proof that checks have run successfully.
     if (!drawEmpty) {
-      AppIcons.get(AppIcons.Id.ERROR, AppPreferences.IconSize).paintIcon(null, graphics, 0, 0);
+      final var id = warning ? AppIcons.Id.WARNING : AppIcons.Id.ERROR;
+      AppIcons.get(id, AppPreferences.IconSize).paintIcon(null, graphics, 0, 0);
     }
   }
 }

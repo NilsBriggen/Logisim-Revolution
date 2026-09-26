@@ -167,6 +167,7 @@ public class VhdlEntity extends InstanceFactory implements HdlModelListener {
       gfx.setColor(color);
     }
     painter.drawPorts();
+    VhdlSimulationFallback.paintBadge(painter);
   }
 
   /**
@@ -181,8 +182,7 @@ public class VhdlEntity extends InstanceFactory implements HdlModelListener {
   @Override
   public void propagate(InstanceState state) {
 
-    if (state.getProject().getVhdlSimulator().isEnabled()
-        && state.getProject().getVhdlSimulator().isRunning()) {
+    if (VhdlSimulationFallback.isSimulatorActive(state.getProject())) {
 
       final var vhdlSimulator = state.getProject().getVhdlSimulator();
 
@@ -235,21 +235,8 @@ public class VhdlEntity extends InstanceFactory implements HdlModelListener {
 
       /* VhdlSimulation stopped/disabled */
     } else {
-      for (final var port : state.getInstance().getPorts()) {
-        final var index = state.getPortIndex(port);
-
-        /* If it is an output */
-        if (port.getType() == 2) {
-          final var vectorValues = new Value[port.getFixedBitWidth().getWidth()];
-          for (var k = 0; k < port.getFixedBitWidth().getWidth(); k++) {
-            vectorValues[k] = Value.UNKNOWN;
-          }
-
-          state.setPort(index, Value.create(vectorValues), 1);
-        }
-      }
-
-      throw new UnsupportedOperationException(S.get("vhdlSimulationNotEnabled"));
+      // Not an error of the circuit: keep the rest of it simulating (see VhdlSimulationFallback).
+      VhdlSimulationFallback.driveOutputsUnknown(state);
     }
   }
 
@@ -325,6 +312,12 @@ public class VhdlEntity extends InstanceFactory implements HdlModelListener {
   @Override
   public void contentSet(HdlModel source) {
     icon.setInvalid(!content.isValid());
+    // The entity header may have gained, lost or resized ports: placed instances must follow now,
+    // not only after the project is reloaded.
+    for (final var instance : myInstances) {
+      updatePorts(instance);
+      instance.fireInvalidated();
+    }
   }
 
   @Override

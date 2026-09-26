@@ -10,11 +10,16 @@
 package com.cburch.logisim.fpga.gui;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
 
+import com.cburch.logisim.circuit.Circuit;
 import com.cburch.logisim.fpga.designrulecheck.SimpleDrcContainer;
+import com.cburch.logisim.gui.icons.DrcIcon;
 import java.awt.Color;
 import java.awt.Component;
+import javax.swing.JLabel;
 import javax.swing.JList;
 import org.junit.jupiter.api.Test;
 
@@ -35,6 +40,32 @@ class ListModelCellRendererTest {
   void fatalErrorsUseWhiteTextAcrossThemes() {
     assertFatalColors(Color.WHITE, Color.BLACK);
     assertFatalColors(new Color(0x3C3F41), Color.WHITE);
+  }
+
+  @Test
+  void warningsWithDrcMarksUseTheWarningIconAndErrorsTheErrorIcon() {
+    final var list = new JList<>();
+    final var marked =
+        new SimpleDrcContainer(
+            mock(Circuit.class),
+            "marked",
+            SimpleDrcContainer.LEVEL_NORMAL,
+            SimpleDrcContainer.MARK_INSTANCE);
+    marked.addMarkComponent(new Object());
+
+    final var warning =
+        (JLabel)
+            new ListModelCellRenderer(true, true)
+                .getListCellRendererComponent(list, marked, 0, false, false);
+    final var error =
+        (JLabel)
+            new ListModelCellRenderer(false)
+                .getListCellRendererComponent(list, marked, 0, false, false);
+
+    assertTrue(((DrcIcon) warning.getIcon()).isWarning());
+    assertFalse(((DrcIcon) warning.getIcon()).drawEmpty);
+    assertFalse(((DrcIcon) error.getIcon()).isWarning());
+    assertFalse(((DrcIcon) error.getIcon()).drawEmpty);
   }
 
   private static void assertMessageColorsReadable(Color background, Color foreground) {

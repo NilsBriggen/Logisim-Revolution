@@ -171,6 +171,8 @@ public class VhdlParser {
   private String name;
   private String libraries;
   private String architecture;
+  // Unparsed text starting at the declaration an error is about, when it was already consumed.
+  private String errorTail;
 
   public VhdlParser(String source) {
     this.source = source;
@@ -227,7 +229,36 @@ public class VhdlParser {
   }
 
   public void parse() throws IllegalVhdlContentException {
-    final var input = new Scanner(removeComments());
+    final var stripped = removeComments();
+    final var input = new Scanner(stripped.strip());
+    errorTail = null;
+    try {
+      parseEntity(input);
+    } catch (IllegalVhdlContentException e) {
+      // Point at the line where parsing stopped: the error alone is hard to find in a long file.
+      final var tail = errorTail != null ? errorTail : input.remaining();
+      throw new IllegalVhdlContentException(
+          S.get("vhdlErrorAtLine", lineOf(stripped, tail), e.getMessage()), e);
+    }
+  }
+
+  /**
+   * One-based line number, in the original source, of the first token of {@code remaining} (the
+   * unparsed tail of the trimmed, comment-free text). Comments are removed up to the end of their
+   * line only, so line breaks are preserved.
+   */
+  static int lineOf(String stripped, String remaining) {
+    final var tail = remaining.stripLeading();
+    final var trailing = stripped.length() - stripped.stripTrailing().length();
+    final var offset = Math.max(0, stripped.length() - trailing - tail.length());
+    var line = 1;
+    for (var i = 0; i < offset; i++) {
+      if (stripped.charAt(i) == '\n') line++;
+    }
+    return line;
+  }
+
+  private void parseEntity(Scanner input) throws IllegalVhdlContentException {
     parseLibraries(input);
     if (!input.next(ENTITY)) throw new IllegalVhdlContentException(S.get("CannotFindEntityException"));
     name = input.match().group(1);
@@ -260,7 +291,10 @@ public class VhdlParser {
     // Example: "name1, name2, name3 : IN std_logic"
     // Example: "name1, name2, name3 : OUT std_logic_vector(expr downto expr)"
 
+    final var declaration = input.remaining();
     if (!input.next(PORT)) throw new IllegalVhdlContentException(S.get("portDeclarationException"));
+    // Mode and type errors below concern this declaration, not the text after it.
+    errorTail = declaration;
     final var names = input.match().group(1).trim();
     final var ptype = getPortType(input.match().group(2).trim());
     final var type = input.match().group(3).trim();
@@ -275,6 +309,7 @@ public class VhdlParser {
       width = upper - lower + 1;
     }
 
+    errorTail = null;
     for (final var name : names.split("\\s*,\\s*")) {
       if (ptype.equals(Port.INPUT)) inputs.add(new PortDescription(name, ptype, width));
       else outputs.add(new PortDescription(name, ptype, width));
@@ -370,6 +405,6 @@ public class VhdlParser {
       input.delete(from, to);
     }
 
-    return input.toString().trim();
+    return input.toString();
   }
 }

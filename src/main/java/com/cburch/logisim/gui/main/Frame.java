@@ -724,18 +724,22 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
 
   // returns true if user is OK with proceeding
   public boolean confirmClose(String title) {
-    return ProjectCloseConfirmation.confirm(
-        project.isFileDirty(),
-        () -> {
-          toFront();
-          final var message = S.get("confirmDiscardMessage", project.getLogisimFile().getName());
-          final String[] options = {
-            S.get("saveOption"), S.get("discardOption"), S.get("cancelOption")
-          };
-          return OptionPane.showOptionDialog(
-              this, message, title, 0, OptionPane.QUESTION_MESSAGE, null, options, options[0]);
-        },
-        () -> ProjectActions.doSave(project));
+    final var projectOk =
+        ProjectCloseConfirmation.confirm(
+            project.isFileDirty(),
+            () -> {
+              toFront();
+              final var message =
+                  S.get("confirmDiscardMessage", project.getLogisimFile().getName());
+              final String[] options = {
+                S.get("saveOption"), S.get("discardOption"), S.get("cancelOption")
+              };
+              return OptionPane.showOptionDialog(
+                  this, message, title, 0, OptionPane.QUESTION_MESSAGE, null, options, options[0]);
+            },
+            () -> ProjectActions.doSave(project));
+    // Editors with their own unsaved buffers (e.g. the SoC assembler) get their say as well.
+    return projectOk && project.confirmCloseGuards();
   }
 
   @Override
