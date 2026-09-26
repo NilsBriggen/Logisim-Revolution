@@ -201,6 +201,8 @@
 	<mapID target="io_telnet"           url="en/html/libs/io/telnet.html" />
 	<mapID target="io_realtimeclock"    url="en/html/libs/io/realtimeclock.html" />
 	<mapID target="io_matrixkeypad"     url="en/html/libs/io/matrixkeypad.html" />
+	<mapID target="io_DIP"              url="en/html/libs/io/dipswitch.html" />
+	<mapID target="io_ledRGB"           url="en/html/libs/io/rgbled.html" />
     <mapID target="io_Port_IO"          url="en/html/libs/io/Port_io.html" />
 	<mapID target="io_Repetar"          url="en/html/libs/io/repetar.html" />
 	<mapID target="io_videorvb"         url="en/html/libs/io/videorvb.html" />

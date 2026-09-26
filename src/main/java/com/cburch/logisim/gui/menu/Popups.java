@@ -46,7 +46,8 @@ public class Popups {
   }
 
   public static JPopupMenu forTool(Project proj, Tool tool) {
-    return null;
+    if (!(tool instanceof AddTool)) return null;
+    return new ToolPopup(proj, (AddTool) tool);
   }
 
   @SuppressWarnings("serial")
@@ -157,6 +158,7 @@ public class Popups {
   private static class LibraryPopup extends JPopupMenu implements ActionListener {
     final Project proj;
     final Library lib;
+    final JMenuItem help = new JMenuItem();
     final JMenuItem unload = new JMenuItem(S.get("projectUnloadLibraryItem"));
     final JMenuItem reload = new JMenuItem(S.get("projectReloadLibraryItem"));
 
@@ -165,6 +167,10 @@ public class Popups {
       this.proj = proj;
       this.lib = lib;
 
+      help.setText(S.get("libHelpItem", lib.getDisplayName()));
+      add(help);
+      help.addActionListener(this);
+      addSeparator();
       add(unload);
       unload.addActionListener(this);
       add(reload);
@@ -176,10 +182,37 @@ public class Popups {
     @Override
     public void actionPerformed(ActionEvent e) {
       final var src = e.getSource();
-      if (src == unload) {
+      if (src == help) {
+        if (proj.getFrame().getJMenuBar() instanceof LogisimMenuBar menuBar) {
+          menuBar.help.showHelp(ComponentHelp.getHelpTarget(lib));
+        }
+      } else if (src == unload) {
         ProjectLibraryActions.doUnloadLibrary(proj, lib);
       } else if (src == reload) {
         proj.getLogisimFile().getLoader().reload((LoadedLibrary) lib);
+      }
+    }
+  }
+
+  @SuppressWarnings("serial")
+  private static class ToolPopup extends JPopupMenu implements ActionListener {
+    final Project proj;
+    final AddTool tool;
+    final JMenuItem help = new JMenuItem();
+
+    ToolPopup(Project proj, AddTool tool) {
+      this.proj = proj;
+      this.tool = tool;
+      help.setText(S.get("libHelpItem", tool.getFactory().getDisplayGetter().toString()));
+      add(help);
+      help.addActionListener(this);
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent e) {
+      if (e.getSource() == help && proj.getFrame().getJMenuBar() instanceof LogisimMenuBar menuBar) {
+        final var target = ComponentHelp.getHelpTarget(tool.getFactory(), proj.getLogisimFile());
+        menuBar.help.showHelp(target);
       }
     }
   }

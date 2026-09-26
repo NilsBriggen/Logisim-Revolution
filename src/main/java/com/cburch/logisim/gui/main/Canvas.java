@@ -37,6 +37,8 @@ import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.gui.generic.CanvasPane;
 import com.cburch.logisim.gui.generic.CanvasPaneContents;
 import com.cburch.logisim.gui.generic.GridPainter;
+import com.cburch.logisim.gui.menu.ComponentHelp;
+import com.cburch.logisim.gui.menu.LogisimMenuBar;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.proj.ProjectEvent;
@@ -61,6 +63,7 @@ import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
+import java.awt.event.ActionEvent;
 import java.awt.event.AdjustmentEvent;
 import java.awt.event.AdjustmentListener;
 import java.awt.event.InputEvent;
@@ -75,10 +78,13 @@ import java.beans.PropertyChangeListener;
 import java.util.List;
 import javax.accessibility.AccessibleContext;
 import javax.accessibility.AccessibleRole;
+import javax.swing.AbstractAction;
+import javax.swing.JComponent;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollBar;
 import javax.swing.JViewport;
+import javax.swing.KeyStroke;
 import javax.swing.Timer;
 import javax.swing.UIManager;
 import javax.swing.event.PopupMenuEvent;
@@ -103,6 +109,8 @@ public class Canvas extends JPanel implements LocaleListener, CanvasPaneContents
   private static final int ORIGIN_STEP = 100;
   private static final Font ERR_MSG_FONT =
       AppPreferences.getScaledFont(new Font(Font.SANS_SERIF, Font.BOLD, 18));
+  /** F1 opens context help for the selected component, the armed add-tool, or the library index. */
+  private static final String CONTEXT_HELP_ACTION_KEY = "logisimCanvasContextHelp";
   // public static BufferedImage image;
   private final Project proj;
   private final Selection selection;
@@ -150,6 +158,10 @@ public class Canvas extends JPanel implements LocaleListener, CanvasPaneContents
     addMouseMotionListener(myListener);
     addMouseWheelListener(myListener);
     addKeyListener(myListener);
+
+    getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
+        .put(KeyStroke.getKeyStroke(KeyEvent.VK_F1, 0), CONTEXT_HELP_ACTION_KEY);
+    getActionMap().put(CONTEXT_HELP_ACTION_KEY, new ContextHelpAction());
 
     proj.addProjectListener(myProjectListener);
     proj.addLibraryListener(myProjectListener);
@@ -1340,6 +1352,34 @@ public class Canvas extends JPanel implements LocaleListener, CanvasPaneContents
     @Override
     public void simulatorReset(Simulator.Event e) {
       waitForRepaintDone();
+    }
+  }
+
+  /**
+   * F1 on the canvas: prefers a single selected component, then the component wrapped by the
+   * currently armed add-tool, and otherwise falls back to the Library Reference index.
+   */
+  private class ContextHelpAction extends AbstractAction {
+
+    private static final long serialVersionUID = 1L;
+
+    @Override
+    public void actionPerformed(ActionEvent event) {
+      if (!(proj.getFrame().getJMenuBar() instanceof LogisimMenuBar menuBar)) return;
+      menuBar.help.showHelp(resolveTarget());
+    }
+
+    private String resolveTarget() {
+      final var selected = selection.getComponents();
+      if (selected.size() == 1) {
+        final var factory = selected.iterator().next().getFactory();
+        return ComponentHelp.getHelpTarget(factory, proj.getLogisimFile());
+      }
+      final var tool = proj.getTool();
+      if (tool instanceof AddTool) {
+        return ComponentHelp.getHelpTarget(tool, proj.getLogisimFile());
+      }
+      return ComponentHelp.LIBRARY_REFERENCE_TARGET;
     }
   }
 

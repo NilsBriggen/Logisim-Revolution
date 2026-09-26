@@ -18,6 +18,7 @@ import com.cburch.logisim.comp.ComponentDrawContext;
 import com.cburch.logisim.data.Location;
 import com.cburch.logisim.gui.main.Canvas;
 import com.cburch.logisim.gui.main.SelectionActions;
+import com.cburch.logisim.gui.menu.ComponentHelp;
 import com.cburch.logisim.gui.menu.LogisimMenuBar;
 import com.cburch.logisim.gui.theme.AppIcons;
 import com.cburch.logisim.instance.StdAttr;
@@ -49,12 +50,14 @@ public class MenuTool extends Tool {
     final JMenuItem attrs = new JMenuItem(S.get("compShowAttrItem"));
     final JMenuItem rotateRight = new JMenuItem(S.get("compRotateRight"));
     final JMenuItem rotateLeft = new JMenuItem(S.get("compRotateLeft"));
-    final JMenuItem help = new JMenuItem(S.get("compHelpItem"));
+    final JMenuItem help = new JMenuItem();
 
     MenuComponent(Project proj, Circuit circ, Component comp) {
       this.proj = proj;
       this.circ = circ;
       this.comp = comp;
+      help.setText(
+          S.get("compHelpItemFor", comp.getFactory().getDisplayGetter().toString()));
       boolean canChange = proj.getLogisimFile().contains(circ);
 
       if (comp.getAttributeSet().containsAttribute(StdAttr.FACING)) {
@@ -87,7 +90,8 @@ public class MenuTool extends Tool {
         proj.getFrame().viewComponentAttributes(circ, comp);
       } else if (src == help) {
         if (proj.getFrame().getJMenuBar() instanceof LogisimMenuBar menuBar) {
-          menuBar.help.showHelp("libs");
+          final var target = ComponentHelp.getHelpTarget(comp.getFactory(), proj.getLogisimFile());
+          menuBar.help.showHelp(target);
         }
       } else if (src == rotateRight) {
         final var circ = proj.getCurrentCircuit();

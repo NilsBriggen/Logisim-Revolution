@@ -111,7 +111,7 @@ class ToolboxManip implements ProjectExplorer.Listener {
         } else if (source instanceof VhdlEntity vhdlEntity) {
           return Popups.forVhdl(proj, tool, vhdlEntity.getContent());
         } else {
-          return null;
+          return Popups.forTool(proj, tool);
         }
       } else {
         return null;
