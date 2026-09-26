@@ -25,7 +25,6 @@ import com.cburch.logisim.data.AttributeSet;
 import com.cburch.logisim.fpga.data.BoardRectangle;
 import com.cburch.logisim.fpga.data.MapComponent;
 import com.cburch.logisim.generated.BuildInfo;
-import com.cburch.logisim.gui.generic.OptionPane;
 import com.cburch.logisim.instance.Instance;
 import com.cburch.logisim.instance.StdAttr;
 import com.cburch.logisim.prefs.AppPreferences;
@@ -59,9 +58,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
-import java.util.UUID;
 import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.ParserConfigurationException;
@@ -91,6 +91,10 @@ class XmlReader {
     LogisimVersion sourceVersion;
     final HashMap<String, Library> libs = new HashMap<>();
     private final ArrayList<String> messages;
+    // Changes made to keep the file loadable; reported together once loading is done.
+    private final ArrayList<String> labelRenames = new ArrayList<>();
+    private final ArrayList<String> circuitRenames = new ArrayList<>();
+    private final ArrayList<String> notices = new ArrayList<>();
 
     ReadContext(LogisimFile file) {
       this.file = file;
@@ -101,6 +105,11 @@ class XmlReader {
       // A component may be read twice (once early, once in circuit order); report it once.
       final var entry = message + " [" + context + "]";
       if (!messages.contains(entry)) messages.add(entry);
+    }
+
+    /** Records a label that had to be renamed because the circuit rules do not allow it. */
+    void addLabelRename(String circuitName, String oldLabel, String newLabel) {
+      labelRenames.add(S.get("fileRenamedEntry", circuitName, oldLabel, newLabel));
     }
 
     void addErrors(XmlReaderException exception, String context) {
@@ -409,15 +418,7 @@ class XmlReader {
       // circuits...
       if (sourceVersion.compareTo(new LogisimVersion(2, 7, 2)) < 0) {
         isEvolutionFile = true;
-        OptionPane.showMessageDialog(
-            null,
-            // FIXME: hardcoded string
-            """
-                You are opening a file created with original Logisim code.
-                You might encounter some problems in the execution, since some components evolved since then.
-                Moreover, labels will be converted to match VHDL limitations for variable names.""",
-            "Old file format -- compatibility mode",
-            OptionPane.WARNING_MESSAGE);
+        notices.add(S.get("fileOriginalLogisimWarning", versionString));
       }
 
       // first, load the sublibraries
@@ -460,6 +461,7 @@ class XmlReader {
 
       // second, create the circuits - empty for now - and the vhdl entities
       final var circuitsData = new ArrayList<CircuitData>();
+      renameDuplicateCircuits(elt);
       for (final var circElt : XmlIterator.forChildElements(elt)) {
         String name;
         switch (circElt.getTagName()) {
@@ -562,6 +564,34 @@ class XmlReader {
       builder.execute();
     }
 
+    /**
+     * Gives every circuit whose name an earlier circuit already has a free name ({@code name_2},
+     * {@code name_3}, ...). References to the name keep meaning the first circuit, as they always
+     * did; the later ones would otherwise be unreachable and fail to save correctly.
+     */
+    private void renameDuplicateCircuits(Element root) {
+      final var names = new HashSet<String>();
+      for (final var circElt : XmlIterator.forChildElements(root)) {
+        final var tag = circElt.getTagName();
+        if ("circuit".equals(tag) || "vhdl".equals(tag)) names.add(circElt.getAttribute("name"));
+      }
+      final var seen = new HashSet<String>();
+      for (final var circElt : XmlIterator.forChildElements(root, "circuit")) {
+        final var name = circElt.getAttribute("name");
+        if (StringUtil.isNullOrEmpty(name) || seen.add(name)) continue;
+        var suffix = 2;
+        while (names.contains(name + "_" + suffix)) suffix++;
+        final var unique = name + "_" + suffix;
+        names.add(unique);
+        seen.add(unique);
+        circElt.setAttribute("name", unique);
+        for (final var attrElt : XmlIterator.forChildElements(circElt, "a")) {
+          if ("circuit".equals(attrElt.getAttribute("name"))) attrElt.setAttribute("val", unique);
+        }
+        circuitRenames.add(S.get("fileCircuitRenamedEntry", name, unique));
+      }
+    }
+
     Tool findTool(Library lib, String name) {
       final var tool = lib.getTool(name);
       if (tool != null) return tool;
@@ -652,18 +682,47 @@ class XmlReader {
     }
   }
 
+  /**
+   * Whether {@code root} comes from a Logisim version that did not yet restrict names and labels
+   * to valid VHDL identifiers, so that {@link #ensureLogisimCompatibility} has to convert them.
+   * Newer files are read exactly as stored.
+   */
+  static boolean needsLabelConversion(Element root) {
+    final var source = root.getAttribute("source");
+    if (StringUtil.isNullOrEmpty(source)) return false;
+    return LogisimVersion.fromString(source).compareTo(new LogisimVersion(2, 7, 2)) < 0;
+  }
+
   public static Element ensureLogisimCompatibility(Element elt) {
+    return ensureLogisimCompatibility(elt, new ArrayList<>());
+  }
+
+  /**
+   * Converts circuit names and labels that are not valid VHDL identifiers.
+   *
+   * @param renamed receives one {@code "old" → "new"} line per converted name
+   */
+  static Element ensureLogisimCompatibility(Element elt, List<String> renamed) {
     var validLabels = findValidLabels(elt, "circuit", "name");
     applyValidLabels(elt, "circuit", "name", validLabels);
+    reportRenames(validLabels, renamed);
     validLabels = findValidLabels(elt, "circuit", "label");
     applyValidLabels(elt, "circuit", "label", validLabels);
+    reportRenames(validLabels, renamed);
     validLabels = findValidLabels(elt, "comp", "label");
     applyValidLabels(elt, "comp", "label", validLabels);
+    reportRenames(validLabels, renamed);
     // In old, buggy Logisim versions, labels where incorrectly
     // stored also in toolbar and lib components. If this is the
     // case, clean them up.
     fixInvalidToolbarLib(elt);
     return (elt);
+  }
+
+  private static void reportRenames(Map<String, String> validLabels, List<String> renamed) {
+    for (final var entry : validLabels.entrySet()) {
+      renamed.add(S.get("fileConvertedEntry", entry.getKey(), entry.getValue()));
+    }
   }
 
   private static void findLibraryUses(ArrayList<Element> dest, String label, Iterable<Element> candidates) {
@@ -693,19 +752,24 @@ class XmlReader {
     if (nodeType.length() == 0) throw new RuntimeException("Empty string is not a valid value of 'nodeType'.");
     if (attrType.length() == 0) throw new RuntimeException("Empty string is not a valid value of 'attrType'.");
 
-    final var validLabels = new HashMap<String, String>();
+    // Ordered, so that converting the same file always gives the same names.
+    final var validLabels = new LinkedHashMap<String, String>();
 
     final var initialLabels = getXMLLabels(root, nodeType, attrType);
+    final var taken = new HashSet<String>();
+    for (final var label : initialLabels) taken.add(label.toUpperCase(Locale.ROOT));
 
-    for (var label : initialLabels) {
-      if (!validLabels.containsKey(label)) {
-        // Check if the name is invalid, in which case create
-        // a valid version and put it in the map
-        if (VhdlContent.labelVHDLInvalid(label)) {
-          final var initialLabel = label;
-          label = generateValidVHDLLabel(label);
-          validLabels.put(initialLabel, label);
+    for (final var label : initialLabels) {
+      // Check if the name is invalid, in which case create a valid version and put it in the map
+      if (!validLabels.containsKey(label) && VhdlContent.labelVHDLInvalid(label)) {
+        final var base = toVhdlIdentifier(label);
+        var candidate = base;
+        // Two different labels may reduce to the same identifier: number the later ones.
+        for (var n = 1; taken.contains(candidate.toUpperCase(Locale.ROOT)); n++) {
+          candidate = base + "_" + n;
         }
+        taken.add(candidate.toUpperCase(Locale.ROOT));
+        validLabels.put(label, candidate);
       }
     }
 
@@ -742,7 +806,22 @@ class XmlReader {
    * @return a valid VHDL label
    */
   public static String generateValidVHDLLabel(String initialLabel) {
-    return (generateValidVHDLLabel(initialLabel, UUID.randomUUID().toString().substring(0, 8)));
+    return generateValidVHDLLabel(initialLabel, "1");
+  }
+
+  /**
+   * {@code initialLabel} reduced to a valid VHDL identifier, without any suffix: letters, digits
+   * and single underscores, starting with a letter.
+   */
+  static String toVhdlIdentifier(String initialLabel) {
+    var label = initialLabel.trim();
+    if (label.isEmpty()) label = "L_";
+    label = label.replaceAll("[!~]", "NOT_");
+    if (!label.matches("^[A-Za-z].*$")) label = "L_" + label;
+    label = label.replaceAll("\\W", "_");
+    label = label.replaceAll("_+", "_");
+    if (label.endsWith("_")) label = label.substring(0, label.length() - 1);
+    return label;
   }
 
   /**
@@ -761,34 +840,14 @@ class XmlReader {
     // As a default, trim whitespaces at the beginning and at the end
     // of a label (no risks with that potentially, therefore avoid
     // to append the suffix if that was the only change)
-    initialLabel = initialLabel.trim();
-
-    var label = initialLabel;
-    if (label.isEmpty()) {
-      logger.warn("Empty label is not a valid VHDL label");
-      label = "L_";
+    final var trimmed = initialLabel.trim();
+    if (trimmed.isEmpty()) logger.warn("Empty label is not a valid VHDL label");
+    var label = toVhdlIdentifier(trimmed);
+    if (!label.equals(trimmed)) {
+      // Concatenate the suffix if the string has been altered, with "-" replaced by underscores
+      label = (label + "_" + suffix).replaceAll("-", "_");
     }
-
-    // If the string has a ! or ~ symbol, then replace it with "NOT"
-    label = label.replaceAll("[!~]", "NOT_");
-
-    // Force string to start with a letter
-    if (!label.matches("^[A-Za-z].*$")) label = "L_" + label;
-
-    // Force the rest to be either letters, or numbers, or underscores
-    label = label.replaceAll("\\W", "_");
-    // Suppress multiple successive underscores and an underscore at the end
-    label = label.replaceAll("_+", "_");
-    if (label.endsWith("_")) label = label.substring(0, label.length() - 1);
-
-    if (!label.equals(initialLabel)) {
-      // Concatenate a unique ID if the string has been altered
-      label = label + "_" + suffix;
-      // Replace the "-" characters in the UUID with underscores
-      label = label.replaceAll("-", "_");
-    }
-
-    return (label);
+    return label;
   }
 
   /**
@@ -877,7 +936,7 @@ class XmlReader {
       // In circuits, we have to look for components, then take just those components
       // that do have a lib attribute and look at their a child nodes.
       for (final var compElt : XmlIterator.forChildElements(circElt, "comp")) {
-        if (compElt.hasAttribute("lib")) {
+        if (compElt.hasAttribute("lib") && !keepsLabelAsIs(compElt)) {
           for (final var attrElt : XmlIterator.forChildElements(compElt, "a")) {
             if (attrElt.hasAttribute("name")) {
               final var aName = attrElt.getAttribute("name");
@@ -892,6 +951,15 @@ class XmlReader {
         }
       }
     }
+  }
+
+  /**
+   * Tunnel labels only name a connection and text is free-form, so neither is ever used as an
+   * HDL identifier.
+   */
+  private static boolean keepsLabelAsIs(Element compElt) {
+    final var name = compElt.getAttribute("name");
+    return Tunnel._ID.equals(name) || Text._ID.equals(name);
   }
 
   /**
@@ -999,7 +1067,7 @@ class XmlReader {
       // their
       // a child nodes
       for (final var compElt : XmlIterator.forChildElements(circElt, "comp")) {
-        if (compElt.hasAttribute("lib")) {
+        if (compElt.hasAttribute("lib") && !keepsLabelAsIs(compElt)) {
           for (final var attrElt : XmlIterator.forChildElements(compElt, "a")) {
             if (attrElt.hasAttribute("name")) {
               final var aName = attrElt.getAttribute("name");
@@ -1154,13 +1222,30 @@ class XmlReader {
   LogisimFile readLibrary(InputStream is, Project proj) throws IOException, SAXException {
     final var doc = loadXmlFrom(is);
     var elt = doc.getDocumentElement();
-    elt = ensureLogisimCompatibility(elt);
+    if (elt == null || !"project".equals(elt.getTagName())) {
+      throw new SAXException(S.get("fileNotProjectError"));
+    }
+    final var converted = new ArrayList<String>();
+    if (needsLabelConversion(elt)) elt = ensureLogisimCompatibility(elt, converted);
 
     considerRepairs(doc, elt);
     final var file = new LogisimFile((Loader) loader);
     final var context = new ReadContext(file);
 
     context.toLogisimFile(elt, proj);
+    // Everything loading had to change is reported together, in one message.
+    final var notices = new ArrayList<>(context.notices);
+    if (!converted.isEmpty()) {
+      notices.add(S.get("fileLabelsConverted", listOf(converted)));
+    }
+    if (!context.circuitRenames.isEmpty()) {
+      notices.add(S.get("fileCircuitsRenamed", listOf(context.circuitRenames)));
+    }
+    if (!context.labelRenames.isEmpty()) {
+      notices.add(S.get("fileLabelsRenamed", listOf(context.labelRenames)));
+    }
+    if (notices.size() > context.notices.size()) notices.add(S.get("fileRenamesSaveHint"));
+    if (!notices.isEmpty()) file.addMessage(String.join("\n\n", notices));
 
     if (file.getCircuitCount() == 0) {
       file.addCircuit(new Circuit("main", file, proj));
@@ -1183,6 +1268,14 @@ class XmlReader {
       loader.showError(all.substring(0, all.length() - 1));
     }
     return file;
+  }
+
+  /** One entry per line, capped so that a long list cannot make the message taller than the screen. */
+  private static String listOf(List<String> entries) {
+    final var maxShown = 20;
+    final var shown = new ArrayList<>(entries.subList(0, Math.min(entries.size(), maxShown)));
+    if (entries.size() > maxShown) shown.add(S.get("fileListMore", entries.size() - maxShown));
+    return String.join("\n", shown);
   }
 
   /**
@@ -1328,13 +1421,13 @@ class XmlReader {
       newBaseElt = doc.createElement("lib");
       newBaseElt.setAttribute("desc", "#Base");
       newBaseElt.setAttribute("name", newBaseLabel);
-      root.insertBefore(newBaseElt, lastLibElt.getNextSibling());
+      root.insertBefore(newBaseElt, lastLibElt == null ? root.getFirstChild() : lastLibElt.getNextSibling());
     } else {
       wiringLabel = "" + (maxLabel + 1);
       wiringElt = doc.createElement("lib");
       wiringElt.setAttribute("desc", "#Wiring");
       wiringElt.setAttribute("name", wiringLabel);
-      root.insertBefore(wiringElt, lastLibElt.getNextSibling());
+      root.insertBefore(wiringElt, lastLibElt == null ? root.getFirstChild() : lastLibElt.getNextSibling());
 
       newBaseLabel = null;
       newBaseElt = null;

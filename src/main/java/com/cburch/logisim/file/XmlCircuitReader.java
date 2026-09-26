@@ -344,7 +344,17 @@ public class XmlCircuitReader extends CircuitTransaction {
   @Override
   protected void run(CircuitMutator mutator) {
     for (final var circuitData : circuitsData) {
-      buildCircuit(circuitData, mutator);
+      final var circuit = circuitData.circuit;
+      // Labels are checked once the circuit is complete, never while it is half-built.
+      circuit.setLabelChecksDeferred(true);
+      try {
+        buildCircuit(circuitData, mutator);
+      } finally {
+        circuit.setLabelChecksDeferred(false);
+      }
+      for (final var rename : circuit.resolveLabelConflicts()) {
+        reader.addLabelRename(circuit.getName(), rename.oldLabel(), rename.newLabel());
+      }
     }
     for (final var circuitData : circuitsData) {
       buildDynamicAppearance(circuitData);

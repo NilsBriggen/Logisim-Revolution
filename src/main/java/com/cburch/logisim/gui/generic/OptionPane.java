@@ -20,8 +20,11 @@ import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.Frame;
 import java.awt.KeyboardFocusManager;
+import java.awt.Toolkit;
+import java.awt.datatransfer.StringSelection;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
@@ -150,8 +153,17 @@ public class OptionPane {
           if (window != null) window.pack();
         });
 
-    final var toggleRow = new JPanel(new BorderLayout());
-    toggleRow.add(toggle, BorderLayout.WEST);
+    // A bug report needs the text; selecting it inside the collapsed area is awkward.
+    final var copy = new JButton(S.get("errorDetailsCopy"));
+    copy.addActionListener(
+        event ->
+            Toolkit.getDefaultToolkit()
+                .getSystemClipboard()
+                .setContents(new StringSelection(message + "\n\n" + trace.getText()), null));
+
+    final var toggleRow = new JPanel(new FlowLayout(FlowLayout.LEADING, Spacing.xs(), 0));
+    toggleRow.add(toggle);
+    toggleRow.add(copy);
 
     final var south = new JPanel(new BorderLayout(0, Spacing.xs()));
     south.add(toggleRow, BorderLayout.NORTH);
@@ -189,7 +201,7 @@ public class OptionPane {
   }
 
   /** Escapes the few characters that would otherwise be read as markup by the HTML label. */
-  static String escapeHtml(String text) {
+  public static String escapeHtml(String text) {
     if (text == null) return "";
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
   }

@@ -44,10 +44,15 @@ import java.awt.event.AWTEventListener;
 import java.awt.event.ContainerEvent;
 import java.io.File;
 import java.io.FilenameFilter;
+import java.io.IOException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
+import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -72,6 +77,8 @@ public class Startup implements AWTEventListener {
   static final Logger logger = LoggerFactory.getLogger(Startup.class);
   private static Startup startupTemp = null;
   private final ArrayList<File> filesToOpen = new ArrayList<>();
+  // Recovery files of unsaved projects the user chose to restore at startup.
+  private final ArrayList<File> recoveredToOpen = new ArrayList<>();
   private final HashMap<File, File> substitutions = new HashMap<>();
   private final ArrayList<File> filesToPrint = new ArrayList<>();
   // based on command line
@@ -835,6 +842,91 @@ public class Startup implements AWTEventListener {
     ProjectActions.doOpen(null, null, file);
   }
 
+  private enum RecoveryChoice {
+    RESTORE,
+    SAVED,
+    DISCARD,
+    LATER
+  }
+
+  /**
+   * Asks what to do with the unsaved work of a previous session in {@code autosave}. The recovery
+   * file is named by a random identifier, so the question describes it by date and circuits.
+   */
+  private RecoveryChoice askAboutRecoveredWork(File autosave) {
+    final var changed =
+        DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
+            .format(new Date(autosave.lastModified()));
+    final var circuits = Loader.circuitNamesIn(autosave);
+    final var maxNames = 8;
+    var names = String.join(", ", circuits.subList(0, Math.min(circuits.size(), maxNames)));
+    if (circuits.size() > maxNames) names += ", …";
+    final var message =
+        circuits.isEmpty()
+            ? S.get("recoverUnsavedMessage", changed)
+            : S.get("recoverUnsavedCircuitsMessage", changed, names);
+    final var options =
+        new String[] {
+          S.get("recoverRestoreOption"), S.get("recoverSaveAsOption"), S.get("discardOption")
+        };
+    while (true) {
+      final var option =
+          OptionPane.showOptionDialog(
+              monitor,
+              message,
+              S.get("recoverUnsavedTitle"),
+              JOptionPane.DEFAULT_OPTION,
+              JOptionPane.QUESTION_MESSAGE,
+              null,
+              options,
+              options[0]);
+      switch (option) {
+        case 0:
+          return RecoveryChoice.RESTORE;
+        case 1:
+          if (saveRecoveredWorkAs(autosave)) return RecoveryChoice.SAVED;
+          break; // chooser cancelled: ask again
+        case 2:
+          return RecoveryChoice.DISCARD;
+        default:
+          return RecoveryChoice.LATER; // closed: keep the file and ask again next time
+      }
+    }
+  }
+
+  /** Moves the recovery file to a .circ file the user chooses. */
+  private boolean saveRecoveredWorkAs(File autosave) {
+    final var chooser = JFileChoosers.createAt(new File(System.getProperty("user.home")));
+    chooser.setFileFilter(Loader.LOGISIM_FILTER);
+    final var suggested = S.get("recoverDefaultName") + Loader.LOGISIM_EXTENSION;
+    chooser.setSelectedFile(new File(chooser.getCurrentDirectory(), suggested));
+    while (chooser.showSaveDialog(monitor) == JFileChooser.APPROVE_OPTION) {
+      var file = chooser.getSelectedFile();
+      // Like Save As: a project file without the extension could not be opened by double-click.
+      if (!file.getName().endsWith(Loader.LOGISIM_EXTENSION)) {
+        file = new File(file.getParentFile(), file.getName() + Loader.LOGISIM_EXTENSION);
+      }
+      if (file.isDirectory()) continue;
+      if (file.exists()) {
+        final var confirm =
+            OptionPane.showConfirmDialog(
+                monitor,
+                S.get("confirmOverwriteMessage"),
+                S.get("confirmOverwriteTitle"),
+                OptionPane.YES_NO_OPTION);
+        if (confirm != OptionPane.YES_OPTION) continue;
+      }
+      try {
+        Files.move(autosave.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        return true;
+      } catch (IOException e) {
+        OptionPane.showError(
+            monitor, S.get("recoverUnsavedTitle"), S.get("recoverSaveFailed", file.getName()), e);
+      }
+    }
+    return false;
+  }
+
   private void doPrintFile(File file) {
     synchronized (filesToOpen) {
       if (!initialized) {
@@ -1018,69 +1110,19 @@ public class Startup implements AWTEventListener {
 
       // Go over all autosaves to select what to do with each
       for (final var autosave : autosaves == null ? new File[0] : autosaves) {
-        boolean retry = false;
-        do {
-          retry = false;
-          // Create a option dialog to decide what to do with the autosave
-          final var options = new String[] {
-              S.get("saveOption"),
-              S.get("saveAndLoadOption"),
-              S.get("discardOption")};
-          final var option = OptionPane.showOptionDialog(monitor,
-              String.format(S.get("contentHandleAutosave"), autosave.getName()),
-              S.get("titleHandleAutosave"),
-              JOptionPane.DEFAULT_OPTION,
-              JOptionPane.QUESTION_MESSAGE,
-              null,
-              options,
-              options[0]);
-          // If the dialog is closed, ignore this file this time
-          if (option == JOptionPane.CLOSED_OPTION) {
-            continue;
-          }
-          if (option == 2) { // If delete was selected, delete it
-            autosave.delete();
-          } else { // Else first open a JFileChooser to select the save location
-            final var chooser = JFileChoosers.createAt(new File(System.getProperty("user.home")));
-            chooser.setFileFilter(Loader.LOGISIM_FILTER);
-            final var fileRes = chooser.showSaveDialog(monitor);
-            // If file selection is aborted prompt again
-            if (fileRes != JFileChooser.APPROVE_OPTION) {
-              retry = true;
-              continue;
-            }
-            // get the selected File, and check if it exists
-            final var file = chooser.getSelectedFile();
-            if (file.exists()) { // If it exists, ask if it should be overwritten
-              var confirm = OptionPane.showConfirmDialog(
-                  monitor,
-                  S.get("confirmOverwriteMessage"),
-                  S.get("confirmOverwriteTitle"),
-                  OptionPane.YES_NO_OPTION);
-              // If file shouldn't be overwritten prompt again
-              if (confirm != OptionPane.YES_OPTION) {
-                retry = true;
-                continue;
-              }
-              // If file should be overwritten, delete it to make sure moving works on all systems
-              file.delete();
-            }
-            if (!autosave.renameTo(file)) { // Check if rename works, if not prompt again
-              retry = true; // This should only fail on windows when moving to a different drive
-              continue;
-            }
-            if (option == 1) { // If save and load add the file to the loading queue after saving
-              filesToOpen.add(file);
-            }
-          }
-        } while (retry);
+        final var choice = askAboutRecoveredWork(autosave);
+        if (choice == RecoveryChoice.RESTORE) {
+          recoveredToOpen.add(autosave);
+        } else if (choice == RecoveryChoice.DISCARD) {
+          autosave.delete();
+        }
       }
     }
 
     // load file
     Project proj = null;
     var openedNothing = false;
-    if (filesToOpen.isEmpty()) {
+    if (filesToOpen.isEmpty() && recoveredToOpen.isEmpty()) {
       proj = ProjectActions.doNew(monitor);
       proj.setStartupScreen(true);
       if (showSplash) {
@@ -1089,18 +1131,21 @@ public class Startup implements AWTEventListener {
     } else {
       var numOpened = 0;
       var first = true;
-      for (final var fileToOpen : filesToOpen) {
+      final var toOpen = new ArrayList<File>(filesToOpen);
+      toOpen.addAll(recoveredToOpen);
+      for (final var fileToOpen : toOpen) {
         try {
-          ProjectActions.doOpen(monitor, fileToOpen, substitutions);
+          if (recoveredToOpen.contains(fileToOpen)) {
+            ProjectActions.doOpenRecovered(monitor, fileToOpen);
+          } else {
+            ProjectActions.doOpen(monitor, fileToOpen, substitutions);
+          }
           numOpened++;
         } catch (LoadFailedException ex) {
           logger.error("{} : {}", fileToOpen.getName(), ex.getMessage());
           if (!ex.isShown() && Main.hasGui() && testVector == null && testCircPathInput == null) {
-            OptionPane.showMessageDialog(
-                null,
-                S.get("startupOpenFailed", fileToOpen.getName(), ex.getMessage()),
-                S.get("startupOpenFailedTitle"),
-                OptionPane.ERROR_MESSAGE);
+            OptionPane.showError(
+                null, S.get("startupOpenFailedTitle"), ex.getMessage(), ex.getCause());
           }
         }
         if (first) {

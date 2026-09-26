@@ -25,7 +25,6 @@ import com.cburch.logisim.gui.generic.WaitCursor;
 import com.cburch.logisim.gui.main.Frame;
 import com.cburch.logisim.gui.start.SplashScreen;
 import com.cburch.logisim.prefs.AppPreferences;
-import com.cburch.logisim.tools.Library;
 import com.cburch.logisim.tools.LibraryTools;
 import com.cburch.logisim.util.JFileChoosers;
 
@@ -65,9 +64,6 @@ import javax.swing.JScrollPane;
 import javax.swing.SwingUtilities;
 
 public final class ProjectActions {
-  private static final String FILE_NAME_FORMAT_ERROR = "FileNameError";
-  private static final String FILE_NAME_KEYWORD_ERROR = "ExistingToolName";
-
   private ProjectActions() {}
 
   private static class CreateFrame implements Runnable {
@@ -102,31 +98,6 @@ public final class ProjectActions {
         if (!othersOpen) System.exit(-1);
       }
     }
-  }
-
-  /**
-   * Returns true if the filename contains valid characters only, that is, alphanumeric characters
-   * and underscores.
-   */
-  private static boolean checkValidFilename(
-      String filename, Project proj, HashMap<String, String> errors) {
-    var isOk = true;
-    var tempSet = new HashMap<String, Library>();
-    var forbiddenNames = new HashSet<String>();
-    LibraryTools.buildLibraryList(proj.getLogisimFile(), tempSet);
-    LibraryTools.buildToolList(proj.getLogisimFile(), forbiddenNames);
-    forbiddenNames.addAll(tempSet.keySet());
-    var pattern = Pattern.compile("[^a-z\\d_.]", Pattern.CASE_INSENSITIVE);
-    var matcher = pattern.matcher(filename);
-    if (matcher.find()) {
-      isOk = false;
-      errors.put(FILE_NAME_FORMAT_ERROR, S.get("InvalidFileFormatError"));
-    }
-    if (forbiddenNames.contains(filename.toUpperCase())) {
-      isOk = false;
-      errors.put(FILE_NAME_KEYWORD_ERROR, S.get("UsedLibraryToolnameError"));
-    }
-    return isOk;
   }
 
   private static Project completeProject(
@@ -254,11 +225,7 @@ public final class ProjectActions {
       if (mergelib == null) return;
     } catch (LoadFailedException ex) {
       if (!ex.isShown()) {
-        OptionPane.showMessageDialog(
-            parent,
-            S.get("fileMergeError", ex.toString()),
-            S.get("FileMergeErrorItem"),
-            OptionPane.ERROR_MESSAGE);
+        OptionPane.showError(parent, S.get("FileMergeErrorItem"), ex.getMessage(), ex.getCause());
       }
       return;
     }
@@ -507,11 +474,8 @@ public final class ProjectActions {
       }
     } catch (LoadFailedException ex) {
       if (!ex.isShown()) {
-        OptionPane.showMessageDialog(
-            parent,
-            S.get("fileOpenError", ex.toString()),
-            S.get("fileOpenErrorTitle"),
-            OptionPane.ERROR_MESSAGE);
+        // The message names the file and the reason; the exception is only for the details.
+        OptionPane.showError(parent, S.get("fileOpenErrorTitle"), ex.getMessage(), ex.getCause());
       }
       return null;
     }
@@ -534,6 +498,18 @@ public final class ProjectActions {
     final var file = loader.openLogisimFile(source, substitutions);
     AppPreferences.updateRecentFile(source);
 
+    return completeProject(monitor, loader, file, false);
+  }
+
+  /**
+   * Opens the unsaved work in the recovery file {@code autosave} as a new, unsaved project. The
+   * recovery file is kept until that project is saved or its changes are discarded.
+   */
+  public static Project doOpenRecovered(SplashScreen monitor, File autosave)
+      throws LoadFailedException {
+    if (monitor != null) monitor.setProgress(SplashScreen.FILE_LOAD);
+    final var loader = new Loader(monitor);
+    final var file = loader.openRecoveredFile(autosave);
     return completeProject(monitor, loader, file, false);
   }
 
@@ -587,6 +563,25 @@ public final class ProjectActions {
               proj.getFrame(),
               S.get("saveAfterLoadErrorsMessage", f.getName()),
               S.get("saveAfterLoadErrorsTitle"),
+              OptionPane.YES_NO_CANCEL_OPTION,
+              OptionPane.WARNING_MESSAGE,
+              null,
+              options,
+              options[1]);
+      if (choice == 1) return doSaveAs(proj);
+      if (choice != 0) return false;
+    }
+    if (loader.isMainFileChangedExternally() && proj.getFrame() != null) {
+      final String[] options = {
+        S.get("saveAfterLoadErrorsOverwrite"),
+        S.get("saveAfterLoadErrorsSaveAs"),
+        S.get("saveAfterLoadErrorsCancel"),
+      };
+      final var choice =
+          OptionPane.showOptionDialog(
+              proj.getFrame(),
+              S.get("saveChangedExternallyMessage", f.getName()),
+              S.get("saveChangedExternallyTitle"),
               OptionPane.YES_NO_CANCEL_OPTION,
               OptionPane.WARNING_MESSAGE,
               null,
@@ -826,26 +821,14 @@ public final class ProjectActions {
     var loader = proj.getLogisimFile().getLoader();
     var chooser = loader.createChooser();
     chooser.setFileFilter(Loader.LOGISIM_FILTER);
-    if (loader.getMainFile() != null) {
-      chooser.setSelectedFile(loader.getMainFile());
-    }
+    chooser.setSelectedFile(suggestedSaveFile(proj, chooser.getCurrentDirectory()));
 
-    final var errors = new HashMap<String, String>();
-    // Every rejection below returns to the chooser rather than abandoning Save As.
+    // Every rejection below returns to the chooser rather than abandoning Save As. Any file name
+    // the system accepts is fine: the FPGA flow checks the project name itself when it needs to.
     while (true) {
-      errors.clear();
       final var returnVal = chooser.showSaveDialog(proj.getFrame());
       if (returnVal != JFileChooser.APPROVE_OPTION) {
         return false;
-      }
-      if (!checkValidFilename(chooser.getSelectedFile().getName(), proj, errors)) {
-        var message = "\"" + chooser.getSelectedFile() + "\":\n";
-        for (final var error : errors.values()) {
-          message = message.concat("=> " + error + "\n");
-        }
-        OptionPane.showMessageDialog(
-            chooser, message, S.get("FileSaveAsItem"), OptionPane.ERROR_MESSAGE);
-        continue;
       }
 
       var selectedFile = chooser.getSelectedFile();
@@ -890,6 +873,16 @@ public final class ProjectActions {
       }
       return doSave(proj, selectedFile);
     }
+  }
+
+  /**
+   * The file Save As starts from: the current file, or for a project never saved the project's
+   * name in the chooser's folder, so that the name field is never empty.
+   */
+  static File suggestedSaveFile(Project proj, File directory) {
+    final var current = proj.getLogisimFile().getLoader().getMainFile();
+    if (current != null) return current;
+    return new File(directory, proj.getLogisimFile().getName() + Loader.LOGISIM_EXTENSION);
   }
 
   /**

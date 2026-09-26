@@ -19,22 +19,19 @@ import com.cburch.logisim.analyze.model.Var;
 import com.cburch.logisim.circuit.Analyze;
 import com.cburch.logisim.circuit.AnalyzeException;
 import com.cburch.logisim.circuit.Circuit;
+import com.cburch.logisim.circuit.CircuitNameValidator;
 import com.cburch.logisim.circuit.SubcircuitFactory;
 import com.cburch.logisim.comp.Component;
 import com.cburch.logisim.file.Loader;
 import com.cburch.logisim.file.LogisimFile;
 import com.cburch.logisim.file.LogisimFileActions;
-import com.cburch.logisim.fpga.designrulecheck.CorrectLabel;
 import com.cburch.logisim.gui.generic.OptionPane;
 import com.cburch.logisim.instance.Instance;
 import com.cburch.logisim.instance.StdAttr;
-import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.std.wiring.Pin;
-import com.cburch.logisim.tools.AddTool;
 import com.cburch.logisim.tools.Library;
 import com.cburch.logisim.util.JFileChoosers;
-import com.cburch.logisim.util.SyntaxChecker;
 import com.cburch.logisim.vhdl.base.VhdlContent;
 import com.cburch.logisim.vhdl.base.VhdlEntity;
 import java.awt.Dimension;
@@ -48,12 +45,16 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 
 public class ProjectCircuitActions {
   private ProjectCircuitActions() {
@@ -104,21 +105,7 @@ public class ProjectCircuitActions {
       final var name = promptForCircuitName(proj.getFrame(), proj.getLogisimFile(), initialValue);
       if (name == null) break;
 
-      String error = null;
-      /* Checking for valid names */
-      if (name.isEmpty()) {
-        error = S.get("circuitNameMissingError");
-      } else if (CorrectLabel.isKeyword(name, AppPreferences.HdlType.get(), false)) {
-        error = "\"" + name + "\": " + S.get("circuitNameKeyword");
-      } else if (nameIsInUse(proj, name)) {
-        error = "\"" + name + "\": " + S.get("circuitNameExists");
-      } else {
-        String nameMessage = SyntaxChecker.getErrorMessage(name, AppPreferences.HdlType.get());
-        if (nameMessage != null) {
-          error = "\"" + name + "\": " + S.get("circuitNameInvalidName") + "\n" + nameMessage;
-        }
-      }
-
+      final var error = CircuitNameValidator.problemWith(proj.getLogisimFile(), name, null);
       if (error != null) {
         OptionPane.showMessageDialog(
             proj.getFrame(), error, S.get("circuitCreateTitle"), OptionPane.ERROR_MESSAGE);
@@ -130,26 +117,6 @@ public class ProjectCircuitActions {
         break;
       }
     }
-  }
-
-  private static boolean nameIsInUse(Project proj, String name) {
-    for (Library mylib : proj.getLogisimFile().getLibraries()) {
-      if (nameIsInLibraries(mylib, name)) return true;
-    }
-    for (AddTool mytool : proj.getLogisimFile().getTools()) {
-      if (SyntaxChecker.namesEqualForCurrentHdl(name, mytool.getName())) return true;
-    }
-    return false;
-  }
-
-  private static boolean nameIsInLibraries(Library lib, String name) {
-    for (final var myLib : lib.getLibraries()) {
-      if (nameIsInLibraries(myLib, name)) return true;
-    }
-    for (final var myTool : lib.getTools()) {
-      if (SyntaxChecker.namesEqualForCurrentHdl(name, myTool.getName())) return true;
-    }
-    return false;
   }
 
   public static void doAddVhdl(Project proj) {
@@ -287,9 +254,16 @@ public class ProjectCircuitActions {
           S.get("circuitRemoveErrorTitle"),
           OptionPane.ERROR_MESSAGE);
     } else {
+      // Removing the main circuit silently makes another one main; say which.
+      final var file = proj.getLogisimFile();
+      final var newMain = file.mainCircuitAfterRemoving(circuit);
+      final var message =
+          circuit == file.getMainCircuit() && newMain != null
+              ? S.get("circuitRemoveMainConfirm", circuit.getName(), newMain.getName())
+              : S.get("circuitRemoveConfirm", circuit.getName());
       int result = OptionPane.showConfirmDialog(
           proj.getFrame(),
-          S.get("circuitRemoveConfirm", circuit.getName()),
+          message,
           S.get("circuitRemoveConfirmTitle"),
           OptionPane.YES_NO_OPTION);
       if (result == OptionPane.YES_OPTION) {
@@ -329,8 +303,11 @@ public class ProjectCircuitActions {
    * @param lib Project's logisim file
    * @param initialValue Default suggested value (can be empty if no initial value)
    */
-  private static String promptForCircuitName(JFrame frame, Library lib, String initialValue) {
-    return promptForNewName(frame, lib, initialValue, false);
+  private static String promptForCircuitName(
+      JFrame frame, LogisimFile file, String initialValue) {
+    return promptForNewName(
+        frame, file, initialValue, false,
+        name -> CircuitNameValidator.problemWith(file, name, null));
   }
 
   private static String promptForVhdlName(JFrame frame, LogisimFile file, String initialValue) {
@@ -342,6 +319,19 @@ public class ProjectCircuitActions {
 
   private static String promptForNewName(
       JFrame frame, Library lib, String initialValue, boolean vhdl) {
+    return promptForNewName(frame, lib, initialValue, vhdl, null);
+  }
+
+  /**
+   * @param validator explains why a name is refused, or returns null; shown under the field while
+   *     typing, so a refusal never costs the typed text. May be null.
+   */
+  private static String promptForNewName(
+      JFrame frame,
+      Library lib,
+      String initialValue,
+      boolean vhdl,
+      Function<String, String> validator) {
     String title;
     String prompt;
     if (vhdl) {
@@ -371,6 +361,41 @@ public class ProjectCircuitActions {
     final var error = new JLabel(" ");
     gbl.setConstraints(error, gbc);
     panel.add(error);
+    if (validator != null) {
+      final Runnable check =
+          () -> {
+            final var problem = validator.apply(field.getText().trim());
+            // Wrapped to the field's width; a blank line keeps the dialog from jumping.
+            error.setText(
+                problem == null
+                    ? " "
+                    : "<html><body style='width:"
+                        + (3 * field.getPreferredSize().width / 2)
+                        + "px'>"
+                        + OptionPane.escapeHtml(problem)
+                        + "</body></html>");
+            final var window = SwingUtilities.getWindowAncestor(panel);
+            if (window != null) window.pack();
+          };
+      field.getDocument().addDocumentListener(
+          new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+              check.run();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+              check.run();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+              check.run();
+            }
+          });
+      if (!initialValue.isEmpty()) check.run();
+    }
     gbl.setConstraints(strut, gbc);
     panel.add(strut);
     final var pane =

@@ -16,6 +16,7 @@ import com.cburch.logisim.gui.generic.OptionPane;
 import com.cburch.logisim.std.Builtin;
 import com.cburch.logisim.tools.Library;
 import com.cburch.logisim.util.JFileChoosers;
+import com.cburch.logisim.util.XmlUtil;
 import com.cburch.logisim.util.ZipClassLoader;
 import com.cburch.logisim.vhdl.file.HdlFile;
 import java.awt.Component;
@@ -23,14 +24,17 @@ import java.awt.Dimension;
 import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.FileTime;
 import java.util.UUID;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -49,6 +53,8 @@ import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.filechooser.FileFilter;
+import javax.xml.parsers.ParserConfigurationException;
+import org.xml.sax.SAXException;
 
 public class Loader implements LibraryLoader {
   private static class JarFileFilter extends FileFilter {
@@ -159,6 +165,9 @@ public class Loader implements LibraryLoader {
   // to be cleared with each new file
   private File mainFile = null;
   private File autosaveFile = null;
+  private FileTime mainFileTimestamp = null;
+  private static final int MESSAGE_COLUMNS = 50;
+  private static final int MESSAGE_MAX_ROWS = 16;
   private final Stack<File> filesOpening = new Stack<>();
   private Map<File, File> substitutions = new HashMap<>();
   private ZipOutputStream zipFile;
@@ -419,7 +428,8 @@ public class Loader implements LibraryLoader {
     try {
       ret = LogisimFile.load(actual, this);
     } catch (IOException e) {
-      throw new LoadFailedException(S.get("logisimLoadError", toProjectName(actual), e.toString()));
+      final var reason = LogisimFile.describeLoadFailure(actual, e);
+      throw new LoadFailedException(S.get("fileOpenFailed", actual.getName(), reason), e);
     } finally {
       filesOpening.pop();
     }
@@ -440,13 +450,54 @@ public class Loader implements LibraryLoader {
   public LogisimFile openLogisimFile(File file) throws LoadFailedException {
     try {
       final var ret = loadLogisimFile(file);
-      if (ret != null) setMainFile(file);
-      else throw new LoadFailedException("File could not be opened");
+      // Only a dismissed recovery prompt yields nothing; the user needs no message for that.
+      if (ret == null) throw new LoadFailedException(S.get("fileLoadCanceledError"), true);
+      setMainFile(file);
+      recordMainFileTimestamp();
       showMessages(ret);
       return ret;
     } catch (LoaderException e) {
       throw new LoadFailedException(e.getMessage(), e.isShown());
     }
+  }
+
+  /**
+   * Opens a recovery file left by an unsaved project as a new unsaved project. The recovery file
+   * stays this project's autosave, so it disappears only once the work is saved, superseded by a
+   * newer autosave, or deliberately discarded.
+   */
+  public LogisimFile openRecoveredFile(File autosave) throws LoadFailedException {
+    final LogisimFile ret;
+    try (final var in = new FileInputStream(autosave)) {
+      ret = LogisimFile.loadSub(in, this, autosave);
+    } catch (LoaderException e) {
+      throw new LoadFailedException(e.getMessage(), e.isShown());
+    } catch (IOException | SAXException e) {
+      final var reason = LogisimFile.describeLoadFailure(autosave, e);
+      throw new LoadFailedException(S.get("fileOpenFailed", autosave.getName(), reason), e);
+    }
+    ret.markAutosaveLoaded();
+    setAutosavePath(autosave);
+    showMessages(ret);
+    return ret;
+  }
+
+  /**
+   * The names of the circuits in the project file {@code file}, in file order, for describing a
+   * file without opening it. Empty if the file cannot be read.
+   */
+  public static List<String> circuitNamesIn(File file) {
+    final var names = new ArrayList<String>();
+    try (final var in = new FileInputStream(file)) {
+      final var root =
+          XmlUtil.getHardenedBuilderFactory().newDocumentBuilder().parse(in).getDocumentElement();
+      for (final var circuit : XmlIterator.forChildElements(root, "circuit")) {
+        names.add(circuit.getAttribute("name"));
+      }
+    } catch (IOException | SAXException | ParserConfigurationException | RuntimeException e) {
+      names.clear();
+    }
+    return names;
   }
 
   public LogisimFile openLogisimFile(File file, Map<File, File> substitutions)
@@ -608,6 +659,7 @@ public class Loader implements LibraryLoader {
       discardStagedWrite(staged);
     }
 
+    recordMainFileTimestamp();
     file.setName(toProjectName(dest));
     LibraryManager.instance.fileSaved(this, dest, oldFile, file);
     if (backupCreated && backup.exists()) {
@@ -636,9 +688,12 @@ public class Loader implements LibraryLoader {
     }
     Path staged = null;
     try {
+      // Taken where the editor makes its changes; see LogisimFile.autosaveSnapshot.
+      final var content = file.autosaveSnapshot(this, destination);
+      if (content == null) return true; // saved in the meantime: nothing left to recover
       if (mainFile == null) Files.createDirectories(destination.toPath().getParent());
       final var target = destination.toPath().toAbsolutePath();
-      staged = stageWrite(file, destination, target, false);
+      staged = stageWrite(output -> output.write(content), target, false);
       publishWrite(staged, target);
       staged = null;
     } catch (IOException e) {
@@ -672,6 +727,18 @@ public class Loader implements LibraryLoader {
    */
   private Path stageWrite(LogisimFile file, File destination, Path target, boolean keepFileMode)
       throws IOException {
+    // Relative library paths describe the final file, not its staging filename.
+    return stageWrite(output -> file.write(output, this, destination, null), target, keepFileMode);
+  }
+
+  /** Writes a whole file's content to a stream. */
+  @FunctionalInterface
+  private interface ContentWriter {
+    void writeTo(OutputStream output) throws IOException;
+  }
+
+  private Path stageWrite(ContentWriter content, Path target, boolean keepFileMode)
+      throws IOException {
     final var directory = target.getParent();
     final Path staged;
     if (keepFileMode) {
@@ -683,8 +750,7 @@ public class Loader implements LibraryLoader {
     var complete = false;
     try {
       try (final var output = Files.newOutputStream(staged)) {
-        // Relative library paths describe the final file, not its staging filename.
-        file.write(output, this, destination, null);
+        content.writeTo(output);
       }
       if (Files.size(staged) == 0) throw new IOException(S.get("fileSaveZeroError"));
       complete = true;
@@ -735,6 +801,30 @@ public class Loader implements LibraryLoader {
     mainFile = value;
   }
 
+  /** Remembers when the main file was last read or written by this project. */
+  private void recordMainFileTimestamp() {
+    mainFileTimestamp = timestampOf(mainFile);
+  }
+
+  private static FileTime timestampOf(File file) {
+    if (file == null) return null;
+    try {
+      return Files.getLastModifiedTime(file.toPath());
+    } catch (IOException e) {
+      return null;
+    }
+  }
+
+  /**
+   * Whether the main file on disk was changed by another program since this project last read or
+   * wrote it, so that saving would discard those changes.
+   */
+  public boolean isMainFileChangedExternally() {
+    if (mainFile == null || mainFileTimestamp == null) return false;
+    final var current = timestampOf(mainFile);
+    return current != null && !current.equals(mainFileTimestamp);
+  }
+
   public void setParent(Component value) {
     parent = value;
   }
@@ -754,52 +844,49 @@ public class Loader implements LibraryLoader {
         : "OK";
     final Object[] options = new Object[] {copyButtonText, okButtonText};
 
-    if (description.contains("\n") || description.length() > 60) {
-      var lines = 1;
-      for (var pos = description.indexOf('\n');
-          pos >= 0;
-          pos = description.indexOf('\n', pos + 1)) {
-        lines++;
-      }
-      lines = Math.max(3, Math.min(lines, 8));
+    final var result = OptionPane.showOptionDialog(
+        parent,
+        messageComponent(description),
+        S.get("fileErrorTitle"),
+        JOptionPane.DEFAULT_OPTION,
+        OptionPane.ERROR_MESSAGE,
+        null,
+        options,
+        okButtonText);
 
-      final var textArea = new JTextArea(lines, 45);
-      textArea.setEditable(false);
-      textArea.setText(description);
-      textArea.setCaretPosition(0);
-
-      final var scrollPane = new JScrollPane(textArea);
-
-      final var result = OptionPane.showOptionDialog(
-          parent,
-          scrollPane,
-          S.get("fileErrorTitle"),
-          JOptionPane.DEFAULT_OPTION,
-          OptionPane.ERROR_MESSAGE,
-          null,
-          options,
-          okButtonText);
-
-      if (result == 0) {
-        final var selection = new StringSelection(description);
-        Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, null);
-      }
-    } else {
-      final var result = OptionPane.showOptionDialog(
-          parent,
-          description,
-          S.get("fileErrorTitle"),
-          JOptionPane.DEFAULT_OPTION,
-          OptionPane.ERROR_MESSAGE,
-          null,
-          options,
-          okButtonText);
-
-      if (result == 0) {
-        final var selection = new StringSelection(description);
-        Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, null);
-      }
+    if (result == 0) {
+      final var selection = new StringSelection(description);
+      Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, null);
     }
+  }
+
+  /**
+   * Shows {@code text} wrapped at a readable width. Short messages are shown as they are; a long
+   * list scrolls rather than growing the dialog past the screen.
+   */
+  static java.awt.Component messageComponent(String text) {
+    final var area = new JTextArea(text);
+    area.setEditable(false);
+    area.setLineWrap(true);
+    area.setWrapStyleWord(true);
+    area.setColumns(MESSAGE_COLUMNS);
+    area.setOpaque(false);
+    area.setBorder(null);
+    area.setCaretPosition(0);
+    if (!Main.hasGui()) return area;
+    var font = javax.swing.UIManager.getFont("OptionPane.messageFont");
+    if (font == null) font = javax.swing.UIManager.getFont("Label.font");
+    if (font != null) area.setFont(font);
+    // Lay the text out at the chosen width to learn how many rows it really needs.
+    area.setSize(area.getPreferredSize().width, Short.MAX_VALUE);
+    if (area.getPreferredSize().height <= area.getFontMetrics(area.getFont()).getHeight()
+        * MESSAGE_MAX_ROWS) {
+      return area;
+    }
+    area.setRows(MESSAGE_MAX_ROWS);
+    final var scroll = new JScrollPane(area);
+    scroll.setBorder(null);
+    return scroll;
   }
 
   private void showMessages(LogisimFile source) {
@@ -807,7 +894,10 @@ public class Loader implements LibraryLoader {
     var message = source.getMessage();
     while (message != null) {
       OptionPane.showMessageDialog(
-          parent, message, S.get("fileMessageTitle"), OptionPane.INFORMATION_MESSAGE);
+          parent,
+          messageComponent(message),
+          S.get("fileMessageTitle"),
+          OptionPane.WARNING_MESSAGE);
       message = source.getMessage();
     }
   }

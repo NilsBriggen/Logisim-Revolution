@@ -49,6 +49,7 @@ import com.cburch.logisim.util.AutoLabel;
 import com.cburch.logisim.util.CollectionUtil;
 import com.cburch.logisim.util.EventSourceWeakSupport;
 import com.cburch.logisim.util.StringUtil;
+import com.cburch.logisim.util.SyntaxChecker;
 import com.cburch.logisim.vhdl.base.VhdlEntity;
 import java.awt.Graphics;
 import java.util.ArrayList;
@@ -282,6 +283,7 @@ public class Circuit {
   }
 
   private static final int maxTimeoutTestBenchSec = 60000;
+  private static final int MAX_LABEL_SUFFIX = 100_000;
   private final MyComponentListener myComponentListener = new MyComponentListener();
   private final CircuitAppearance appearance;
   private final AttributeSet staticAttrs;
@@ -297,6 +299,7 @@ public class Circuit {
   private final Map<String, MappableResourcesContainer> myMappableResources;
   private final Map<String, Map<String, CircuitMapInfo>> loadedMaps;
   private boolean isAnnotated;
+  private boolean labelChecksDeferred;
   private Project proj;
   private final SocSimulationManager socSim = new SocSimulationManager();
 
@@ -856,8 +859,10 @@ public class Circuit {
       if (!added) return;
       socSim.registerComponent(c);
       // Here we check for duplicated labels and clear the label
-      // if it already exists in the circuit
-      if (c.getAttributeSet().containsAttribute(StdAttr.LABEL)
+      // if it already exists in the circuit. A circuit being read keeps its labels as stored
+      // until it is complete, see resolveLabelConflicts().
+      if (!labelChecksDeferred
+          && c.getAttributeSet().containsAttribute(StdAttr.LABEL)
           && !(c.getFactory() instanceof Tunnel)) {
         final var labels = new HashSet<String>();
         final var labelIdentity = labelIdentity();
@@ -897,7 +902,7 @@ public class Circuit {
       }
       c.addComponentListener(myComponentListener);
     }
-    removeWrongLabels(c.getFactory().getName());
+    if (!labelChecksDeferred) removeWrongLabels(c.getFactory().getName());
     fireEvent(CircuitEvent.ACTION_ADD, c);
   }
 
@@ -958,6 +963,8 @@ public class Circuit {
     var changed = false;
     final var labelIdentity = labelIdentity();
     for (final var comp : comps) {
+      // A tunnel's label is its connection; clearing it would silently rewire the circuit.
+      if (comp.getFactory() instanceof Tunnel) continue;
       final var attrs = comp.getAttributeSet();
       if (attrs.containsAttribute(StdAttr.LABEL)) {
         final var compLabel = attrs.getValue(StdAttr.LABEL);
@@ -975,6 +982,105 @@ public class Circuit {
           "\"" + label + "\" : " + S.get("ComponentLabelCollisionError"),
           S.get("ComponentLabelCollisionTitle"),
           OptionPane.WARNING_MESSAGE);
+  }
+
+  /**
+   * Suspends the label checks {@link #mutatorAdd} makes for every added component. While a file is
+   * read its labels must stay exactly as stored: checked one component at a time, a label would be
+   * cleared (with a dialog each time) depending on which component happened to be read first, and
+   * every check scans the whole circuit. Call {@link #resolveLabelConflicts()} once the circuit is
+   * complete.
+   */
+  public void setLabelChecksDeferred(boolean deferred) {
+    labelChecksDeferred = deferred;
+  }
+
+  /** A label {@link #resolveLabelConflicts()} had to change. */
+  public record LabelRename(String oldLabel, String newLabel) {}
+
+  /**
+   * Renames the labels that the checks made while editing would not allow: a label used twice, or
+   * equal to the name of a component type in this circuit or to the circuit's own name. The first
+   * component, in circuit order, keeps a duplicated label; the others get the lowest free {@code
+   * label_N}. Nothing is deleted and no dialog is shown: the caller reports the returned renames.
+   * Tunnel labels are left alone, as sharing one is what connects tunnels.
+   *
+   * @return the renamed labels, in circuit order
+   */
+  public List<LabelRename> resolveLabelConflicts() {
+    final var identity = labelIdentity();
+    final var hdlType = AppPreferences.HdlType.get();
+    final var circuitName = getName();
+    final var reserved = new HashSet<String>();
+    for (final var comp : comps) {
+      reserved.add(CircuitLabelValidator.labelKey(comp.getFactory().getName(), identity));
+    }
+    final var used = new HashSet<String>();
+    final var clashing = new ArrayList<Component>();
+    for (final var comp : comps) {
+      final var label = labelOf(comp);
+      if (label == null) continue;
+      final var key = CircuitLabelValidator.labelKey(label, identity);
+      final var clashesWithCircuit =
+          StringUtil.isNotEmpty(circuitName)
+              && CircuitLabelValidator.labelsMatch(circuitName, label, identity);
+      if (reserved.contains(key) || clashesWithCircuit || used.contains(key)) {
+        clashing.add(comp);
+      }
+      used.add(key);
+    }
+    final var renames = new ArrayList<LabelRename>();
+    for (final var comp : clashing) {
+      final var label = labelOf(comp);
+      final var factoryName = comp.getFactory().getName();
+      // A stored label that breaks the current naming rules cannot be fixed by a suffix alone.
+      final var base =
+          isAcceptableLabel(label + "_1", factoryName, hdlType) ? label : hdlSafeLabel(label);
+      var candidate = "";
+      for (var n = 1; candidate.isEmpty() && n <= MAX_LABEL_SUFFIX; n++) {
+        final var option = base + "_" + n;
+        final var key = CircuitLabelValidator.labelKey(option, identity);
+        final var clashesWithCircuit =
+            StringUtil.isNotEmpty(circuitName)
+                && CircuitLabelValidator.labelsMatch(circuitName, option, identity);
+        if (!used.contains(key)
+            && !reserved.contains(key)
+            && !clashesWithCircuit
+            && isAcceptableLabel(option, factoryName, hdlType)) {
+          candidate = option;
+          used.add(key);
+        }
+      }
+      if (candidate.isEmpty()) continue;
+      comp.getAttributeSet().setValue(StdAttr.LABEL, candidate);
+      renames.add(new LabelRename(label, candidate));
+    }
+    return renames;
+  }
+
+  /** The label of {@code comp} that the label rules apply to, or null if there is none. */
+  private static String labelOf(Component comp) {
+    if (comp.getFactory() instanceof Tunnel) return null;
+    final var attrs = comp.getAttributeSet();
+    if (!attrs.containsAttribute(StdAttr.LABEL)) return null;
+    final var label = attrs.getValue(StdAttr.LABEL);
+    return StringUtil.isNotEmpty(label) ? label : null;
+  }
+
+  /** Whether the label editor would accept {@code label} on a component of {@code factoryName}. */
+  private static boolean isAcceptableLabel(String label, String factoryName, String hdlType) {
+    return SyntaxChecker.isVariableNameAcceptable(label, hdlType, false)
+        && !SyntaxChecker.namesEqual(factoryName, label, hdlType)
+        && !CorrectLabel.isKeyword(label, hdlType, false);
+  }
+
+  /** {@code label} reduced to letters, digits and single underscores, starting with a letter. */
+  static String hdlSafeLabel(String label) {
+    var safe = label.replaceAll("[^A-Za-z0-9]", "_");
+    if (!safe.matches("^[A-Za-z].*")) safe = "L_" + safe;
+    safe = safe.replaceAll("_+", "_");
+    while (safe.endsWith("_")) safe = safe.substring(0, safe.length() - 1);
+    return safe;
   }
 
   public void removeCircuitListener(CircuitListener what) {
