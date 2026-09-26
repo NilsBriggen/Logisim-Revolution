@@ -504,8 +504,19 @@ public final class ProjectActions {
 
   public static Project doOpenNoWindow(SplashScreen monitor, File source)
       throws LoadFailedException {
-    final var loader = new Loader(monitor);
-    final var file = loader.openLogisimFile(source);
+    return doOpenNoWindow(new Loader(monitor), source, Collections.emptyMap());
+  }
+
+  /**
+   * Loads a project with the given loader without creating a window, for command-line use.
+   *
+   * @param loader        The loader to use; it receives any load errors.
+   * @param source        The project file.
+   * @param substitutions Library files to replace while loading.
+   */
+  public static Project doOpenNoWindow(Loader loader, File source, Map<File, File> substitutions)
+      throws LoadFailedException {
+    final var file = loader.openLogisimFile(source, substitutions);
     final var ret = new Project(file);
     updatecircs(file, ret);
     return ret;

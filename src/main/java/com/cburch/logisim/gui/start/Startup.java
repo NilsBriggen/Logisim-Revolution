@@ -91,7 +91,8 @@ public class Startup implements AWTEventListener {
 
   private File saveFile;
   private int ttyFormat = 0;
-  // from other sources
+  // from other sources; guarded by filesToOpen, since macOS open-file events arrive on another
+  // thread while run() is still starting up
   private boolean initialized = false;
   private SplashScreen monitor = null;
   /* Testing Circuit Variable */
@@ -204,6 +205,8 @@ public class Startup implements AWTEventListener {
     } catch (Exception ex) {
       System.out.println("Print help failed: " + ex.getMessage());
     }
+    System.out.println();
+    System.out.println(S.get("argExitCodes"));
     return RC.QUIT;
   }
 
@@ -346,8 +349,14 @@ public class Startup implements AWTEventListener {
     } else {
       shallClearPreferences = cmd.hasOption(ARG_CLEAR_PREFS_LONG);
     }
+    // The batch modes run, report and exit: they must work without a display and never prompt.
+    final var isBatch =
+        cmd.hasOption(ARG_TEST_VECTOR_LONG)
+            || cmd.hasOption(ARG_TEST_CIRCUIT_LONG)
+            || cmd.hasOption(ARG_TEST_CIRC_GEN_LONG);
+    if (isBatch) Main.headless = true;
 
-    if (!isTty) {
+    if (!isTty && !isBatch) {
       // we're using the GUI: Set up the Look&Feel to match the platform
       System.setProperty("apple.laf.useScreenMenuBar", "true");
       // Initialize graphics acceleration if appropriate
@@ -357,7 +366,7 @@ public class Startup implements AWTEventListener {
     // Initialize startup object.
     final var startup = new Startup(isTty);
     startupTemp = startup;
-    if (!isTty) {
+    if (!isTty && !isBatch) {
       MacOsAdapter.addListeners();
     }
 
@@ -523,18 +532,28 @@ public class Startup implements AWTEventListener {
       return RC.ERROR;
     }
 
-    final var argsCnt = optArgs.length;
+    // The option takes one or two values, but the parser hands it every following word, so a
+    // project file written after "--load FILE" would be taken for a label. Give it back.
+    final var values = new ArrayList<String>();
+    for (final var value : optArgs) {
+      if (values.size() >= 1 && Loader.LOGISIM_FILTER.accept(new File(value))) {
+        startup.filesToOpen.add(new File(value));
+      } else {
+        values.add(value);
+      }
+    }
+    final var argsCnt = values.size();
     if (argsCnt < 1 || argsCnt > 2) {
       logger.error(S.get("argLoadInvalidArguments"));
       return RC.ERROR;
     }
 
-    final var label = argsCnt == 1 ? "" : optArgs[1];
+    final var label = argsCnt == 1 ? "" : values.get(1);
     if (startup.memoryLoadFiles.containsKey(label)) {
       logger.error(S.get("argLoadDuplicateLabel", label));
       return RC.ERROR;
     }
-    startup.memoryLoadFiles.put(label, new File(optArgs[0]));
+    startup.memoryLoadFiles.put(label, new File(values.get(0)));
 
     return RC.OK;
   }
@@ -807,21 +826,25 @@ public class Startup implements AWTEventListener {
   }
 
   private void doOpenFile(File file) {
-    if (initialized) {
-      ProjectActions.doOpen(null, null, file);
-    } else {
-      filesToOpen.add(file);
+    synchronized (filesToOpen) {
+      if (!initialized) {
+        filesToOpen.add(file);
+        return;
+      }
     }
+    ProjectActions.doOpen(null, null, file);
   }
 
   private void doPrintFile(File file) {
-    if (initialized) {
-      final var toPrint = ProjectActions.doOpen(null, null, file);
-      Print.doPrint(toPrint);
-      toPrint.getFrame().dispose();
-    } else {
-      filesToPrint.add(file);
+    synchronized (filesToOpen) {
+      if (!initialized) {
+        filesToPrint.add(file);
+        return;
+      }
     }
+    final var toPrint = ProjectActions.doOpen(null, null, file);
+    Print.doPrint(toPrint);
+    toPrint.getFrame().dispose();
   }
 
   List<File> getFilesToOpen() {
@@ -896,10 +919,10 @@ public class Startup implements AWTEventListener {
   }
 
   public void run() {
-    if (isTty) {
-      var exitCode = TtyInterface.EXIT_FAILURE;
+    if (isTty || exitAfterStartup) {
+      var exitCode = ExitCode.INTERNAL_ERROR;
       try {
-        exitCode = TtyInterface.run(this);
+        exitCode = isTty ? TtyInterface.run(this) : runBatch();
       } catch (Exception t) {
         t.printStackTrace();
       }
@@ -976,7 +999,9 @@ public class Startup implements AWTEventListener {
 
     // if user has double-clicked a file to open, we'll
     // use that as the file to open now.
-    initialized = true;
+    synchronized (filesToOpen) {
+      initialized = true;
+    }
 
     // Check for unnamed autosaves here and allow to save them and/or open them again
     if (testVector == null && testCircPathInput == null) {
@@ -1065,32 +1090,7 @@ public class Startup implements AWTEventListener {
       var first = true;
       for (final var fileToOpen : filesToOpen) {
         try {
-          if (testVector != null) {
-            proj = ProjectActions.doOpenNoWindow(monitor, fileToOpen);
-            proj.doTestVector(testVector, circuitToTest);
-          } else if (testCircPathInput != null && testCircPathOutput != null) {
-            /* This part of the function will create a new circuit file (
-             * XML) which will be open and saved again using the  */
-            proj = ProjectActions.doOpen(monitor, fileToOpen, substitutions);
-
-            ProjectActions.doSave(proj, new File(testCircPathOutput));
-          } else if (testCircuitPathInput != null) {
-            /* Testing test bench*/
-            final var testB = new TestBench(testCircuitPathInput, monitor, substitutions);
-
-            if (testB.startTestBench()) {
-              // FIXME: hardcoded string
-              System.out.println("Test bench pass\n");
-              System.exit(0);
-            } else {
-              // FIXME: hardcoded string
-              // FIXME: I'd capitalize FAIL to make it stand out.
-              System.out.println("Test bench fail\n");
-              System.exit(-1);
-            }
-          } else {
-            ProjectActions.doOpen(monitor, fileToOpen, substitutions);
-          }
+          ProjectActions.doOpen(monitor, fileToOpen, substitutions);
           numOpened++;
         } catch (LoadFailedException ex) {
           logger.error("{} : {}", fileToOpen.getName(), ex.getMessage());
@@ -1103,7 +1103,7 @@ public class Startup implements AWTEventListener {
           monitor = null;
         }
       }
-      if (numOpened == 0) System.exit(-1);
+      if (numOpened == 0) System.exit(ExitCode.LOAD_ERROR);
     }
 
     if (proj != null)
@@ -1123,9 +1123,56 @@ public class Startup implements AWTEventListener {
     for (final var fileToPrint : filesToPrint) {
       doPrintFile(fileToPrint);
     }
+  }
 
-    if (exitAfterStartup) {
-      System.exit(0);
+  /**
+   * Runs the batch modes ({@code --test-vector}, {@code --test-circuit} and {@code
+   * --new-file-format}) without any window, on every project file given.
+   *
+   * @return The most severe {@link ExitCode} over all files.
+   */
+  int runBatch() {
+    if (filesToOpen.isEmpty()) {
+      logger.error(S.get("ttyNeedsFileError"));
+      return ExitCode.USAGE;
+    }
+    var exitCode = ExitCode.SUCCESS;
+    for (final var fileToOpen : filesToOpen) {
+      exitCode = ExitCode.worst(exitCode, runBatch(fileToOpen));
+    }
+    return exitCode;
+  }
+
+  private int runBatch(File fileToOpen) {
+    final var proj = new CliLoader().openProject(fileToOpen, substitutions);
+    if (proj == null) return ExitCode.LOAD_ERROR;
+    try {
+      if (testVector != null) {
+        final var failures = proj.doTestVector(testVector, circuitToTest);
+        if (failures < 0) return ExitCode.FAILURE;
+        return failures == 0 ? ExitCode.SUCCESS : ExitCode.SIMULATION_FAILED;
+      }
+      if (testCircPathInput != null && testCircPathOutput != null) {
+        // Rewrite the project in the current file format.
+        final var output = new File(testCircPathOutput);
+        final var loader = proj.getLogisimFile().getLoader();
+        if (!loader.save(proj.getLogisimFile(), output)) {
+          logger.error(S.get("cliSaveFailedError", output.getPath()));
+          return ExitCode.FAILURE;
+        }
+        return ExitCode.SUCCESS;
+      }
+      if (testCircuitPathInput != null) {
+        if (new TestBench(proj).startTestBench()) {
+          System.out.println(S.get("cliTestBenchPassed"));
+          return ExitCode.SUCCESS;
+        }
+        System.err.println(S.get("cliTestBenchFailed"));
+        return ExitCode.SIMULATION_FAILED;
+      }
+      return ExitCode.SUCCESS;
+    } finally {
+      proj.getSimulator().shutDown();
     }
   }
 

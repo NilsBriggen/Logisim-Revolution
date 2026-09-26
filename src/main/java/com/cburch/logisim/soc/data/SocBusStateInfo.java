@@ -46,10 +46,8 @@ import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.table.TableCellRenderer;
 
-public class SocBusStateInfo extends JDialog
+public class SocBusStateInfo
     implements ActionListener, LocaleListener, BaseWindowListenerContract {
-
-  private static final long serialVersionUID = 1L;
 
   public static final int TRACE_WIDTH = 630;
   public static final int TRACE_HEIGHT = 30;
@@ -200,22 +198,27 @@ public class SocBusStateInfo extends JDialog
   private final SocSimulationManager socManager;
   private Component myComp;
   private final ArrayList<SocBusSnifferInterface> sniffers;
-  private final JButton okButton;
-  private final JLabel title;
-  private final JScrollPane scroll;
   private final SocMemMapModel memMap;
+  // The memory-map window is only built when it is first shown, so that a bus can be simulated
+  // without a display (for example with --tty).
+  private JDialog dialog;
+  private JButton okButton;
 
   public SocBusStateInfo(SocSimulationManager man, Component comp) {
-    super();
     LocaleManager.addLocaleListener(this);
     socManager = man;
     myComp = comp;
     sniffers = new ArrayList<>();
     memMap = new SocMemMapModel();
-    setTitle(S.get("SocMemMapWindowTitle") + getName());
-    setLayout(new BorderLayout());
-    title = new JLabel(S.get("SocMemoryMapTitle"), JLabel.CENTER);
-    add(title, BorderLayout.NORTH);
+  }
+
+  private JDialog getDialog() {
+    if (dialog != null) return dialog;
+    dialog = new JDialog();
+    dialog.setTitle(S.get("SocMemMapWindowTitle") + getName());
+    dialog.setLayout(new BorderLayout());
+    final var title = new JLabel(S.get("SocMemoryMapTitle"), JLabel.CENTER);
+    dialog.add(title, BorderLayout.NORTH);
     JTable table =
         new JTable(memMap) {
           private static final long serialVersionUID = 1L;
@@ -229,14 +232,25 @@ public class SocBusStateInfo extends JDialog
     table.setFillsViewportHeight(true);
     table.setRowHeight(AppPreferences.getScaled(20));
     table.addMouseListener(memMap);
-    scroll = new JScrollPane(table);
+    final var scroll = new JScrollPane(table);
     scroll.setPreferredSize(
         new Dimension(AppPreferences.getScaled(320), AppPreferences.getScaled(240)));
-    add(scroll, BorderLayout.CENTER);
+    dialog.add(scroll, BorderLayout.CENTER);
     okButton = new JButton(S.get("SocMemoryMapOk"));
-    add(okButton, BorderLayout.SOUTH);
+    dialog.add(okButton, BorderLayout.SOUTH);
     okButton.addActionListener(this);
-    pack();
+    dialog.pack();
+    return dialog;
+  }
+
+  /** Shows or hides the memory-map window, creating it on first use. */
+  public void setVisible(boolean visible) {
+    if (visible) getDialog().setVisible(true);
+    else if (dialog != null) dialog.setVisible(false);
+  }
+
+  public boolean isVisible() {
+    return dialog != null && dialog.isVisible();
   }
 
   public void registerSocBusSlave(SocBusSlaveInterface slave) {
@@ -259,7 +273,6 @@ public class SocBusStateInfo extends JDialog
     return memMap.getSlaves();
   }
 
-  @Override
   public String getName() {
     var name = myComp.getAttributeSet().getValue(StdAttr.LABEL);
     if (StringUtil.isNullOrEmpty(name)) {
@@ -348,7 +361,7 @@ public class SocBusStateInfo extends JDialog
 
   @Override
   public void localeChanged() {
-    okButton.setText(S.get("SocMemoryMapOk"));
+    if (okButton != null) okButton.setText(S.get("SocMemoryMapOk"));
   }
 
   @Override

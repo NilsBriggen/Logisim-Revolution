@@ -101,7 +101,6 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
-import java.util.Timer;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
@@ -133,7 +132,6 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
   private static final String LOG_BOTTOM_PANEL = "log";
   private static final String TEST_BOTTOM_PANEL = "test";
   private static final String EDIT_EMPTY = "empty";
-  private final Timer timer = new Timer();
   private final Project project;
   private final MyProjectListener myProjectListener = new MyProjectListener();
   // GUI elements shared between views
@@ -747,7 +745,6 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     if (!closeResourcesReleased && project != null) {
       closeResourcesReleased = true;
       if (layoutCanvas != null) layoutCanvas.closeCanvas();
-      if (timer != null) timer.cancel();
       project.getLogisimFile().stopAutosaveThread(true);
     }
     super.dispose();

@@ -1051,8 +1051,8 @@ public class HexFile {
 
     protected MemContents warnAndAsk(String errmsg) {
       if (Main.headless) {
-        System.out.println(errmsg);
-        System.out.println("Warnings:\n" + warnings.toString());
+        System.err.println(errmsg);
+        System.err.println("Warnings:\n" + warnings.toString());
         return null;
       }
       final var d = new HexFormatDialog(errmsg, this);
