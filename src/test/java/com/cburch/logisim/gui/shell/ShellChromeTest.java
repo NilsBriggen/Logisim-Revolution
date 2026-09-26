@@ -93,7 +93,9 @@ class ShellChromeTest {
   @Test
   void existingChromeRemeasuresFontsPaddingAndBoundsAcrossLiveScaleChanges() throws Exception {
     SwingUtilities.invokeAndWait(() -> {
-      final var originalScale = UiScale.factor();
+      // Restore FlatLaf's zoom itself: re-deriving it from a factor after the font changed back
+      // leaves the next test at a slightly different scale.
+      final var originalZoom = com.formdev.flatlaf.util.UIScale.getZoomFactor();
       final var originalFont = UIManager.get("Label.font");
       final var root = new JPanel();
       final var activity = new ActivityBar();
@@ -151,7 +153,7 @@ class ShellChromeTest {
       } finally {
         root.removeNotify();
         UIManager.put("Label.font", originalFont);
-        UiScale.setFactor(originalScale);
+        com.formdev.flatlaf.util.UIScale.setZoomFactor(originalZoom);
       }
     });
   }

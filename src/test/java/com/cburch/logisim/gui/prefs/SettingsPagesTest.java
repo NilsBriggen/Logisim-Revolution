@@ -10,8 +10,10 @@
 package com.cburch.logisim.gui.prefs;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.cburch.logisim.gui.generic.FormLayoutTestSupport;
 import com.cburch.logisim.gui.generic.SettingsForm;
 import com.cburch.logisim.prefs.AppPreferences;
 import java.awt.Container;
@@ -73,6 +75,30 @@ class SettingsPagesTest {
         AppPreferences.getPrefs().remove("Scale");
       } else {
         AppPreferences.getPrefs().putDouble("Scale", savedScale);
+      }
+    }
+  }
+
+  /** Opening the page lays the slider out, which snaps 160 to a tick; that is not a choice. */
+  @Test
+  void openingTheWindowPageNeverWritesTheScale() throws Exception {
+    final var saved = AppPreferences.getPrefs().get("Scale", null);
+    AppPreferences.getPrefs().remove("Scale");
+    try {
+      FormLayoutTestSupport.atScale(
+          1.6,
+          () -> {
+            final var page = new WindowOptions(null);
+            page.setSize(800, 600);
+            FormLayoutTestSupport.layoutTree(page);
+            assertEquals("160%", page.getZoomReadout());
+          });
+      assertNull(AppPreferences.getPrefs().get("Scale", null));
+    } finally {
+      if (saved == null) {
+        AppPreferences.getPrefs().remove("Scale");
+      } else {
+        AppPreferences.getPrefs().put("Scale", saved);
       }
     }
   }

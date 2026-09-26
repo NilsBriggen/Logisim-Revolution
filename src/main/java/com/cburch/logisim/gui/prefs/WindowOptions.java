@@ -52,6 +52,10 @@ class WindowOptions extends OptionsPanel {
   private final JTextArea restartWarning;
   private final JLabel zoomLabel;
   private final JLabel zoomReadout;
+  /** The slider position last written to the Scale preference, or shown when the page opened. */
+  private int appliedZoomPercent;
+  /** Set once the user presses a mouse button or key on the scale slider. */
+  private boolean zoomTouched;
   private final JTextArea zoomFactorImportant;
   private final JComboBox<String> themeMode;
   private final JLabel editorThemeLabel;
@@ -116,6 +120,21 @@ class WindowOptions extends OptionsPanel {
     zoomAutoButton.addActionListener(listener);
     zoomAutoButton.setActionCommand(cmdSetAutoScaleFactor);
     zoomAutoButton.setText(S.get("windowSetAutoScaleFactor"));
+    appliedZoomPercent = zoomValue.getValue();
+    zoomValue.addMouseListener(
+        new java.awt.event.MouseAdapter() {
+          @Override
+          public void mousePressed(java.awt.event.MouseEvent e) {
+            zoomTouched = true;
+          }
+        });
+    zoomValue.addKeyListener(
+        new java.awt.event.KeyAdapter() {
+          @Override
+          public void keyPressed(java.awt.event.KeyEvent e) {
+            zoomTouched = true;
+          }
+        });
     zoomValue.addChangeListener(listener);
 
     themeMode = new JComboBox<>();
@@ -177,7 +196,12 @@ class WindowOptions extends OptionsPanel {
   }
 
   private void updateZoomReadout() {
-    zoomReadout.setText(zoomValue.getValue() + "%");
+    // Until the user moves it, show the scale in effect: layout may have snapped the thumb to the
+    // nearest tick, which is not the scale being used.
+    final var percent = zoomTouched || zoomValue.getValueIsAdjusting()
+        ? zoomValue.getValue()
+        : (int) Math.round(UiScale.factor() * 100);
+    zoomReadout.setText(percent + "%");
   }
 
   /** The value the interface-scale slider shows beside it; for tests. */
@@ -282,6 +306,11 @@ class WindowOptions extends OptionsPanel {
       final var source = (JSlider) e.getSource();
       if (!source.getValueIsAdjusting()) {
         int value = source.getValue();
+        // Only a slider the user moved is a choice. The slider UI also snaps an off-tick value
+        // such as 160 to a tick during layout; writing that turned Auto or 1.6 into a fixed 1.5
+        // just by opening this page.
+        if (!zoomTouched || value == appliedZoomPercent) return;
+        appliedZoomPercent = value;
         AppPreferences.SCALE_FACTOR.set((double) value / 100.0);
         // Persist an explicit choice even when it happens to equal the current auto scale.
         AppPreferences.getPrefs().putDouble("Scale", (double) value / 100.0);
@@ -322,6 +351,7 @@ class WindowOptions extends OptionsPanel {
         final var tmp = AppPreferences.getAutoScaleFactor();
         zoomValue.removeChangeListener(this);
         zoomValue.setValue((int) Math.round(tmp * 100));
+        appliedZoomPercent = zoomValue.getValue();
         zoomValue.addChangeListener(this);
         AppPreferences.SCALE_FACTOR.set(tmp);
         AppPreferences.getPrefs().remove(AppPreferences.SCALE_FACTOR.getIdentifier());
