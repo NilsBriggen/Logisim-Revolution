@@ -20,7 +20,6 @@ import com.cburch.logisim.util.StringGetter;
 import com.cburch.logisim.util.StringUtil;
 import java.awt.Font;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
@@ -28,8 +27,11 @@ public class VhdlEntityAttributes extends AbstractAttributeSet {
   private static class VhdlContentAttributes extends AbstractAttributeSet {
     private final VhdlContent content;
 
+    private final List<Attribute<?>> attributes;
+
     private VhdlContentAttributes(VhdlContent content) {
       this.content = content;
+      this.attributes = List.of(content.getNameAttribute(), StdAttr.APPEARANCE);
     }
 
     @Override
@@ -39,20 +41,20 @@ public class VhdlEntityAttributes extends AbstractAttributeSet {
 
     @Override
     public List<Attribute<?>> getAttributes() {
-      return STATIC_ATTRIBUTES;
+      return attributes;
     }
 
     @SuppressWarnings("unchecked")
     @Override
     public <V> V getValue(Attribute<V> attr) {
-      if (attr == VhdlEntity.nameAttr) return (V) content.getName();
+      if (attr == content.getNameAttribute()) return (V) content.getName();
       if (attr == StdAttr.APPEARANCE) return (V) content.getAppearance();
       return null;
     }
 
     @Override
     public <V> void setValue(Attribute<V> attr, V value) {
-      if (attr == VhdlEntity.nameAttr && value instanceof String name) {
+      if (attr == content.getNameAttribute() && value instanceof String name) {
         final var oldName = content.getName();
         if (oldName.equals(name) || !content.setName(name)) return;
         @SuppressWarnings("unchecked")
@@ -124,9 +126,6 @@ public class VhdlEntityAttributes extends AbstractAttributeSet {
       return new VhdlGenericAttribute("vhdl_" + name, disp, Integer.MIN_VALUE, Integer.MAX_VALUE, generic);
   }
 
-  private static final List<Attribute<?>> STATIC_ATTRIBUTES =
-      Arrays.asList(VhdlEntity.nameAttr, StdAttr.APPEARANCE);
-
   static AttributeSet createBaseAttrs(VhdlContent content) {
     return new VhdlContentAttributes(content);
   }
@@ -169,12 +168,13 @@ public class VhdlEntityAttributes extends AbstractAttributeSet {
   void updateGenerics() {
     List<Attribute<Integer>> genericAttrs = content.getGenericAttributes();
     instanceAttrs = new ArrayList<>(6 + genericAttrs.size());
-    instanceAttrs.add(VhdlEntity.nameAttr);
+    instanceAttrs.add(content.getNameAttribute());
     instanceAttrs.add(StdAttr.LABEL);
     instanceAttrs.add(StdAttr.LABEL_FONT);
     instanceAttrs.add(StdAttr.LABEL_VISIBILITY);
     instanceAttrs.add(StdAttr.FACING);
-    instanceAttrs.add(VhdlSimConstants.SIM_NAME_ATTR);
+    // Only VHDL entities are handed to the external simulator.
+    if (!content.isVerilog()) instanceAttrs.add(VhdlSimConstants.SIM_NAME_ATTR);
     instanceAttrs.addAll(genericAttrs);
     if (genericValues == null) genericValues = new HashMap<>();
     ArrayList<Attribute<Integer>> toRemove = new ArrayList<>();
@@ -210,7 +210,7 @@ public class VhdlEntityAttributes extends AbstractAttributeSet {
   @SuppressWarnings("unchecked")
   @Override
   public <V> V getValue(Attribute<V> attr) {
-    if (attr == VhdlEntity.nameAttr) {
+    if (attr == content.getNameAttribute()) {
       return (V) content.getName();
     }
     if (attr == StdAttr.LABEL) {
@@ -240,7 +240,7 @@ public class VhdlEntityAttributes extends AbstractAttributeSet {
   @SuppressWarnings("unchecked")
   @Override
   public <V> void setValue(Attribute<V> attr, V value) {
-    if (attr == VhdlEntity.nameAttr) {
+    if (attr == content.getNameAttribute()) {
       final var newValue = (String) value;
       if (content.getName().equals(newValue)) return;
       if (!content.setName(newValue)) return;
@@ -316,7 +316,8 @@ public class VhdlEntityAttributes extends AbstractAttributeSet {
       attrs.updateGenerics();
       attrs.vhdlInstance.fireInvalidated();
       attrs.vhdlInstance.recomputeBounds();
-      attrs.fireAttributeValueChanged(VhdlEntity.nameAttr, source.getName(), null);
+      attrs.fireAttributeValueChanged(
+          attrs.content.getNameAttribute(), source.getName(), null);
     }
 
     @Override

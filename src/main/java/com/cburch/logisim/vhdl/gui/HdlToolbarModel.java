@@ -45,13 +45,40 @@ public class HdlToolbarModel extends AbstractToolbarModel implements HdlModelLis
     this.editor = editor;
 
     final var rawItems = new ArrayList<ToolbarItem>();
-    hdlImport = new HdlToolbarItem(AppIcons.get(AppIcons.Id.OPEN, 16), HDL_IMPORT, S.getter("hdlOpenButton"));
-    hdlExport = new HdlToolbarItem(AppIcons.get(AppIcons.Id.EXPORT, 16), HDL_EXPORT, S.getter("hdlSaveButton"));
-    hdlValidate = new HdlToolbarItem(AppIcons.get(AppIcons.Id.CHECK, 16), HDL_VALIDATE, S.getter("validateButton"));
+    hdlImport =
+        new HdlToolbarItem(
+            AppIcons.get(AppIcons.Id.OPEN, 16),
+            HDL_IMPORT,
+            languageGetter("hdlOpenButton", "verilogOpenButton"));
+    hdlExport =
+        new HdlToolbarItem(
+            AppIcons.get(AppIcons.Id.EXPORT, 16),
+            HDL_EXPORT,
+            languageGetter("hdlSaveButton", "verilogSaveButton"));
+    hdlValidate =
+        new HdlToolbarItem(
+            AppIcons.get(AppIcons.Id.CHECK, 16),
+            HDL_VALIDATE,
+            languageGetter("validateButton", "verilogValidateButton"));
     rawItems.add(hdlImport);
     rawItems.add(hdlExport);
     rawItems.add(hdlValidate);
     items = Collections.unmodifiableList(rawItems);
+  }
+
+  /** A tooltip naming the language of the edited model. */
+  private StringGetter languageGetter(String vhdlKey, String verilogKey) {
+    return new StringGetter() {
+      @Override
+      public String toString() {
+        return S.get(editor.isVerilog() ? verilogKey : vhdlKey);
+      }
+    };
+  }
+
+  /** The edited model changed language: the tooltips name it. */
+  void languageChanged() {
+    fireToolbarContentsChanged();
   }
 
   @Override

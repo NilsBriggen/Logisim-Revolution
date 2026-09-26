@@ -31,6 +31,7 @@ import com.cburch.logisim.util.InputEventUtil;
 import com.cburch.logisim.util.LineBuffer;
 import com.cburch.logisim.util.StringUtil;
 import com.cburch.logisim.util.XmlUtil;
+import com.cburch.logisim.vhdl.base.VerilogContent;
 import com.cburch.logisim.vhdl.base.VhdlContent;
 import java.io.File;
 import java.io.FileInputStream;
@@ -312,6 +313,9 @@ final class XmlWriter {
     vhdl.aboutToSave();
     final var ret = doc.createElement("vhdl");
     ret.setAttribute("name", vhdl.getName());
+    // A Verilog module shares the element; versions without Verilog support ignore the attribute
+    // and report the unparsable entity instead of refusing the whole file.
+    if (vhdl.isVerilog()) ret.setAttribute("language", VerilogContent.LANGUAGE);
     ret.setAttribute("appearance", StdAttr.APPEARANCE.toStandardString(vhdl.getAppearance()));
     ret.setTextContent(vhdl.getContent());
     return ret;

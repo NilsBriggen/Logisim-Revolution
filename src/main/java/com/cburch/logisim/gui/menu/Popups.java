@@ -127,13 +127,18 @@ public class Popups {
 
     final Project proj;
     final VhdlContent vhdl;
-    final JMenuItem edit = new JMenuItem(S.get("projectEditVhdlItem"));
-    final JMenuItem remove = new JMenuItem(S.get("projectRemoveVhdlItem"));
+    final JMenuItem edit;
+    final JMenuItem remove;
 
     VhdlPopup(Project proj, Tool tool, VhdlContent vhdl) {
-      super(S.get("vhdlMenu"));
+      super(S.get(vhdl.isVerilog() ? "verilogMenu" : "vhdlMenu"));
       this.proj = proj;
       this.vhdl = vhdl;
+      edit =
+          new JMenuItem(S.get(vhdl.isVerilog() ? "projectEditVerilogItem" : "projectEditVhdlItem"));
+      remove =
+          new JMenuItem(
+              S.get(vhdl.isVerilog() ? "projectRemoveVerilogItem" : "projectRemoveVhdlItem"));
       add(edit);
       edit.addActionListener(this);
       add(remove);
@@ -222,6 +227,7 @@ public class Popups {
     final Project proj;
     final JMenuItem add = new JMenuItem(S.get("projectAddCircuitItem"));
     final JMenuItem vhdl = new JMenuItem(S.get("projectAddVhdlItem"));
+    final JMenuItem verilog = new JMenuItem(S.get("projectAddVerilogItem"));
     final JMenu load = new JMenu(S.get("projectLoadLibraryItem"));
     final JMenu loadBuiltin = new JMenu(S.get("projectLoadBuiltinItem"));
     final JMenuItem loadLogisim = new JMenuItem(S.get("projectLoadLogisimItem"));
@@ -242,6 +248,8 @@ public class Popups {
       add.addActionListener(this);
       add(vhdl);
       vhdl.addActionListener(this);
+      add(verilog);
+      verilog.addActionListener(this);
       add(load);
     }
 
@@ -252,6 +260,8 @@ public class Popups {
         ProjectCircuitActions.doAddCircuit(proj);
       } else if (src == vhdl) {
         ProjectCircuitActions.doAddVhdl(proj);
+      } else if (src == verilog) {
+        ProjectCircuitActions.doAddVerilog(proj);
       } else if (src == loadLogisim) {
         ProjectLibraryActions.doLoadLogisimLibrary(proj);
       } else if (src == loadJar) {

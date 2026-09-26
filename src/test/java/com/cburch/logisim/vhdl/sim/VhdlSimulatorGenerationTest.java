@@ -23,8 +23,8 @@ import com.cburch.logisim.file.LogisimFile;
 import com.cburch.logisim.instance.Port;
 import com.cburch.logisim.instance.StdAttr;
 import com.cburch.logisim.proj.Project;
+import com.cburch.logisim.vhdl.base.VerilogContent;
 import com.cburch.logisim.vhdl.base.VhdlContent;
-import com.cburch.logisim.vhdl.base.VhdlEntity;
 import com.cburch.logisim.vhdl.base.VhdlParser;
 import com.cburch.logisim.vhdl.base.VhdlSimConstants;
 import java.nio.file.Files;
@@ -96,6 +96,21 @@ class VhdlSimulatorGenerationTest {
     assertTrue(top.contains(firstName + "_dataIn"));
     assertTrue(top.contains(secondName + "_dataOut"));
     assertDoesNotThrow(() -> new VhdlParser(top).parse());
+  }
+
+  @Test
+  void verilogModulesAreNeverGivenToTheVhdlSimulator() {
+    final var entity = VhdlContent.create("Parent", null);
+    final var module = VerilogContent.create("VerilogPart", null);
+    final var placedModule = createComponent(module, "verilog_label", 100);
+
+    final var sources =
+        VhdlSimulatorTop.collectVhdlSources(List.of(module, entity), List.of(placedModule));
+    final var simulated =
+        VhdlSimulatorTop.configureSimulationComponents(List.of(placedModule));
+
+    assertEquals(List.of(entity), sources);
+    assertTrue(simulated.isEmpty());
   }
 
   @Test
@@ -176,7 +191,7 @@ class VhdlSimulatorGenerationTest {
   }
 
   private static Component createComponent(VhdlContent content, String label, int x) {
-    final var factory = new VhdlEntity(content);
+    final var factory = content.createFactory();
     final var attrs = factory.createAttributeSet();
     attrs.setValue(StdAttr.LABEL, label);
     return factory.createComponent(Location.create(x, 100, true), attrs);

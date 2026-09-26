@@ -50,21 +50,30 @@ public final class VhdlSimulationFallback {
   }
 
   /**
-   * Marks the entity with an amber "!" badge in its bottom-right corner while the external simulator
+   * Marks the entity with an amber "!" badge in its top-right corner while the external simulator
    * is not running, so unknown outputs have a visible cause. Nothing is drawn in print views.
    */
   public static void paintBadge(InstancePainter painter) {
+    paintBadge(painter, isSimulatorActive(painter.getProject()));
+  }
+
+  /**
+   * Draws the badge unless {@code simulated}: a component the external simulator does not compute
+   * (a Verilog module, for instance) passes false and is always marked.
+   */
+  public static void paintBadge(InstancePainter painter, boolean simulated) {
     if (!painter.getShowState() || painter.isPrintView() || painter.getCircuitState() == null) {
       return;
     }
-    if (isSimulatorActive(painter.getProject())) return;
+    if (simulated) return;
     final var bds = painter.getBounds();
     final var gfx = painter.getGraphics();
     final var oldColor = gfx.getColor();
     final var oldFont = gfx.getFont();
-    // Bottom-right corner: clear of the port labels, which sit along the top and the sides.
-    final var x = bds.getX() + bds.getWidth() - BADGE_SIZE - 4;
-    final var y = bds.getY() + bds.getHeight() - BADGE_SIZE - 3;
+    // Top-right corner: the port labels run down both sides from below the centred name, so the
+    // bottom corners collide with the last port label; the name leaves the top corners free.
+    final var x = bds.getX() + bds.getWidth() - BADGE_SIZE - 3;
+    final var y = bds.getY() + 3;
     gfx.setColor(BADGE_FILL);
     gfx.fillOval(x, y, BADGE_SIZE, BADGE_SIZE);
     gfx.setColor(Color.BLACK);

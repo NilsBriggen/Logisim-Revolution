@@ -49,7 +49,10 @@ import com.cburch.logisim.util.InputEventUtil;
 import com.cburch.logisim.util.LineBuffer;
 import com.cburch.logisim.util.StringUtil;
 import com.cburch.logisim.util.XmlUtil;
+import com.cburch.logisim.vhdl.base.VerilogContent;
+import com.cburch.logisim.vhdl.base.VerilogParser;
 import com.cburch.logisim.vhdl.base.VhdlContent;
+import com.cburch.logisim.vhdl.base.VhdlParser;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -73,6 +76,28 @@ import org.w3c.dom.Node;
 import org.xml.sax.SAXException;
 
 class XmlReader {
+
+  /**
+   * True for a {@code <vhdl>} element holding a Verilog module. The {@code language} attribute
+   * says so; a file re-saved by a version without Verilog support has lost it, so a text that is
+   * a valid Verilog module but not a valid VHDL entity is recognised as well.
+   */
+  static boolean isVerilogElement(Element elt) {
+    if (VerilogContent.LANGUAGE.equals(elt.getAttribute("language"))) return true;
+    if (elt.hasAttribute("language")) return false;
+    final var text = elt.getTextContent();
+    try {
+      new VerilogParser(text).parse();
+    } catch (VerilogParser.IllegalVerilogContentException e) {
+      return false;
+    }
+    try {
+      new VhdlParser(text).parse();
+      return false;
+    } catch (VhdlParser.IllegalVhdlContentException e) {
+      return true;
+    }
+  }
 
   static class CircuitData {
     final Element circuitElement;
@@ -471,7 +496,10 @@ class XmlReader {
               addError(S.get("circNameMissingError"), "C??");
             }
             final var vhdl = circElt.getTextContent();
-            final var contents = VhdlContent.parse(name, vhdl, file);
+            final var contents =
+                isVerilogElement(circElt)
+                    ? VerilogContent.parse(name, vhdl, file)
+                    : VhdlContent.parse(name, vhdl, file);
             if (contents != null) {
               if (circElt.hasAttribute("appearance")) {
                 try {

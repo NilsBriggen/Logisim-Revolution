@@ -92,6 +92,7 @@
 	<mapID target="hdl-ip_questa"       url="en/html/guide/hdl_ip/questa.html" />
 	<mapID target="hdl-ip_simulation"   url="en/html/guide/hdl_ip/simulation.html" />
 	<mapID target="hdl-ip_testbenchs"   url="en/html/guide/hdl_ip/testbenchs.html" />
+	<mapID target="hdl-ip_verilog"      url="en/html/guide/hdl_ip/verilog.html" />
 	<mapID target="jar"                 url="en/html/guide/jar/index.html" />
 	<mapID target="jar_incr"            url="en/html/guide/jar/incr.html" />
 	<mapID target="jar_library"         url="en/html/guide/jar/library.html" />

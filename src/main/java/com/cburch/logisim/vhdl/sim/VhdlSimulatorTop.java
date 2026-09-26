@@ -234,7 +234,7 @@ public class VhdlSimulatorTop implements CircuitListener {
       final var attrs = component.getAttributeSet();
       final ComponentFactory factory = component.getFactory();
 
-      if (factory instanceof VhdlEntity entity) {
+      if (factory instanceof VhdlEntity entity && !entity.getContent().isVerilog()) {
         final var entityName = entity.getContent().getName();
         final var simulationName = createSimulationName(entityName, index);
         entity.setSimName(attrs, simulationName);
@@ -258,11 +258,13 @@ public class VhdlSimulatorTop implements CircuitListener {
   static List<VhdlContent> collectVhdlSources(
       List<VhdlContent> projectSources, List<Component> placedComponents) {
     final var sources = new LinkedHashMap<String, VhdlContent>();
+    // Verilog modules share the project's HDL list but are not VHDL: QuestaSim is not given them.
     for (final var source : projectSources) {
+      if (source.isVerilog()) continue;
       sources.putIfAbsent(source.getName().toLowerCase(Locale.ROOT), source);
     }
     for (final var component : placedComponents) {
-      if (component.getFactory() instanceof VhdlEntity entity) {
+      if (component.getFactory() instanceof VhdlEntity entity && !entity.getContent().isVerilog()) {
         final var source = entity.getContent();
         sources.putIfAbsent(source.getName().toLowerCase(Locale.ROOT), source);
       }

@@ -107,6 +107,8 @@ public class LogisimMenuBar extends JMenuBar {
   }
   public static final LogisimMenuItem ADD_VHDL = new LogisimMenuItem("AddVhdl");
   public static final LogisimMenuItem IMPORT_VHDL = new LogisimMenuItem("ImportVhdl");
+  public static final LogisimMenuItem ADD_VERILOG = new LogisimMenuItem("AddVerilog");
+  public static final LogisimMenuItem IMPORT_VERILOG = new LogisimMenuItem("ImportVerilog");
   public static final LogisimMenuItem ADD_CIRCUIT = new LogisimMenuItem("AddCircuit");
   public static final LogisimMenuItem MOVE_CIRCUIT_UP = new LogisimMenuItem("MoveCircuitUp");
   public static final LogisimMenuItem MOVE_CIRCUIT_DOWN = new LogisimMenuItem("MoveCircuitDown");

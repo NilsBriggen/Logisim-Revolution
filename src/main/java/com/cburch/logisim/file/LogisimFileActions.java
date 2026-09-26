@@ -79,7 +79,7 @@ public final class LogisimFileActions {
 
     @Override
     public String getName() {
-      return S.get("addVhdlAction");
+      return S.get(vhdl.isVerilog() ? "addVerilogAction" : "addVhdlAction");
     }
 
     @Override
@@ -714,7 +714,7 @@ public final class LogisimFileActions {
 
     @Override
     public String getName() {
-      return S.get("removeVhdlAction");
+      return S.get(vhdl.isVerilog() ? "removeVerilogAction" : "removeVhdlAction");
     }
 
     @Override

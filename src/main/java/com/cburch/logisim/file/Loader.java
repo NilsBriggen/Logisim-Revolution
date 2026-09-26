@@ -93,6 +93,18 @@ public class Loader implements LibraryLoader {
     }
   }
 
+  private static class VerilogFileFilter extends FileFilter {
+    @Override
+    public boolean accept(File f) {
+      return f.isDirectory() || f.getName().endsWith(".v");
+    }
+
+    @Override
+    public String getDescription() {
+      return S.get("verilogFileFilter");
+    }
+  }
+
   private static class LogisimFileFilter extends FileFilter {
     @Override
     public boolean accept(File f) {
@@ -159,6 +171,7 @@ public class Loader implements LibraryLoader {
   public static final FileFilter TXT_FILTER = new TxtFileFilter();
   public static final FileFilter TCL_FILTER = new TclFileFilter();
   public static final FileFilter VHDL_FILTER = new VhdlFileFilter();
+  public static final FileFilter VERILOG_FILTER = new VerilogFileFilter();
 
   private Component parent;
   private final Builtin builtin = new Builtin();
@@ -933,9 +946,18 @@ public class Loader implements LibraryLoader {
   }
 
   public String vhdlImportChooser(Component window) {
+    return hdlImportChooser(window, VHDL_FILTER, S.get("hdlOpenDialog"));
+  }
+
+  /** Asks for a Verilog file and returns its text, or null when cancelled or unreadable. */
+  public String verilogImportChooser(Component window) {
+    return hdlImportChooser(window, VERILOG_FILTER, S.get("verilogOpenDialog"));
+  }
+
+  private String hdlImportChooser(Component window, FileFilter filter, String title) {
     final var chooser = createChooser();
-    chooser.setFileFilter(Loader.VHDL_FILTER);
-    chooser.setDialogTitle(S.get("hdlOpenDialog"));
+    chooser.setFileFilter(filter);
+    chooser.setDialogTitle(title);
     final var returnVal = chooser.showOpenDialog(window);
     if (returnVal != JFileChooser.APPROVE_OPTION) return null;
     final var selected = chooser.getSelectedFile();

@@ -73,7 +73,9 @@ public class CircuitSearchProvider extends IndexedSearchProvider {
               vhdl.getName(),
               getDisplayName(),
               null,
-              isCurrent ? S.get("searchCircuitCurrentHint") : S.get("searchCircuitVhdlHint"),
+              isCurrent
+                  ? S.get("searchCircuitCurrentHint")
+                  : S.get(vhdl.isVerilog() ? "searchCircuitVerilogHint" : "searchCircuitVhdlHint"),
               !isCurrent,
               () -> project.setCurrentHdlModel(vhdl)));
     }

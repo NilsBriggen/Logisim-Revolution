@@ -441,8 +441,9 @@ public class LogisimFile extends Library implements LibraryEventSource, CircuitL
     addVhdlContent(content, tools.size());
   }
 
+  /** Adds a VHDL entity or a Verilog module ({@link VhdlContent#isVerilog()}) to the project. */
   public void addVhdlContent(VhdlContent content, int index) {
-    final var tool = new AddTool(new VhdlEntity(content));
+    final var tool = new AddTool(content.createFactory());
     tools.add(index, tool);
     fireEvent(LibraryEvent.ADD_TOOL, tool);
   }
@@ -618,6 +619,7 @@ public class LogisimFile extends Library implements LibraryEventSource, CircuitL
     return -1;
   }
 
+  /** The project's HDL components: VHDL entities and Verilog modules, in toolbox order. */
   public List<VhdlContent> getVhdlContents() {
     final var ret = new ArrayList<VhdlContent>(tools.size());
     for (final var tool : tools) {

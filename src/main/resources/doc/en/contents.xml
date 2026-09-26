@@ -40,6 +40,7 @@
 			<tocitem target="features_autolabel" text="Self-numbered labels " />
 			<tocitem target="features_matrix" text="Placing components in a matrix" />
 			<tocitem target="features_arrange" text="Aligning and distributing components" />
+			<tocitem target="hdl-ip_verilog" text="Verilog modules" />
 		</tocitem>
 		<tocitem target="mem_guide" text="Memory components">
             <tocitem target="mem_poke" text="Memory poke" />

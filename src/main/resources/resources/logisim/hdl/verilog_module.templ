@@ -1,0 +1,23 @@
+//------------------------------------------------------------------------------
+// Module      : %modulename%
+// Description :
+//------------------------------------------------------------------------------
+// Logisim reads the ports from the ANSI-style header below: declare each port
+// with its direction (input, output or inout) and, for buses, a constant range
+// such as [3:0]. The body is copied verbatim into the generated Verilog.
+//------------------------------------------------------------------------------
+
+module %modulename% (
+    input  wire       clock,  // input bit example
+    input  wire [3:0] val,    // input vector example
+    output wire       max,    // output bit example
+    output reg  [3:0] cpt     // output vector example
+);
+
+  assign max = (cpt == 4'hF);
+
+  always @(posedge clock) begin
+    cpt <= val;
+  end
+
+endmodule

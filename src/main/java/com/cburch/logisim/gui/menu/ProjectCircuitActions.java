@@ -32,6 +32,7 @@ import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.std.wiring.Pin;
 import com.cburch.logisim.tools.Library;
 import com.cburch.logisim.util.JFileChoosers;
+import com.cburch.logisim.vhdl.base.VerilogContent;
 import com.cburch.logisim.vhdl.base.VhdlContent;
 import com.cburch.logisim.vhdl.base.VhdlEntity;
 import java.awt.Dimension;
@@ -149,6 +150,40 @@ public class ProjectCircuitActions {
     if (content == null) return;
     if (VhdlContent.labelVHDLInvalidNotify(content.getName(), proj.getLogisimFile())) return;
 
+    proj.doAction(LogisimFileActions.addVhdl(content));
+    proj.setCurrentHdlModel(content);
+  }
+
+  /** Project > New Verilog Module: asks for a name and opens the template in the HDL editor. */
+  public static void doAddVerilog(Project proj) {
+    final var file = proj.getLogisimFile();
+    var name = "";
+    while (true) {
+      name =
+          promptForNewName(
+              proj.getFrame(),
+              name,
+              S.get("verilogNameDialogTitle"),
+              S.get("verilogNamePrompt"),
+              candidate ->
+                  candidate.isEmpty() ? null : VerilogContent.nameProblem(candidate, file));
+      if (name == null || name.isEmpty()) return;
+      // The reason is already shown under the field: ask again, keeping the typed name.
+      if (VerilogContent.nameProblem(name, file) == null) break;
+    }
+    final var content = VerilogContent.create(name, file);
+    proj.doAction(LogisimFileActions.addVhdl(content));
+    proj.setCurrentHdlModel(content);
+  }
+
+  /** Project > Import Verilog Module: reads one module from a .v file. */
+  public static void doImportVerilog(Project proj) {
+    final var file = proj.getLogisimFile();
+    final var verilog = file.getLoader().verilogImportChooser(proj.getFrame());
+    if (verilog == null) return;
+    final var content = VerilogContent.parse(null, verilog, file);
+    // An unreadable header was already reported; a module without a usable name cannot be added.
+    if (!content.isValid()) return;
     proj.doAction(LogisimFileActions.addVhdl(content));
     proj.setCurrentHdlModel(content);
   }
@@ -276,14 +311,14 @@ public class ProjectCircuitActions {
     if (!proj.getDependencies().canRemove(vhdl)) {
       OptionPane.showMessageDialog(
           proj.getFrame(),
-          S.get("vhdlRemoveUsedError", vhdl.getName()),
-          S.get("vhdlRemoveErrorTitle"),
+          S.get(vhdl.isVerilog() ? "verilogRemoveUsedError" : "vhdlRemoveUsedError", vhdl.getName()),
+          S.get(vhdl.isVerilog() ? "verilogRemoveErrorTitle" : "vhdlRemoveErrorTitle"),
           OptionPane.ERROR_MESSAGE);
     } else {
       int result = OptionPane.showConfirmDialog(
           proj.getFrame(),
-          S.get("vhdlRemoveConfirm", vhdl.getName()),
-          S.get("vhdlRemoveConfirmTitle"),
+          S.get(vhdl.isVerilog() ? "verilogRemoveConfirm" : "vhdlRemoveConfirm", vhdl.getName()),
+          S.get(vhdl.isVerilog() ? "verilogRemoveConfirmTitle" : "vhdlRemoveConfirmTitle"),
           OptionPane.YES_NO_OPTION);
       if (result == OptionPane.YES_OPTION) {
         proj.doAction(LogisimFileActions.removeVhdl(vhdl));
@@ -332,15 +367,23 @@ public class ProjectCircuitActions {
       String initialValue,
       boolean vhdl,
       Function<String, String> validator) {
-    String title;
-    String prompt;
-    if (vhdl) {
-      title = S.get("vhdlNameDialogTitle");
-      prompt = S.get("vhdlNamePrompt");
-    } else {
-      title = S.get("circuitNameDialogTitle");
-      prompt = S.get("circuitNamePrompt");
-    }
+    return vhdl
+        ? promptForNewName(
+            frame, initialValue, S.get("vhdlNameDialogTitle"), S.get("vhdlNamePrompt"), validator)
+        : promptForNewName(
+            frame,
+            initialValue,
+            S.get("circuitNameDialogTitle"),
+            S.get("circuitNamePrompt"),
+            validator);
+  }
+
+  private static String promptForNewName(
+      JFrame frame,
+      String initialValue,
+      String title,
+      String prompt,
+      Function<String, String> validator) {
     final var field = new JTextField(15);
     field.setText(initialValue);
     final var gbl = new GridBagLayout();
