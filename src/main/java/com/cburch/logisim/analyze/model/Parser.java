@@ -37,19 +37,34 @@ public class Parser {
     int type;
     final int offset;
     final int length;
-    int precedence;
     final String text;
 
-    Token(int type, int offset, int length, String text, int precedence) {
+    Token(int type, int offset, int length, String text) {
       this.type = type;
       this.offset = offset;
       this.length = length;
       this.text = text;
-      this.precedence = precedence;
     }
 
-    Token(int type, int offset, String text, int precedence) {
-      this(type, offset, text.length(), text, precedence);
+    Token(int type, int offset, String text) {
+      this(type, offset, text.length(), text);
+    }
+
+    /**
+     * Binding strength of an operator token. The level depends only on the operator, never on
+     * how it is spelled, and follows the table on the "Creating expressions" help page: NOT, then
+     * AND (including juxtaposition), then XOR, then OR, then XNOR, then the output assignment.
+     */
+    int precedence() {
+      return switch (type) {
+        case TOKEN_NOT, TOKEN_NOT_POSTFIX -> Notation.NOT_PRECEDENCE;
+        case TOKEN_AND -> Notation.AND_PRECEDENCE;
+        case TOKEN_XOR -> Notation.XOR_PRECEDENCE;
+        case TOKEN_OR -> Notation.OR_PRECEDENCE;
+        case TOKEN_XNOR -> Notation.XNOR_PRECEDENCE;
+        case TOKEN_EQ -> Notation.EQ_PRECEDENCE;
+        default -> Integer.MAX_VALUE;
+      };
     }
 
     ParserException error(StringGetter message) {
@@ -62,7 +77,7 @@ public class Parser {
         || Character.isJavaIdentifierStart(c)
         || "()01~-^+*!&|=\\':[]".indexOf(c) >= 0
         || "≠≢⋀⋁∧∨⊕⋅¬∙".indexOf(c) >= 0
-        || "⇔≡↔˜·∥⊻⊤⊥".indexOf(c) >= 0;
+        || "⇔≡↔˜·∥⊻⊤⊥⊙".indexOf(c) >= 0;
   }
 
   public static Expression parseMaybeAssignment(String in, AnalyzerModel model)
@@ -86,43 +101,26 @@ public class Parser {
           here = Expressions.not(here);
           i++;
         }
-        while (peekLevel(stack) == Expression.Notation.NOT_PRECEDENCE) {
+        while (peekLevel(stack) == Notation.NOT_PRECEDENCE) {
           here = Expressions.not(here);
           pop(stack);
         }
         current = Expressions.and(current, here);
-        if (peekLevel(stack) == Expression.Notation.IMPLICIT_AND_PRECEDENCE) {
+        if (peekLevel(stack) == Notation.IMPLICIT_AND_PRECEDENCE) {
           Context top = pop(stack);
           current = Expressions.and(top.current, current);
         }
       } else if (t.type == TOKEN_NOT) {
         if (current != null) {
-          push(
-              stack,
-              current,
-              Expression.Notation.IMPLICIT_AND_PRECEDENCE,
-              new Token(
-                  TOKEN_AND,
-                  t.offset,
-                  S.get("implicitAndOperator"),
-                  Notation.IMPLICIT_AND_PRECEDENCE));
+          pushImplicitAnd(stack, current, t);
         }
-        push(stack, null, Expression.Notation.NOT_PRECEDENCE, t);
+        push(stack, null, Notation.NOT_PRECEDENCE, t);
         current = null;
       } else if (t.type == TOKEN_NOT_POSTFIX) {
         throw t.error(S.getter("unexpectedApostrophe"));
       } else if (t.type == TOKEN_LPAREN) {
         if (current != null) {
-          push(
-              stack,
-              current,
-              Notation.IMPLICIT_AND_PRECEDENCE,
-              new Token(
-                  TOKEN_AND,
-                  t.offset,
-                  0,
-                  S.get("implicitAndOperator"),
-                  Notation.IMPLICIT_AND_PRECEDENCE));
+          pushImplicitAnd(stack, current, t);
         }
         push(stack, null, -2, t);
         current = null;
@@ -142,7 +140,8 @@ public class Parser {
         if (current == null) {
           throw t.error(S.getter("missingLeftOperandError", t.text));
         }
-        push(stack, popTo(stack, t.precedence, current), t.precedence, t);
+        final var precedence = t.precedence();
+        push(stack, popTo(stack, precedence, current), precedence, t);
         current = null;
       }
     }
@@ -184,19 +183,14 @@ public class Parser {
           final var opText = token.text.toUpperCase();
           if (opText.equals("NOT")) {
             token.type = TOKEN_NOT;
-            token.precedence = Expression.Notation.NOT_PRECEDENCE;
           } else if (opText.equals("AND")) {
             token.type = TOKEN_AND;
-            token.precedence = Expression.Notation.PYTHON_AND_PRECEDENCE;
           } else if (opText.equals("XOR")) {
             token.type = TOKEN_XOR;
-            token.precedence = Expression.Notation.PYTHON_XOR_PRECEDENCE;
           } else if (opText.equals("OR")) {
             token.type = TOKEN_OR;
-            token.precedence = Expression.Notation.PYTHON_OR_PRECEDENCE;
           } else if (opText.contentEquals("EQUALS")) {
             token.type = TOKEN_XNOR;
-            token.precedence = Expression.Notation.LOGIC_PRECEDENCE;
           } else {
             // or, maybe it is a top-level assignment like "foo: expr", "foo = expr", etc
             if (i == 0 && allowOutputAssignment) {
@@ -205,7 +199,6 @@ public class Parser {
                   && tokens.size() >= 2
                   && (tokens.get(1).type == TOKEN_XNOR || tokens.get(1).type == TOKEN_EQ)) {
                 tokens.get(1).type = TOKEN_EQ;
-                tokens.get(1).precedence = Expression.Notation.EQ_PRECEDENCE;
                 continue;
               }
             }
@@ -246,6 +239,13 @@ public class Parser {
 
   private static void push(ArrayList<Context> stack, Expression expr, int level, Token cause) {
     stack.add(new Context(expr, level, cause));
+  }
+
+  /** Juxtaposition ("a b", "a ~b", "a (b + c)") is an AND at the normal AND level. */
+  private static void pushImplicitAnd(ArrayList<Context> stack, Expression left, Token next)
+      throws ParserException {
+    final var and = new Token(TOKEN_AND, next.offset, 0, S.get("implicitAndOperator"));
+    push(stack, popTo(stack, and.precedence(), left), and.precedence(), and);
   }
 
   // Note: Doing this without "tokenizing then re-stringify" is tricky.
@@ -319,80 +319,80 @@ public class Parser {
     Token readToken(char startChar, int start) {
       switch (startChar) {
         case '(':
-          return new Token(TOKEN_LPAREN, start, "(", Integer.MAX_VALUE);
+          return new Token(TOKEN_LPAREN, start, "(");
         case ')':
-          return new Token(TOKEN_RPAREN, start, ")", Integer.MAX_VALUE);
+          return new Token(TOKEN_RPAREN, start, ")");
         case '1':
         case '⊤': // down tack
-          return new Token(TOKEN_CONST, start, "1", Integer.MAX_VALUE);
+          return new Token(TOKEN_CONST, start, "1");
         case '0':
         case '⊥': // up tack
-          return new Token(TOKEN_CONST, start, "0", Integer.MAX_VALUE);
+          return new Token(TOKEN_CONST, start, "0");
         case '~':
         case '-':
         case '¬': // logical not
         case '˜': // tilde
-          return new Token(TOKEN_NOT, start, "~", Notation.NOT_PRECEDENCE);
+          return new Token(TOKEN_NOT, start, "~");
         case '!':
           if (accept('=')) {
-            return new Token(TOKEN_XOR, start, in.substring(start, pos), Notation.LOGIC_PRECEDENCE);
+            return new Token(TOKEN_XOR, start, in.substring(start, pos));
           } else {
-            return new Token(TOKEN_NOT, start, "~", Notation.NOT_PRECEDENCE);
+            return new Token(TOKEN_NOT, start, "~");
           }
         case '\'':
-          return new Token(TOKEN_NOT_POSTFIX, start, "'", Notation.NOT_PRECEDENCE);
+          return new Token(TOKEN_NOT_POSTFIX, start, "'");
         case '^':
         case '⊕': // oplus
-          return new Token(TOKEN_XOR, start, "^", Notation.OPLUS_PRECEDENCE);
+          return new Token(TOKEN_XOR, start, "^");
         case '⊻': // vee-underbar
         case '≢': // not-equiv
         case '≠': // not-equals
-          return new Token(TOKEN_XOR, start, "^", Notation.LOGIC_PRECEDENCE);
+          return new Token(TOKEN_XOR, start, "^");
         case '+':
         case '⋁': // large disjunction
         case '∨': // small disjunction
-          return new Token(TOKEN_OR, start, "+", Notation.LOGIC_PRECEDENCE);
+          return new Token(TOKEN_OR, start, "+");
         case '∥': // logical or
-          return new Token(TOKEN_OR, start, "+", Notation.OR_PRECEDENCE);
+          return new Token(TOKEN_OR, start, "+");
         case '*':
         case '⋀': // large conjunction
         case '∧': // small conjunction
-          return new Token(TOKEN_AND, start, "*", Notation.LOGIC_PRECEDENCE);
+          return new Token(TOKEN_AND, start, "*");
         case '⋅': // cdot
         case '∙': // bullet
         case '·': // middle-dot
-          return new Token(TOKEN_AND, start, "*", Notation.TIMES_PRECEDENCE);
+          return new Token(TOKEN_AND, start, "*");
         case '⊙': // otimes
-          return new Token(TOKEN_XNOR, start, "^", Notation.OTIMES_PRECEDENCE);
+          return new Token(TOKEN_XNOR, start, "^");
         case '⇔': // left-right-doublearrow
         case '≡': // equiv
         case '↔': // left-right-arrow
-          return new Token(TOKEN_XNOR, start, "=", Notation.LOGIC_PRECEDENCE);
+          return new Token(TOKEN_XNOR, start, "=");
         case '&':
           if (accept('&')) {
-            return new Token(TOKEN_AND, start, "&&", Notation.AND_PRECEDENCE);
+            return new Token(TOKEN_AND, start, "&&");
           } else {
-            return new Token(TOKEN_AND, start, "&", Notation.BITAND_PRECEDENCE);
+            return new Token(TOKEN_AND, start, "&");
           }
         case '|':
           if (accept('|')) {
-            return new Token(TOKEN_OR, start, "||", Notation.OR_PRECEDENCE);
+            return new Token(TOKEN_OR, start, "||");
           } else {
-            return new Token(TOKEN_OR, start, "|", Notation.BITOR_PRECEDENCE);
+            return new Token(TOKEN_OR, start, "|");
           }
         case '=':
           accept('=');
-          return new Token(TOKEN_XNOR, start, in.substring(start, pos), Notation.LOGIC_PRECEDENCE);
+          return new Token(TOKEN_XNOR, start, in.substring(start, pos));
         case ':':
           accept('=');
-          return new Token(TOKEN_EQ, start, in.substring(start, pos), Notation.EQ_PRECEDENCE);
+          return new Token(TOKEN_EQ, start, in.substring(start, pos));
         case '[':
         case ']':
-          return new Token(TOKEN_ERROR_IDENT, start, in.substring(start, start + 1), 0);
+          return new Token(TOKEN_ERROR_IDENT, start, in.substring(start, start + 1));
         default:
           skipUntil(Parser::okCharacter);
           final var errorText = in.substring(start, pos);
-          return new Token(TOKEN_ERROR_BADCHAR, start, errorText, 0);
+          return new Token(TOKEN_ERROR_BADCHAR, start, errorText);
       }
     }
 
@@ -405,7 +405,7 @@ public class Parser {
         skipSpaces();
 
         if (includeWhite && pos != whiteStart) {
-          tokens.add(new Token(TOKEN_WHITE, whiteStart, in.substring(whiteStart, pos), 0));
+          tokens.add(new Token(TOKEN_WHITE, whiteStart, in.substring(whiteStart, pos)));
         }
         if (pos == len) {
           return tokens;
@@ -424,12 +424,12 @@ public class Parser {
             int bracestart = pos;
             pos++;
             if (skipSpaces()) { // EOL
-              tokens.add(new Token(TOKEN_ERROR_BRACE, start, in.substring(bracestart), 0));
+              tokens.add(new Token(TOKEN_ERROR_BRACE, start, in.substring(bracestart)));
               continue;
             }
             subscript = readNumber();
             if (skipSpaces() || !accept(']')) { // EOL or missing bracket
-              tokens.add(new Token(TOKEN_ERROR_BRACE, start, in.substring(bracestart), 0));
+              tokens.add(new Token(TOKEN_ERROR_BRACE, start, in.substring(bracestart)));
               continue;
             }
             pos++;
@@ -437,18 +437,18 @@ public class Parser {
           if (subscript != null) {
             subscript = subscript.trim();
             if (subscript.isEmpty()) {
-              tokens.add(new Token(TOKEN_ERROR_SUBSCRIPT, start, in.substring(start, pos), 0));
+              tokens.add(new Token(TOKEN_ERROR_SUBSCRIPT, start, in.substring(start, pos)));
               continue;
             }
             try {
               int s = Integer.parseInt(subscript);
-              tokens.add(new Token(TOKEN_IDENT, start, name + "[" + s + "]", Integer.MAX_VALUE));
+              tokens.add(new Token(TOKEN_IDENT, start, name + "[" + s + "]"));
             } catch (NumberFormatException e) {
               // should not happen
-              tokens.add(new Token(TOKEN_ERROR_SUBSCRIPT, start, in.substring(start, pos), 0));
+              tokens.add(new Token(TOKEN_ERROR_SUBSCRIPT, start, in.substring(start, pos)));
             }
           } else {
-            tokens.add(new Token(TOKEN_IDENT, start, name, Integer.MAX_VALUE));
+            tokens.add(new Token(TOKEN_IDENT, start, name));
           }
         } else {
           tokens.add(readToken(startChar, start));

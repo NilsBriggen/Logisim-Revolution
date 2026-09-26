@@ -38,4 +38,20 @@ class AnalyzerTest {
 
     assertEquals(new Dimension(900, 600), Analyzer.expandedSizeForLocaleChange(current, preferred));
   }
+
+  @Test
+  void opensAtTwoThirdsOfTheParentInsteadOfItsTinyPackedSize() {
+    assertEquals(new Dimension(800, 600), AnalyzerManager.initialSize(
+        new Dimension(450, 300), new Dimension(1200, 900), new Dimension(1920, 1080)));
+  }
+
+  @Test
+  void neverOpensSmallerThanPackedOrLargerThanTheScreen() {
+    assertEquals(new Dimension(700, 500), AnalyzerManager.initialSize(
+        new Dimension(700, 500), new Dimension(600, 450), null));
+    assertEquals(new Dimension(900, 540), AnalyzerManager.initialSize(
+        new Dimension(450, 300), new Dimension(3000, 3000), new Dimension(1000, 600)));
+    assertEquals(new Dimension(450, 300), AnalyzerManager.initialSize(
+        new Dimension(450, 300), null, null));
+  }
 }

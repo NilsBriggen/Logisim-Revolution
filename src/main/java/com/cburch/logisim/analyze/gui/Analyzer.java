@@ -27,6 +27,7 @@ import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JComponent;
@@ -234,6 +235,10 @@ public class Analyzer extends LFrame.SubWindow {
     final var pane = new JScrollPane(comp,
         ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
         ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+    // This scroll pane is the whole tab. With a border, the look and feel drew a focus ring round
+    // the entire window content whenever the tab's panel held the focus; the focused control inside
+    // shows its own.
+    pane.setBorder(BorderFactory.createEmptyBorder());
     pane.addComponentListener(new ComponentAdapter() {
       @Override
       public void componentResized(ComponentEvent event) {

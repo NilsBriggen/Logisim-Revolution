@@ -28,6 +28,14 @@ public class AnalyzeException extends Exception {
     }
   }
 
+  public static class WidthMismatch extends AnalyzeException {
+    private static final long serialVersionUID = 1L;
+
+    public WidthMismatch(String circuit, String location, String widths) {
+      super(S.get("analyzeWidthMismatchError", circuit, location, widths));
+    }
+  }
+
   public static class Conflict extends AnalyzeException {
     private static final long serialVersionUID = 1L;
 

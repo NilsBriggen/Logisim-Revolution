@@ -69,6 +69,10 @@ public class TestThread extends UniquelyNamedThread {
       System.err.println(S.get("testSetupFailed", e.getMessage()));
       return -1;
     }
+    final var undriven = TestVectorEvaluator.findUndrivenInputs(vec, circuit);
+    if (!undriven.isEmpty()) {
+      System.err.println(S.get("testUndrivenInputs", String.join(", ", undriven)));
+    }
     return tester.doTestVector();
   }
 

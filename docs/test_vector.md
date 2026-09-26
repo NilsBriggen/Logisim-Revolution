@@ -9,8 +9,10 @@ The Test Vector window allows you to load a test vector from a file, and Logisim
 The Test Vector module runs a separate copy of the circuit simulator, so it does not interfere with
 the simulation in the project window.
 
-Any incorrect outputs will be flagged in red. Hover the mouse over the red box to see what the output should have been,
-according to the test vector. Rows with incorrect outputs are sorted to the top of the window.
+Any incorrect outputs will be flagged in red and shown as `expected → computed` (for example `1 → 0`).
+Rows stay in file order, so they do not move when results arrive or when you press Reset. If the vector
+does not set some of the circuit's inputs, Logisim warns when it is loaded: those inputs keep their default
+value in every test. A file with no test rows, no pin columns or a repeated column is rejected.
 
 ### Interactive Test Execution
 

@@ -58,7 +58,8 @@ public class VariableList {
   }
 
   public void add(Var variable) {
-    if (data.size() + variable.width > maxSize) {
+    // maxSize limits bits, not variables.
+    if (names.size() + variable.width > maxSize) {
       throw new IllegalArgumentException("maximum size is " + maxSize);
     }
     final var index = data.size();
@@ -131,6 +132,9 @@ public class VariableList {
     final var bitIndex = names.indexOf(oldVar.bitName(0));
     if (bitIndex < 0) throw new NoSuchElementException(oldVar.toString());
     if (oldVar.equals(newVar)) return;
+    if (names.size() - oldVar.width + newVar.width > maxSize) {
+      throw new IllegalArgumentException("maximum size is " + maxSize);
+    }
     data.set(index, newVar);
     names.subList(bitIndex + 1 - oldVar.width, bitIndex + 1).clear();
     var i = bitIndex + 1 - oldVar.width;

@@ -207,7 +207,7 @@ public class KarnaughMapPanel extends JPanel implements BaseMouseMotionListenerC
     if (output == null) {
       message = S.get("karnaughNoOutputError");
     } else if (table.getInputColumnCount() > MAX_VARS) {
-      message = S.get("karnaughTooManyInputsError");
+      message = S.get("karnaughTooManyInputsError", Integer.toString(MAX_VARS));
     } else if (table.getInputColumnCount() == 0) {
       message = S.get("karnaughNoInputsError");
     } else if (table.getInputColumnCount() == 1) {
@@ -451,12 +451,15 @@ public class KarnaughMapPanel extends JPanel implements BaseMouseMotionListenerC
             : entry.getErrorMessage() + "<br>");
     s.append(output).append(" = ").append(entry.getDescription());
     final var inputs = model.getInputs().bits;
-    if (inputs.isEmpty()) return "<html>" + s + "</html>";
-    s.append("<br>When:");
-    final var n = inputs.size();
-    for (var i = 0; i < MAX_VARS && i < inputs.size(); i++) {
-      s.append("<br/>&nbsp;&nbsp;&nbsp;&nbsp;").append(inputs.get(i)).append(" = ").append((row >> (n - i - 1)) & 1);
+    if (!inputs.isEmpty()) {
+      s.append("<br>When:");
+      final var n = inputs.size();
+      for (var i = 0; i < MAX_VARS && i < inputs.size(); i++) {
+        s.append("<br/>&nbsp;&nbsp;&nbsp;&nbsp;").append(inputs.get(i)).append(" = ").append((row >> (n - i - 1)) & 1);
+      }
     }
+    // A click edits the truth table itself, which is easy to do by accident.
+    s.append("<br><i>").append(S.get("kmapClickToChange")).append("</i>");
     return "<html>" + s + "</html>";
   }
 
@@ -495,7 +498,7 @@ public class KarnaughMapPanel extends JPanel implements BaseMouseMotionListenerC
     if (output == null) {
       message = S.get("karnaughNoOutputError");
     } else if (inputCount > MAX_VARS) {
-      message = S.get("karnaughTooManyInputsError");
+      message = S.get("karnaughTooManyInputsError", Integer.toString(MAX_VARS));
     } else if (inputCount == 0) {
       message = S.get("karnaughNoInputsError");
     } else if (inputCount == 1) {

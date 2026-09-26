@@ -390,4 +390,44 @@ public class TestVectorTest {
     assertTrue(message.contains("dataWrite[8]"), "Error should include column name in suggestion");
     assertTrue(message.contains("Remember that 0b means binary and each binary digit is 1 bit"), "Error should include column name in suggestion");
   }
+
+  private File write(String name, String contents) throws IOException {
+    final var file = new File(tempDir, name);
+    try (FileWriter writer = new FileWriter(file)) {
+      writer.write(contents);
+    }
+    return file;
+  }
+
+  @Test
+  public void testHeaderWithoutRowsIsRejected() throws IOException {
+    // Would otherwise "pass" 0 of 0 tests.
+    final var file = write("header-only.txt", "A B C\n# no rows\n");
+    final var e = assertThrows(IOException.class, () -> new TestVector(file));
+    assertTrue(e.getMessage().contains("no test rows"), e.getMessage());
+  }
+
+  @Test
+  public void testDuplicatePinColumnIsRejected() throws IOException {
+    final var file = write("dup.txt", "A B A\n0 1 1\n");
+    final var e = assertThrows(IOException.class, () -> new TestVector(file));
+    assertTrue(e.getMessage().contains("duplicate column: A"), e.getMessage());
+    final var wide = write("dup-wide.txt", "A[4] B A[4]\n0x1 1 0x2\n");
+    assertThrows(IOException.class, () -> new TestVector(wide));
+  }
+
+  @Test
+  public void testDuplicateSetOrSeqColumnIsRejected() throws IOException {
+    final var set = write("dup-set.txt", "A <set> <SET>\n0 0 0\n");
+    assertThrows(IOException.class, () -> new TestVector(set));
+    final var seq = write("dup-seq.txt", "A <seq> <seq>\n0 0 0\n");
+    assertThrows(IOException.class, () -> new TestVector(seq));
+  }
+
+  @Test
+  public void testHeaderWithoutPinColumnsIsRejected() throws IOException {
+    final var file = write("no-pins.txt", "<set> <seq>\n0 0\n");
+    final var e = assertThrows(IOException.class, () -> new TestVector(file));
+    assertTrue(e.getMessage().contains("no pin columns"), e.getMessage());
+  }
 }

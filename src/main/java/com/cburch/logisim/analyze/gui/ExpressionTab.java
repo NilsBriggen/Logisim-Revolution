@@ -240,6 +240,8 @@ class ExpressionTab extends AnalyzerTab {
     private static final long serialVersionUID = 1L;
     final JTextField field = new JTextField();
     final JLabel label = new JLabel();
+    // The parse error, shown in the row being edited rather than only at the bottom of the tab.
+    final JLabel inlineError = new JLabel();
     NamedExpression oldExpr;
     NamedExpression newExpr;
 
@@ -248,6 +250,16 @@ class ExpressionTab extends AnalyzerTab {
           BorderFactory.createCompoundBorder(
               field.getBorder(), BorderFactory.createEmptyBorder(1, 3, 1, 3)));
       BuddySupport.addLeft(label, field);
+      inlineError.setForeground(Tokens.error());
+      BuddySupport.addRight(inlineError, field);
+    }
+
+    private void showInlineError(StringGetter msg) {
+      final var text = msg == null ? "" : msg.toString();
+      inlineError.setText(text.isEmpty() ? "" : " " + text + " ");
+      field.setToolTipText(text.isEmpty() ? null : text);
+      field.revalidate();
+      field.repaint();
     }
 
     @Override
@@ -259,6 +271,7 @@ class ExpressionTab extends AnalyzerTab {
     public Component getTableCellEditorComponent(JTable table,
         Object value, boolean isSelected, int row, int column) {
       oldExpr = (NamedExpression) value;
+      showInlineError(null);
       label.setText(" " + Expressions.variable(oldExpr.name) + " = ");
       field.setText((oldExpr.expr != null) ? oldExpr.expr.toString() : "");
       return field;
@@ -280,10 +293,12 @@ class ExpressionTab extends AnalyzerTab {
       try {
         final var expr = Parser.parse(exprString, model);
         setError(null);
+        showInlineError(null);
         newExpr = new NamedExpression(oldExpr.name, expr, exprString);
         return true;
       } catch (ParserException ex) {
         setError(ex.getMessageGetter());
+        showInlineError(ex.getMessageGetter());
         field.setCaretPosition(ex.getOffset());
         field.moveCaretPosition(ex.getEndOffset());
         newExpr = null;

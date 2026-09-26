@@ -213,10 +213,36 @@ public class ProjectCircuitActions {
       analyzeError(proj, S.get("analyzeTooManyOutputsError", "" + AnalyzerModel.MAX_OUTPUTS));
       return;
     }
+    try {
+      Analyze.checkWidths(circuit);
+    } catch (AnalyzeException ex) {
+      analyzeError(proj, ex.getMessage());
+      return;
+    }
 
     final var analyzer = AnalyzerManager.getAnalyzer(proj.getFrame());
-    analyzer.getModel().setCurrentCircuit(proj, circuit);
-    configureAnalyzer(proj, circuit, analyzer, pinNames, inputVars, outputVars);
+    final var model = analyzer.getModel();
+    if (model.isEdited()) {
+      // Analysing replaces the table the user built by hand, and the analyzer has no undo.
+      final var choice =
+          OptionPane.showConfirmDialog(
+              analyzer.isVisible() ? analyzer : proj.getFrame(),
+              S.get("analyzeReplaceEditedMessage", circuit.getName()),
+              S.get("analyzeReplaceEditedTitle"),
+              OptionPane.YES_NO_OPTION,
+              OptionPane.WARNING_MESSAGE);
+      if (choice != OptionPane.YES_OPTION) {
+        if (analyzer.isVisible()) analyzer.toFront();
+        return;
+      }
+    }
+    model.setCurrentCircuit(proj, circuit);
+    model.beginReplacement();
+    try {
+      configureAnalyzer(proj, circuit, analyzer, pinNames, inputVars, outputVars);
+    } finally {
+      model.endReplacement();
+    }
     if (!analyzer.isVisible()) {
       analyzer.setVisible(true);
     }

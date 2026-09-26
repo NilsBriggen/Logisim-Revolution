@@ -33,8 +33,10 @@ import java.awt.Toolkit;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.Set;
 import java.util.HashSet;
+import java.util.concurrent.atomic.AtomicReference;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 import org.slf4j.Logger;
@@ -76,9 +78,17 @@ public class TestPanel extends JPanel implements ValueTable.Model, Simulator.Lis
   private final Set<Integer> activeSetRows = new HashSet<>();
   private final String [] specialHeaders = {"", "", S.get("statusHeader"), "<set>", "<seq>"};
 
-  // Store the pin values when Show or Set is clicked, to detect changes. Used by simulation thread.
-  private com.cburch.logisim.data.Value[] storedPinValues = null;
-  private TestVectorEvaluator propagationEvaluator = null;
+  /** Pin values right after Show or Set, and the evaluator whose pins they belong to. */
+  private record ShownValues(TestVectorEvaluator evaluator, Value[] values) {}
+
+  // Written by the simulation thread (after Show/Set) and the EDT (reset), read by the simulation
+  // thread in propagationCompleted; one reference, so both parts are always seen together.
+  private final AtomicReference<ShownValues> shownValues = new AtomicReference<>();
+
+  // Pin columns that have shown a failure for the current vector; they are widened once so that
+  // "expected -> computed" fits.
+  private final BitSet failedColumns = new BitSet();
+  static final String EXPECTED_COMPUTED_SEPARATOR = " \u2192 ";
 
   public TestPanel(TestFrame frame) {
     this.testFrame = frame;
@@ -93,7 +103,19 @@ public class TestPanel extends JPanel implements ValueTable.Model, Simulator.Lis
   public String specialColumnEntry(int i) {
     if (i < specialHeaders.length) return null; // special columns are handled separately.
     TestVector vec = getModel().getVector();
-    return vec.specialColumnEntry(i - specialHeaders.length);
+    final var pinIndex = i - specialHeaders.length;
+    final var special = vec.specialColumnEntry(pinIndex);
+    if (!failedColumns.get(pinIndex)) return special;
+    // Reserve room for the widest "expected -> computed" pair in this column.
+    final var radix = getColumnValueRadix(i);
+    final var width = vec.columnWidth[pinIndex];
+    final var widest =
+        Value.createKnown(
+                width,
+                radix == 2 ? 0 : (radix == 10 ? (1L << (width.getWidth() - 1)) : width.getMask()))
+            .toDisplayString(radix);
+    final var expected = special != null && special.length() > widest.length() ? special : widest;
+    return expected + EXPECTED_COMPUTED_SEPARATOR + widest;
   }
 
   @Override
@@ -162,6 +184,7 @@ public class TestPanel extends JPanel implements ValueTable.Model, Simulator.Lis
     final var altdata = new Value[columns];
     final var passMsg = S.get("passStatus");
     final var failMsg = S.get("failStatus");
+    var widen = false;
 
     final int pinColumnStart = specialHeaders.length;
 
@@ -216,17 +239,19 @@ public class TestPanel extends JPanel implements ValueTable.Model, Simulator.Lis
         if (vec.isDontCare(row, col)) {
           displayText = "<DC>";
           tooltip = (tooltip != null ? tooltip + " | " : "") + S.get("toolTipDontCare", displayText);
-        } else if (vec.isFloating(row, col)) {
-          if (altdata[col] != null) {
-            displayText = altdata[col].toDisplayString(getColumnValueRadix(pinColumnStart + col));
-          } else {
-            displayText = "<float>";
-            tooltip = (tooltip != null ? tooltip + " | " : "") + S.get("toolTipFloating", displayText);
-          }
         } else {
-          // Regular value - show computed value if there's an error, otherwise show expected
-          Value displayValue = altdata[col] != null ? altdata[col] : data[col];
-          displayText = displayValue.toDisplayString(getColumnValueRadix(pinColumnStart + col));
+          final var floating = vec.isFloating(row, col);
+          if (floating) {
+            tooltip = (tooltip != null ? tooltip + " | " : "") + S.get("toolTipFloating", "<float>");
+          }
+          displayText = cellText(data[col], floating, altdata[col],
+              getColumnValueRadix(pinColumnStart + col));
+          if (altdata[col] != null) {
+            if (!failedColumns.get(col)) {
+              failedColumns.set(col);
+              widen = true;
+            }
+          }
         }
 
         rowData[outRow][colIndex] = new ValueTable.Cell(displayText, bgColor, null, tooltip);
@@ -234,6 +259,22 @@ public class TestPanel extends JPanel implements ValueTable.Model, Simulator.Lis
         altdata[col] = null;
       }
     }
+    if (widen) {
+      // Column widths are computed from specialColumnEntry; recompute them outside this paint.
+      SwingUtilities.invokeLater(table::modelChanged);
+    }
+  }
+
+  /**
+   * Text of a pin cell. It always starts with the expected value from the file; a failure appends
+   * the computed value ("1 → 0"), so a cell never switches meaning when results arrive or are
+   * reset.
+   */
+  static String cellText(Value expected, boolean floating, Value computed, int radix) {
+    final var text = floating ? "<float>" : expected.toDisplayString(radix);
+    return computed == null
+        ? text
+        : text + EXPECTED_COMPUTED_SEPARATOR + computed.toDisplayString(radix);
   }
 
   public void localeChanged() {
@@ -259,6 +300,7 @@ public class TestPanel extends JPanel implements ValueTable.Model, Simulator.Lis
     }
     // Reset active rows when model changes
     resetActiveRows();
+    failedColumns.clear();
     table.setModel(newModel == null ? null : this);
   }
 
@@ -288,7 +330,7 @@ public class TestPanel extends JPanel implements ValueTable.Model, Simulator.Lis
   private void resetActiveRows() {
     activeShowRows.clear();
     activeSetRows.clear();
-    storedPinValues = null;
+    shownValues.set(null);
   }
 
 
@@ -401,8 +443,7 @@ public class TestPanel extends JPanel implements ValueTable.Model, Simulator.Lis
       InstanceState instanceState = state.getInstanceState(pins[j]);
       storedPinValues[j] = isPin ? Pin.FACTORY.getValue(instanceState) : Clock.FACTORY.getValue(instanceState);
     }
-    propagationEvaluator = evaluator;
-    this.storedPinValues = storedPinValues;
+    shownValues.set(new ShownValues(evaluator, storedPinValues));
   }
 
   private void finishShowTestVector() {
@@ -436,15 +477,13 @@ public class TestPanel extends JPanel implements ValueTable.Model, Simulator.Lis
 
   @Override
   public void propagationCompleted(Simulator.Event e) {
+    // Runs on the simulation thread: read the shared state once, never field by field.
     Model model = getModel();
-    // Check if we have active rows and stored pin values
-    if (model == null || activeSetRows.isEmpty() || storedPinValues == null || propagationEvaluator == null) {
-      storedPinValues = null;
-      propagationEvaluator = null;
-      return;
-    }
+    final var shown = shownValues.get();
+    if (model == null || shown == null) return;
+    final var storedPinValues = shown.values();
     CircuitState state = model.getProject().getCircuitState();
-    Instance[] pins = propagationEvaluator.getPins();
+    Instance[] pins = shown.evaluator().getPins();
 
     // Check if any pin values have changed
     for (int j = 0; j < pins.length; j++) {
@@ -457,9 +496,8 @@ public class TestPanel extends JPanel implements ValueTable.Model, Simulator.Lis
         // state has been modified. Leave currentValue as null.
       }
       if (storedPinValues[j] == null || currentValue == null || !currentValue.equals(storedPinValues[j])) {
-        storedPinValues = null;
-        propagationEvaluator = null;
-        resetActiveRowsAndNotifyTableChanged();
+        // Only the thread that clears this snapshot resets the highlights.
+        if (shownValues.compareAndSet(shown, null)) resetActiveRowsAndNotifyTableChanged();
         break;
       }
     }
@@ -495,6 +533,7 @@ public class TestPanel extends JPanel implements ValueTable.Model, Simulator.Lis
     @Override
     public void vectorChanged() {
       resetActiveRows();
+      failedColumns.clear();
       table.modelChanged();
     }
   }

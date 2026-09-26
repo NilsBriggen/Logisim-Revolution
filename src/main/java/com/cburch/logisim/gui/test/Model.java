@@ -19,6 +19,7 @@ import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.util.EventSourceWeakSupport;
 
 import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 import javax.swing.SwingUtilities;
 
 class Model implements CircuitListener {
@@ -26,11 +27,12 @@ class Model implements CircuitListener {
   private final EventSourceWeakSupport<ModelListener> listeners;
   private final Project project;
   private final Circuit circuit;
-  private final UpdateResultSort myUpdateResultSort = new UpdateResultSort();
-  private final ArrayList<Integer> failed = new ArrayList<>();
-  private final ArrayList<Integer> passed = new ArrayList<>();
+  // Display order of the rows. It depends only on the vector, never on the results, so rows do not
+  // move while a run fills them in or when the results are reset.
   private final ArrayList<Integer> sortedIndices = new ArrayList<>();
-  private final ArrayList<Integer> allIndices = new ArrayList<>();
+  // Results arrive from the test thread one row at a time; at most one refresh is queued on the
+  // EDT at any moment, so a large vector cannot flood the event queue.
+  private final AtomicBoolean refreshPending = new AtomicBoolean();
   private boolean selected = false;
   private boolean running;
   private boolean paused;
@@ -68,8 +70,6 @@ class Model implements CircuitListener {
     synchronized (this) {
       if (vec == null || results == null) return;
       numPass = numFail = 0;
-      failed.clear();
-      passed.clear();
     }
     fireTestResultsChanged();
   }
@@ -121,15 +121,9 @@ class Model implements CircuitListener {
     stop();
     synchronized (this) {
       vec = v;
-      updateAllIndices();
       results = ((v != null) ? (new ArrayList[v.data.size()]) : null);
       numPass = numFail = 0;
-      failed.clear();
-      passed.clear();
-      sortedIndices.clear();
-      if (v != null) {
-        updateSortedIndices();
-      }
+      updateSortedIndices();
     }
     fireVectorChanged();
   }
@@ -175,11 +169,7 @@ class Model implements CircuitListener {
         numFail++;
       }
     }
-    if (!SwingUtilities.isEventDispatchThread()) {
-      SwingUtilities.invokeLater(myUpdateResultSort);
-    } else {
-      updateResultSort();
-    }
+    resultsChanged();
     return true;
   }
 
@@ -213,26 +203,22 @@ class Model implements CircuitListener {
         }
       }
     }
-    // Always update sorted indices and fire event, even for updates
-    if (!SwingUtilities.isEventDispatchThread()) {
+    resultsChanged();
+  }
+
+  private void resultsChanged() {
+    if (SwingUtilities.isEventDispatchThread()) {
+      fireTestResultsChanged();
+    } else if (refreshPending.compareAndSet(false, true)) {
       SwingUtilities.invokeLater(() -> {
-        updateSortedIndices();
+        refreshPending.set(false);
         fireTestResultsChanged();
       });
-    } else {
-      updateSortedIndices();
-      fireTestResultsChanged();
     }
   }
 
   public int sortedIndex(int i) {
-    if (i < sortedIndices.size()) {
-      return sortedIndices.get(i);
-    }
-    // Fallback: if sortedIndices not populated, use old behavior
-    if (i < failed.size()) return failed.get(i);
-    if (i < failed.size() + passed.size()) return passed.get(i - failed.size());
-    return i;
+    return i < sortedIndices.size() ? sortedIndices.get(i) : i;
   }
 
   public void start() throws TestException {
@@ -260,64 +246,15 @@ class Model implements CircuitListener {
     fireTestingChanged();
   }
 
-  private void updateResultSort() {
-    if (vec == null) return;
-    for (int i = failed.size() + passed.size(); i < numPass + numFail; i++) {
-      if (results[i] == null) passed.add(i);
-      else failed.add(i);
-    }
-    updateSortedIndices();
-    fireTestResultsChanged();
-  }
-
-  // Call when vec is modified
-  private void updateAllIndices() {
-    // Create list of all row indices
-    allIndices.clear();
-    for (int i = 0; i < vec.data.size(); i++) {
-      allIndices.add(i);
-    }
-  }
-
   private void updateSortedIndices() {
-    if (vec == null) return;
     sortedIndices.clear();
-    // Sort by set first, then by sequence, then by pass/fail status, then by original index
-    allIndices.sort((a, b) -> {
-      int setA = (vec.setNumbers != null && a < vec.setNumbers.length) ? vec.setNumbers[a] : 0;
-      int setB = (vec.setNumbers != null && b < vec.setNumbers.length) ? vec.setNumbers[b] : 0;
-      int seqA = (vec.seqNumbers != null && a < vec.seqNumbers.length) ? vec.seqNumbers[a] : 0;
-      int seqB = (vec.seqNumbers != null && b < vec.seqNumbers.length) ? vec.seqNumbers[b] : 0;
-
-      // First compare by set
-      int setCompare = Integer.compare(setA, setB);
-      if (setCompare != 0) return setCompare;
-
-      // Then compare by sequence
-      int seqCompare = Integer.compare(seqA, seqB);
-      if (seqCompare != 0) return seqCompare;
-
-      // Within same set/seq, show failed tests first (if results available)
-      if (results != null && a < results.length && b < results.length) {
-        boolean failedA = results[a] != null;
-        boolean failedB = results[b] != null;
-        if (failedA != failedB) {
-          return failedA ? -1 : 1; // failed comes first
-        }
-      }
-
-      // If set and seq are the same, maintain original order (by index)
-      return Integer.compare(a, b);
+    if (vec == null) return;
+    for (var i = 0; i < vec.data.size(); i++) sortedIndices.add(i);
+    // By set, then by sequence, then in file order (the sort is stable). TestVector already
+    // requires ascending sets and sequences, so this is normally the file order itself.
+    sortedIndices.sort((a, b) -> {
+      final var setCompare = Integer.compare(vec.setNumbers[a], vec.setNumbers[b]);
+      return setCompare != 0 ? setCompare : Integer.compare(vec.seqNumbers[a], vec.seqNumbers[b]);
     });
-
-    sortedIndices.addAll(allIndices);
-  }
-
-  private class UpdateResultSort implements Runnable {
-
-    @Override
-    public void run() {
-      updateResultSort();
-    }
   }
 }
