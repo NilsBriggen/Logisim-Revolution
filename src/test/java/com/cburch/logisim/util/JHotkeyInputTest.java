@@ -28,6 +28,7 @@ import com.cburch.logisim.prefs.PrefMonitorKeyStroke;
 import java.awt.Container;
 import java.awt.event.ActionEvent;
 import java.awt.event.FocusEvent;
+import java.awt.event.HierarchyEvent;
 import java.awt.event.KeyEvent;
 import javax.swing.JButton;
 import javax.swing.JComponent;
@@ -43,7 +44,7 @@ class JHotkeyInputTest {
       when(binding.getName()).thenReturn("hotkeySimAutoPropagate");
       final var input = new JHotkeyInput(null, "Ctrl+K");
       input.setBoundKeyStroke(binding);
-      focus(input);
+      activate(input);
       clearInvocations(binding);
       try (final var preferences = mockStatic(AppPreferences.class);
           final var dialogs = mockStatic(OptionPane.class)) {
@@ -63,7 +64,7 @@ class JHotkeyInputTest {
       when(binding.getName()).thenReturn("hotkeySimAutoPropagate");
       final var input = new JHotkeyInput(null, "Ctrl+K");
       input.setBoundKeyStroke(binding);
-      focus(input);
+      activate(input);
       clearInvocations(binding);
       key(input, KeyEvent.VK_DELETE);
       assertEquals("", input.hotkeyInputField.getText());
@@ -80,7 +81,7 @@ class JHotkeyInputTest {
       when(binding.getName()).thenReturn("hotkeySimAutoPropagate");
       final var input = new JHotkeyInput(null, "Ctrl+K");
       input.setBoundKeyStroke(binding);
-      focus(input);
+      activate(input);
       key(input, KeyEvent.VK_DELETE);
       final var action = input.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
           .get(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0));
@@ -97,7 +98,7 @@ class JHotkeyInputTest {
       when(binding.metaCheckPass(anyInt())).thenReturn(false);
       final var input = new JHotkeyInput(null, "Ctrl+K");
       input.setBoundKeyStroke(binding);
-      focus(input);
+      activate(input);
       try (final var dialogs = mockStatic(OptionPane.class)) {
         key(input, KeyEvent.VK_A);
         dialogs.verify(() -> OptionPane.showMessageDialog(same(input),
@@ -110,13 +111,54 @@ class JHotkeyInputTest {
   }
 
   @Test
+  void tabbingIntoTheFieldDoesNotStartRecording() throws Exception {
+    FormLayoutTestSupport.atScale(1, () -> {
+      final var binding = mock(PrefMonitorKeyStroke.class);
+      when(binding.getName()).thenReturn("hotkeySimAutoPropagate");
+      final var input = new JHotkeyInput(null, "Ctrl+K");
+      input.setBoundKeyStroke(binding);
+      clearInvocations(binding);
+      focus(input);
+      assertFalse(input.isEditing());
+      assertEquals("CTRL+K", input.hotkeyInputField.getText());
+      // Outside recording, ordinary keys (Escape closing the dialog) are left alone.
+      assertFalse(press(input, KeyEvent.VK_ESCAPE).isConsumed());
+      assertFalse(press(input, KeyEvent.VK_A).isConsumed());
+      assertEquals("CTRL+K", input.hotkeyInputField.getText());
+      verifyNoInteractions(binding);
+    });
+  }
+
+  @Test
+  void hidingTheEditorDiscardsTheDraft() throws Exception {
+    FormLayoutTestSupport.atScale(1, () -> {
+      final var binding = mock(PrefMonitorKeyStroke.class);
+      when(binding.getName()).thenReturn("hotkeySimAutoPropagate");
+      final var input = new JHotkeyInput(null, "Ctrl+K");
+      input.setBoundKeyStroke(binding);
+      clearInvocations(binding);
+      activate(input);
+      key(input, KeyEvent.VK_DELETE);
+      assertEquals("", input.hotkeyInputField.getText());
+      final var hidden = new HierarchyEvent(input, HierarchyEvent.HIERARCHY_CHANGED, input,
+          null, HierarchyEvent.SHOWING_CHANGED);
+      for (final var listener : input.getHierarchyListeners()) {
+        listener.hierarchyChanged(hidden);
+      }
+      assertFalse(input.isEditing());
+      assertEquals("CTRL+K", input.hotkeyInputField.getText());
+      verifyNoInteractions(binding);
+    });
+  }
+
+  @Test
   void actionButtonsFitAndExplicitMetricsDoNotStickAfterScaleDown() throws Exception {
     FormLayoutTestSupport.atScale(2, () -> {
       final var binding = mock(PrefMonitorKeyStroke.class);
       when(binding.getName()).thenReturn("hotkeySimAutoPropagate");
       final var input = new JHotkeyInput(null, "Ctrl+K");
       input.setBoundKeyStroke(binding);
-      focus(input);
+      activate(input);
       input.setSize(input.getPreferredSize());
       FormLayoutTestSupport.layoutTree(input);
       assertButtonsFit(input);
@@ -147,6 +189,21 @@ class JHotkeyInputTest {
     for (final var listener : input.hotkeyInputField.getFocusListeners()) {
       listener.focusGained(event);
     }
+  }
+
+  private static void activate(JHotkeyInput input) {
+    focus(input);
+    key(input, KeyEvent.VK_ENTER);
+    assertTrue(input.isEditing());
+  }
+
+  private static KeyEvent press(JHotkeyInput input, int code) {
+    final var pressed = new KeyEvent(input.hotkeyInputField, KeyEvent.KEY_PRESSED, 0, 0,
+        code, KeyEvent.CHAR_UNDEFINED);
+    for (final var listener : input.hotkeyInputField.getKeyListeners()) {
+      listener.keyPressed(pressed);
+    }
+    return pressed;
   }
 
   private static void key(JHotkeyInput input, int code) {

@@ -252,6 +252,7 @@ public class FpgaOptions extends OptionsPanel {
     gbc.weightx = 1.0;
     gbc.anchor = GridBagConstraints.LINE_START;
     gbc.insets = new Insets(2, 0, 2, 12);
+    caption.setLabelFor(swatch);
     panel.add(caption, gbc);
     gbc.gridx = 1;
     gbc.weightx = 0.0;

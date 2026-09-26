@@ -14,6 +14,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.awt.event.KeyEvent;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
+import javax.swing.event.MenuEvent;
 import org.junit.jupiter.api.Test;
 
 class MenuMnemonicsTest {
@@ -55,6 +57,39 @@ class MenuMnemonicsTest {
     assertEquals(KeyEvent.VK_A, first.getMnemonic());
     assertEquals(0, second.getMnemonic());
     assertEquals(0, empty.getMnemonic());
+  }
+
+  @Test
+  void itemsAndSubmenuItemsGetDistinctMnemonicsAndLateItemsGetOneOnOpen() {
+    final var bar = new JMenuBar();
+    final var file = new JMenu("File");
+    final var open = new JMenuItem("Open");
+    final var save = new JMenuItem("Save");
+    final var saveAs = new JMenuItem("Save As");
+    final var recent = new JMenu("Open Recent");
+    final var first = new JMenuItem("one.circ");
+    bar.add(file);
+    file.add(open);
+    file.addSeparator();
+    file.add(save);
+    file.add(saveAs);
+    file.add(recent);
+    recent.add(first);
+
+    MenuMnemonics.assign(bar);
+
+    assertEquals(KeyEvent.VK_O, open.getMnemonic());
+    assertEquals(KeyEvent.VK_S, save.getMnemonic());
+    assertEquals(KeyEvent.VK_A, saveAs.getMnemonic());
+    assertEquals(KeyEvent.VK_P, recent.getMnemonic());
+    assertEquals(KeyEvent.VK_O, first.getMnemonic());
+
+    final var second = new JMenuItem("other.circ");
+    recent.add(second);
+    for (final var listener : recent.getMenuListeners()) {
+      listener.menuSelected(new MenuEvent(recent));
+    }
+    assertEquals(KeyEvent.VK_T, second.getMnemonic());
   }
 
   @Test

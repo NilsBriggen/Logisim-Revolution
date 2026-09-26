@@ -73,6 +73,8 @@ import java.awt.geom.Point2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.List;
+import javax.accessibility.AccessibleContext;
+import javax.accessibility.AccessibleRole;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollBar;
@@ -329,6 +331,52 @@ public class Canvas extends JPanel implements LocaleListener, CanvasPaneContents
   //
   public Circuit getCircuit() {
     return proj.getCurrentCircuit();
+  }
+
+  /**
+   * The centre of the part of the circuit currently in view, in circuit coordinates; where a
+   * component placed from the keyboard lands when the pointer is not over the canvas.
+   */
+  public Point getVisibleCircuitCenter() {
+    final var zoom = getZoomFactor();
+    final var visible = getVisibleRect();
+    return new Point(
+        (int) Math.round(visible.getCenterX() / zoom), (int) Math.round(visible.getCenterY() / zoom));
+  }
+
+  @Override
+  public AccessibleContext getAccessibleContext() {
+    if (accessibleContext == null) accessibleContext = new AccessibleCanvas();
+    return accessibleContext;
+  }
+
+  /**
+   * Describes the drawing to assistive technology: which circuit it shows, the active tool, how
+   * much is selected and the keys that work without a mouse. Read live, so it never goes stale.
+   */
+  protected class AccessibleCanvas extends AccessibleJPanel {
+    private static final long serialVersionUID = 1L;
+
+    @Override
+    public AccessibleRole getAccessibleRole() {
+      return AccessibleRole.CANVAS;
+    }
+
+    @Override
+    public String getAccessibleName() {
+      if (accessibleName != null) return accessibleName;
+      final var circuit = getCircuit();
+      return S.get("canvasAccessibleName", circuit == null ? "" : circuit.getName());
+    }
+
+    @Override
+    public String getAccessibleDescription() {
+      if (accessibleDescription != null) return accessibleDescription;
+      final var tool = proj.getTool();
+      final var count = selection.getComponents().size();
+      return S.get("canvasAccessibleDescription",
+          tool == null ? "" : tool.getDisplayName(), Integer.toString(count));
+    }
   }
 
   public HdlModel getCurrentHdl() {

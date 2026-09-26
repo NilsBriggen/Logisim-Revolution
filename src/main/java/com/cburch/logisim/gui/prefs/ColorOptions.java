@@ -114,6 +114,7 @@ public class ColorOptions extends OptionsPanel {
       @SuppressWarnings("unchecked")
       final var monitor = (PrefMonitor<Integer>) monitors[index];
       final var button = new ColorChooserButton(window, monitor);
+      caption.setLabelFor(button);
       grid.add(button, gbc);
       swatches.add(new Swatch(keys[index], caption, button));
       gbc.gridx = 2;
@@ -136,7 +137,9 @@ public class ColorOptions extends OptionsPanel {
       final var caption = new JLabel(S.get("simKmapColors", index + 1));
       grid.add(caption, gbc);
       gbc.gridx++;
-      grid.add(new ColorChooserButton(window, covers[index]), gbc);
+      final var button = new ColorChooserButton(window, covers[index]);
+      caption.setLabelFor(button);
+      grid.add(button, gbc);
     }
     gbc.gridx = 8;
     gbc.gridy = 0;

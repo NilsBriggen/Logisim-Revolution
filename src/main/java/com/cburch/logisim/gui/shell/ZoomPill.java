@@ -153,6 +153,9 @@ public class ZoomPill extends JPanel {
     percent.setEnabled(model != null);
     final var text = zoomText();
     percent.setText(text);
+    // Screen readers announce the level itself; what clicking does is the description.
+    if (!text.isEmpty()) percent.getAccessibleContext().setAccessibleName(text);
+    percent.getAccessibleContext().setAccessibleDescription(S.get("zoomResetTip"));
     percent.setForeground(Tokens.statusBarForeground());
     gridButton.setIcon(
         AppIcons.colored(

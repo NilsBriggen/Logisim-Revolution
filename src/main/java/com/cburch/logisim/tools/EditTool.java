@@ -14,6 +14,7 @@ import static com.cburch.logisim.tools.Strings.S;
 import com.cburch.logisim.LogisimVersion;
 import com.cburch.logisim.circuit.CircuitEvent;
 import com.cburch.logisim.circuit.CircuitListener;
+import com.cburch.logisim.circuit.ReplacementMap;
 import com.cburch.logisim.circuit.Wire;
 import com.cburch.logisim.comp.Component;
 import com.cburch.logisim.comp.ComponentDrawContext;
@@ -31,11 +32,13 @@ import com.cburch.logisim.gui.main.SelectionActions;
 import com.cburch.logisim.instance.StdAttr;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.prefs.PrefMonitorKeyStroke;
+import com.cburch.logisim.tools.move.MoveGesture;
 import com.cburch.logisim.util.CollectionUtil;
 import com.cburch.logisim.util.GraphicsUtil;
 import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Graphics;
+import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
@@ -128,7 +131,8 @@ public class EditTool extends Tool {
     }
   }
 
-  private void attemptReface(Canvas canvas, final Direction facing, KeyEvent e) {
+  /** Returns whether anything in the selection could be turned to {@code facing}. */
+  private boolean attemptReface(Canvas canvas, final Direction facing, KeyEvent e) {
     /* cancel the limit of no modifier*/
     final var circuit = canvas.getCircuit();
     final var sel = canvas.getSelection();
@@ -144,7 +148,78 @@ public class EditTool extends Tool {
     if (!act.isEmpty()) {
       canvas.getProject().doAction(act);
       e.consume();
+      return true;
     }
+    return false;
+  }
+
+  /** Grid steps a Shift+arrow nudge moves the selection. */
+  static final int LARGE_NUDGE_STEPS = 5;
+
+  /**
+   * Moves the selection with the arrow keys: one grid step, or {@link #LARGE_NUDGE_STEPS} with
+   * Shift. Other modifiers are left alone (Alt+arrow moves labels, Ctrl+arrow reorders), as is
+   * any combination the user has bound to a shortcut, unless {@code ownBinding} says the key is
+   * the reface binding that found nothing to turn.
+   */
+  private boolean attemptNudge(Canvas canvas, KeyEvent e, boolean ownBinding) {
+    final var code = e.getKeyCode();
+    final var modifiers = e.getModifiersEx();
+    if (modifiers != 0 && modifiers != InputEvent.SHIFT_DOWN_MASK) return false;
+    final var offset = nudgeOffset(code, modifiers);
+    if (offset == null) return false;
+    if (!ownBinding && !AppPreferences.hotkeyCheckConflict("", code, modifiers).isEmpty()) {
+      return false;
+    }
+    if (canvas.getSelection().isEmpty()) return false;
+    nudgeSelection(canvas, offset.x, offset.y);
+    e.consume();
+    return true;
+  }
+
+  /** The move an arrow key asks for, or null if {@code code} is not an arrow key. */
+  static java.awt.Point nudgeOffset(int code, int modifiers) {
+    final var step = (modifiers & InputEvent.SHIFT_DOWN_MASK) != 0 ? 10 * LARGE_NUDGE_STEPS : 10;
+    return switch (code) {
+      case KeyEvent.VK_UP, KeyEvent.VK_KP_UP -> new java.awt.Point(0, -step);
+      case KeyEvent.VK_DOWN, KeyEvent.VK_KP_DOWN -> new java.awt.Point(0, step);
+      case KeyEvent.VK_LEFT, KeyEvent.VK_KP_LEFT -> new java.awt.Point(-step, 0);
+      case KeyEvent.VK_RIGHT, KeyEvent.VK_KP_RIGHT -> new java.awt.Point(step, 0);
+      default -> null;
+    };
+  }
+
+  /**
+   * Translates the selection by {@code dx}, {@code dy} as one undoable step, never past the
+   * circuit's top-left corner and keeping wires connected the way a drag does by default.
+   */
+  static void nudgeSelection(Canvas canvas, int dx, int dy) {
+    final var proj = canvas.getProject();
+    final var circuit = canvas.getCircuit();
+    final var sel = canvas.getSelection();
+    if (circuit == null || sel.isEmpty()) return;
+    if (!proj.getLogisimFile().contains(circuit)) {
+      canvas.setErrorMessage(S.getter("cannotModifyError"));
+      return;
+    }
+    final var bds = sel.getBounds(canvas.getGraphics());
+    if (bds != com.cburch.logisim.data.Bounds.EMPTY_BOUNDS) {
+      dx = Math.max(dx, -bds.getX());
+      dy = Math.max(dy, -bds.getY());
+    }
+    if (dx == 0 && dy == 0) return;
+    if (sel.hasConflictWhenMoved(dx, dy)) {
+      canvas.setErrorMessage(S.getter("exclusiveError"));
+      return;
+    }
+    ReplacementMap repl = null;
+    if (AppPreferences.MOVE_KEEP_CONNECT.getBoolean()) {
+      repl = new MoveGesture(null, circuit, sel.getAnchoredComponents())
+          .forceRequest(dx, dy)
+          .getReplacementMap();
+    }
+    proj.doAction(SelectionActions.translate(sel, dx, dy, repl));
+    proj.repaintCanvas();
   }
 
   @Override
@@ -298,13 +373,19 @@ public class EditTool extends Tool {
       canvas.getProject().doAction(act);
       e.consume();
     } else if (((PrefMonitorKeyStroke) AppPreferences.HOTKEY_DIR_NORTH).compare(code, modifier)) {
-      attemptReface(canvas, Direction.NORTH, e);
+      // The reface binding wins; with nothing that can face, an arrow still moves the selection.
+      if (!attemptReface(canvas, Direction.NORTH, e)) attemptNudge(canvas, e, true);
     } else if (((PrefMonitorKeyStroke) AppPreferences.HOTKEY_DIR_SOUTH).compare(code, modifier)) {
-      attemptReface(canvas, Direction.SOUTH, e);
+      // The reface binding wins; with nothing that can face, an arrow still moves the selection.
+      if (!attemptReface(canvas, Direction.SOUTH, e)) attemptNudge(canvas, e, true);
     } else if (((PrefMonitorKeyStroke) AppPreferences.HOTKEY_DIR_EAST).compare(code, modifier)) {
-      attemptReface(canvas, Direction.EAST, e);
+      // The reface binding wins; with nothing that can face, an arrow still moves the selection.
+      if (!attemptReface(canvas, Direction.EAST, e)) attemptNudge(canvas, e, true);
     } else if (((PrefMonitorKeyStroke) AppPreferences.HOTKEY_DIR_WEST).compare(code, modifier)) {
-      attemptReface(canvas, Direction.WEST, e);
+      // The reface binding wins; with nothing that can face, an arrow still moves the selection.
+      if (!attemptReface(canvas, Direction.WEST, e)) attemptNudge(canvas, e, true);
+    } else if (attemptNudge(canvas, e, false)) {
+      // Handled: the selection moved.
     } else if (code == KeyEvent.VK_ALT) {
       updateLocation(canvas, e);
       e.consume();

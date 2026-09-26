@@ -21,6 +21,8 @@ import java.awt.Dimension;
 import java.awt.Graphics;
 import java.util.ArrayList;
 import java.util.List;
+import javax.accessibility.AccessibleRole;
+import javax.accessibility.AccessibleState;
 import org.junit.jupiter.api.Test;
 
 /** Tests the toolbar button wrapper around a {@link ToolbarItem}. */
@@ -108,6 +110,35 @@ public class ToolbarButtonTest extends TestBase {
     final var button = new ToolbarButton(new Toolbar(model), item);
 
     assertEquals("tip", button.getAccessibleContext().getAccessibleName());
+  }
+
+  @Test
+  public void accessibleNameFollowsTheItemAndSelectedStateIsExposed() {
+    final var tip = new String[] {"Edit"};
+    final var item = new FakeItem(true, 16, 16) {
+      @Override
+      public String getToolTip() {
+        return tip[0];
+      }
+    };
+    final var selected = new boolean[] {false};
+    final var model = new RecordingModel() {
+      @Override
+      public boolean isSelected(ToolbarItem candidate) {
+        return selected[0] && candidate == item;
+      }
+    };
+    final var button = new ToolbarButton(new Toolbar(model), item);
+    final var context = button.getAccessibleContext();
+
+    assertEquals("Edit", context.getAccessibleName());
+    tip[0] = "Bearbeiten";
+    assertEquals("Bearbeiten", context.getAccessibleName());
+    assertEquals(AccessibleRole.TOGGLE_BUTTON, context.getAccessibleRole());
+    assertFalse(context.getAccessibleStateSet().contains(AccessibleState.SELECTED));
+    selected[0] = true;
+    assertTrue(context.getAccessibleStateSet().contains(AccessibleState.SELECTED));
+    assertTrue(context.getAccessibleStateSet().contains(AccessibleState.CHECKED));
   }
 
   @Test

@@ -16,22 +16,26 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.cburch.logisim.gui.shell.EditorTabModel.Kind;
 import com.cburch.logisim.gui.shell.EditorTabModel.Tab;
 import java.awt.BorderLayout;
+import java.awt.event.ActionEvent;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.util.ArrayList;
+import javax.swing.JComponent;
 import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JRootPane;
 import javax.swing.JTabbedPane;
+import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 import org.junit.jupiter.api.Test;
 
 class EditorTabsTest {
 
   @Test
-  void cyclingWrapsFromCanvasListFilterAndCodeFocusWithoutConsumingPlainTab() throws Exception {
+  void ctrlTabCyclesFromCanvasAndListButNotFromTextOrTable() throws Exception {
     SwingUtilities.invokeAndWait(() -> {
       final var model = new EditorTabModel();
       final var activated = new ArrayList<Tab>();
@@ -47,9 +51,7 @@ class EditorTabsTest {
       content.add(tabs, BorderLayout.NORTH);
       final var focusArea = new JPanel();
       content.add(focusArea);
-      for (final var focus : new javax.swing.JComponent[] {
-          new JPanel(), new JList<>(), new JTextField(), new JTextArea()
-      }) {
+      for (final var focus : new javax.swing.JComponent[] {new JPanel(), new JList<>()}) {
         focusArea.add(focus);
         model.syncTo(model.tabs().get(19));
         activated.clear();
@@ -67,6 +69,16 @@ class EditorTabsTest {
         assertEquals(19, tabs.getSelectedIndex());
         assertFalse(tabs.dispatchTabKey(key(focus, 0)), "plain Tab must still traverse");
       }
+      // Tables and text components keep Ctrl+Tab as their focus-traversal escape.
+      for (final var focus : new javax.swing.JComponent[] {
+          new JTextField(), new JTextArea(), new JTable(2, 2)
+      }) {
+        focusArea.add(focus);
+        final var event = key(focus, InputEvent.CTRL_DOWN_MASK);
+        assertFalse(tabs.dispatchTabKey(event));
+        assertFalse(event.isConsumed());
+        assertEquals(19, model.selectedIndex());
+      }
       final var otherWindow = new JRootPane();
       final var otherEditor = new JTextField();
       otherWindow.getContentPane().add(otherEditor);
@@ -75,6 +87,28 @@ class EditorTabsTest {
       tabs.refresh();
       assertEquals(19, tabs.getSelectedIndex());
       assertEquals(20, tabs.getTabCount());
+    });
+  }
+
+  @Test
+  void ctrlPageDownAndUpCycleFromAnywhereInTheWindow() throws Exception {
+    SwingUtilities.invokeAndWait(() -> {
+      final var model = new EditorTabModel();
+      final var tabs = new EditorTabs(model, tab -> "circuit");
+      for (var index = 0; index < 3; index++) {
+        model.syncTo(new Tab(Kind.LAYOUT, new Object()));
+      }
+      model.syncTo(model.tabs().get(0));
+      final var input = tabs.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+      final var next = input.get(
+          KeyStroke.getKeyStroke(KeyEvent.VK_PAGE_DOWN, InputEvent.CTRL_DOWN_MASK));
+      final var previous = input.get(
+          KeyStroke.getKeyStroke(KeyEvent.VK_PAGE_UP, InputEvent.CTRL_DOWN_MASK));
+      tabs.getActionMap().get(next).actionPerformed(new ActionEvent(tabs, 0, "next"));
+      assertEquals(1, model.selectedIndex());
+      tabs.getActionMap().get(previous).actionPerformed(new ActionEvent(tabs, 0, "prev"));
+      tabs.getActionMap().get(previous).actionPerformed(new ActionEvent(tabs, 0, "prev"));
+      assertEquals(2, model.selectedIndex());
     });
   }
 

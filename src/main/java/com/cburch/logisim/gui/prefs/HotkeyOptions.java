@@ -203,6 +203,7 @@ class HotkeyOptions extends OptionsPanel {
         InputEvent.getModifiersExText(AppPreferences.hotkeyMenuMask)));
     resetBtn.setText(S.get("hotkeyOptResetBtn"));
     orientDescLabel.setText(S.get("hotkeyOptOrientDesc"));
+    orientDescLabel.setToolTipText(S.get("hotkeyOptOrientTip"));
     orientEastLabel.setText(" " + S.get("hotkeyDirEast") + " ");
     orientWestLabel.setText(" " + S.get("hotkeyDirWest") + " ");
     orientSouthLabel.setText(" " + S.get("hotkeyDirSouth") + " ");

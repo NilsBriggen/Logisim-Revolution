@@ -9,10 +9,14 @@
 
 package com.cburch.logisim.gui.log;
 
+import static com.cburch.logisim.gui.Strings.S;
+
 import com.cburch.logisim.circuit.RadixOption;
 import com.cburch.logisim.gui.theme.AppIcons;
+import com.cburch.logisim.gui.theme.Tokens;
 import com.cburch.logisim.util.CollectionUtil;
-import java.awt.Color;
+import com.cburch.logisim.util.UiFonts;
+import com.cburch.logisim.util.UiScale;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
@@ -338,8 +342,6 @@ public class SelectionList extends JTable {
     addOrMove(items, logModel.getSignalCount());
   }
 
-  private static final Font MSG_FONT = new Font(Font.SANS_SERIF, Font.ITALIC, 12);
-
   @Override
   public void paintComponent(Graphics g) {
     super.paintComponent(g);
@@ -351,9 +353,12 @@ public class SelectionList extends JTable {
 
     final var f = g.getFont();
     final var c = g.getColor();
-    g.setColor(Color.GRAY);
-    g.setFont(MSG_FONT);
-    g.drawString("drag here to add", 10, getRowHeight() * getRowCount() + 20);
+    g.setColor(Tokens.mutedForeground());
+    // Scaled with the interface, like every other piece of text in the window.
+    final var font = UiFonts.small().deriveFont(Font.ITALIC);
+    g.setFont(font);
+    g.drawString(S.get("selectionDropHint"), UiScale.scaled(10),
+        getRowHeight() * getRowCount() + g.getFontMetrics(font).getHeight() + UiScale.scaled(4));
     g.setFont(f);
     g.setColor(c);
   }
