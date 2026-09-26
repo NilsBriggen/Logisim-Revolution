@@ -133,7 +133,7 @@ public class Print {
       if (pageIndex >= circuits.size()) return Printable.NO_SUCH_PAGE;
 
       var circ = circuits.get(pageIndex);
-      final var circState = proj.getCircuitState(circ);
+      final var circState = ExportImage.stateForExport(proj, circ, printerView);
       final var g = base.create();
       final var g2 = g instanceof Graphics2D ? (Graphics2D) g : null;
       final var headerFont = g.getFont();
@@ -209,6 +209,7 @@ public class Print {
               proj.getFrame().getCanvas(), circ, circState, base, g, printerView);
       Collection<Component> noComps = Collections.emptySet();
       circ.draw(context, noComps);
+      if (circState != proj.getCircuitState(circ)) circState.detachFromCircuits();
       g.dispose();
       return Printable.PAGE_EXISTS;
     }

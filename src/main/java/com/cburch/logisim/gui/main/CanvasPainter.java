@@ -57,7 +57,8 @@ class CanvasPainter implements PropertyChangeListener {
   }
 
   private void drawWidthIncompatibilityData(Graphics base, Graphics g, Project proj) {
-    final var exceptions = proj.getCurrentCircuit().getWidthIncompatibilityData();
+    final var circuit = proj.getCurrentCircuit();
+    final var exceptions = circuit.getWidthIncompatibilityData();
     if (CollectionUtil.isNullOrEmpty(exceptions)) return;
 
     final var fm = base.getFontMetrics(g.getFont());
@@ -86,11 +87,25 @@ class CanvasPainter implements PropertyChangeListener {
         g.setColor(Value.widthErrorColor());
         g.drawOval(p.getX() - 4, p.getY() - 4, 8, 8);
         GraphicsUtil.switchToWidth(g, 3);
+        // Put the caption on the side of the point away from the components there, so it does not
+        // cover their text (a splitter's bit labels sit right next to its ends).
+        var awayX = 1;
+        var awayY = 1;
+        for (final var comp : circuit.getNonWires(p)) {
+          final var bds = comp.getBounds(g);
+          final var cx = bds.getX() + bds.getWidth() / 2;
+          final var cy = bds.getY() + bds.getHeight() / 2;
+          if (cx > p.getX()) awayX = -1;
+          if (cy > p.getY()) awayY = -1;
+        }
+        final var text = caption.toString();
+        final var textX = awayX > 0 ? p.getX() + 4 : p.getX() - 4 - fm.stringWidth(text);
+        final var textY = awayY > 0 ? p.getY() + 1 + fm.getAscent() : p.getY() - 1 - fm.getDescent();
         GraphicsUtil.outlineText(
             g,
-            caption,
-            p.getX() + 4,
-            p.getY() + 1 + fm.getAscent(),
+            text,
+            textX,
+            textY,
             Value.widthErrorCaptionColor(),
             common != null && !w.equals(common)
                 ? Value.widthErrorHighlightColor()
@@ -161,10 +176,10 @@ class CanvasPainter implements PropertyChangeListener {
     final var circState = proj.getCircuitState();
     final var context = new ComponentDrawContext(canvas, circ, circState, base, g, false);
     context.setHighlightedWires(highlightedWires);
+    final var showSelection = !(proj.getTool() instanceof PokeTool);
+    if (showSelection) sel.drawUnderlay(context, hidden);
     circ.draw(context, hidden);
-    if (!(proj.getTool() instanceof PokeTool)) {
-      sel.draw(context, hidden);
-    }
+    if (showSelection) sel.draw(context, hidden);
 
     // draw tool
     final var tool = dragTool != null ? dragTool : proj.getTool();

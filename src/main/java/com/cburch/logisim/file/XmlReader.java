@@ -495,6 +495,8 @@ class XmlReader {
               addError(S.get("circNameMissingError"), "C??");
             }
             final var circData = new CircuitData(circElt, new Circuit(name, file, proj));
+            // An unedited custom appearance is not saved but regenerated: keep the old one.
+            circData.circuit.getAppearance().useLegacyDefaultCustomAppearance();
             file.addCircuit(circData.circuit);
             circData.knownComponents = loadKnownComponents(circElt, isHolyCrossFile,
                 isEvolutionFile);
@@ -562,6 +564,10 @@ class XmlReader {
       XmlCircuitReader builder;
       builder = new XmlCircuitReader(this, circuitsData, isHolyCrossFile, isEvolutionFile);
       builder.execute();
+      // Only now are all pins known to each circuit's appearance.
+      for (final var circData : circuitsData) {
+        circData.circuit.getAppearance().adoptLabelledDefaultIfMatching();
+      }
     }
 
     /**

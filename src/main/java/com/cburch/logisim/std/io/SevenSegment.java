@@ -170,6 +170,17 @@ public class SevenSegment extends InstanceFactory implements DynamicElementProvi
     setKeyConfigurator(new DirectionConfigurator(StdAttr.LABEL_LOC, KeyEvent.ALT_DOWN_MASK));
   }
 
+  /**
+   * Newly placed displays show their label, like the other I/O components. The attribute's
+   * default stays hidden, which is what displays saved without it have always shown.
+   */
+  @Override
+  public AttributeSet createToolAttributeSet() {
+    final var attrs = createAttributeSet();
+    attrs.setValue(StdAttr.LABEL_VISIBILITY, true);
+    return attrs;
+  }
+
   private void updatePorts(Instance instance) {
     final var hasDp = instance.getAttributeValue(ATTR_DP);
     final var ps = new Port[hasDp ? 8 : 7];

@@ -277,7 +277,12 @@ final class XmlWriter {
     final var ret = doc.createElement("circuit");
     ret.setAttribute("name", circuit.getName());
     addAttributeSetContent(ret, circuit.getStaticAttributes(), CircuitAttributes.DEFAULT_STATIC_ATTRIBUTES, false);
-    if (circuit.getAppearance().hasCustomAppearance()) {
+    final var appearance = circuit.getAppearance();
+    final var usesLabelledDefault =
+        appearance.isLabelledDefaultCustomAppearance()
+            && circuit.getStaticAttributes().getValue(CircuitAttributes.APPEARANCE_ATTR)
+                == CircuitAttributes.APPEAR_CUSTOM;
+    if (appearance.hasCustomAppearance() || usesLabelledDefault) {
       final var appear = doc.createElement("appear");
       for (Object obj : circuit.getAppearance().getCustomObjectsFromBottom()) {
         if (obj instanceof AbstractCanvasObject canvasObject) {

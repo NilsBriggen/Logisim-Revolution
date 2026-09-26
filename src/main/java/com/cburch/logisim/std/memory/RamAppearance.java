@@ -241,7 +241,7 @@ public class RamAppearance {
             bds.getY() + 6);
     /* draw the contents */
     if (painter.getShowState()) {
-      MemState state = (MemState) inst.getData(painter.getCircuitState());
+      MemState state = Mem.getStateForPainting(painter);
       if (state != null)
         state.paint(
             painter.getGraphics(),
@@ -282,7 +282,7 @@ public class RamAppearance {
             bds.getX() + (Mem.SymbolWidth / 2) + 20, bds.getY() + 6);
     /* draw the contents */
     if (painter.getShowState()) {
-      final var state = (MemState) inst.getData(painter.getCircuitState());
+      final var state = Mem.getStateForPainting(painter);
       if (state != null)
         state.paint(
             painter.getGraphics(),
@@ -561,11 +561,11 @@ public class RamAppearance {
             xpos[2] = x + 20;
             ypos[0] = y + 5;
             ypos[1] = ypos[2] = y + 10;
-            g.setFont(font.deriveFont(7.0f));
+            g.setFont(font.deriveFont(Mem.ANNOTATION_FONT_SIZE));
             g.setColor(new Color(AppPreferences.COMPONENT_COLOR.get()));
             for (var j = 0; j < Math.min(8, nrOfBits); j++) {
               g.drawPolyline(xpos, ypos, 3);
-              if (nrOfBits <= 8) {
+              if (nrOfBits <= 8 && Mem.annotationsLegible(g)) {
                 GraphicsUtil.drawText(g, Integer.toString(j), xpos[2] - 3, ypos[2] - 3, GraphicsUtil.H_RIGHT, GraphicsUtil.V_BASELINE);
               }
               ypos[0] += 20;
@@ -626,11 +626,11 @@ public class RamAppearance {
             xpos[2] = x - 20;
             ypos[0] = y + 5;
             ypos[1] = ypos[2] = y + 10;
-            g.setFont(font.deriveFont(7.0f));
+            g.setFont(font.deriveFont(Mem.ANNOTATION_FONT_SIZE));
             g.setColor(new Color(AppPreferences.COMPONENT_COLOR.get()));
             for (var j = 0; j < Math.min(8, nrOfBits); j++) {
               g.drawPolyline(xpos, ypos, 3);
-              if (nrOfBits <= 8) {
+              if (nrOfBits <= 8 && Mem.annotationsLegible(g)) {
                 GraphicsUtil.drawText(g, Integer.toString(j), xpos[2] + 3, ypos[2] - 3, GraphicsUtil.H_LEFT, GraphicsUtil.V_BASELINE);
               }
               if (!seperate) drawBidir(g, xpos[2], ypos[2]);
@@ -838,7 +838,8 @@ public class RamAppearance {
     var y = painter.getBounds().getY() + getControlHeight(attrs);
     final var width = Mem.SymbolWidth;
     final var height = 20;
-    g.setFont(g.getFont().deriveFont(9.0f));
+    g.setFont(g.getFont().deriveFont(Mem.ANNOTATION_FONT_SIZE));
+    final var legible = Mem.annotationsLegible(g);
     final var nrOfBits = attrs.getValue(Mem.DATA_ATTR).getWidth();
     final var doutLabel = new StringBuilder();
     final var dinLabel = new StringBuilder();
@@ -871,7 +872,7 @@ public class RamAppearance {
       g.setStroke(new BasicStroke(2));
       g.drawRect(x, y, width, height);
       g.setStroke(new BasicStroke(1));
-      GraphicsUtil.drawText(g, doutLabel.toString(), x - (seperate ? 3 : 10) + Mem.SymbolWidth, y + (seperate ? 10 : 5), GraphicsUtil.H_RIGHT, GraphicsUtil.V_CENTER);
+      if (legible) GraphicsUtil.drawText(g, doutLabel.toString(), x - (seperate ? 3 : 10) + Mem.SymbolWidth, y + (seperate ? 10 : 5), GraphicsUtil.H_RIGHT, GraphicsUtil.V_CENTER);
       if (!seperate) {
         final var xpos = new int[3];
         final var ypos = new int[3];
@@ -887,7 +888,7 @@ public class RamAppearance {
         final var beIdx = cidx + (i >> 3);
         BEIndex = "," + beIdx;
       }
-      if (drawDin)
+      if (drawDin && legible)
         GraphicsUtil.drawText(
             g,
             dinLabel + BEIndex + DLabel,

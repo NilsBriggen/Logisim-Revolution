@@ -319,6 +319,8 @@ public final class LogisimFileActions {
       mutation.execute();
       if (circ.getAppearance().hasCustomAppearance()) {
         renamed.getAppearance().repairCustomAppearance(circ.getAppearance().getCustomObjectsFromBottom());
+      } else if (circ.getAppearance().isLegacyDefaultCustomAppearance()) {
+        renamed.getAppearance().useLegacyDefaultCustomAppearance();
       }
       return renamed;
     }
@@ -435,6 +437,8 @@ public final class LogisimFileActions {
         }
         if (circ.getAppearance().hasCustomAppearance()) {
           newCircuit.getAppearance().repairCustomAppearance(circ.getAppearance().getCustomObjectsFromBottom());
+        } else if (circ.getAppearance().isLegacyDefaultCustomAppearance()) {
+          newCircuit.getAppearance().useLegacyDefaultCustomAppearance();
         }
       }
       final var availableTools = new HashMap<String, AddTool>();

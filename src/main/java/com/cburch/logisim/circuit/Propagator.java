@@ -17,6 +17,7 @@ import com.cburch.logisim.data.Location;
 import com.cburch.logisim.data.Value;
 import com.cburch.logisim.file.Options;
 import com.cburch.logisim.prefs.AppPreferences;
+import com.cburch.logisim.std.wiring.Pin;
 import com.cburch.logisim.util.LinkedQueue;
 import com.cburch.logisim.util.QNodeQueue;
 import com.cburch.logisim.util.QueueOfQueues;
@@ -92,6 +93,13 @@ public class Propagator {
 
   /** The number of clock cycles to let pass before deciding that the circuit is oscillating. */
   private volatile int simLimit;
+
+  /**
+   * Factor by which the total number of steps, including subcircuit boundary crossings that do not
+   * count toward {@link #simLimit}, may exceed that limit before the circuit is reported as
+   * oscillating anyway.
+   */
+  private static final int BOUNDARY_STEP_ALLOWANCE = 64;
 
   /**
    * On average, one out of every 2**simRandomShift propagations through a component is delayed one
@@ -189,30 +197,52 @@ public class Propagator {
 
     final var oscThreshold = simLimit;
     final var logThreshold = 3 * oscThreshold / 4;
+    // Only steps that include a real component delay count toward the oscillation limit: steps
+    // that merely carry values across subcircuit boundaries (two per nesting level) do not, so a
+    // stable but deeply nested circuit is not mistaken for an oscillating one. The hard cap keeps
+    // the loop bounded regardless.
+    final var hardLimit = (long) oscThreshold * BOUNDARY_STEP_ALLOWANCE;
     var iters = 0;
+    var totalSteps = 0L;
     moveNonPropThreadEvents();
     while (!toProcess.isEmpty()) {
-      if (iters > 0 && propListener != null) {
+      if (totalSteps > 0 && propListener != null) {
         propListener.propagationInProgress(propEvent);
       }
-      iters++;
+      totalSteps++;
 
-      if (iters < logThreshold) {
-        stepInternal(null);
-      } else if (iters < oscThreshold) {
-        oscAdding = true;
-        stepInternal(oscPoints);
-      } else {
+      if (iters + 1 >= oscThreshold || totalSteps >= hardLimit) {
         isOscillating = true;
         oscAdding = false;
         return true;
       }
+      final boolean counted;
+      if (iters + 1 < logThreshold) {
+        counted = stepInternal(null);
+      } else {
+        oscAdding = true;
+        counted = stepInternal(oscPoints);
+      }
+      if (counted) iters++;
       moveNonPropThreadEvents();
     }
     isOscillating = false;
     oscAdding = false;
     oscPoints.clear();
-    return iters > 0;
+    return totalSteps > 0;
+  }
+
+  /**
+   * Returns whether an event only carries a value across a subcircuit boundary (a parent driving a
+   * subcircuit input pin, or a subcircuit instance copying an output pin to its parent). Such
+   * events have no gate delay of their own.
+   */
+  private static boolean isBoundaryEvent(SimulatorEvent ev) {
+    final var cause = ev.cause;
+    if (cause == null) return false;
+    final var factory = cause.getFactory();
+    return factory instanceof SubcircuitFactory
+        || (factory instanceof Pin && ev.state.getParentState() != null);
   }
 
   /** Must be called by the propagation thread */
@@ -305,19 +335,24 @@ public class Propagator {
     return true;
   }
 
-  /** Must be called from propagation thread */
-  private void stepInternal(PropagationPoints changedPoints) {
-    if (toProcess.isEmpty()) return;
+  /**
+   * Must be called from propagation thread. Returns whether the step contained an event other than
+   * a subcircuit boundary crossing (see {@link #isBoundaryEvent}).
+   */
+  private boolean stepInternal(PropagationPoints changedPoints) {
+    if (toProcess.isEmpty()) return false;
 
     // update clock
     clock = toProcess.peek().timeKey;
 
     // propagate all values for this clock tick
+    var counted = false;
     while (true) {
       SimulatorEvent ev = toProcess.peek();
       if (ev == null || ev.timeKey != clock) break;
       toProcess.remove();
       final var state = ev.state;
+      if (!counted && !isBoundaryEvent(ev)) counted = true;
 
       if (changedPoints != null) changedPoints.add(state, ev.loc);
 
@@ -327,6 +362,7 @@ public class Propagator {
 
     root.processDirtyPoints();
     root.processDirtyComponents();
+    return counted;
   }
 
   public boolean toggleClocks() {

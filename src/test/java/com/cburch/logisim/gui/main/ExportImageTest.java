@@ -11,12 +11,16 @@ package com.cburch.logisim.gui.main;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.cburch.logisim.circuit.Circuit;
 import com.cburch.logisim.circuit.CircuitMutation;
 import com.cburch.logisim.circuit.CircuitState;
 import com.cburch.logisim.comp.ComponentDrawContext;
 import com.cburch.logisim.data.Location;
+import com.cburch.logisim.data.Value;
 import com.cburch.logisim.file.Loader;
 import com.cburch.logisim.file.LogisimFile;
 import com.cburch.logisim.gui.generic.TikZWriter;
@@ -26,6 +30,7 @@ import com.cburch.logisim.prefs.PrefMonitor;
 import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.std.gates.GatesLibrary;
 import com.cburch.logisim.std.io.IoLibrary;
+import com.cburch.logisim.std.wiring.Pin;
 import com.cburch.logisim.tools.AddTool;
 import java.awt.Color;
 import java.awt.image.BufferedImage;
@@ -189,5 +194,33 @@ class ExportImageTest {
     monitor.preferenceChange(
         new PreferenceChangeEvent(
             preferences, monitor.getIdentifier(), Integer.toString(value)));
+  }
+
+  @Test
+  void nonPrinterExportOfBackgroundCircuitShowsSettledValues() {
+    final var file = LogisimFile.createNew(new Loader(null), null);
+    final var project = new Project(file);
+    final var main = file.getMainCircuit();
+    main.setProject(project);
+    project.setCurrentCircuit(main);
+    final var other = new Circuit("other", file, project);
+    file.addCircuit(other);
+    final var not = ((AddTool) new GatesLibrary().getTool("NOT Gate")).getFactory();
+    final var gate = not.createComponent(Location.create(200, 100, true), not.createAttributeSet());
+    final var input = gate.getEnds().stream().filter(e -> !e.isOutput()).findFirst().orElseThrow();
+    final var mutation = new CircuitMutation(other);
+    mutation.add(gate);
+    mutation.add(Pin.FACTORY.createComponent(input.getLocation(), Pin.FACTORY.createAttributeSet()));
+    mutation.execute();
+
+    final var state = ExportImage.stateForExport(project, other, false);
+    try {
+      assertNotSame(project.getCircuitState(other), state);
+      assertEquals(Value.TRUE, state.getValue(gate.getLocation()));
+    } finally {
+      state.detachFromCircuits();
+    }
+    assertSame(project.getCircuitState(other), ExportImage.stateForExport(project, other, true));
+    assertSame(project.getCircuitState(), ExportImage.stateForExport(project, main, false));
   }
 }

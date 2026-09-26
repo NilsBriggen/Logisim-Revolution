@@ -14,6 +14,7 @@ import static com.cburch.logisim.std.Strings.S;
 import com.cburch.logisim.circuit.appear.DynamicElement;
 import com.cburch.logisim.circuit.appear.DynamicElementProvider;
 import com.cburch.logisim.data.Attribute;
+import com.cburch.logisim.data.AttributeSet;
 import com.cburch.logisim.data.BitWidth;
 import com.cburch.logisim.data.Bounds;
 import com.cburch.logisim.data.Direction;
@@ -81,6 +82,17 @@ public class HexDigit extends InstanceFactory implements DynamicElementProvider 
     setOffsetBounds(Bounds.create(-15, -60, 40, 60));
     setIcon(new SevenSegmentIcon(true));
     setKeyConfigurator(new DirectionConfigurator(StdAttr.LABEL_LOC, KeyEvent.ALT_DOWN_MASK));
+  }
+
+  /**
+   * Newly placed displays show their label, like the other I/O components. The attribute's
+   * default stays hidden, which is what displays saved without it have always shown.
+   */
+  @Override
+  public AttributeSet createToolAttributeSet() {
+    final var attrs = createAttributeSet();
+    attrs.setValue(StdAttr.LABEL_VISIBILITY, true);
+    return attrs;
   }
 
   private void updatePorts(Instance instance) {
@@ -226,7 +238,9 @@ public class HexDigit extends InstanceFactory implements DynamicElementProvider 
   public void propagate(InstanceState state) {
     var summary = 0;
     var baseVal = state.getPortValue(HEX);
-    if (baseVal == null) baseVal = Value.createUnknown(BitWidth.create(4));
+    // An undriven input (a floating wire, or no wire at all) reads as NIL, whose numeric value is
+    // 0: without this the display showed a "0" that nothing ever sent it.
+    if (baseVal == null || baseVal.getWidth() == 0) baseVal = Value.createUnknown(BitWidth.create(4));
     int segs = getSegs((int) baseVal.toLongValue());
     if ((segs & SEG_C_MASK) != 0) summary |= 4; // vertical seg in bottom right
     if ((segs & SEG_B_MASK) != 0) summary |= 2; // vertical seg in top right

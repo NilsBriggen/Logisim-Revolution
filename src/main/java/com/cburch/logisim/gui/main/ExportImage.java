@@ -12,6 +12,7 @@ package com.cburch.logisim.gui.main;
 import static com.cburch.logisim.gui.Strings.S;
 
 import com.cburch.logisim.circuit.Circuit;
+import com.cburch.logisim.circuit.CircuitState;
 import com.cburch.logisim.comp.ComponentDrawContext;
 import com.cburch.logisim.data.Bounds;
 import com.cburch.logisim.gui.canvas.CanvasStyle;
@@ -186,6 +187,21 @@ public class ExportImage {
         .start();
   }
 
+  /**
+   * Returns the state whose values an export of {@code circuit} shows. The circuit on the canvas
+   * is exported as the user sees it. Any other circuit has only a background state that the
+   * simulator never propagates, so its values are shown from a settled temporary copy instead of
+   * the never-simulated defaults. A returned state other than {@code proj.getCircuitState(circuit)}
+   * is temporary and owned by the calling thread; the caller detaches it when done.
+   */
+  static CircuitState stateForExport(Project proj, Circuit circuit, boolean printerView) {
+    final var state = proj.getCircuitState(circuit);
+    if (printerView || state == proj.getCircuitState()) return state;
+    final var temp = state.cloneAsNewRootState(Thread.currentThread());
+    temp.getPropagator().propagate();
+    return temp;
+  }
+
   static void paintExportBackground(
       Graphics g,
       int width,
@@ -278,10 +294,15 @@ public class ExportImage {
         return false;
       }
 
-      final var circuitState = canvas.getProject().getCircuitState(circuit);
-      final var context =
-          new ComponentDrawContext(canvas, circuit, circuitState, base, g, printerView);
-      circuit.draw(context, null);
+      final var proj = canvas.getProject();
+      final var circuitState = stateForExport(proj, circuit, printerView);
+      try {
+        final var context =
+            new ComponentDrawContext(canvas, circuit, circuitState, base, g, printerView);
+        circuit.draw(context, null);
+      } finally {
+        if (circuitState != proj.getCircuitState(circuit)) circuitState.detachFromCircuits();
+      }
 
       final File where;
       if (dest.isDirectory()) {

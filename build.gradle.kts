@@ -1124,6 +1124,7 @@ tasks.register<JavaExec>("uiSnapshot") {
   systemProperty("snapshot.side", project.findProperty("side") ?: "")
   systemProperty("snapshot.drawer", project.findProperty("drawer") ?: "")
   systemProperty("snapshot.bottomHeight", project.findProperty("bottomHeight") ?: "0")
+  systemProperty("snapshot.tool", project.findProperty("tool") ?: "")
 }
 
 tasks.register<JavaExec>("optionsProbe") {

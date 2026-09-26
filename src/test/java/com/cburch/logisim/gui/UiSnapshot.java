@@ -204,6 +204,17 @@ public final class UiSnapshot {
     final var frame = project.getFrame();
     if (frame == null) throw new IllegalStateException("the project window was never created");
 
+    // The selection outline is drawn only by the editing tools, not by the Poke tool.
+    final var toolName = System.getProperty("snapshot.tool", "");
+    if (!toolName.isBlank()) {
+      final var tool = project.getLogisimFile().getLibraries().stream()
+          .map(lib -> lib.getTool(toolName))
+          .filter(java.util.Objects::nonNull)
+          .findFirst()
+          .orElseThrow(() -> new IllegalArgumentException("No tool named " + toolName));
+      SwingUtilities.invokeAndWait(() -> project.setTool(tool));
+    }
+
     final var selectionName = System.getProperty("snapshot.select", "");
     if (!selectionName.isBlank()) {
       final var component = project.getCurrentCircuit().getComponents().stream()
