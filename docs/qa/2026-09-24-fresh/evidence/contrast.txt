@@ -1,0 +1,55 @@
+== light {'accent': '#2f6fed', 'warning': '#b7791f', 'error': '#d33a3a', 'success': '#1d8a4e', 'muted': '#596273', 'icon': '#47505c', 'icondis': '#aeb6c0', 'actbg': '#e7e9ef', 'actfg': '#596273', 'hdr': '#596273', 'sbbg': '#e7e9ef', 'sbfg': '#576270', 'toast': '#ffffff', 'border': '#cbd1dc', 'divider': '#cbd1dc', 'selinact': '#d7dce5', 'badge': '#d1d6e1'}
+  fg on bg                           #1f2328 / #f6f7f9  14.74
+  white on accent                    #ffffff / #2f6fed   4.55
+  accent on bg                       #2f6fed / #f6f7f9   4.24
+  accent on actbar                   #2f6fed / #e7e9ef   3.75
+  muted on bg                        #596273 / #f6f7f9   5.73
+  muted on toast                     #596273 / #ffffff   6.14
+  actbar fg on actbar bg             #596273 / #e7e9ef   5.07
+  header fg on bg                    #596273 / #f6f7f9   5.73
+  statusbar fg on sb bg              #576270 / #e7e9ef   5.13
+  warning on bg                      #b7791f / #f6f7f9   3.40
+  error on bg                        #d33a3a / #f6f7f9   4.42
+  success on bg                      #1d8a4e / #f6f7f9   4.08
+  warning on sb                      #b7791f / #e7e9ef   3.00
+  error on sb                        #d33a3a / #e7e9ef   3.91
+  success on sb                      #1d8a4e / #e7e9ef   3.61
+  icon on bg                         #47505c / #f6f7f9   7.60
+  icon on toast                      #47505c / #ffffff   8.15
+  icon disabled on bg                #aeb6c0 / #f6f7f9   1.90
+  component border vs bg             #cbd1dc / #f6f7f9   1.43
+  divider vs bg                      #cbd1dc / #f6f7f9   1.43
+  fg on selInactive                  #1f2328 / #d7dce5  11.47
+  fg on badge                        #1f2328 / #d1d6e1  10.88
+  statusbar fg on toast (zoom %)     #576270 / #ffffff   6.22
+== dark {'accent': '#4c8dff', 'warning': '#e2b13c', 'error': '#f26d6d', 'success': '#55c57e', 'muted': '#9ca5b4', 'icon': '#bdc1ca', 'icondis': '#585f6d', 'actbg': '#181a1e', 'actfg': '#9ca5b4', 'hdr': '#9ca5b4', 'sbbg': '#181a1e', 'sbfg': '#acb2bc', 'toast': '#36383d', 'border': '#44474d', 'divider': '#3f4248', 'selinact': '#3b3d43', 'badge': '#44474d'}
+  fg on bg                           #dfe1e5 / #1e1f22  12.59
+  white on accent                    #ffffff / #4c8dff   3.20
+  accent on bg                       #4c8dff / #1e1f22   5.15
+  accent on actbar                   #4c8dff / #181a1e   5.44
+  muted on bg                        #9ca5b4 / #1e1f22   6.63
+  muted on toast                     #9ca5b4 / #36383d   4.74
+  actbar fg on actbar bg             #9ca5b4 / #181a1e   7.01
+  header fg on bg                    #9ca5b4 / #1e1f22   6.63
+  statusbar fg on sb bg              #acb2bc / #181a1e   8.14
+  warning on bg                      #e2b13c / #1e1f22   8.31
+  error on bg                        #f26d6d / #1e1f22   5.64
+  success on bg                      #55c57e / #1e1f22   7.59
+  warning on sb                      #e2b13c / #181a1e   8.78
+  error on sb                        #f26d6d / #181a1e   5.96
+  success on sb                      #55c57e / #181a1e   8.03
+  icon on bg                         #bdc1ca / #1e1f22   9.16
+  icon on toast                      #bdc1ca / #36383d   6.55
+  icon disabled on bg                #585f6d / #1e1f22   2.57
+  component border vs bg             #44474d / #1e1f22   1.76
+  divider vs bg                      #3f4248 / #1e1f22   1.63
+  fg on selInactive                  #dfe1e5 / #3b3d43   8.34
+  fg on badge                        #dfe1e5 / #44474d   7.14
+  statusbar fg on toast (zoom %)     #acb2bc / #36383d   5.50
+== wire states
+  light default true=3.32 false=7.44 unknown=4.78 error=4.78 nil=2.60 bus=12.09  true/false=2.24
+  dark default true=9.11 false=2.93 unknown=6.17 error=5.06 nil=3.53 bus=12.40  true/false=3.11
+  colorblind on light true=1.23 false=7.24 unknown=2.38 error=6.32 nil=3.83 bus=20.65 stroke=1.89  true/false=5.89
+  colorblind on dark true=13.66 false=2.32 unknown=7.05 error=2.65 nil=4.38 bus=1.23 stroke=8.89  true/false=5.89
+light selected tool bg #b8ccf5 vs toolbar bg 1.5
+dark selected tool bg #2c4267 vs toolbar bg 1.63
