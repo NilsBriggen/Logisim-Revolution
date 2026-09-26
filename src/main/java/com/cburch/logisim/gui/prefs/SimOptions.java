@@ -138,15 +138,49 @@ public class SimOptions extends OptionsPanel {
     AppPreferences.KMAP16_COLOR.set(0xF032E7);
   }
 
-  /** A palette chosen so the covers stay distinct to a colour-blind reader. */
+  /**
+   * The colours a wire can be drawn in, for one canvas.
+   *
+   * <p>{@code SignalPaletteContrastTest} holds every palette to at least 3:1 against its canvas for
+   * each state, 3:1 between high and low, and (for the colour-blind sets) to staying apart under
+   * simulated protanopia, deuteranopia and tritanopia.
+   */
+  record WirePalette(
+      int trueColor,
+      int falseColor,
+      int unknownColor,
+      int errorColor,
+      int nilColor,
+      int busColor,
+      int strokeColor) {}
+
+  /** Orange high, navy low: told apart by hue and by lightness, on the light canvas. */
+  static final WirePalette COLOR_BLIND_LIGHT =
+      new WirePalette(0xC65F00, 0x0A2A66, 0x8866FF, 0xE0109E, 0x818181, 0x000000, 0x1F2430);
+
+  /** Amber high, blue low, on the dark canvas. */
+  static final WirePalette COLOR_BLIND_DARK =
+      new WirePalette(0xFFD23F, 0x3A6FD8, 0xB0A0E0, 0xE0324F, 0x8A8F98, 0xD7DCE5, 0xE6E9F0);
+
+  static WirePalette colorBlindPalette(boolean dark) {
+    return dark ? COLOR_BLIND_DARK : COLOR_BLIND_LIGHT;
+  }
+
+  /**
+   * A palette chosen so the signals and covers stay distinct to a colour-blind reader.
+   *
+   * <p>Applied to the theme showing now, like any other colour choice; each theme has its own set,
+   * since colours readable on a white canvas vanish on a dark one and the other way round.
+   */
   static void applyColorBlindPalette() {
-    AppPreferences.TRUE_COLOR.set(0xF4EB42);
-    AppPreferences.FALSE_COLOR.set(0x203BE8);
-    AppPreferences.UNKNOWN_COLOR.set(0x01BC9D);
-    AppPreferences.ERROR_COLOR.set(0x00C10000);
-    AppPreferences.NIL_COLOR.set(0x818181);
-    AppPreferences.BUS_COLOR.set(1);
-    AppPreferences.STROKE_COLOR.set(0xBBBBBB);
+    final var wires = colorBlindPalette(AppPreferences.isDarkTheme());
+    AppPreferences.TRUE_COLOR.set(wires.trueColor());
+    AppPreferences.FALSE_COLOR.set(wires.falseColor());
+    AppPreferences.UNKNOWN_COLOR.set(wires.unknownColor());
+    AppPreferences.ERROR_COLOR.set(wires.errorColor());
+    AppPreferences.NIL_COLOR.set(wires.nilColor());
+    AppPreferences.BUS_COLOR.set(wires.busColor());
+    AppPreferences.STROKE_COLOR.set(wires.strokeColor());
     AppPreferences.WIDTH_ERROR_COLOR.set(0xC413DB);
     AppPreferences.WIDTH_ERROR_CAPTION_COLOR.set(0x560000);
     AppPreferences.WIDTH_ERROR_HIGHLIGHT_COLOR.set(0xFFFE00);

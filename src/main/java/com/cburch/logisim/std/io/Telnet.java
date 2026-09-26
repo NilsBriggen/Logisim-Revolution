@@ -7,6 +7,7 @@ import com.cburch.logisim.data.Attributes;
 import com.cburch.logisim.data.Bounds;
 import com.cburch.logisim.data.Direction;
 import com.cburch.logisim.data.Value;
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.instance.Instance;
 import com.cburch.logisim.instance.InstanceFactory;
 import com.cburch.logisim.instance.InstancePainter;
@@ -140,7 +141,9 @@ public class Telnet extends InstanceFactory {
         GraphicsUtil.H_CENTER,
         GraphicsUtil.V_BOTTOM);
 
-    g.setColor(painter.getAttributeValue(StdAttr.LABEL_COLOR));
+    // Not every appearance declares a label colour; without one the label keeps the ink.
+    final var labelColor = painter.getAttributeValue(StdAttr.LABEL_COLOR);
+    if (labelColor != null) g.setColor(CanvasStyle.labelColor(labelColor));
     painter.drawLabel();
   }
 

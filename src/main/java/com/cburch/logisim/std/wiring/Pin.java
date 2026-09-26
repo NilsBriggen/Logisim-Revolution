@@ -750,7 +750,8 @@ public class Pin extends InstanceFactory {
     setInstancePoker(PinPoker.class);
   }
 
-  private static Direction pinLabelLoc(Direction PinDir) {
+  /** The natural label side of a pin: opposite the side its port is on. */
+  static Direction pinLabelLoc(Direction PinDir) {
     if (PinDir == Direction.EAST) return Direction.WEST;
     else if (PinDir == Direction.WEST) return Direction.EAST;
     else if (PinDir == Direction.NORTH) return Direction.SOUTH;
@@ -763,12 +764,12 @@ public class Pin extends InstanceFactory {
     instance.addAttributeListener();
     ((PrefMonitorBooleanConvert) AppPreferences.NEW_INPUT_OUTPUT_SHAPES).addConvertListener(attrs);
     configurePorts(instance);
-    instance.computeLabelTextField(
-        Instance.AVOID_LEFT, pinLabelLoc(attrs.getValue(StdAttr.FACING)));
+    instance.computeLabelTextField(Instance.AVOID_LEFT, attrs.getValue(StdAttr.LABEL_LOC));
   }
 
   @Override
   public Object getDefaultAttributeValue(Attribute<?> attr, LogisimVersion ver) {
+    if (attr.equals(StdAttr.LABEL_LOC)) return PinAttributes.LABEL_LOC_AUTO;
     return attr.equals(ProbeAttributes.PROBEAPPEARANCE)
         ? ProbeAttributes.getDefaultProbeAppearance()
         : super.getDefaultAttributeValue(attr, ver);
@@ -828,10 +829,11 @@ public class Pin extends InstanceFactory {
     } else if (attr == StdAttr.WIDTH
         || attr == StdAttr.FACING
         || attr == RadixOption.ATTRIBUTE
+        || attr == StdAttr.LABEL_LOC
         || attr == ProbeAttributes.PROBEAPPEARANCE) {
       instance.recomputeBounds();
       PinAttributes attrs = (PinAttributes) instance.getAttributeSet();
-      instance.computeLabelTextField(Instance.AVOID_LEFT, pinLabelLoc(attrs.facing));
+      instance.computeLabelTextField(Instance.AVOID_LEFT, attrs.getValue(StdAttr.LABEL_LOC));
     } else if (attr == Pin.ATTR_BEHAVIOR) {
       instance.fireInvalidated();
     }

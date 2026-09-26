@@ -17,7 +17,6 @@ import com.cburch.logisim.data.Attributes;
 import com.cburch.logisim.data.BitWidth;
 import com.cburch.logisim.data.Direction;
 import com.cburch.logisim.fpga.data.ComponentMapInformationContainer;
-import com.cburch.logisim.prefs.AppPreferences;
 import java.awt.Color;
 import java.awt.Font;
 
@@ -45,14 +44,13 @@ public interface StdAttr {
   Attribute<Font> LABEL_FONT = Attributes.forFont("labelfont", S.getter("stdLabelFontAttr"));
   Font DEFAULT_LABEL_FONT = new Font("SansSerif", Font.BOLD, 16);
   Attribute<Color> LABEL_COLOR = Attributes.forColor("labelcolor", S.getter("ioLabelColorAttr"));
+  /**
+   * The shipped label colour. A placeholder: painting resolves it for the canvas through {@code
+   * CanvasStyle.labelColor}, so an unedited label reads on a dark canvas too.
+   */
   Color DEFAULT_LABEL_COLOR = Color.BLUE;
+  /** What {@link #DEFAULT_LABEL_COLOR} is painted as on a dark canvas. */
   Color DARK_DEFAULT_LABEL_COLOR = new Color(0x6C, 0xB6, 0xFF);
-
-  static Color getDefaultLabelColor() {
-    return AppPreferences.isDarkTheme()
-        ? DARK_DEFAULT_LABEL_COLOR
-        : DEFAULT_LABEL_COLOR;
-  }
 
   AttributeOption LABEL_CENTER =
       new AttributeOption("center", "center", S.getter("stdLabelCenter"));

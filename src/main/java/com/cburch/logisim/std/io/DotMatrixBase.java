@@ -146,7 +146,10 @@ public abstract class DotMatrixBase extends InstanceFactory implements DynamicEl
             }
           }
         } else {
-          if (wholeRow != Value.FALSE) wholeRow = Value.ERROR;
+          // An undriven row select leaves the row undriven; only a conflict is an error.
+          if (wholeRow != Value.FALSE) {
+            wholeRow = wholeRow.isErrorValue() ? Value.ERROR : Value.UNKNOWN;
+          }
           for (int j = colVals.length - 1; j >= 0; j--, gridloc++) {
             if (grid[gridloc] == Value.TRUE) {
               persistTo[gridloc] = persist - 1;
@@ -201,6 +204,13 @@ public abstract class DotMatrixBase extends InstanceFactory implements DynamicEl
   protected static final Attribute<Integer> ATTR_PERSIST =
       new DurationAttribute(
           "persist", S.getter("ioMatrixPersistenceAttr"), 0, Integer.MAX_VALUE, true);
+
+  /** Lit when high, red on a conflict; low or undriven (unconnected) is off, as for one LED. */
+  static Color dotColor(Value val, Color onColor, Color offColor) {
+    if (val == Value.TRUE) return onColor;
+    if (val.isErrorValue()) return Value.errorColor();
+    return offColor;
+  }
 
   protected static List<String> getLabels(int rows, int cols) {
     final var result = new ArrayList<String>();
@@ -403,16 +413,7 @@ public abstract class DotMatrixBase extends InstanceFactory implements DynamicEl
           continue;
         }
 
-        final var val = data.get(j, i, ticks);
-        Color c;
-        if (val == Value.TRUE) {
-          c = onColor;
-        } else if (val == Value.FALSE) {
-          c = offColor;
-        } else {
-          c = Value.errorColor();
-        }
-        g.setColor(c);
+        g.setColor(dotColor(data.get(j, i, ticks), onColor, offColor));
         if (SHAPE_SQUARE.equals(shape)) {
           drawSquare(g, x, y);
         } else if (SHAPE_PADDED_SQUARE.equals(shape)) {

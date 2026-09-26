@@ -25,13 +25,13 @@ import com.cburch.logisim.data.AttributeSet;
 import com.cburch.logisim.data.Bounds;
 import com.cburch.logisim.data.Direction;
 import com.cburch.logisim.data.Location;
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.gui.generic.OptionPane;
 import com.cburch.logisim.gui.icons.ComponentIcons;
 import com.cburch.logisim.gui.main.Canvas;
 import com.cburch.logisim.gui.main.SelectionActions;
 import com.cburch.logisim.gui.main.ToolAttributeAction;
 import com.cburch.logisim.instance.StdAttr;
-import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.prefs.PrefMonitorKeyStroke;
 import com.cburch.logisim.proj.Action;
@@ -136,7 +136,7 @@ public class AddTool extends Tool implements Transferable, PropertyChangeListene
     } else if (AppPreferences.NEW_INPUT_OUTPUT_SHAPES.isSource(evt)) {
       attrs.setValue(ProbeAttributes.PROBEAPPEARANCE, ProbeAttributes.getDefaultProbeAppearance());
     } else if (AppPreferences.TEXT_TOOL_COLOR.isSource(evt)) {
-      attrs.setValue(Text.ATTR_COLOR, new Color(AppPreferences.TEXT_TOOL_COLOR.get()));
+      attrs.setValue(Text.ATTR_COLOR, CanvasStyle.newTextColor());
     }
   }
 
@@ -150,7 +150,7 @@ public class AddTool extends Tool implements Transferable, PropertyChangeListene
     if (this.attrs.containsAttribute(Text.ATTR_COLOR)) {
       AppPreferences.TEXT_TOOL_COLOR.addPropertyChangeListener(this);
       if (applyTextToolColor) {
-        attrs.setValue(Text.ATTR_COLOR, new Color(AppPreferences.TEXT_TOOL_COLOR.get()));
+        attrs.setValue(Text.ATTR_COLOR, CanvasStyle.newTextColor());
       }
     }
   }

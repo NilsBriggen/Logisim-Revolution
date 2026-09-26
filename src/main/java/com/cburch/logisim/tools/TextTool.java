@@ -22,6 +22,7 @@ import com.cburch.logisim.comp.ComponentUserEvent;
 import com.cburch.logisim.data.Attribute;
 import com.cburch.logisim.data.AttributeSet;
 import com.cburch.logisim.data.Location;
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.gui.main.Canvas;
 import com.cburch.logisim.gui.main.SelectionActions;
 import com.cburch.logisim.prefs.AppPreferences;
@@ -29,7 +30,6 @@ import com.cburch.logisim.proj.Action;
 import com.cburch.logisim.proj.JoinedAction;
 import com.cburch.logisim.std.base.Text;
 import com.cburch.logisim.util.StringUtil;
-import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Graphics;
 import java.awt.event.KeyEvent;
@@ -152,7 +152,7 @@ public class TextTool extends Tool implements PropertyChangeListener {
   public TextTool() {
     attrs = Text.FACTORY.createAttributeSet();
     AppPreferences.TEXT_TOOL_COLOR.addPropertyChangeListener(this);
-    attrs.setValue(Text.ATTR_COLOR, new Color(AppPreferences.TEXT_TOOL_COLOR.get()));
+    attrs.setValue(Text.ATTR_COLOR, CanvasStyle.newTextColor());
   }
 
   @Override
@@ -369,7 +369,7 @@ public class TextTool extends Tool implements PropertyChangeListener {
   @Override
   public void propertyChange(PropertyChangeEvent event) {
     if (AppPreferences.TEXT_TOOL_COLOR.isSource(event)) {
-      attrs.setValue(Text.ATTR_COLOR, new Color(AppPreferences.TEXT_TOOL_COLOR.get()));
+      attrs.setValue(Text.ATTR_COLOR, CanvasStyle.newTextColor());
     }
   }
 

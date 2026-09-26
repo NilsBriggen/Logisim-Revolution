@@ -164,6 +164,8 @@ public class TikZInfo implements Cloneable {
   }
 
   public void setColor(Color c) {
+    // As Graphics.setColor documents: a null colour is ignored.
+    if (c == null) return;
     currentDrawColor = getColorName(c);
     drawColor = c;
   }

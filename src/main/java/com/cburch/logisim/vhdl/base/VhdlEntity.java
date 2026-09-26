@@ -21,6 +21,7 @@ import com.cburch.logisim.data.Bounds;
 import com.cburch.logisim.data.Direction;
 import com.cburch.logisim.data.Location;
 import com.cburch.logisim.data.Value;
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.gui.icons.ArithmeticIcon;
 import com.cburch.logisim.instance.Instance;
 import com.cburch.logisim.instance.InstanceComponent;
@@ -160,7 +161,7 @@ public class VhdlEntity extends InstanceFactory implements HdlModelListener {
       final var oldFont = gfx.getFont();
       final var color = gfx.getColor();
       gfx.setFont(painter.getAttributeValue(StdAttr.LABEL_FONT));
-      gfx.setColor(StdAttr.DEFAULT_LABEL_COLOR);
+      gfx.setColor(CanvasStyle.labelColor(null));
       GraphicsUtil.drawCenteredText(gfx, label, bds.getX() + bds.getWidth() / 2, bds.getY() - gfx.getFont().getSize());
       gfx.setFont(oldFont);
       gfx.setColor(color);

@@ -31,6 +31,7 @@ import com.cburch.logisim.data.Location;
 import com.cburch.logisim.instance.InstanceComponent;
 import com.cburch.logisim.instance.InstanceState;
 import com.cburch.logisim.instance.StdAttr;
+import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.util.GraphicsUtil;
 import com.cburch.logisim.util.UnmodifiableList;
 import java.awt.Color;
@@ -385,7 +386,15 @@ public abstract class DynamicElement extends AbstractCanvasObject {
       pX = x - 1;
       hAlign = GraphicsUtil.H_RIGHT;
     }
-    g.setColor(labelColor);
+    // The shipped dark grey is a placeholder: on a dark canvas it would all but vanish.
+    final var shipped = labelColor == null || SvgCreator.colorMatches(labelColor, Color.darkGray);
+    final var onDarkCanvas = AppPreferences.isDarkTheme() && !AppPreferences.inPrintView();
+    if (shipped) {
+      g.setColor(
+          onDarkCanvas ? new Color(AppPreferences.COMPONENT_SECONDARY_COLOR.get()) : Color.darkGray);
+    } else {
+      g.setColor(labelColor);
+    }
     GraphicsUtil.drawText(g, labelFont, label, pX, pY, hAlign, vAlign);
   }
 

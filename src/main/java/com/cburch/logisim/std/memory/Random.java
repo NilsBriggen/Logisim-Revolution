@@ -19,6 +19,7 @@ import com.cburch.logisim.data.Bounds;
 import com.cburch.logisim.data.Direction;
 import com.cburch.logisim.data.Value;
 import com.cburch.logisim.fpga.designrulecheck.netlistComponent;
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.gui.icons.RandomIcon;
 import com.cburch.logisim.instance.Instance;
 import com.cburch.logisim.instance.InstanceData;
@@ -268,7 +269,9 @@ public class Random extends InstanceFactory {
     // draw boundary, label
     g.setColor(new Color(AppPreferences.COMPONENT_COLOR.get()));
     painter.drawBounds();
-    g.setColor(painter.getAttributeValue(StdAttr.LABEL_COLOR));
+    // Not every appearance declares a label colour; without one the label keeps the ink.
+    final var labelColor = painter.getAttributeValue(StdAttr.LABEL_COLOR);
+    if (labelColor != null) g.setColor(CanvasStyle.labelColor(labelColor));
     painter.drawLabel();
 
     // draw input and output ports

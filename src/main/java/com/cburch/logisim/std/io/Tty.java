@@ -20,6 +20,7 @@ import com.cburch.logisim.data.Attributes;
 import com.cburch.logisim.data.Bounds;
 import com.cburch.logisim.data.Direction;
 import com.cburch.logisim.data.Value;
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.gui.icons.TtyIcon;
 import com.cburch.logisim.instance.Instance;
 import com.cburch.logisim.instance.InstanceFactory;
@@ -79,7 +80,9 @@ public class Tty extends InstanceFactory implements DynamicElementProvider {
           IoLibrary.ATTR_COLOR,
           IoLibrary.ATTR_BACKGROUND
         },
-        new Object[] {8, 32, StdAttr.TRIG_RISING, Color.BLACK, DEFAULT_BACKGROUND});
+        new Object[] {
+          8, 32, StdAttr.TRIG_RISING, CanvasStyle.SHIPPED_TEXT_COLOR, DEFAULT_BACKGROUND
+        });
     setIcon(new TtyIcon());
 
     final var ps = new Port[4];
@@ -147,6 +150,21 @@ public class Tty extends InstanceFactory implements DynamicElementProvider {
     g.drawRoundRect(bds.getX(), bds.getY(), bds.getWidth(), bds.getHeight(), 10, 10);
   }
 
+  /**
+   * The colour the terminal's characters are painted in.
+   *
+   * <p>The shipped black is a placeholder: over the default see-through background it becomes the
+   * canvas ink, and over an opaque background the better of black and white. A colour the user
+   * chose is painted as saved.
+   */
+  public static Color textColor(Color text, Color background, Color canvasInk) {
+    final var ink =
+        background == null || background.getAlpha() < 128
+            ? canvasInk
+            : CanvasStyle.contrastInk(new Color(background.getRGB() & 0xFFFFFF));
+    return CanvasStyle.textColor(text, ink);
+  }
+
   @Override
   public void paintInstance(InstancePainter painter) {
     final var showState = painter.getShowState();
@@ -183,7 +201,11 @@ public class Tty extends InstanceFactory implements DynamicElementProvider {
       }
 
       g.setFont(DEFAULT_FONT);
-      g.setColor(painter.getAttributeValue(IoLibrary.ATTR_COLOR));
+      g.setColor(
+          textColor(
+              painter.getAttributeValue(IoLibrary.ATTR_COLOR),
+              painter.getAttributeValue(IoLibrary.ATTR_BACKGROUND),
+              CanvasStyle.componentColor()));
       final var fm = g.getFontMetrics();
       int x = bds.getX() + BORDER;
       int y = bds.getY() + BORDER + (ROW_HEIGHT + fm.getAscent()) / 2;

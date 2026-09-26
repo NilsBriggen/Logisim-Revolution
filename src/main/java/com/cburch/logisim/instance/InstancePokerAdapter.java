@@ -91,7 +91,8 @@ class InstancePokerAdapter extends AbstractCaret implements Pokable {
       this.context =
           new ComponentDrawContext(
               event.getCanvas(), event.getCanvas().getCircuit(), circState, null, null);
-      mousePressed(e);
+      // The press that created this caret is dispatched by the caller (PokeTool) once the caret
+      // is installed; dispatching it here as well would make toggling pokers act twice.
       return this;
     }
 

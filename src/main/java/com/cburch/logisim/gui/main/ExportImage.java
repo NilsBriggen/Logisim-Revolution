@@ -47,6 +47,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JSlider;
 import javax.swing.ProgressMonitor;
 import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import javax.swing.filechooser.FileFilter;
@@ -248,12 +249,15 @@ public class ExportImage {
       final var width = (int) Math.round(bds.getWidth() * scale);
       final var height = (int) Math.round(bds.getHeight() * scale);
       Graphics base;
-      final var img = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+      // Only the raster formats need a raster: a vector export of a large circuit must not fail
+      // for want of memory it never uses.
+      BufferedImage img = null;
       if (filter.type == FORMAT_TIKZ || filter.type == FORMAT_SVG) {
         final var tz = new TikZWriter();
         tz.setSvgMode(filter.type == FORMAT_SVG);
         base = tz;
       } else {
+        img = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         base = img.getGraphics();
       }
       base.setFont(CanvasStyle.documentFont());
@@ -307,7 +311,19 @@ public class ExportImage {
     @Override
     public void run() {
       for (final var circ : circuits) {
-        export(circ);
+        try {
+          export(circ);
+        } catch (RuntimeException | OutOfMemoryError e) {
+          // Too large a raster, or a component that fails to draw: say so rather than stopping
+          // silently with the progress monitor still up.
+          e.printStackTrace();
+          monitor.close();
+          SwingUtilities.invokeLater(
+              () ->
+                  OptionPane.showMessageDialog(
+                      frame, S.get("couldNotCreateImage") + "\n" + circ.getName()));
+          return;
+        }
       }
     }
   }
