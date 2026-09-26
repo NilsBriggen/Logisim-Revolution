@@ -89,17 +89,19 @@ public class ChronoPanel extends LogPanel implements Model.Listener {
   private JScrollPane rightScroll;
   private JSplitPane splitPane;
   private JButton selButton;
-
-  // listeners
+  private JButton exportButton;
 
   public ChronoPanel(LogFrame logFrame) {
     super(logFrame);
-    setModel(logFrame.getModel());
+    model = logFrame.getModel();
     configure();
     resplit();
+    // Listen only once both halves exist: a model event in between would find them null.
+    if (model != null) model.addModelListener(this);
     editHandler.computeEnabled();
     Theme.addListener(this, () -> {
       selButton.setFont(UiFonts.small());
+      exportButton.setFont(UiFonts.small());
       revalidate();
       repaint();
     });
@@ -127,12 +129,25 @@ public class ChronoPanel extends LogPanel implements Model.Listener {
     gbc.gridx = 1;
     gbl.setConstraints(selButton, gbc);
     toolpanel.add(selButton);
+
+    // The log window's File menu is hidden while the diagram sits in the drawer, so exporting
+    // (as an image or as WaveDrom JSON) needs its own control here.
+    exportButton = new JButton(S.get("chronoExportButton"));
+    exportButton.setToolTipText(S.get("chronoExportTip"));
+    exportButton.setFont(UiFonts.small());
+    exportButton.addActionListener(e -> {
+      if (model != null) printHandler.exportImage();
+    });
+    gbc.insets = new Insets(2, UiScale.scaled(4), 2, 0);
+    gbc.gridx = 2;
+    gbl.setConstraints(exportButton, gbc);
+    toolpanel.add(exportButton);
     gbc.insets = insets;
 
     final var filler = Box.createHorizontalGlue();
     gbc.fill = GridBagConstraints.HORIZONTAL;
     gbc.weightx = 1.0;
-    gbc.gridx = 2;
+    gbc.gridx = 3;
     gbl.setConstraints(filler, gbc);
     toolpanel.add(filler);
     add(toolpanel, BorderLayout.NORTH);
@@ -214,6 +229,8 @@ public class ChronoPanel extends LogPanel implements Model.Listener {
   @Override
   public void localeChanged() {
     selButton.setText(S.get("addRemoveSignals"));
+    exportButton.setText(S.get("chronoExportButton"));
+    exportButton.setToolTipText(S.get("chronoExportTip"));
   }
   public LeftPanel getLeftPanel() {
     return leftPanel;
@@ -251,6 +268,10 @@ public class ChronoPanel extends LogPanel implements Model.Listener {
 
   @Override
   public void modelChanged(Model oldModel, Model newModel) {
+    // Row selection and the spotlight index rows of the old model; drop them before the swap so
+    // no listener applies them to the new one.
+    leftPanel.clearSelection();
+    if (model != null) model.setSpotlight(null);
     setModel(newModel);
     rightPanel.setModel(newModel);
     leftPanel.setModel(newModel);
@@ -258,6 +279,7 @@ public class ChronoPanel extends LogPanel implements Model.Listener {
   }
 
   public void changeSpotlight(Signal s) {
+    if (model == null) return;
     final var old = model.setSpotlight(s);
     if (old == s) return;
     rightPanel.changeSpotlight(old, s);
@@ -269,26 +291,32 @@ public class ChronoPanel extends LogPanel implements Model.Listener {
     leftPanel.updateSignalValues();
   }
 
+  // Model events arrive on the event dispatch thread (see LogFrame), after construction.
+
   @Override
   public void signalsExtended(Model.Event event) {
+    if (leftPanel == null || rightPanel == null) return;
     leftPanel.updateSignalValues();
     rightPanel.updateWaveforms(true);
   }
 
   @Override
   public void signalsReset(Model.Event event) {
+    if (leftPanel == null || rightPanel == null) return;
     setSignalCursorX(Integer.MAX_VALUE);
     rightPanel.updateWaveforms(true);
   }
 
   @Override
   public void historyLimitChanged(Model.Event event) {
+    if (leftPanel == null || rightPanel == null) return;
     setSignalCursorX(Integer.MAX_VALUE);
     rightPanel.updateWaveforms(false);
   }
 
   @Override
   public void selectionChanged(Model.Event event) {
+    if (leftPanel == null || rightPanel == null) return;
     leftPanel.updateSignals();
     rightPanel.updateSignals();
     editHandler.computeEnabled();

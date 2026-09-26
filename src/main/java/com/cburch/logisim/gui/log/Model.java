@@ -25,6 +25,7 @@ import com.cburch.logisim.util.EventSourceWeakSupport;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.LongSupplier;
@@ -74,13 +75,52 @@ public class Model implements CircuitListener, SignalInfo.Listener {
     }
   }
 
+  /**
+   * The values of the logged signals at one instant, read on the simulation thread.
+   *
+   * <p>The model, its signal list and every view of it belong to the event dispatch thread. The
+   * simulator reports on its own thread, so there it only reads the circuit into one of these
+   * with {@link #sample()} and hands it over; {@link #applyPropagation} and {@link #applyReset}
+   * then record it on the event thread. Immutable once built.
+   */
+  public static final class Sample {
+    private final SignalInfo[] items;
+    private final Value[] values;
+    private final SignalInfo clock;
+    private final Value clockValue;
+    private final long nanoTime;
+    private IdentityHashMap<SignalInfo, Value> byItem; // built on first slow lookup, EDT only
+
+    private Sample(
+        SignalInfo[] items, Value[] values, SignalInfo clock, Value clockValue, long nanoTime) {
+      this.items = items;
+      this.values = values;
+      this.clock = clock;
+      this.clockValue = clockValue;
+      this.nanoTime = nanoTime;
+    }
+
+    /** The sampled value of {@code item}, or null if it was not being logged at the time. */
+    Value valueOf(SignalInfo item, int idx) {
+      if (item == clock) return clockValue;
+      if (idx >= 0 && idx < items.length && items[idx] == item) return values[idx];
+      if (byItem == null) {
+        byItem = new IdentityHashMap<>();
+        for (var i = 0; i < items.length; i++) byItem.put(items[i], values[i]);
+      }
+      return byItem.get(item);
+    }
+  }
+
   final CircuitState circuitState;
   private final LongSupplier nanoTime;
   private final ArrayList<SignalInfo> info = new ArrayList<>();
   private final ArrayList<Signal> signals = new ArrayList<>();
+  // Copy of info published for the simulation thread, which samples it (see Sample).
+  private volatile SignalInfo[] sampledItems = new SignalInfo[0];
   private long timeEnd = -1; // signals go from 0 <= t < tEnd
   private Signal spotlight;
-  private SignalInfo clockSource;
+  private volatile SignalInfo clockSource;
   private Value curClockVal;
   private final EventSourceWeakSupport<Listener> listeners = new EventSourceWeakSupport<>();
   private boolean fileEnabled = false;
@@ -88,8 +128,8 @@ public class Model implements CircuitListener, SignalInfo.Listener {
   private boolean fileHeader = true;
   private boolean selected = false;
   private LogThread logger = null;
-  private int mode = STEP;
-  private int granularity = COARSE;
+  private volatile int mode = STEP;
+  private volatile int granularity = COARSE;
   private long timeScale = 5000;
   private long gateDelay = 200;
   private int historyLimit = 400;
@@ -128,12 +168,10 @@ public class Model implements CircuitListener, SignalInfo.Listener {
       // If one clock is present, we use CLOCK mode with that as the source.
       clockSource = clocks.get(0);
     } else if (clocks != null && clocks.size() > 1) {
-      // If multiple are present, ask user to select, with STEP as fallback.
-      clockSource = ClockSource.doClockMultipleObserverDialog(circ);
-      if (clockSource != null
-          && (clockSource.getComponent().getFactory() instanceof Pin)
-          && (clockSource.getDepth() == 1))
-        circuitState.setTemporaryClock(clockSource.getComponent());
+      // If multiple are present, default to one in this circuit itself rather than asking: this
+      // runs whenever the timing diagram meets a new simulation state, such as on a tab switch,
+      // which must never block on a dialog. The Options tab can pick another clock.
+      clockSource = defaultClock(clocks);
     }
     if (clockSource == null) {
       final var clk = circuitState.getTemporaryClock();
@@ -154,13 +192,24 @@ public class Model implements CircuitListener, SignalInfo.Listener {
     }
     timeEnd = duration;
 
+    renumberSignals();
+
     // Listen for new pins, clocks, etc., and changes to Signals
     for (final var item : info) item.setListener(this); // includes clock source
     circ.addCircuitListener(this);
   }
 
+  /** The clock to follow when there are several: the first top-level one, else the first. */
+  static SignalInfo defaultClock(List<SignalInfo> clocks) {
+    for (final var clk : clocks) {
+      if (clk.getDepth() == 1) return clk;
+    }
+    return clocks.get(0);
+  }
+
   private void renumberSignals() {
     for (int i = 0; i < signals.size(); i++) signals.get(i).idx = i;
+    sampledItems = info.toArray(new SignalInfo[0]);
   }
 
   public void addOrMove(List<SignalInfo> items, int idx) {
@@ -247,7 +296,6 @@ public class Model implements CircuitListener, SignalInfo.Listener {
     remove(s);
   }
 
-  @SuppressWarnings("unlikely-arg-type")
   public int remove(List<SignalInfo> items) {
     int count = 0;
     for (final var item : items) {
@@ -259,7 +307,7 @@ public class Model implements CircuitListener, SignalInfo.Listener {
       item.setListener(null);
     }
     if (count > 0) {
-      if (spotlight != null && items.contains(spotlight)) spotlight = null;
+      if (spotlight != null && !signals.contains(spotlight)) spotlight = null;
       renumberSignals();
       fireSelectionChanged(null);
     }
@@ -267,6 +315,7 @@ public class Model implements CircuitListener, SignalInfo.Listener {
   }
 
   public void remove(int idx) {
+    if (idx < 0 || idx >= signals.size()) return;
     if (spotlight != null && signals.get(idx) == spotlight) spotlight = null;
     info.remove(idx).setListener(null);
     signals.remove(idx);
@@ -432,6 +481,7 @@ public class Model implements CircuitListener, SignalInfo.Listener {
                 timeEnd - 1,
                 historyLimit));
         clockSource.setListener(this);
+        renumberSignals();
         fireSelectionChanged(null);
       }
     }
@@ -481,6 +531,7 @@ public class Model implements CircuitListener, SignalInfo.Listener {
     info.add(item);
     final var s = new Signal(idx, item, item.fetchValue(circuitState), 1, timeEnd - 1, historyLimit);
     signals.add(idx, s);
+    renumberSignals();
     item.setListener(this);
     if (fireUpdate) fireSelectionChanged(null);
     return s;
@@ -587,25 +638,67 @@ public class Model implements CircuitListener, SignalInfo.Listener {
     fireSignalsExtended(null);
   }
 
-  private void extendWithNewValues(long duration) {
+  /** The value of {@code s} in {@code sample}, reading the circuit for a signal added since. */
+  private Value valueOf(Sample sample, Signal s) {
+    final var v = sample.valueOf(s.info, s.idx);
+    return v != null ? v : s.info.fetchValue(circuitState);
+  }
+
+  private Value clockValue(Sample sample) {
+    final var clk = clockSource;
+    if (clk == sample.clock && sample.clockValue != null) return sample.clockValue;
+    return clk.fetchValue(circuitState);
+  }
+
+  private void extendWithNewValues(Sample sample, long duration) {
     for (final var s : signals) {
-      final var v = s.info.fetchValue(circuitState);
-      s.extend(v, duration);
+      s.extend(valueOf(sample, s), duration);
     }
     elapsedSinceTrigger += duration;
     timeEnd += duration;
     fireSignalsExtended(null);
   }
 
-  private void replaceWithNewValues(long duration) {
+  private void replaceWithNewValues(Sample sample, long duration) {
     for (final var s : signals) {
-      final var v = s.info.fetchValue(circuitState);
-      s.replaceRecent(v, duration);
+      s.replaceRecent(valueOf(sample, s), duration);
     }
     fireSignalsExtended(null); // changed, not extended, but works fine for now
   }
 
+  /**
+   * Reads the current values of the logged signals and of the clock source.
+   *
+   * <p>Safe to call from the simulation thread: it touches only the published copy of the signal
+   * list and the circuit state, never the model's own lists.
+   */
+  public Sample sample() {
+    final var items = sampledItems;
+    final var values = new Value[items.length];
+    for (var i = 0; i < items.length; i++) values[i] = items[i].fetchValue(circuitState);
+    final var clk = clockSource;
+    final var clkValue = clk == null ? null : clk.fetchValue(circuitState);
+    return new Sample(items, values, clk, clkValue, nanoTime.getAsLong());
+  }
+
+  /**
+   * Whether a propagation reported with these flags could be recorded at all.
+   *
+   * <p>Lets the simulation thread skip sampling for events that {@link #applyPropagation} would
+   * discard anyway. Safe to call from any thread.
+   */
+  public boolean wantsSample(boolean stepped, boolean propagated) {
+    return propagated || (stepped && isFine());
+  }
+
+  /** Samples now and records a completed propagation. Event dispatch thread only. */
   public void propagationCompleted(boolean ticked, boolean stepped, boolean propagated) {
+    if (!wantsSample(stepped, propagated)) return;
+    applyPropagation(sample(), ticked, stepped, propagated);
+  }
+
+  /** Records a propagation that was sampled earlier. Event dispatch thread only. */
+  public void applyPropagation(Sample sample, boolean ticked, boolean stepped, boolean propagated) {
     if (!stepped && !propagated) {
       // No signals have changed. This was a nudge that resulted in no signal
       // changes, or a tick in single-step mode that hasn't yet propagated
@@ -616,29 +709,30 @@ public class Model implements CircuitListener, SignalInfo.Listener {
       // This is a transient fluctuation that can be entirely ignored.
       return;
     }
-    if (mode == STEP) updateSignalsStepMode(propagated);
-    else if (mode == REAL) updateSignalsRealMode();
-    else if (mode >= CLOCKED) updateSignalsClockMode();
+    if (mode == STEP) updateSignalsStepMode(sample, propagated);
+    else if (mode == REAL) updateSignalsRealMode(sample);
+    else if (mode >= CLOCKED && clockSource != null) updateSignalsClockMode(sample);
   }
 
-  private void updateSignalsStepMode(boolean stable) {
+  private void updateSignalsStepMode(Sample sample, boolean stable) {
     long duration = stable ? timeScale : gateDelay;
-    extendWithNewValues(duration);
+    extendWithNewValues(sample, duration);
   }
 
-  private void updateSignalsRealMode() {
-    long now = nanoTime.getAsLong();
+  private void updateSignalsRealMode(Sample sample) {
+    // Keep time moving forward even for a sample taken before the last reset.
+    final var now = Math.max(sample.nanoTime, lastRealtimeUpdate);
     double duration = (now - lastRealtimeUpdate) * (double) timeScale / 1000000000;
-    extendRealTimeWithNewValues(Math.max((long) duration, 1));
+    extendRealTimeWithNewValues(sample, Math.max((long) duration, 1));
     lastRealtimeUpdate = now;
   }
 
-  private void extendRealTimeWithNewValues(long elapsedDuration) {
+  private void extendRealTimeWithNewValues(Sample sample, long elapsedDuration) {
     final var values = new Value[signals.size()];
     var valuesChanged = timeEnd <= 0;
     for (var i = 0; i < signals.size(); i++) {
       final var s = signals.get(i);
-      final var v = s.info.fetchValue(circuitState);
+      final var v = valueOf(sample, s);
       values[i] = v;
       if (!valuesChanged) {
         final var previous = s.getValue(timeEnd - 1);
@@ -655,10 +749,10 @@ public class Model implements CircuitListener, SignalInfo.Listener {
     fireSignalsExtended(null);
   }
 
-  private void updateSignalsClockMode() {
+  private void updateSignalsClockMode(Sample sample) {
     // We ignore the simulator's notion of ticked, relying instead on looking
     // at specific transitions or levels of the chosen clockSource.
-    final var v = clockSource.fetchValue(circuitState);
+    final var v = clockValue(sample);
     final var cc = ClockSource.getCycleInfo(clockSource);
     if ((mode == CLOCK_HIGH && v.equals(HI)) || (mode == CLOCK_LOW && v.equals(LO))) {
       // Active level-senstive clock, either fine or coarse. Finish out
@@ -674,7 +768,7 @@ public class Model implements CircuitListener, SignalInfo.Listener {
         curClockVal = v;
       }
       long duration = gateDelay;
-      extendWithNewValues(duration);
+      extendWithNewValues(sample, duration);
     } else if (mode == CLOCK_HIGH || mode == CLOCK_LOW) {
       // Inactive level-sensitive clock, either fine or coarse.
       long activeDuration = (mode == CLOCK_HIGH ? cc.hi : cc.lo) * timeScale;
@@ -687,14 +781,14 @@ public class Model implements CircuitListener, SignalInfo.Listener {
         elapsedSinceTrigger = 0;
         curClockVal = v;
         long duration = isFine() ? gateDelay : stableDuration;
-        extendWithNewValues(duration);
+        extendWithNewValues(sample, duration);
       } else if (isCoarse()) {
         // back-date transient changes to the start of current stable period
-        replaceWithNewValues(stableDuration);
+        replaceWithNewValues(sample, stableDuration);
       } else {
         // fine-grained, but still inactive
         long duration = gateDelay;
-        extendWithNewValues(duration);
+        extendWithNewValues(sample, duration);
       }
     } else {
       // Edge-triggered clock, fine or coarse.
@@ -713,27 +807,32 @@ public class Model implements CircuitListener, SignalInfo.Listener {
         if (isFine() && elapsedSinceTrigger < prevDuration)
           extendWithOldValues(prevDuration - elapsedSinceTrigger);
         elapsedSinceTrigger = 0;
-        extendWithNewValues(duration);
+        extendWithNewValues(sample, duration);
       } else if (isCoarse()) {
         // back-date transient changes to the start of current stable period
-        replaceWithNewValues(stableDuration);
+        replaceWithNewValues(sample, stableDuration);
       } else {
         // fine-grained, transient changes
-        extendWithNewValues(duration);
+        extendWithNewValues(sample, duration);
       }
     }
   }
 
+  /** Samples now and restarts the recording. Event dispatch thread only. */
   public void simulatorReset() {
-    if (mode >= CLOCKED) {
-      curClockVal = clockSource.fetchValue(circuitState);
+    applyReset(sample());
+  }
+
+  /** Restarts the recording from values sampled at a simulator reset. Event dispatch thread only. */
+  public void applyReset(Sample sample) {
+    if (mode >= CLOCKED && clockSource != null) {
+      curClockVal = clockValue(sample);
     }
     long duration = getInitialDuration();
-    if (mode == REAL) lastRealtimeUpdate = nanoTime.getAsLong();
+    if (mode == REAL) lastRealtimeUpdate = sample.nanoTime;
     elapsedSinceTrigger = 0;
     for (final var s : signals) {
-      final var v = s.info.fetchValue(circuitState);
-      s.reset(v, duration);
+      s.reset(valueOf(sample, s), duration);
     }
     elapsedSinceTrigger += duration;
     timeEnd = duration;
@@ -803,6 +902,39 @@ public class Model implements CircuitListener, SignalInfo.Listener {
     else if (t < 100000000 || (t % 100000000) != 0)
       return S.get("msFormat", String.format("%.1f", t / 1000000.0));
     else return S.get("sFormat", String.format("%.1f", t / 1000000000.0));
+  }
+
+  /**
+   * The unit, in nanoseconds, for labelling a time ruler whose labels are {@code step} apart.
+   *
+   * <p>{@link #formatDuration(long)} picks a unit per value, so a ruler labelled with it read
+   * "0 ns, 2.5 µs, 5.0 µs"; labelling every mark in one unit keeps it readable.
+   */
+  public static long durationUnit(long step) {
+    if (step >= 1_000_000_000L) return 1_000_000_000L;
+    if (step >= 1_000_000L) return 1_000_000L;
+    if (step >= 1_000L) return 1_000L;
+    return 1L;
+  }
+
+  /** The decimals needed to show {@code t} exactly in {@code unit}, at most three. */
+  public static int durationDecimals(long t, long unit) {
+    var decimals = 0;
+    var scale = unit;
+    while (decimals < 3 && scale > 1 && t % scale != 0) {
+      scale /= 10;
+      decimals++;
+    }
+    return decimals;
+  }
+
+  /** Formats {@code t} nanoseconds in the fixed {@code unit} with {@code decimals} decimals. */
+  public static String formatDuration(long t, long unit, int decimals) {
+    final var key =
+        unit >= 1_000_000_000L
+            ? "sFormat"
+            : unit >= 1_000_000L ? "msFormat" : unit >= 1_000L ? "usFormat" : "nsFormat";
+    return S.get(key, String.format("%." + decimals + "f", t / (double) unit));
   }
 
   public void setRadix(SignalInfo s, RadixOption value) {

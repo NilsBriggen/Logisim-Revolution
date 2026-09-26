@@ -200,7 +200,13 @@ public final class UiSnapshot {
     }
 
     final var sideView = System.getProperty("snapshot.side", "");
-    if (!sideView.isEmpty()) {
+    if ("timing".equals(sideView)) {
+      // Not a side view: opens the timing diagram in the drawer, on its waveform tab.
+      SwingUtilities.invokeAndWait(() -> {
+        frame.showLogPanel();
+        selectTimingTab(frame.getContentPane());
+      });
+    } else if (!sideView.isEmpty()) {
       SwingUtilities.invokeAndWait(() -> frame.showSideView(sideView));
     }
 
@@ -246,5 +252,20 @@ public final class UiSnapshot {
             size.height,
             mode.key()));
     System.exit(0);
+  }
+
+  private static boolean selectTimingTab(java.awt.Container parent) {
+    for (final var child : parent.getComponents()) {
+      if (child instanceof javax.swing.JTabbedPane tabs) {
+        for (var i = 0; i < tabs.getTabCount(); i++) {
+          if (tabs.getComponentAt(i) instanceof com.cburch.logisim.gui.chrono.ChronoPanel) {
+            tabs.setSelectedIndex(i);
+            return true;
+          }
+        }
+      }
+      if (child instanceof java.awt.Container container && selectTimingTab(container)) return true;
+    }
+    return false;
   }
 }

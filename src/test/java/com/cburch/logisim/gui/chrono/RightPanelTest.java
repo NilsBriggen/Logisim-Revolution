@@ -9,6 +9,7 @@
 
 package com.cburch.logisim.gui.chrono;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -144,5 +145,33 @@ class RightPanelTest {
 
     verify(waveformGraphics, atLeastOnce()).drawLine(anyInt(), anyInt(), anyInt(), anyInt());
     metricsGraphics.dispose();
+  }
+
+  @Test
+  void staleSelectionAndSpotlightIndicesAreIgnored() {
+    final var signalInfo = mock(SignalInfo.class);
+    when(signalInfo.getWidth()).thenReturn(1);
+    when(signalInfo.format(any(Value.class))).thenAnswer(inv -> inv.getArgument(0).toString());
+    final var signal = new Signal(0, signalInfo, Value.FALSE, 10, 0, 0);
+    final var model = mock(Model.class);
+    when(model.getSignalCount()).thenReturn(1);
+    when(model.getSignal(0)).thenReturn(signal);
+    when(model.getEndTime()).thenReturn(10L);
+    when(model.getTimeScale()).thenReturn(10L);
+    final var chronoPanel = mock(ChronoPanel.class);
+    when(chronoPanel.getModel()).thenReturn(model);
+    when(chronoPanel.rowColors(any(SignalInfo.class), anyBoolean()))
+        .thenReturn(new Color[] {
+          Color.WHITE, Color.GRAY, Color.BLACK, Color.PINK, Color.BLACK, Color.ORANGE, Color.BLACK
+        });
+    final var selection = new DefaultListSelectionModel();
+    final var rightPanel = new RightPanel(chronoPanel, selection);
+
+    // A selection of the previous, longer signal list (C21) ...
+    selection.setSelectionInterval(3, 4);
+    assertDoesNotThrow(() -> rightPanel.updateSelected(0, 4));
+    // ... and the spotlight on a signal that was just deleted (C41).
+    final var removed = new Signal(4, signalInfo, Value.FALSE, 10, 0, 0);
+    assertDoesNotThrow(() -> rightPanel.changeSpotlight(removed, signal));
   }
 }

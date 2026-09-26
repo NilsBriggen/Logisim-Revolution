@@ -27,6 +27,8 @@ import javax.swing.JMenu;
 import javax.swing.JMenuItem;
 import javax.swing.JRadioButtonMenuItem;
 import javax.swing.KeyStroke;
+import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
@@ -398,13 +400,16 @@ public class MenuSimulate extends Menu {
           vhdl.reset();
           // Wait until the restart finishes, otherwise the signal reset will be
           // sent to the VHDL simulator before the sim is loaded and errors will
-          // occur. Wait time (0.5 sec) is arbitrary.
+          // occur. Wait time (0.5 sec) is arbitrary. Wait with a timer rather
+          // than sleeping, which would freeze the whole user interface.
           // FIXME: Find a better way to do blocking reset.
-          try {
-            Thread.sleep(500);
-          } catch (InterruptedException ex) {
-            Thread.currentThread().interrupt();
-          }
+          final var timer = new Timer(500, ev -> {
+            sim.reset();
+            proj.repaintCanvas();
+          });
+          timer.setRepeats(false);
+          timer.start();
+          return;
         }
         sim.reset();
         proj.repaintCanvas();
@@ -429,7 +434,9 @@ public class MenuSimulate extends Menu {
 
     @Override
     public void simulatorReset(Simulator.Event e) {
-      updateSimulator(e);
+      // Reported on the simulation thread; menu items may only change on the event thread.
+      if (SwingUtilities.isEventDispatchThread()) updateSimulator(e);
+      else SwingUtilities.invokeLater(() -> updateSimulator(e));
     }
 
     @Override

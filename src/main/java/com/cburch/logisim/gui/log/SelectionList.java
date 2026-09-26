@@ -184,6 +184,11 @@ public class SelectionList extends JTable {
         items.clear();
         items.add(item);
       }
+      for (final var entry : radixMenuItems.entrySet()) {
+        var fits = true;
+        for (final var s : items) fits &= SignalInfo.radixFits(entry.getKey(), s.getWidth());
+        entry.getValue().setVisible(fits);
+      }
       radixMenuItems.get(item.getRadix()).setSelected(true);
       label.setIcon(item.icon);
       label.setText(item.toString() + " [" + item.getRadix().toDisplayString() + "]");

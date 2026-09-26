@@ -42,6 +42,7 @@ public class PopupMenu extends MouseAdapter {
       }
       final var g = new ButtonGroup();
       for (final var r : RadixOption.OPTIONS) {
+        if (!radixFitsAll(r)) continue;
         final var m = new JRadioButtonMenuItem(r.toDisplayString());
         add(m);
         m.setEnabled(signals.size() > 0);
@@ -73,6 +74,14 @@ public class PopupMenu extends MouseAdapter {
 
   private final List<Signal> signals;
   private final ChronoPanel chronoPanel;
+
+  /** Offers a radix only if it can display every selected signal. */
+  private boolean radixFitsAll(RadixOption r) {
+    for (final var s : signals) {
+      if (!SignalInfo.radixFits(r, s.info.getWidth())) return false;
+    }
+    return true;
+  }
 
   public PopupMenu(ChronoPanel p, List<Signal> s) {
     chronoPanel = p;
