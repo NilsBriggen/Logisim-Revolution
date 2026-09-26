@@ -96,7 +96,10 @@ public final class ProjectActions {
         // The stack trace belongs behind the Details button, not in front of the user as the
         // entire message.
         OptionPane.showError(null, S.get("windowCreateFailedTitle"), S.get("windowCreateFailed"), e);
-        System.exit(-1);
+        // Quitting would also discard the unsaved work of every other open window.
+        final var othersOpen =
+            Projects.getOpenProjects().stream().anyMatch(other -> other != proj);
+        if (!othersOpen) System.exit(-1);
       }
     }
   }
@@ -173,8 +176,8 @@ public final class ProjectActions {
     try {
       file = loader.openLogisimFile(templReader);
     } catch (IOException ex) {
-      displayException(baseProject.getFrame(), ex);
-      file = createEmptyFile(loader, baseProject);
+      displayException(parent, ex);
+      file = null;
     } finally {
       try {
         templReader.close();
@@ -182,6 +185,8 @@ public final class ProjectActions {
         // Do nothing.
       }
     }
+    // A template that cannot be parsed yields null (its error was already shown).
+    if (file == null) file = createEmptyFile(loader, baseProject);
     return file;
   }
 
@@ -552,7 +557,26 @@ public final class ProjectActions {
     final var loader = proj.getLogisimFile().getLoader();
     final var f = loader.getMainFile();
     if (f == null) return doSaveAs(proj);
-    else return doSave(proj, f);
+    if (proj.getLogisimFile().isLoadedWithErrors() && proj.getFrame() != null) {
+      final String[] options = {
+        S.get("saveAfterLoadErrorsOverwrite"),
+        S.get("saveAfterLoadErrorsSaveAs"),
+        S.get("saveAfterLoadErrorsCancel"),
+      };
+      final var choice =
+          OptionPane.showOptionDialog(
+              proj.getFrame(),
+              S.get("saveAfterLoadErrorsMessage", f.getName()),
+              S.get("saveAfterLoadErrorsTitle"),
+              OptionPane.YES_NO_CANCEL_OPTION,
+              OptionPane.WARNING_MESSAGE,
+              null,
+              options,
+              options[1]);
+      if (choice == 1) return doSaveAs(proj);
+      if (choice != 0) return false;
+    }
+    return doSave(proj, f);
   }
 
   public static boolean doSave(Project proj, File f) {
@@ -568,6 +592,7 @@ public final class ProjectActions {
             final var ret = loader.save(proj.getLogisimFile(), f);
             if (ret) {
               AppPreferences.updateRecentFile(f);
+              proj.getLogisimFile().clearLoadedWithErrors();
               proj.setFileAsClean();
             }
             return ret;
@@ -780,61 +805,82 @@ public final class ProjectActions {
       chooser.setSelectedFile(loader.getMainFile());
     }
 
-    int returnVal;
-    var validFilename = false;
-    var errors = new HashMap<String, String>();
-    do {
+    final var errors = new HashMap<String, String>();
+    // Every rejection below returns to the chooser rather than abandoning Save As.
+    while (true) {
       errors.clear();
-      returnVal = chooser.showSaveDialog(proj.getFrame());
+      final var returnVal = chooser.showSaveDialog(proj.getFrame());
       if (returnVal != JFileChooser.APPROVE_OPTION) {
         return false;
       }
-      validFilename = checkValidFilename(chooser.getSelectedFile().getName(), proj, errors);
-      if (!validFilename) {
+      if (!checkValidFilename(chooser.getSelectedFile().getName(), proj, errors)) {
         var message = "\"" + chooser.getSelectedFile() + "\":\n";
-        for (String key : errors.keySet()) {
-          message = message.concat("=> " + S.get(errors.get(key)) + "\n");
+        for (final var error : errors.values()) {
+          message = message.concat("=> " + error + "\n");
         }
         OptionPane.showMessageDialog(
             chooser, message, S.get("FileSaveAsItem"), OptionPane.ERROR_MESSAGE);
+        continue;
       }
-    } while (!validFilename);
 
-    var selectedFile = chooser.getSelectedFile();
-    if (!selectedFile.getName().endsWith(Loader.LOGISIM_EXTENSION)) {
-      var old = selectedFile.getName();
-      int ext0 = old.lastIndexOf('.');
-      if (ext0 < 0 || !Pattern.matches("\\.\\p{L}{2,}\\d?", old.substring(ext0))) {
-        selectedFile = new File(selectedFile.getParentFile(), old + Loader.LOGISIM_EXTENSION);
-      } else {
-        var ext = old.substring(ext0);
-        var ttl = S.get("replaceExtensionTitle");
-        var msg = S.get("replaceExtensionMessage", ext);
-        Object[] options = {
-          S.get("replaceExtensionReplaceOpt", ext),
-          S.get("replaceExtensionAddOpt", Loader.LOGISIM_EXTENSION),
-          S.get("replaceExtensionKeepOpt")
-        };
-        var dlog = new JOptionPane(msg);
-        dlog.setMessageType(OptionPane.QUESTION_MESSAGE);
-        dlog.setOptions(options);
-        dlog.createDialog(proj.getFrame(), ttl).setVisible(true);
+      var selectedFile = chooser.getSelectedFile();
+      if (!selectedFile.getName().endsWith(Loader.LOGISIM_EXTENSION)) {
+        var old = selectedFile.getName();
+        int ext0 = old.lastIndexOf('.');
+        if (ext0 < 0 || !Pattern.matches("\\.\\p{L}{2,}\\d?", old.substring(ext0))) {
+          selectedFile = new File(selectedFile.getParentFile(), old + Loader.LOGISIM_EXTENSION);
+        } else {
+          var ext = old.substring(ext0);
+          var ttl = S.get("replaceExtensionTitle");
+          var msg = S.get("replaceExtensionMessage", ext);
+          Object[] options = {
+            S.get("replaceExtensionReplaceOpt", ext),
+            S.get("replaceExtensionAddOpt", Loader.LOGISIM_EXTENSION),
+            S.get("replaceExtensionKeepOpt")
+          };
+          var dlog = new JOptionPane(msg);
+          dlog.setMessageType(OptionPane.QUESTION_MESSAGE);
+          dlog.setOptions(options);
+          dlog.createDialog(proj.getFrame(), ttl).setVisible(true);
 
-        selectedFile = resolveSaveExtension(selectedFile, dlog.getValue(), options);
-        if (selectedFile == null) return false;
+          selectedFile = resolveSaveExtension(selectedFile, dlog.getValue(), options);
+          if (selectedFile == null) return false;
+        }
       }
-    }
 
-    if (selectedFile.exists()) {
-      var confirm =
-          OptionPane.showConfirmDialog(
-              proj.getFrame(),
-              S.get("confirmOverwriteMessage"),
-              S.get("confirmOverwriteTitle"),
-              OptionPane.YES_NO_OPTION);
-      if (confirm != OptionPane.YES_OPTION) return false;
+      final var rejection = saveTargetRejection(proj, selectedFile);
+      if (rejection != null) {
+        OptionPane.showMessageDialog(
+            proj.getFrame(), rejection, S.get("FileSaveAsItem"), OptionPane.ERROR_MESSAGE);
+        continue;
+      }
+      if (selectedFile.exists()) {
+        final var confirm =
+            OptionPane.showConfirmDialog(
+                proj.getFrame(),
+                S.get("confirmOverwriteMessage"),
+                S.get("confirmOverwriteTitle"),
+                OptionPane.YES_NO_OPTION);
+        if (confirm != OptionPane.YES_OPTION) continue;
+      }
+      return doSave(proj, selectedFile);
     }
-    return doSave(proj, selectedFile);
+  }
+
+  /**
+   * Why {@code target} cannot receive a Save As of {@code proj}, or {@code null} if it can. A
+   * folder cannot be overwritten, and a file another window has open would later be overwritten
+   * again by that window, silently discarding this save.
+   */
+  static String saveTargetRejection(Project proj, File target) {
+    if (target.isDirectory()) {
+      return S.get("saveAsDirectoryError", target.getName());
+    }
+    final var owner = Projects.findProjectFor(target);
+    if (owner != null && owner != proj) {
+      return S.get("saveAsOpenElsewhereError", target.getName());
+    }
+    return null;
   }
 
   static File resolveSaveExtension(File selected, Object result, Object[] options) {

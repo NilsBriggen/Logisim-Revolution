@@ -102,7 +102,13 @@ public class XmlCircuitReader extends CircuitTransaction {
       ramAttrs.updateAttributes();
       defaults = null;
     }
-    reader.initAttributeSet(elt, attrs, defaults, isHolyCross, isEvolution);
+    try {
+      reader.initAttributeSet(elt, attrs, defaults, isHolyCross, isEvolution);
+    } catch (XmlReaderException e) {
+      // Unreadable attribute values keep their defaults: dropping the whole component would
+      // delete it from the file on the next save. The load still reports the problem.
+      reader.addErrors(e, toComponentString(elt));
+    }
     if (source instanceof VhdlEntity vhdl) {
       initLegacyVhdlAppearance(elt, reader, vhdl);
     }
@@ -345,7 +351,7 @@ public class XmlCircuitReader extends CircuitTransaction {
     }
   }
 
-  private String toComponentString(Element elt) {
+  private static String toComponentString(Element elt) {
     final var name = elt.getAttribute("name");
     final var loc = elt.getAttribute("loc");
     return String.format("%s(%s)", name, loc);

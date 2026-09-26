@@ -159,6 +159,8 @@ public class Ram extends Mem {
   }
 
   public static void closeHexFrame(RamState state) {
+    // A RAM that was never propagated has no state, hence no editor to close.
+    if (state == null) return;
     final var contents = state.getContents();
     HexFrame ret;
     synchronized (windowRegistry) {
@@ -392,7 +394,7 @@ public class Ram extends Mem {
 
   @Override
   public void removeComponent(Circuit circ, Component c, CircuitState state) {
-    if (state != null) closeHexFrame((RamState) state.getData(c));
+    if (state != null && state.getData(c) instanceof RamState ramState) closeHexFrame(ramState);
   }
 
   public static boolean isSeparate(AttributeSet attrs) {

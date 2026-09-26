@@ -139,9 +139,13 @@ class TemplateOptions extends OptionsPanel {
             reader = new FileInputStream(file);
             final var template = Template.create(reader);
             reader2 = template.createStream();
-            LogisimFile.load(reader2, loader); // to see if OK
-            AppPreferences.setTemplateFile(file, template);
-            AppPreferences.setTemplateType(AppPreferences.TEMPLATE_CUSTOM);
+            // Only adopt a template that actually loads; load() reports its own errors.
+            final var loaded = LogisimFile.load(reader2, loader);
+            if (loaded != null) {
+              loaded.retireAutosaveThread();
+              AppPreferences.setTemplateFile(file, template);
+              AppPreferences.setTemplateType(AppPreferences.TEMPLATE_CUSTOM);
+            }
           } catch (LoaderException ignored) {
           } catch (IOException ex) {
             OptionPane.showMessageDialog(
@@ -155,7 +159,7 @@ class TemplateOptions extends OptionsPanel {
             } catch (IOException ignored) {
             }
             try {
-              if (reader != null) reader2.close();
+              if (reader2 != null) reader2.close();
             } catch (IOException ignored) {
             }
           }

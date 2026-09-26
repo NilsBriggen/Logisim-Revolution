@@ -1302,9 +1302,12 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
         // its idempotent setter alone cannot dismiss a separately shown welcome surface.
         project.setStartupScreen(false);
         dismissWelcome();
-      } else if (action == ProjectEvent.ACTION_COMPLETE) {
-        // An edit landed: mark the circuit it changed, so its tab says so.
-        editorTabModel.setDirty(project.getCurrentCircuit(), true);
+      } else if (action == ProjectEvent.ACTION_COMPLETE
+          || action == ProjectEvent.UNDO_COMPLETE
+          || action == ProjectEvent.REDO_COMPLETE) {
+        // An edit landed: mark the circuit it changed, so its tab says so. Undo and redo change
+        // circuits too; the project's dirty flag decides, so tab dot and title always agree.
+        if (project.isFileDirty()) editorTabModel.setDirty(project.getCurrentCircuit(), true);
       } else if (action == ProjectEvent.ACTION_SET_STATE) {
         // The trail is how the user knows which instance they are inside, and how they get back.
         updateCircuitTrail();

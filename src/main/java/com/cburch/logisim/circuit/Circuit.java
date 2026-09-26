@@ -64,8 +64,12 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.TreeSet;
 import java.util.WeakHashMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Circuit {
+  private static final Logger logger = LoggerFactory.getLogger(Circuit.class);
+
   private class EndChangedTransaction extends CircuitTransaction {
     private final Component comp;
     private final Map<Location, EndData> toRemove;
@@ -906,10 +910,10 @@ public class Circuit {
     clocks.clear();
     myNetList.clear();
     isAnnotated = false;
+    final var state = proj == null ? null : proj.getCircuitState(this);
     for (final var comp : oldComps) {
       socSim.removeComponent(comp);
-      final var factory = comp.getFactory();
-      factory.removeComponent(this, comp, proj.getCircuitState(this));
+      notifyFactoryOfRemoval(comp, state);
     }
     fireEvent(CircuitEvent.ACTION_CLEAR, oldComps);
   }
@@ -926,7 +930,7 @@ public class Circuit {
       comps.remove(c);
       socSim.removeComponent(c);
       final var factory = c.getFactory();
-      factory.removeComponent(this, c, proj.getCircuitState(this));
+      notifyFactoryOfRemoval(c, proj == null ? null : proj.getCircuitState(this));
       if (factory instanceof Clock) {
         clocks.remove(c);
       } else if (factory instanceof DynamicElementProvider) {
@@ -935,6 +939,19 @@ public class Circuit {
       c.removeComponentListener(myComponentListener);
     }
     fireEvent(CircuitEvent.ACTION_REMOVE, c);
+  }
+
+  /**
+   * Lets the factory release per-instance resources (hex editors, sound threads, ...). The
+   * component has already left the netlist at this point, so a failing hook must not abort the
+   * mutation half-way: that would leave the circuit, its listeners and the undo log disagreeing.
+   */
+  private void notifyFactoryOfRemoval(Component c, CircuitState state) {
+    try {
+      c.getFactory().removeComponent(this, c, state);
+    } catch (RuntimeException e) {
+      logger.error("Component factory failed while removing {}", c, e);
+    }
   }
 
   private void removeWrongLabels(String label) {
@@ -954,7 +971,10 @@ public class Circuit {
     // and (2) they cannot have a label
     if (changed)
       OptionPane.showMessageDialog(
-          null, "\"" + label + "\" : " + S.get("ComponentLabelCollisionError"));
+          null,
+          "\"" + label + "\" : " + S.get("ComponentLabelCollisionError"),
+          S.get("ComponentLabelCollisionTitle"),
+          OptionPane.WARNING_MESSAGE);
   }
 
   public void removeCircuitListener(CircuitListener what) {

@@ -281,6 +281,28 @@ class LogisimFileAutosaveTest {
     }
   }
 
+  @Test
+  void transientAutosaveFailureRetriesInsteadOfStoppingForTheSession() throws Exception {
+    final var loader = mock(Loader.class);
+    final var attempts = new AtomicInteger();
+    final var saved = new CountDownLatch(1);
+    when(loader.autosave(any())).thenAnswer(invocation -> {
+      if (attempts.incrementAndGet() == 1) {
+        throw new java.util.ConcurrentModificationException("edited while saving");
+      }
+      saved.countDown();
+      return true;
+    });
+    final var file = newFile(loader, true);
+    try {
+      file.setDirty(true);
+      assertTrue(saved.await(5, TimeUnit.SECONDS), "autosave must retry after a runtime failure");
+      verify(loader, never()).showError(anyString());
+    } finally {
+      file.retireAutosaveThread();
+    }
+  }
+
   private static LogisimFile newFile(Loader loader, boolean autosaveEnabled) {
     final var file = new LogisimFile(loader, autosaveEnabled, () -> 10L);
     file.addCircuit(new Circuit("main", file, null));

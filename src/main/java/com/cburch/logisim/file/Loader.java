@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.UUID;
@@ -557,22 +558,35 @@ public class Loader implements LibraryLoader {
       return false;
     }
 
+    if (dest.isDirectory()) {
+      // Never create a backup copy of a folder or try to replace it with a file.
+      showError(S.get("fileSaveError", S.get("fileSaveDirectoryError", dest.getName())));
+      return false;
+    }
+
     final var oldFile = getMainFile();
     File backup = null;
     var backupCreated = false;
     var publishing = false;
     Path staged = null;
+    Path target = null;
     try {
+      // Write through a symbolic link rather than replacing the link itself.
+      target = resolveWriteTarget(dest);
+      if (Files.exists(target) && !Files.isWritable(target)) {
+        // Replacing the file would succeed in a writable folder, silently defeating read-only.
+        throw new IOException(S.get("fileSaveReadOnlyError", dest.getName()));
+      }
       setMainFile(dest);
-      staged = stageWrite(file, dest);
-      if (dest.exists()) {
+      staged = stageWrite(file, dest, target, true);
+      if (Files.exists(target)) {
         backup = determineBackupName(dest);
         if (backup == null) throw new IOException("No available backup filename");
-        Files.copy(dest.toPath(), backup.toPath());
+        Files.copy(target, backup.toPath());
         backupCreated = true;
       }
       publishing = true;
-      publishWrite(staged, dest.toPath());
+      publishWrite(staged, target);
       staged = null;
     } catch (IOException e) {
       setMainFile(oldFile);
@@ -580,9 +594,9 @@ public class Loader implements LibraryLoader {
         try {
           if (backupCreated) {
             // Keep the backup as well if publication failed; never discard the last good copy.
-            Files.copy(backup.toPath(), dest.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(backup.toPath(), target, StandardCopyOption.REPLACE_EXISTING);
           } else {
-            Files.deleteIfExists(dest.toPath());
+            Files.deleteIfExists(target);
           }
         } catch (IOException recoveryError) {
           e.addSuppressed(recoveryError);
@@ -623,8 +637,9 @@ public class Loader implements LibraryLoader {
     Path staged = null;
     try {
       if (mainFile == null) Files.createDirectories(destination.toPath().getParent());
-      staged = stageWrite(file, destination);
-      publishWrite(staged, destination.toPath());
+      final var target = destination.toPath().toAbsolutePath();
+      staged = stageWrite(file, destination, target, false);
+      publishWrite(staged, target);
       staged = null;
     } catch (IOException e) {
       return false;
@@ -638,9 +653,33 @@ public class Loader implements LibraryLoader {
     return true;
   }
 
-  private Path stageWrite(LogisimFile file, File destination) throws IOException {
-    final var directory = destination.toPath().toAbsolutePath().getParent();
-    final var staged = Files.createTempFile(directory, ".logisim-save-", ".tmp");
+  /** The file a save really replaces: the end of any symbolic link chain at {@code dest}. */
+  static Path resolveWriteTarget(File dest) throws IOException {
+    final var path = dest.toPath().toAbsolutePath();
+    try {
+      return path.toRealPath();
+    } catch (NoSuchFileException e) {
+      return path; // a new file (or a dangling link, which is replaced)
+    }
+  }
+
+  /**
+   * Writes {@code file} next to {@code target} for an atomic replace. {@code destination} is the
+   * path the user chose, which relative library references are computed from.
+   *
+   * @param keepFileMode give the staged file the permissions the replaced file had, or for a new
+   *     file the ordinary ones for a newly created file, rather than a private temporary file's
+   */
+  private Path stageWrite(LogisimFile file, File destination, Path target, boolean keepFileMode)
+      throws IOException {
+    final var directory = target.getParent();
+    final Path staged;
+    if (keepFileMode) {
+      staged = Files.createFile(directory.resolve(".logisim-save-" + UUID.randomUUID() + ".tmp"));
+      copyPermissions(target, staged);
+    } else {
+      staged = Files.createTempFile(directory, ".logisim-save-", ".tmp");
+    }
     var complete = false;
     try {
       try (final var output = Files.newOutputStream(staged)) {
@@ -652,6 +691,15 @@ public class Loader implements LibraryLoader {
       return staged;
     } finally {
       if (!complete) discardStagedWrite(staged);
+    }
+  }
+
+  private static void copyPermissions(Path from, Path to) throws IOException {
+    if (!Files.exists(from)) return;
+    try {
+      Files.setPosixFilePermissions(to, Files.getPosixFilePermissions(from));
+    } catch (UnsupportedOperationException e) {
+      // Not a POSIX file system: the replaced file's attributes cannot be expressed this way.
     }
   }
 

@@ -16,6 +16,7 @@ import com.cburch.logisim.LogisimVersion;
 import com.cburch.logisim.circuit.Circuit;
 import com.cburch.logisim.circuit.CircuitMapInfo;
 import com.cburch.logisim.circuit.Splitter;
+import com.cburch.logisim.circuit.SubcircuitFactory;
 import com.cburch.logisim.circuit.appear.AppearanceSvgReader;
 import com.cburch.logisim.comp.Component;
 import com.cburch.logisim.data.Attribute;
@@ -97,12 +98,14 @@ class XmlReader {
     }
 
     void addError(String message, String context) {
-      messages.add(message + " [" + context + "]");
+      // A component may be read twice (once early, once in circuit order); report it once.
+      final var entry = message + " [" + context + "]";
+      if (!messages.contains(entry)) messages.add(entry);
     }
 
     void addErrors(XmlReaderException exception, String context) {
       for (final var msg : exception.getMessages()) {
-        messages.add(msg + " [" + context + "]");
+        addError(msg, context);
       }
     }
 
@@ -183,7 +186,9 @@ class XmlReader {
           try {
             Object val = attr.parse(attrVal);
             attrs.setValue(attr, val);
-          } catch (NumberFormatException e) {
+          } catch (IllegalArgumentException e) {
+            // Includes NumberFormatException. The attribute keeps its default value; the caller
+            // decides whether the rest of the element is still usable.
             if (messages == null) messages = new ArrayList<>();
             messages.add(S.get("attrValueInvalidError", attrVal, attrName));
           }
@@ -1160,7 +1165,17 @@ class XmlReader {
     if (file.getCircuitCount() == 0) {
       file.addCircuit(new Circuit("main", file, proj));
     }
+    final var cycle = findSubcircuitCycle(file);
+    if (cycle != null) {
+      // A circuit that contains itself cannot be simulated or displayed; opening it would recurse
+      // until the stack overflows.
+      final var message = S.get("subcircuitCycleError", String.join(" \u2192 ", cycle));
+      file.retireAutosaveThread();
+      loader.showError(message);
+      throw new LoaderException(message, true);
+    }
     if (!context.messages.isEmpty()) {
+      file.setLoadedWithErrors(true);
       final var all = new StringBuilder();
       for (final var msg : context.messages) {
         all.append(msg).append("\n");
@@ -1168,6 +1183,45 @@ class XmlReader {
       loader.showError(all.substring(0, all.length() - 1));
     }
     return file;
+  }
+
+  /**
+   * Returns the names along a chain of circuits of {@code file} that contain each other in a loop
+   * (first and last name equal), or {@code null} if the subcircuit hierarchy is acyclic.
+   */
+  static List<String> findSubcircuitCycle(LogisimFile file) {
+    final var circuits = file.getCircuits();
+    final var state = new HashMap<Circuit, Boolean>(); // false: on the current path, true: done
+    for (final var start : circuits) {
+      final var path = new ArrayList<Circuit>();
+      final var cycle = findCycleFrom(start, circuits, state, path);
+      if (cycle != null) return cycle;
+    }
+    return null;
+  }
+
+  private static List<String> findCycleFrom(
+      Circuit circ, List<Circuit> circuits, Map<Circuit, Boolean> state, List<Circuit> path) {
+    final var seen = state.get(circ);
+    if (Boolean.TRUE.equals(seen)) return null;
+    if (Boolean.FALSE.equals(seen)) {
+      final var names = new ArrayList<String>();
+      for (final var c : path.subList(path.indexOf(circ), path.size())) names.add(c.getName());
+      names.add(circ.getName());
+      return names;
+    }
+    state.put(circ, Boolean.FALSE);
+    path.add(circ);
+    for (final var comp : circ.getNonWires()) {
+      if (comp.getFactory() instanceof SubcircuitFactory sub
+          && circuits.contains(sub.getSubcircuit())) {
+        final var cycle = findCycleFrom(sub.getSubcircuit(), circuits, state, path);
+        if (cycle != null) return cycle;
+      }
+    }
+    path.remove(path.size() - 1);
+    state.put(circ, Boolean.TRUE);
+    return null;
   }
 
   private void relocateTools(Element src, Element dest, HashMap<String, String> labelMap) {

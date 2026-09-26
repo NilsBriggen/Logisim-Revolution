@@ -44,9 +44,12 @@ import javax.swing.JFileChooser;
 
 public class Project {
   public void discardAllEdits() {
+    // Forgetting the history does not make unsaved edits saved.
+    if (isFileDirty()) forcedDirty = true;
     undoLog.clear();
     redoLog.clear();
     undoMods = 0;
+    file.setDirty(isFileDirty());
     fireEvent(new ProjectEvent(ProjectEvent.ACTION_COMPLETE, this, null));
   }
 
@@ -199,7 +202,7 @@ public class Project {
     }
     Action toAdd = act;
     startupScreen = false;
-    redoLog.clear();
+    discardRedoLog();
 
     if (!undoLog.isEmpty() && act.shouldAppendTo(getLastAction())) {
       final var firstData = undoLog.removeLast();
@@ -214,7 +217,7 @@ public class Project {
       }
       fireEvent(new ProjectEvent(ProjectEvent.ACTION_START, this, act));
       try {
-        act.doIt(this);
+        runMutation(() -> act.doIt(this));
       } catch (CircuitLocker.LockException e) {
         System.out.println("*** Circuit Lock Bug Diagnostics ***");
         System.out.println("This thread: " + Thread.currentThread());
@@ -236,7 +239,7 @@ public class Project {
     undoLog.add(new ActionData(circuitState, hdlModel, toAdd));
     fireEvent(new ProjectEvent(ProjectEvent.ACTION_START, this, act));
     try {
-      act.doIt(this);
+      runMutation(() -> act.doIt(this));
     } catch (CircuitLocker.LockException e) {
       System.out.println("*** Circuit Lock Bug Diagnostics ***");
       System.out.println("This thread: " + Thread.currentThread());
@@ -421,8 +424,39 @@ public class Project {
     return vhdlSimulator;
   }
 
+  /**
+   * Whether the project differs from the file on disk.
+   *
+   * <p>{@code undoMods} counts modifications relative to the last save point: positive after new
+   * edits, negative after undoing past it, and zero only when the undo history is back exactly at
+   * the saved state. States that cannot be reached through undo/redo any more set {@code
+   * forcedDirty} until the next save.
+   */
   public boolean isFileDirty() {
-    return (undoMods > 0) || forcedDirty;
+    return (undoMods != 0) || forcedDirty;
+  }
+
+  /**
+   * Drops the redo history. If the saved state lay ahead in it (we had undone past the save point),
+   * that state is no longer reachable, so the project stays dirty until it is saved again.
+   */
+  private void discardRedoLog() {
+    if (undoMods < 0 && !redoLog.isEmpty()) forcedDirty = true;
+    redoLog.clear();
+  }
+
+  /**
+   * Runs an action's mutation. An action that throws may have changed the circuit part-way, so the
+   * in-memory project can no longer be assumed to match the saved file.
+   */
+  private void runMutation(Runnable mutation) {
+    try {
+      mutation.run();
+    } catch (RuntimeException | Error e) {
+      forcedDirty = true;
+      file.setDirty(true);
+      throw e;
+    }
   }
 
   // We track whether this project is the empty project opened
@@ -444,10 +478,10 @@ public class Project {
     if (CollectionUtil.isNotEmpty(redoLog)) {
       // Add the last element of the undo log to the redo log
       undoLog.addLast(redoLog.getLast());
-      ++undoMods;
 
       // Remove the last item in the redo log, but keep the data
       final var data = redoLog.removeLast();
+      if (data.action.isModification()) ++undoMods;
 
       // Restore the circuit state to the redo's state
       if (data.circuitState != null) setCircuitState(data.circuitState);
@@ -460,7 +494,8 @@ public class Project {
       fireEvent(new ProjectEvent(ProjectEvent.REDO_START, this, action));
 
       // Redo the action
-      action.doIt(this);
+      runMutation(() -> action.doIt(this));
+      file.setDirty(isFileDirty());
 
       // Complete the redo
       fireEvent(new ProjectEvent(ProjectEvent.REDO_COMPLETE, this, action));
@@ -592,6 +627,9 @@ public class Project {
     undoLog.clear();
     redoLog.clear();
     undoMods = 0;
+    // A file recovered from an autosave holds edits that were never saved to the real file.
+    // A file that loaded with errors already differs from what is on disk as well.
+    forcedDirty = value.isAutosaveLoaded() || value.isLoadedWithErrors();
     fireEvent(ProjectEvent.ACTION_SET_FILE, old, file);
     setCurrentCircuit(file.getMainCircuit());
     if (file != null) {
@@ -600,7 +638,7 @@ public class Project {
       }
     }
     file.setDirty(true); // toggle it so that everybody hears the file is fresh
-    file.setDirty(false);
+    file.setDirty(isFileDirty());
   }
 
   //
@@ -658,7 +696,7 @@ public class Project {
         --undoMods;
       }
       fireEvent(new ProjectEvent(ProjectEvent.UNDO_START, this, action));
-      action.undo(this);
+      runMutation(() -> action.undo(this));
       file.setDirty(isFileDirty());
       fireEvent(new ProjectEvent(ProjectEvent.UNDO_COMPLETE, this, action));
     }

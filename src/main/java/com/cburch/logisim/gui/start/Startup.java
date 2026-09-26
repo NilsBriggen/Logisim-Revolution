@@ -1079,6 +1079,7 @@ public class Startup implements AWTEventListener {
 
     // load file
     Project proj = null;
+    var openedNothing = false;
     if (filesToOpen.isEmpty()) {
       proj = ProjectActions.doNew(monitor);
       proj.setStartupScreen(true);
@@ -1094,6 +1095,13 @@ public class Startup implements AWTEventListener {
           numOpened++;
         } catch (LoadFailedException ex) {
           logger.error("{} : {}", fileToOpen.getName(), ex.getMessage());
+          if (!ex.isShown() && Main.hasGui() && testVector == null && testCircPathInput == null) {
+            OptionPane.showMessageDialog(
+                null,
+                S.get("startupOpenFailed", fileToOpen.getName(), ex.getMessage()),
+                S.get("startupOpenFailedTitle"),
+                OptionPane.ERROR_MESSAGE);
+          }
         }
         if (first) {
           first = false;
@@ -1103,7 +1111,15 @@ public class Startup implements AWTEventListener {
           monitor = null;
         }
       }
-      if (numOpened == 0) System.exit(ExitCode.LOAD_ERROR);
+      if (numOpened == 0) {
+        // Command-line checks must report failure; an interactive user should get a window.
+        if (testVector != null || testCircPathInput != null || !Main.hasGui()) {
+          System.exit(ExitCode.LOAD_ERROR);
+        }
+        proj = ProjectActions.doNew(monitor);
+        proj.setStartupScreen(true);
+        openedNothing = true;
+      }
     }
 
     if (proj != null)
@@ -1111,7 +1127,7 @@ public class Startup implements AWTEventListener {
 
     // Started without a file: offer the welcome screen rather than an empty grid. Done here,
     // after the libraries are loaded, because loading them counts as an action on the project.
-    if (proj != null && filesToOpen.isEmpty()) {
+    if (proj != null && (filesToOpen.isEmpty() || openedNothing)) {
       final var startupProject = proj;
       javax.swing.SwingUtilities.invokeLater(
           () -> {

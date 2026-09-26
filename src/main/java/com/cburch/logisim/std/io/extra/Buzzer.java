@@ -124,6 +124,7 @@ public class Buzzer extends InstanceFactory {
   }
 
   public static void stopBuzzerSound(Component comp, CircuitState circState) {
+    if (circState == null) return;
     // static method, have to check if the comp parameter is a Buzzer or contains it
     final var compFact = comp.getFactory();
     // if it is a buzzer, stop its sound thread

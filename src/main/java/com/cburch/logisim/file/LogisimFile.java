@@ -11,6 +11,7 @@ package com.cburch.logisim.file;
 
 import static com.cburch.logisim.file.Strings.S;
 
+import com.cburch.logisim.Main;
 import com.cburch.logisim.circuit.Circuit;
 import com.cburch.logisim.circuit.CircuitAttributes;
 import com.cburch.logisim.circuit.CircuitEvent;
@@ -50,9 +51,13 @@ import javax.swing.SwingUtilities;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.TransformerConfigurationException;
 import javax.xml.transform.TransformerException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
 
 public class LogisimFile extends Library implements LibraryEventSource, CircuitListener {
+  private static final Logger logger = LoggerFactory.getLogger(LogisimFile.class);
+
 
   private static class WritingThread extends UniquelyNamedThread {
     final OutputStream out;
@@ -99,9 +104,20 @@ public class LogisimFile extends Library implements LibraryEventSource, CircuitL
         }
         if (!run) return;
         if (!file.isAutosaveDirty) continue;
-        if (file.getLoader().autosave(file)) {
-          file.isAutosaveDirty = false;
-        } else {
+        // Clear first, so an edit made while this write runs is picked up next time.
+        file.isAutosaveDirty = false;
+        boolean saved;
+        try {
+          saved = file.getLoader().autosave(file);
+        } catch (RuntimeException e) {
+          // Serialising while the circuit is edited can fail transiently; try again next time
+          // rather than ending autosave for the rest of the session.
+          logger.warn("Autosave of {} failed; retrying at the next interval", file.name, e);
+          file.isAutosaveDirty = true;
+          continue;
+        }
+        if (!saved) {
+          file.isAutosaveDirty = true;
           reportError(file.loader, S.get("autosaveError", file.name));
           run = false;
         }
@@ -155,6 +171,8 @@ public class LogisimFile extends Library implements LibraryEventSource, CircuitL
   private volatile boolean isAutosaveDirty = false;
   private AutosaveThread autosaveThread = null;
   private boolean autosaveLoaded = false;
+  // Set when reading reported problems: the project may lack content the file on disk still has.
+  private boolean loadedWithErrors = false;
 
   LogisimFile(Loader loader) {
     this(loader, AppPreferences.AUTOSAVE_ENABLED.getBoolean(),
@@ -251,10 +269,9 @@ public class LogisimFile extends Library implements LibraryEventSource, CircuitL
   public static LogisimFile load(File file, Loader loader) throws IOException {
     // Get the Path of this file's autosave if it exists
     final var autosave = Loader.findAutosaveFile(file);
-    var loadFile = file; // Select the given file to be opened by default
-    var autosaveLoading = false;
 
-    if (autosave.isPresent()) { // If autosave is present prompt user about it
+    // Without a GUI nobody can answer the prompt: open the real file and keep the recovery file.
+    if (autosave.isPresent() && Main.hasGui()) {
       final var res = loader.showOptions(S.get("contentHandleAutosave", file.getName()),
           S.get("titleHandleAutosave"), new String[] {S.get("loadOption"), S.get("discardOption")},
           0);
@@ -262,47 +279,76 @@ public class LogisimFile extends Library implements LibraryEventSource, CircuitL
       if (res == JOptionPane.CLOSED_OPTION) { // If the prompt was closed do nothing and fail
         return null;
       } else if (res == 0) { // If load is selected select the autosave to be loaded
-        loadFile = autosave.get(); // Set load file to the autosave path
         loader.setAutosavePath(autosave.get());
-        autosaveLoading = true; // Also set this to true to remember an autosave was loaded
+        try {
+          final var recovered = loadFrom(autosave.get(), loader, file);
+          // Remember the autosave was loaded: its edits are not in the real file yet.
+          recovered.autosaveLoaded = true;
+          return recovered;
+        } catch (LoaderException e) {
+          throw e;
+        } catch (Exception e) {
+          // An unreadable recovery file must not block the real one, nor be blamed on it.
+          logger.warn("Unable to read autosave {}", autosave.get(), e);
+          loader.showError(S.get("autosaveUnreadable", file.getName(), e.toString()));
+        }
       } else if (res == 1) {
         autosave.get().delete();
       }
     }
 
-    LogisimFile result = null;
-    FileInputStream inputStream = new FileInputStream(loadFile);
-    Throwable firstExcept = null;
     try {
-      result = loadSub(inputStream, loader, file);
+      return loadFrom(file, loader, file);
+    } catch (LoaderException | IOException e) {
+      throw e;
+    } catch (Exception e) {
+      logger.warn("Unable to read {}", file, e);
+      loader.showError(S.get("xmlFormatError", e.toString()));
+      return null;
+    }
+  }
+
+  /**
+   * Reads {@code source} as the project {@code base}. Falls back to a Latin-1 reader for files from
+   * Logisim versions prior to 2.5.1, which were not saved as UTF-8 although the XML declared it.
+   * Library loading failures ({@link LoaderException}) have already been reported and abort; a
+   * file that cannot be opened at all surfaces as an {@link IOException}.
+   */
+  private static LogisimFile loadFrom(File source, Loader loader, File base) throws Exception {
+    Throwable firstExcept;
+    final var inputStream = new FileInputStream(source);
+    try (inputStream) {
+      return loadSub(inputStream, loader, base);
+    } catch (LoaderException e) {
+      throw e;
     } catch (Throwable t) {
       firstExcept = t;
-    } finally {
-      inputStream.close();
+    }
+    // Such files are Latin-1; the platform default (UTF-8 since JDK 18) would mangle them.
+    try (final var legacy =
+        new ReaderInputStream(new FileReader(source, StandardCharsets.ISO_8859_1), "UTF8")) {
+      return loadSub(legacy, loader, base);
+    } catch (LoaderException e) {
+      throw e;
+    } catch (Exception ignored) {
+      // Report the original failure: the legacy reader is only a compatibility attempt.
+    }
+    // Parse errors are reported to the user; wrap them so they are not taken for I/O failures.
+    throw new LoadFailure(firstExcept);
+  }
+
+  /** Carries the original parse failure, reported with its own message. */
+  private static final class LoadFailure extends Exception {
+    private static final long serialVersionUID = 1L;
+
+    LoadFailure(Throwable cause) {
+      super(cause);
     }
 
-    // We'll now try to do it using a reader. This is to work around
-    // Logisim versions prior to 2.5.1, when files were not saved using
-    // UTF-8 as the encoding (though the XML file reported otherwise).
-    if (firstExcept != null) {
-      try {
-        final var readerInputStream = new ReaderInputStream(new FileReader(loadFile), "UTF8");
-        result = loadSub(readerInputStream, loader, file);
-      } catch (Exception t) {
-        firstExcept.printStackTrace();
-        loader.showError(S.get("xmlFormatError", firstExcept.toString()));
-      } finally {
-        try {
-          inputStream.close();
-        } catch (Exception ignored) {
-          // Do nothing.
-        }
-      }
+    @Override
+    public String toString() {
+      return getCause().toString();
     }
-
-    // Save to the resulting LogisimFile that it was loaded from an autosave
-    if (result != null) result.autosaveLoaded = autosaveLoading;
-    return result;
   }
 
   public static LogisimFile load(InputStream in, Loader loader) throws IOException {
@@ -817,5 +863,22 @@ public class LogisimFile extends Library implements LibraryEventSource, CircuitL
 
   public boolean isAutosaveLoaded() {
     return autosaveLoaded;
+  }
+
+  /**
+   * Whether problems were reported while reading this file, meaning some of its content (unknown
+   * components, unreadable settings) may be missing here. Saving over the original then loses it.
+   */
+  public boolean isLoadedWithErrors() {
+    return loadedWithErrors;
+  }
+
+  void setLoadedWithErrors(boolean value) {
+    loadedWithErrors = value;
+  }
+
+  /** Called once this project's content has been written, so the original is no longer at risk. */
+  public void clearLoadedWithErrors() {
+    loadedWithErrors = false;
   }
 }
