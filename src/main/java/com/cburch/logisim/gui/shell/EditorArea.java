@@ -28,6 +28,7 @@ public class EditorArea extends JPanel {
   private final JComponent editor;
   private JComponent overlay;
   private int reservedHeight;
+  private JComponent statusOverlay;
 
   public EditorArea(EditorTabs tabs, JComponent editor) {
     super(new BorderLayout());
@@ -52,18 +53,39 @@ public class EditorArea extends JPanel {
     revalidate();
   }
 
+  /**
+   * Floats a second component over the bottom middle of the editor, clear of the corner one.
+   *
+   * <p>It reports what is wrong with the circuit, where the painted error text used to be.
+   */
+  public void setStatusOverlay(JComponent component) {
+    if (statusOverlay != null) body.remove(statusOverlay);
+    statusOverlay = component;
+    if (component != null) body.add(component, JLayeredPane.PALETTE_LAYER);
+    revalidate();
+  }
+
   @Override
   public void doLayout() {
     super.doLayout();
     editor.setBounds(0, 0, body.getWidth(), body.getHeight());
+    final var margin = UiScale.scaled(ZoomPill.MARGIN);
+    var cornerLeft = body.getWidth();
     if (overlay != null && overlay.isVisible()) {
       final var size = overlay.getPreferredSize();
-      final var margin = UiScale.scaled(ZoomPill.MARGIN);
+      cornerLeft = Math.max(0, body.getWidth() - size.width - margin);
       overlay.setBounds(
-          Math.max(0, body.getWidth() - size.width - margin),
+          cornerLeft,
           Math.max(0, body.getHeight() - size.height - margin),
           size.width,
           size.height);
+    }
+    if (statusOverlay != null && statusOverlay.isVisible()) {
+      final var size = statusOverlay.getPreferredSize();
+      final var centred = (body.getWidth() - size.width) / 2;
+      final var x = Math.max(margin, Math.min(centred, cornerLeft - margin - size.width));
+      statusOverlay.setBounds(
+          x, Math.max(0, body.getHeight() - size.height - margin), size.width, size.height);
     }
   }
 

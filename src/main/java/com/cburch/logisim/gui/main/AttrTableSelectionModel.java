@@ -16,6 +16,7 @@ import com.cburch.logisim.circuit.CircuitAttributes;
 import com.cburch.logisim.circuit.CircuitChange;
 import com.cburch.logisim.circuit.CircuitException;
 import com.cburch.logisim.circuit.CircuitMutation;
+import com.cburch.logisim.circuit.Simulator;
 import com.cburch.logisim.circuit.SubcircuitFactory;
 import com.cburch.logisim.circuit.Wire;
 import com.cburch.logisim.comp.Component;
@@ -25,6 +26,7 @@ import com.cburch.logisim.data.Attribute;
 import com.cburch.logisim.data.AttributeEvent;
 import com.cburch.logisim.data.Location;
 import com.cburch.logisim.fpga.gui.HdlColorRenderer;
+import com.cburch.logisim.gui.generic.AttrTableModelRow;
 import com.cburch.logisim.gui.generic.AttrTableSetException;
 import com.cburch.logisim.gui.generic.AttributeSetTableModel;
 import com.cburch.logisim.gui.main.Selection.Event;
@@ -34,13 +36,19 @@ import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.tools.SetAttributeAction;
 import com.cburch.logisim.util.AutoLabel;
 import com.cburch.logisim.vhdl.base.VhdlContent;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeSet;
+import java.util.concurrent.atomic.AtomicBoolean;
+import javax.swing.SwingUtilities;
 
 class AttrTableSelectionModel extends AttributeSetTableModel implements Selection.Listener {
   private final Project project;
   private final Frame frame;
+  /** Width and value of a selected wire, after its attributes; empty for anything else. */
+  private volatile List<AttrTableModelRow> infoRows = List.of();
+  private final AtomicBoolean infoRefreshQueued = new AtomicBoolean();
 
   public AttrTableSelectionModel(Project project, Frame frame) {
     super(frame.getCanvas().getSelection().getAttributeSet());
@@ -48,6 +56,60 @@ class AttrTableSelectionModel extends AttributeSetTableModel implements Selectio
     this.frame = frame;
     updateAttributeSet();
     frame.getCanvas().getSelection().addListener(this);
+    final var simulator = project.getSimulator();
+    if (simulator != null) simulator.addSimulatorListener(new InfoRefresher());
+  }
+
+  @Override
+  public int getRowCount() {
+    return super.getRowCount() + infoRows.size();
+  }
+
+  @Override
+  public AttrTableModelRow getRow(int rowIndex) {
+    final var attributeRows = super.getRowCount();
+    return rowIndex < attributeRows
+        ? super.getRow(rowIndex)
+        : infoRows.get(rowIndex - attributeRows);
+  }
+
+  private void updateInfoRows() {
+    final var canvas = frame.getCanvas();
+    final var rows =
+        WireInfoRows.forSelection(
+            canvas.getCircuit(), canvas::getCircuitState, canvas.getSelection().getComponents());
+    if (rows.isEmpty() && infoRows.isEmpty()) return;
+    infoRows = rows;
+    fireStructureChanged();
+  }
+
+  /** Repaints the wire's value as the simulation changes it. */
+  private void refreshInfoValues() {
+    infoRefreshQueued.set(false);
+    final var first = super.getRowCount();
+    for (var i = 0; i < infoRows.size(); i++) fireValueChanged(first + i);
+  }
+
+  private final class InfoRefresher implements Simulator.Listener {
+    private void queue() {
+      if (infoRows.isEmpty() || !infoRefreshQueued.compareAndSet(false, true)) return;
+      SwingUtilities.invokeLater(AttrTableSelectionModel.this::refreshInfoValues);
+    }
+
+    @Override
+    public void propagationCompleted(Simulator.Event event) {
+      queue();
+    }
+
+    @Override
+    public void simulatorReset(Simulator.Event event) {
+      queue();
+    }
+
+    @Override
+    public void simulatorStateChanged(Simulator.Event event) {
+      queue();
+    }
   }
 
   @Override
@@ -144,6 +206,7 @@ class AttrTableSelectionModel extends AttributeSetTableModel implements Selectio
   @Override
   public void selectionChanged(final Event event) {
     updateAttributeSet();
+    updateInfoRows();
     fireTitleChanged();
     if (!frame.getEditorView().equals(Frame.EDIT_APPEARANCE)) {
       frame.setAttrTableModel(this);

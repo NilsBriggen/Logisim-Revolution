@@ -169,8 +169,12 @@ public class Canvas extends JPanel implements LocaleListener, CanvasPaneContents
         AppPreferences.SHOW_TICK_RATE.getBoolean() ? tickCounter.getTickRate() : null;
     frame.setStatusTickRate(rate == null || rate.isEmpty() ? "" : rate);
     final var simulator = proj.getSimulator();
+    // An oscillation stops the simulation too, and the step counts it left behind ("no signals
+    // changed") read as if nothing were wrong. Say why it stopped and what to do next instead.
     frame.setStatusSimulationState(
-        simulator.isAutoPropagating() ? "" : simulator.getSingleStepMessage());
+        simulator.isOscillating()
+            ? S.get("statusOscillationStopped")
+            : simulator.isAutoPropagating() ? "" : simulator.getSingleStepMessage());
   }
 
   public static void snapToGrid(final MouseEvent e) {
@@ -312,18 +316,25 @@ public class Canvas extends JPanel implements LocaleListener, CanvasPaneContents
     return viewable;
   }
 
-  private void computeViewportContents() {
+  /**
+   * Points the edge arrows at width errors that are off screen.
+   *
+   * <p>The errors themselves are listed by the problems pill over the canvas ({@link
+   * CircuitProblems}); the text painted here was inert. Each error adds its own arrows: clearing
+   * them per error left only the last one's.
+   *
+   * @return whether the circuit has width errors
+   */
+  private boolean computeViewportContents() {
     final var exceptions = proj.getCurrentCircuit().getWidthIncompatibilityData();
-    if (exceptions == null || exceptions.size() == 0) {
-      viewport.setWidthMessage(null);
-      return;
-    }
-    viewport.setWidthMessage(
-        S.get("canvasWidthError") + (exceptions.size() == 1 ? "" : " (" + exceptions.size() + ")"));
+    if (exceptions == null || exceptions.isEmpty()) return false;
+    final var viewable = getViewableRect();
+    viewport.clearArrows();
     for (final var ex : exceptions) {
       final var p = ex.getPoint(0);
-      setArrows(p.getX(), p.getY(), p.getX(), p.getY());
+      addArrows(viewable, p.getX(), p.getY(), p.getX(), p.getY());
     }
+    return true;
   }
 
   //
@@ -720,6 +731,12 @@ public class Canvas extends JPanel implements LocaleListener, CanvasPaneContents
               (int) (viewableBase.width / zoom),
               (int) (viewableBase.height / zoom));
     }
+    addArrows(viewable, x0, y0, x1, y1);
+    viewport.repaint();
+  }
+
+  /** Adds the arrows pointing from {@code viewable} towards a rectangle, keeping those set. */
+  private void addArrows(Rectangle viewable, int x0, int y0, int x1, int y1) {
     final var isWest = x0 < viewable.x;
     final var isEast = x1 >= viewable.x + viewable.width;
     final var isNorth = y0 < viewable.y;
@@ -735,9 +752,8 @@ public class Canvas extends JPanel implements LocaleListener, CanvasPaneContents
       if (isWest) viewport.setSouthwest(true);
       if (!isWest && !isEast) viewport.setSouth(true);
     }
-    if (isEast && !viewport.isSoutheast && !viewport.isNortheast) viewport.setEast(true);
-    if (isWest && !viewport.isSouthwest && !viewport.isNorthwest) viewport.setWest(true);
-    viewport.repaint();
+    if (isEast && !isNorth && !isSouth) viewport.setEast(true);
+    if (isWest && !isNorth && !isSouth) viewport.setWest(true);
   }
 
   void setHaloedComponent(Circuit circ, Component comp) {
@@ -1244,7 +1260,6 @@ public class Canvas extends JPanel implements LocaleListener, CanvasPaneContents
 
     private static final long serialVersionUID = 1L;
     StringGetter errorMessage = null;
-    String widthMessage = null;
     Color errorColor = null;
     boolean isNorth = false;
     boolean isSouth = false;
@@ -1308,11 +1323,6 @@ public class Canvas extends JPanel implements LocaleListener, CanvasPaneContents
         msgY = paintString(g, msgY, message.toString());
       }
 
-      if (proj.getSimulator().isOscillating()) {
-        g.setColor(Value.errorColor());
-        msgY = paintString(g, msgY, S.get("canvasOscillationError"));
-      }
-
       if (proj.getSimulator().isExceptionEncountered()) {
         g.setColor(Value.errorColor());
         final var exceptionMessage = proj.getSimulator().getExceptionMessage();
@@ -1325,12 +1335,13 @@ public class Canvas extends JPanel implements LocaleListener, CanvasPaneContents
                     : exceptionMessage);
       }
 
-      computeViewportContents();
+      // Oscillation and width errors are reported by the problems pill over the canvas, which can
+      // also find them and reset; only the arrows towards off-screen errors are painted here.
+      final var widthErrors = computeViewportContents();
       final var sz = getSize();
 
-      if (widthMessage != null) {
+      if (widthErrors) {
         g.setColor(Value.widthErrorColor());
-        msgY = paintString(g, msgY, widthMessage);
       } else {
         // The arrows point at work that is off screen, which is the same class of hint as a
         // selection marker; they used to be a navy so dark and so translucent as to be a smudge.
@@ -1444,10 +1455,6 @@ public class Canvas extends JPanel implements LocaleListener, CanvasPaneContents
 
     void setWest(boolean value) {
       isWest = value;
-    }
-
-    void setWidthMessage(String msg) {
-      widthMessage = msg;
     }
   }
 }

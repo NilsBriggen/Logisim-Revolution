@@ -324,6 +324,9 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     editorArea = new EditorArea(editorTabs, mainPanelSuper);
     zoomPill = new ZoomPill(zoom, layoutZoomModel);
     editorArea.setOverlay(zoomPill);
+    final var problemsPill = new com.cburch.logisim.gui.shell.ProblemsPill();
+    editorArea.setStatusOverlay(problemsPill);
+    new CircuitProblems(project, this, layoutCanvas, problemsPill);
 
     circuitList = new CircuitListView(project);
     sidePanel = new SidePanel();

@@ -10,6 +10,7 @@
 package com.cburch.logisim.gui.main;
 
 import com.cburch.logisim.circuit.Circuit;
+import com.cburch.logisim.circuit.WidthIncompatibilityData;
 import com.cburch.logisim.circuit.WireSet;
 import com.cburch.logisim.comp.Component;
 import com.cburch.logisim.comp.ComponentDrawContext;
@@ -28,6 +29,8 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.Collections;
 import java.util.Set;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 class CanvasPainter implements PropertyChangeListener {
   private static final Set<Component> NO_COMPONENTS = Collections.emptySet();
@@ -74,14 +77,7 @@ class CanvasPainter implements PropertyChangeListener {
         }
         if (drawn) continue;
 
-        // compute the caption combining all similar points
-        final var caption = new StringBuilder("" + w.getWidth());
-        for (var j = i + 1; j < ex.size(); j++) {
-          if (ex.getPoint(j).equals(p)) {
-            caption.append("/" + ex.getBitWidth(j));
-            break;
-          }
-        }
+        final var caption = widthCaption(ex, i);
         GraphicsUtil.switchToWidth(g, 2);
         if (common != null && !w.equals(common)) {
           g.setColor(Value.widthErrorHighlightColor());
@@ -92,7 +88,7 @@ class CanvasPainter implements PropertyChangeListener {
         GraphicsUtil.switchToWidth(g, 3);
         GraphicsUtil.outlineText(
             g,
-            caption.toString(),
+            caption,
             p.getX() + 4,
             p.getY() + 1 + fm.getAscent(),
             Value.widthErrorCaptionColor(),
@@ -103,6 +99,35 @@ class CanvasPainter implements PropertyChangeListener {
     }
     g.setColor(componentColor());
     GraphicsUtil.switchToWidth(g, 1);
+  }
+
+  /**
+   * The badge for one end of a width conflict.
+   *
+   * <p>Two widths at the same point read "8/4", as before. An end that agrees with its own
+   * neighbours now also names the widths it clashes with, "8≠4": through a tunnel the two
+   * halves of a net each looked self-consistent (8 and 8, 4 and 4), with nothing pointing at the
+   * other side.
+   */
+  static String widthCaption(WidthIncompatibilityData ex, int index) {
+    final var p = ex.getPoint(index);
+    final var w = ex.getBitWidth(index);
+    final var caption = new StringBuilder(String.valueOf(w.getWidth()));
+    for (var j = index + 1; j < ex.size(); j++) {
+      if (ex.getPoint(j).equals(p)) {
+        return caption.append('/').append(ex.getBitWidth(j).getWidth()).toString();
+      }
+    }
+    final var others = new TreeSet<Integer>();
+    for (var j = 0; j < ex.size(); j++) {
+      final var other = ex.getBitWidth(j).getWidth();
+      if (other != w.getWidth()) others.add(other);
+    }
+    if (!others.isEmpty()) {
+      caption.append('\u2260');
+      caption.append(others.stream().map(String::valueOf).collect(Collectors.joining("/")));
+    }
+    return caption.toString();
   }
 
   private void drawWithUserState(Graphics base, Graphics g, Project proj) {
@@ -130,6 +155,7 @@ class CanvasPainter implements PropertyChangeListener {
       GraphicsUtil.switchToWidth(g, 1);
       g.setColor(componentColor());
     }
+    TunnelPartners.draw(g, circ, sel.getComponents(), haloedCircuit == circ ? haloedComponent : null);
 
     // draw circuit and selection
     final var circState = proj.getCircuitState();

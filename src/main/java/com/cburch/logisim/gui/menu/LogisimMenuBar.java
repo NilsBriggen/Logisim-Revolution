@@ -124,7 +124,11 @@ public class LogisimMenuBar extends JMenuBar {
     listener.localeChanged();
   }
 
-  /** Opens the help window at {@code target} ("tutorial", "guide" or "libs"). */
+  /**
+   * Opens the help window at a topic, by its map id, such as {@code "features_colors"}.
+   *
+   * <p>Lets a message about a problem link to the page that explains it.
+   */
   public void showHelp(String target) {
     help.showHelp(target);
   }

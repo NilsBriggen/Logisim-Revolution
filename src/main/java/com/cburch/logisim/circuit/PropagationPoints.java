@@ -138,8 +138,24 @@ class PropagationPoints {
   }
 
   String getSingleStepMessage() {
-    final var signalsChanged = data.isEmpty() ? "no" : String.valueOf(data.size());
-    final var inputSignals = pendingInputs.isEmpty() ? "no" : String.valueOf(pendingInputs.size());
-    return S.get("singleStepMessage", signalsChanged, inputSignals);
+    return singleStepMessage(data.size(), pendingInputs.size());
+  }
+
+  /**
+   * Says how far a single step got, with each count in its own grammatical number.
+   *
+   * <p>One template with the counts pasted in read "1 input changes" and "no signals changed"
+   * with the English word "no" dropped into every translation.
+   */
+  static String singleStepMessage(int signals, int inputs) {
+    return S.get(
+        "singleStepStatus",
+        counted(signals, "singleStepSignalsNone", "singleStepSignalsOne", "singleStepSignalsMany"),
+        counted(inputs, "singleStepInputsNone", "singleStepInputsOne", "singleStepInputsMany"));
+  }
+
+  private static String counted(int count, String none, String one, String many) {
+    if (count == 0) return S.get(none);
+    return count == 1 ? S.get(one) : S.get(many, count);
   }
 }
