@@ -13,21 +13,17 @@ import static com.cburch.logisim.fpga.Strings.S;
 
 import com.cburch.logisim.fpga.gui.FpgaCommander;
 import com.cburch.logisim.fpga.settings.VendorSoftware;
+import com.cburch.logisim.gui.generic.SettingsForm;
 import com.cburch.logisim.gui.prefs.OptionsPanel;
 import com.cburch.logisim.gui.prefs.PrefOption;
 import com.cburch.logisim.gui.prefs.PrefOptionList;
 import com.cburch.logisim.gui.prefs.PreferencesFrame;
-import com.cburch.logisim.gui.theme.Tokens;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.util.Softwares;
 import com.cburch.logisim.util.Spacing;
 import com.cburch.logisim.util.StringGetter;
 import com.cburch.logisim.util.UiFonts;
-import com.cburch.logisim.util.UiScale;
 import java.awt.BorderLayout;
-import java.awt.Dimension;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
@@ -38,7 +34,6 @@ import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JSeparator;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
@@ -90,14 +85,8 @@ public class SoftwaresOptions extends OptionsPanel {
   private final MyListener myListener = new MyListener();
 
   private final JCheckBox questaValidationCheckBox = new JCheckBox();
-  private final JTextArea questaValidationText = new JTextArea() {
-    @Override
-    public Dimension getMinimumSize() {
-      // GridBagLayout uses minimum sizes in both axes when the path fields must shrink.
-      // Width can shrink freely, but the caption still needs every measured wrapped line.
-      return new Dimension(0, getPreferredSize().height);
-    }
-  };
+  // The check box's caption wraps, so a long translation or a large scale never clips it.
+  private final JTextArea questaValidationText = SettingsForm.createWrappingText("");
   private final PrefOptionList vhdlStandard =
       new PrefOptionList(
           AppPreferences.VHDL_STANDARD,
@@ -108,47 +97,35 @@ public class SoftwaresOptions extends OptionsPanel {
               new PrefOption(AppPreferences.VHDL_STANDARD_2008, fixedString("VHDL-2008")),
           });
   private final JLabel questaPathLabel = new JLabel();
-  private final JTextField questaPathField = new JTextField(40);
+  private final JTextField questaPathField = new JTextField(16);
   private final JButton questaPathButton = new JButton();
   private final JLabel quartusPathLabel = new JLabel();
-  private final JTextField quartusPathField = new JTextField(40);
+  private final JTextField quartusPathField = new JTextField(16);
   private final JButton quartusPathButton = new JButton();
   private final JLabel isePathLabel = new JLabel();
-  private final JTextField isePathField = new JTextField(40);
+  private final JTextField isePathField = new JTextField(16);
   private final JButton isePathButton = new JButton();
   private final JLabel vivadoPathLabel = new JLabel();
-  private final JTextField vivadoPathField = new JTextField(40);
+  private final JTextField vivadoPathField = new JTextField(16);
   private final JButton vivadoPathButton = new JButton();
   private final JLabel openfpgaPathLabel = new JLabel();
-  private final JTextField openfpgaPathField = new JTextField(40);
+  private final JTextField openfpgaPathField = new JTextField(16);
   private final JButton openfpgaPathButton = new JButton();
-
-  /** A one-pixel rule in the shell's divider colour, rather than the look and feel's raised one. */
-  private static JSeparator dividerRule() {
-    final var rule = new JSeparator(JSeparator.HORIZONTAL);
-    rule.setForeground(Tokens.divider());
-    rule.setBackground(Tokens.divider());
-    return rule;
-  }
 
   public SoftwaresOptions(PreferencesFrame window) {
     super(window);
 
     questaValidationCheckBox.addActionListener(myListener);
-    questaValidationText.setEditable(false);
-    questaValidationText.setFocusable(false);
-    questaValidationText.setOpaque(false);
     questaValidationText.setFont(UiFonts.body());
-    questaValidationText.setLineWrap(true);
-    questaValidationText.setWrapStyleWord(true);
-    questaValidationText.addMouseListener(new MouseAdapter() {
-      @Override
-      public void mouseClicked(MouseEvent event) {
-        if (javax.swing.SwingUtilities.isLeftMouseButton(event)) {
-          questaValidationCheckBox.doClick();
-        }
-      }
-    });
+    questaValidationText.addMouseListener(
+        new MouseAdapter() {
+          @Override
+          public void mouseClicked(MouseEvent event) {
+            if (javax.swing.SwingUtilities.isLeftMouseButton(event)) {
+              questaValidationCheckBox.doClick();
+            }
+          }
+        });
     final var validation = new JPanel(new BorderLayout(Spacing.xs(), 0));
     validation.add(questaValidationCheckBox, BorderLayout.WEST);
     validation.add(questaValidationText, BorderLayout.CENTER);
@@ -159,27 +136,16 @@ public class SoftwaresOptions extends OptionsPanel {
     openfpgaPathButton.addActionListener(myListener);
     AppPreferences.getPrefs().addPreferenceChangeListener(myListener);
 
-    setLayout(new GridBagLayout());
-    final var gbc = new GridBagConstraints();
-    gbc.insets = Spacing.formGaps();
-    gbc.anchor = GridBagConstraints.BASELINE_LEADING;
-    gbc.gridx = 0;
-    gbc.gridy = 0;
-    gbc.gridwidth = 2;
-    gbc.weightx = 1.0;
-    gbc.fill = GridBagConstraints.HORIZONTAL;
-    add(dividerRule(), gbc);
-    gbc.gridy++;
-    add(validation, gbc);
-    gbc.gridy++;
-    add(vhdlStandard.getJLabel(), gbc);
-    gbc.gridy++;
-    add(vhdlStandard.getJComboBox(), gbc);
-    addPathRow(gbc, questaPathLabel, questaPathField, questaPathButton);
-    addPathRow(gbc, quartusPathLabel, quartusPathField, quartusPathButton);
-    addPathRow(gbc, isePathLabel, isePathField, isePathButton);
-    addPathRow(gbc, vivadoPathLabel, vivadoPathField, vivadoPathButton);
-    addPathRow(gbc, openfpgaPathLabel, openfpgaPathField, openfpgaPathButton);
+    final var form = new SettingsForm();
+    form.addFull(validation, true);
+    form.addRow(vhdlStandard.getJLabel(), vhdlStandard.getJComboBox());
+    addPathRow(form, questaPathLabel, questaPathField, questaPathButton);
+    addPathRow(form, quartusPathLabel, quartusPathField, quartusPathButton);
+    addPathRow(form, isePathLabel, isePathField, isePathButton);
+    addPathRow(form, vivadoPathLabel, vivadoPathField, vivadoPathButton);
+    addPathRow(form, openfpgaPathLabel, openfpgaPathField, openfpgaPathButton);
+    setLayout(new BorderLayout());
+    add(form, BorderLayout.NORTH);
 
     questaValidationCheckBox.setSelected(AppPreferences.QUESTA_VALIDATION.getBoolean());
 
@@ -201,38 +167,14 @@ public class SoftwaresOptions extends OptionsPanel {
     if (questaValidationText != null) questaValidationText.setFont(UiFonts.body());
   }
 
-  @Override
-  public Dimension getPreferredSize() {
-    if (questaValidationText != null) {
-      final var insets = getInsets();
-      final var gaps = Spacing.formGaps();
-      final var width = getWidth() > 0 ? getWidth() : UiScale.scaled(360);
-      questaValidationText.setSize(
-          Math.max(1, width - insets.left - insets.right - gaps.left - gaps.right
-              - questaValidationCheckBox.getPreferredSize().width - Spacing.xs()),
-          Short.MAX_VALUE);
-    }
-    return super.getPreferredSize();
-  }
-
-  private void addPathRow(
-      GridBagConstraints gbc, JLabel label, JTextField field, JButton browse) {
-    gbc.gridx = 0;
-    gbc.gridy++;
-    gbc.gridwidth = 2;
-    gbc.weightx = 1.0;
-    gbc.fill = GridBagConstraints.HORIZONTAL;
-    add(dividerRule(), gbc);
-    gbc.gridy++;
+  /** A path: its label, then the field and its browse button in the control column. */
+  private static void addPathRow(
+      SettingsForm form, JLabel label, JTextField field, JButton browse) {
+    final var row = new JPanel(new BorderLayout(Spacing.sm(), 0));
+    row.add(field, BorderLayout.CENTER);
+    row.add(browse, BorderLayout.LINE_END);
     label.setLabelFor(field);
-    add(label, gbc);
-    gbc.gridy++;
-    gbc.gridwidth = 1;
-    add(field, gbc);
-    gbc.gridx = 1;
-    gbc.weightx = 0.0;
-    gbc.fill = GridBagConstraints.NONE;
-    add(browse, gbc);
+    form.addRow(label, row, true);
   }
 
   @Override
@@ -250,7 +192,7 @@ public class SoftwaresOptions extends OptionsPanel {
     final var validationLabel = S.get("softwaresQuestaValidationLabel");
     questaValidationText.setText(validationLabel);
     questaValidationCheckBox.getAccessibleContext().setAccessibleName(validationLabel);
-    vhdlStandard.getJLabel().setText(S.get("softwaresVhdlStandardLabel") + " ");
+    vhdlStandard.getJLabel().setText(S.get("softwaresVhdlStandardLabel"));
     questaPathButton.setText(S.get("softwaresQuestaPathButton"));
     questaPathLabel.setText(S.get("softwaresQuestaPathLabel"));
     quartusPathButton.setText(S.get("softwaresQuestaPathButton"));

@@ -1100,6 +1100,8 @@ tasks {
  *
  * Development only: the tool lives in the test sources and never ships.
  * Usage: ./gradlew uiSnapshot -Ptheme=dark -Pout=build/ui-dark.png
+ * Settings windows: -Ppreferences=true (Preferences) or -Poptions=true (Project Options), with
+ * -Ppage=N for one page or -Ppage=all to write every page to <out>-<N>.png.
  */
 tasks.register<JavaExec>("uiSnapshot") {
   group = "verification"
@@ -1114,6 +1116,7 @@ tasks.register<JavaExec>("uiSnapshot") {
   systemProperty("snapshot.welcome", project.findProperty("welcome") ?: "false")
   systemProperty("snapshot.preferences", project.findProperty("preferences") ?: "false")
   systemProperty("snapshot.page", project.findProperty("page") ?: "-1")
+  systemProperty("snapshot.options", project.findProperty("options") ?: "false")
   systemProperty("snapshot.file", project.findProperty("file") ?: "")
   systemProperty("snapshot.print", project.findProperty("print") ?: "false")
   systemProperty("snapshot.select", project.findProperty("select") ?: "")

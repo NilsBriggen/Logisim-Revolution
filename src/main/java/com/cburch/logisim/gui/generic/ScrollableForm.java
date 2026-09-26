@@ -23,6 +23,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JViewport;
 import javax.swing.Scrollable;
+import javax.swing.SwingUtilities;
 
 /** A top-aligned settings form which shrinks to its viewport when its layout permits it. */
 public final class ScrollableForm extends JPanel implements Scrollable {
@@ -60,6 +61,31 @@ public final class ScrollableForm extends JPanel implements Scrollable {
       help.setFont(UiFonts.small());
       help.setBorder(Spacing.panelBorder());
     }
+    keepScrollPosition();
+  }
+
+  /**
+   * Puts the page back where it was scrolled to once a theme or scale change has been laid out.
+   *
+   * <p>Refreshing every component's look and feel re-lays the page out and re-installs the text
+   * carets, which scrolled the page back to its top: switching theme from halfway down the page
+   * lost the user's place.
+   */
+  private void keepScrollPosition() {
+    if (!(getParent() instanceof JViewport viewport)) return;
+    final var position = viewport.getViewPosition();
+    if (position.x == 0 && position.y == 0) return;
+    SwingUtilities.invokeLater(
+        () -> SwingUtilities.invokeLater(() -> restoreScrollPosition(viewport, position)));
+  }
+
+  private void restoreScrollPosition(JViewport viewport, java.awt.Point position) {
+    if (viewport.getView() != this) return;
+    viewport.validate();
+    final var maxX = Math.max(0, getWidth() - viewport.getExtentSize().width);
+    final var maxY = Math.max(0, getHeight() - viewport.getExtentSize().height);
+    viewport.setViewPosition(
+        new java.awt.Point(Math.min(position.x, maxX), Math.min(position.y, maxY)));
   }
 
   public JScrollPane createScrollPane() {
@@ -118,6 +144,28 @@ public final class ScrollableForm extends JPanel implements Scrollable {
   public boolean getScrollableTracksViewportHeight() {
     return false;
   }
+
+  /**
+   * The logical size a settings window opens at: wide enough for its widest page next to the page
+   * list, but never narrower than {@code base} nor wider than {@code maxWidth}.
+   *
+   * <p>A window sized for a fixed width cut its widest pages, whose long labels then pushed the
+   * controls out of view; one sized to the content shows every page whole.
+   */
+  public static Dimension windowSizeFor(
+      JComponent[] pages, int navWidth, Dimension base, int maxWidth) {
+    var widest = 0;
+    for (final var page : pages) {
+      widest = Math.max(widest, page.getPreferredSize().width);
+    }
+    final var scale = UiScale.factor();
+    // Room for the page's vertical scroll bar and the divider.
+    final var needed = navWidth + (int) Math.ceil(widest / scale) + SCROLLBAR_ALLOWANCE;
+    return new Dimension(Math.max(base.width, Math.min(maxWidth, needed)), base.height);
+  }
+
+  /** Logical width left for a vertical scroll bar and the split pane divider. */
+  private static final int SCROLLBAR_ALLOWANCE = 20;
 
   /** Scale design sizes once, then clamp against unscaled Swing screen/work-area coordinates. */
   public static Dimension boundedSize(Dimension logical, Dimension available, double scale) {

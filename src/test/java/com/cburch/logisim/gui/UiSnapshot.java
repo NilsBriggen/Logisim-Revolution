@@ -74,6 +74,32 @@ public final class UiSnapshot {
   }
 
   /**
+   * Renders one page of a settings window ({@code -Ppage=N}), or every page ({@code -Ppage=all}),
+   * the latter to {@code <out>-<N>.png} so a layout change can be checked on all pages at once.
+   */
+  private static void capturePages(
+      javax.swing.JFrame window,
+      java.util.function.IntConsumer showPage,
+      int pageCount,
+      File output,
+      Theme.Mode mode)
+      throws Exception {
+    final var page = System.getProperty("snapshot.page", "-1");
+    if (!"all".equals(page)) {
+      final var index = Integer.parseInt(page);
+      if (index >= 0) SwingUtilities.invokeAndWait(() -> showPage.accept(index));
+      captureWindow(window, output, mode);
+      return;
+    }
+    final var name = output.getName().replaceFirst("\\.png$", "");
+    for (var index = 0; index < pageCount; index++) {
+      final var current = index;
+      SwingUtilities.invokeAndWait(() -> showPage.accept(current));
+      captureWindow(window, new File(output.getParentFile(), name + "-" + index + ".png"), mode);
+    }
+  }
+
+  /**
    * Renders a circuit the way exporting an image does, in the print palette.
    *
    * <p>This is the check that matters most for a canvas change: the theme's colours are chosen
@@ -200,9 +226,14 @@ public final class UiSnapshot {
 
     if (Boolean.getBoolean("snapshot.preferences")) {
       final var preferences = com.cburch.logisim.gui.prefs.PreferencesFrame.buildForSnapshot();
-      final var page = Integer.getInteger("snapshot.page", -1);
-      if (page >= 0) preferences.showPageForSnapshot(page);
-      captureWindow(preferences, output, mode);
+      capturePages(
+          preferences, preferences::showPageForSnapshot, preferences.getPageCount(), output, mode);
+      System.exit(0);
+    }
+
+    if (Boolean.getBoolean("snapshot.options")) {
+      final var options = new com.cburch.logisim.gui.opts.OptionsFrame(project);
+      capturePages(options, options::showPageForSnapshot, options.getPageCount(), output, mode);
       System.exit(0);
     }
 

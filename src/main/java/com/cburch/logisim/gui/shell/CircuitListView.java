@@ -414,6 +414,7 @@ public class CircuitListView extends JPanel {
               entry.target() instanceof Circuit ? AppIcons.Id.CIRCUIT : AppIcons.Id.HDL,
               AppIcons.SIZE,
               isCurrent && !selected ? Tokens.accent() : Tokens.iconForeground()));
+      setIconTextGap(Tokens.iconTextGap());
       setFont(isCurrent ? UiFonts.bodyBold() : UiFonts.body());
       if (isCurrent && !selected) setForeground(Tokens.accent());
       setBorder(

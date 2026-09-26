@@ -96,6 +96,12 @@ public class AttrTable extends JPanel implements LocaleListener {
       }
 
       @Override
+      public void doLayout() {
+        fitLabelColumn(this);
+        super.doLayout();
+      }
+
+      @Override
       public void editingStopped(ChangeEvent event) {
         // CellEditor commits its captured transaction before notifying JTable.
         removeEditor();
@@ -335,12 +341,24 @@ public class AttrTable extends JPanel implements LocaleListener {
     }
   }
 
+  /**
+   * The title of the picker for an attribute: the attribute's name.
+   *
+   * <p>Every picker, font and colour alike, used to be titled "Select Value", which did not say
+   * what was being chosen.
+   */
+  static String pickerTitle(String attributeName) {
+    final var name = attributeName == null ? "" : attributeName.strip();
+    final var trimmed = name.endsWith(":") ? name.substring(0, name.length() - 1).strip() : name;
+    return trimmed.isEmpty() ? S.get("attributeDialogTitle") : trimmed;
+  }
+
   private static class MyDialog extends JDialogOk {
     JInputComponent input;
     Object value;
 
-    public MyDialog(JInputComponent input) {
-      super(S.get("attributeDialogTitle"));
+    public MyDialog(JInputComponent input, String attributeName) {
+      super(pickerTitle(attributeName));
       configure(input);
     }
 
@@ -356,10 +374,16 @@ public class AttrTable extends JPanel implements LocaleListener {
       // Hide the JFileChooser buttons, since we already have the
       // MyDialog ones
       if (input instanceof JFileChooser chooser) chooser.setControlButtonsAreShown(false);
+      // Shared pickers (the font selector is a single instance) are built once and may have missed
+      // a theme or scale change while not on screen; measure them in the current look.
+      SwingUtilities.updateComponentTreeUI((JComponent) input);
       p.add((JComponent) input, BorderLayout.CENTER);
       getContentPane().add(p, BorderLayout.CENTER);
 
       pack();
+      // Never smaller than its content, which it used to clip; larger if the user wants.
+      setMinimumSize(getSize());
+      setResizable(true);
     }
 
     public Object getValue() {
@@ -370,6 +394,37 @@ public class AttrTable extends JPanel implements LocaleListener {
     public void okClicked() {
       value = input.getValue();
     }
+  }
+
+  /** Least share of the width the attribute names get, however short they are. */
+  static final double MIN_LABEL_SHARE = 0.35;
+
+  /** Most of the width the attribute names may take, so every value stays usable. */
+  static final double MAX_LABEL_SHARE = 0.6;
+
+  /**
+   * Gives the name column the width of the longest attribute name, within limits, instead of half
+   * the table.
+   *
+   * <p>An even split elided names such as "Data bus implementation" at the inspector's default
+   * width while short values left half their column empty. Whatever is still cut off is offered
+   * in full as a tooltip by {@link #elidedCellText}.
+   */
+  static void fitLabelColumn(JTable table) {
+    if (table.getColumnCount() != 2 || table.getWidth() <= 0) return;
+    var widest = 0;
+    for (var row = 0; row < table.getRowCount(); row++) {
+      final var renderer = table.prepareRenderer(table.getCellRenderer(row, 0), row, 0);
+      widest = Math.max(widest, renderer.getPreferredSize().width);
+    }
+    final var total = table.getWidth();
+    final var label =
+        Math.max(
+            (int) (total * MIN_LABEL_SHARE),
+            Math.min((int) (total * MAX_LABEL_SHARE), widest + table.getIntercellSpacing().width));
+    final var columns = table.getColumnModel();
+    columns.getColumn(0).setPreferredWidth(label);
+    columns.getColumn(1).setPreferredWidth(total - label);
   }
 
   /**
@@ -594,7 +649,7 @@ public class AttrTable extends JPanel implements LocaleListener {
         }
         editor = null;
       } else if (editor instanceof JInputComponent input) {
-        final var dialog = new MyDialog(input);
+        final var dialog = new MyDialog(input, row.getLabel());
         dialog.setVisible(true);
         final var retVal = dialog.getValue();
         try {

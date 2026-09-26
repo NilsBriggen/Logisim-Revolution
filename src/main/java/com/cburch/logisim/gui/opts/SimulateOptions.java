@@ -15,14 +15,14 @@ import com.cburch.logisim.data.Attribute;
 import com.cburch.logisim.data.AttributeEvent;
 import com.cburch.logisim.data.AttributeListener;
 import com.cburch.logisim.file.Options;
+import com.cburch.logisim.gui.generic.SettingsForm;
 import com.cburch.logisim.prefs.AppPreferences;
-import com.cburch.logisim.util.TableLayout;
+import java.awt.BorderLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
-import javax.swing.JPanel;
 
 class SimulateOptions extends OptionsPanel {
   private static final long serialVersionUID = 1L;
@@ -51,14 +51,7 @@ class SimulateOptions extends OptionsPanel {
   public SimulateOptions(OptionsFrame window) {
     super(window);
 
-    final var simLimitPanel = new JPanel();
-    simLimitPanel.add(simLimitLabel);
-    simLimitPanel.add(simLimit);
     simLimit.addActionListener(myListener);
-
-    final var gateUndefinedPanel = new JPanel();
-    gateUndefinedPanel.add(gateUndefinedLabel);
-    gateUndefinedPanel.add(gateUndefined);
     gateUndefined.addActionListener(myListener);
 
     simRandomness.addActionListener(myListener);
@@ -66,11 +59,13 @@ class SimulateOptions extends OptionsPanel {
     memUnknown.addActionListener(myListener);
     memUnknown.setSelected(AppPreferences.Memory_Startup_Unknown.get());
 
-    setLayout(new TableLayout(1));
-    add(memUnknown);
-    add(simLimitPanel);
-    add(gateUndefinedPanel);
-    add(simRandomness);
+    final var form = new SettingsForm();
+    form.addRow(simLimitLabel, simLimit);
+    form.addRow(gateUndefinedLabel, gateUndefined);
+    form.addFull(memUnknown);
+    form.addFull(simRandomness);
+    setLayout(new BorderLayout());
+    add(form, BorderLayout.NORTH);
 
     window.getOptions().getAttributeSet().addAttributeListener(myListener);
     final var attrs = getOptions().getAttributeSet();

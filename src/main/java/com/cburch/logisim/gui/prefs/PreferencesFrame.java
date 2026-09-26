@@ -111,16 +111,23 @@ public class PreferencesFrame extends LFrame.Dialog {
   /** Unscaled width of the page list. */
   private static final int NAV_WIDTH = 220;
 
-  /** Unscaled size the window opens at. */
+  /** Unscaled size the window opens at, at least. */
   private static final int WINDOW_WIDTH = 820;
 
   private static final int WINDOW_HEIGHT = 560;
+
+  /** Unscaled width beyond which a wide page scrolls rather than widening the window. */
+  private static final int MAX_WINDOW_WIDTH = 1100;
 
   private void updateWindowSize(boolean initial) {
     nav.setPreferredSize(new Dimension(UiScale.scaled(NAV_WIDTH), 0));
     nav.setMinimumSize(new Dimension(UiScale.scaled(120), 0));
     ScrollableForm.sizeWindow(
-        this, new Dimension(WINDOW_WIDTH, WINDOW_HEIGHT), new Dimension(600, 360), initial);
+        this,
+        ScrollableForm.windowSizeFor(
+            panels, NAV_WIDTH, new Dimension(WINDOW_WIDTH, WINDOW_HEIGHT), MAX_WINDOW_WIDTH),
+        new Dimension(600, 360),
+        initial);
     if (initial || layoutScale != UiScale.factor()) {
       split.setDividerLocation(Math.min(UiScale.scaled(NAV_WIDTH), getWidth() / 3));
     }
@@ -158,6 +165,11 @@ public class PreferencesFrame extends LFrame.Dialog {
   /** Opens a page by position, for the development snapshot tool. */
   public void showPageForSnapshot(int index) {
     openPage(index);
+  }
+
+  /** The number of pages, for the development snapshot tool. */
+  public int getPageCount() {
+    return panels.length;
   }
 
   /** Builds a window without showing it, for the development snapshot tool. */

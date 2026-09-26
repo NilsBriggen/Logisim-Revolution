@@ -46,6 +46,68 @@ class ThemeResourcesTest {
     }
   }
 
+  /** Text roles against every surface they are drawn on: WCAG AA, 4.5:1. */
+  private static final List<List<String>> TEXT_PAIRS =
+      List.of(
+          List.of("Label.foreground", "Panel.background"),
+          List.of("Logisim.mutedForeground", "Logisim.toast.background"),
+          List.of("Logisim.accent", "Panel.background"),
+          List.of("Logisim.accentText", "Logisim.accent"),
+          List.of("List.selectionForeground", "List.selectionBackground"),
+          List.of("Tree.selectionForeground", "Tree.selectionBackground"),
+          List.of("Button.default.foreground", "Button.default.background"),
+          List.of("Logisim.warning", "Panel.background"),
+          List.of("Logisim.error", "Panel.background"),
+          List.of("Logisim.success", "Panel.background"),
+          List.of("Logisim.warning", "Logisim.statusBar.background"),
+          List.of("Logisim.error", "Logisim.statusBar.background"),
+          List.of("Logisim.success", "Logisim.statusBar.background"),
+          List.of("Logisim.statusBar.foreground", "Logisim.statusBar.background"));
+
+  /** Non-text indicators (the accent marking the active item or focus): WCAG 1.4.11, 3:1. */
+  private static final List<List<String>> INDICATOR_PAIRS =
+      List.of(
+          List.of("Logisim.accent", "Logisim.activityBar.background"),
+          List.of("Component.focusColor", "Panel.background"),
+          List.of("List.selectionBackground", "Panel.background"));
+
+  @Test
+  void themeTokenPairsMeetWcagContrast() {
+    FlatLaf.registerCustomDefaultsSource("com.cburch.logisim.gui.theme");
+    final var failures = new ArrayList<String>();
+    for (final var laf : List.of(new LogisimLightLaf(), new LogisimDarkLaf())) {
+      final var defaults = laf.getDefaults();
+      checkPairs(laf.getName(), defaults, TEXT_PAIRS, 4.5, failures);
+      checkPairs(laf.getName(), defaults, INDICATOR_PAIRS, 3.0, failures);
+    }
+    assertTrue(failures.isEmpty(), String.join("\n", failures));
+  }
+
+  private static void checkPairs(
+      String theme,
+      javax.swing.UIDefaults defaults,
+      List<List<String>> pairs,
+      double minimum,
+      List<String> failures) {
+    for (final var pair : pairs) {
+      final var foreground = defaults.getColor(pair.get(0));
+      final var background = defaults.getColor(pair.get(1));
+      assertNotNull(foreground, theme + " " + pair.get(0));
+      assertNotNull(background, theme + " " + pair.get(1));
+      final var ratio = contrast(foreground, background);
+      if (ratio < minimum) {
+        failures.add(String.format(java.util.Locale.ROOT, "%s %s %.2f < %.1f", theme, pair, ratio,
+            minimum));
+      }
+    }
+  }
+
+  private static double contrast(Color first, Color second) {
+    final var a = luminance(first);
+    final var b = luminance(second);
+    return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+  }
+
   private static double luminance(Color color) {
     return 0.2126 * linear(color.getRed()) + 0.7152 * linear(color.getGreen())
         + 0.0722 * linear(color.getBlue());

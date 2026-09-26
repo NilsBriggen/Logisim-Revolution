@@ -17,6 +17,7 @@ import com.cburch.logisim.comp.ComponentDrawContext;
 import com.cburch.logisim.gui.icons.TreeIcon;
 import com.cburch.logisim.gui.main.Canvas;
 import com.cburch.logisim.gui.theme.Theme;
+import com.cburch.logisim.gui.theme.Tokens;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.proj.ProjectEvent;
@@ -126,7 +127,7 @@ public class ProjectExplorer extends JTree implements LocaleListener {
     renderer.setFont(font);
     renderer.setClosedIcon(new TreeIcon(true));
     renderer.setOpenIcon(new TreeIcon(false));
-    renderer.setIconTextGap(Spacing.xs());
+    renderer.setIconTextGap(Tokens.iconTextGap());
     final var textHeight = Math.max(getFontMetrics(font).getHeight(),
         getFontMetrics(UiFonts.bodyBold()).getHeight());
     final var iconHeight = Math.max(UiScale.scaled(AppPreferences.BOX_SIZE),

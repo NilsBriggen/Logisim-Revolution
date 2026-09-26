@@ -106,7 +106,10 @@ public class OptionsFrame extends LFrame.Dialog {
     nav.setPreferredSize(new Dimension(UiScale.scaled(NAV_WIDTH), 0));
     nav.setMinimumSize(new Dimension(UiScale.scaled(120), 0));
     ScrollableForm.sizeWindow(
-        this, new Dimension(720, 460), new Dimension(560, 340), initial);
+        this,
+        ScrollableForm.windowSizeFor(panels, NAV_WIDTH, new Dimension(720, 460), 1000),
+        new Dimension(560, 340),
+        initial);
     if (initial || layoutScale != UiScale.factor()) {
       split.setDividerLocation(Math.min(UiScale.scaled(NAV_WIDTH), getWidth() / 3));
     }
@@ -152,6 +155,17 @@ public class OptionsFrame extends LFrame.Dialog {
     pageHeader.setSubtitle("");
     nav.setSelectedIndex(index);
     nav.revealMatch(panels[index]);
+  }
+
+  /** Opens a page by position, for the development snapshot tool. */
+  public void showPageForSnapshot(int index) {
+    nav.clearFilter();
+    showPage(index);
+  }
+
+  /** The number of pages, for the development snapshot tool. */
+  public int getPageCount() {
+    return panels.length;
   }
 
   static SettingsNav.SearchPage searchPage(OptionsPanel panel) {

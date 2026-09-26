@@ -150,7 +150,7 @@ public class WelcomePanel extends JPanel implements Scrollable {
   public final void refresh() {
     setBackground(Tokens.color("Logisim.sidePanel.background", getBackground()));
     titleLabel.setText(BuildInfo.name);
-    titleLabel.setFont(UiFonts.heading());
+    titleLabel.setFont(UiFonts.display());
     subtitleLabel.setText(S.get("welcomeSubtitle"));
     subtitleLabel.setFont(UiFonts.body());
     subtitleLabel.setForeground(Tokens.mutedForeground());

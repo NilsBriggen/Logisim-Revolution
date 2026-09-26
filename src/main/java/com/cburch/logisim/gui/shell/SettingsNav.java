@@ -147,8 +147,18 @@ public class SettingsNav extends JPanel {
     setPages(titles.stream().map(title -> new SearchPage(title, "")).toList());
   }
 
+  /**
+   * Replaces the pages, as after a change of language.
+   *
+   * <p>Any filter is cleared: it was typed in the previous language and, run against the new
+   * labels, would usually match nothing and strand the user on "No settings match".
+   */
   public void setPages(List<SearchPage> pages) {
     searchPages = List.copyOf(pages);
+    if (!filterText.isEmpty() || !filter.getText().isEmpty()) {
+      filterText = "";
+      filter.clear();
+    }
     rebuild();
   }
 

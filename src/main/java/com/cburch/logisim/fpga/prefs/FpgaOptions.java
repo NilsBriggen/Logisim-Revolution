@@ -13,6 +13,7 @@ import static com.cburch.logisim.fpga.Strings.S;
 
 import com.cburch.logisim.fpga.hdlgenerator.HdlGeneratorFactory;
 import com.cburch.logisim.gui.generic.OptionPane;
+import com.cburch.logisim.gui.generic.SettingsForm;
 import com.cburch.logisim.gui.prefs.ColorChooserButton;
 import com.cburch.logisim.gui.prefs.OptionsPanel;
 import com.cburch.logisim.gui.prefs.PrefOption;
@@ -21,16 +22,14 @@ import com.cburch.logisim.gui.prefs.PreferencesFrame;
 import com.cburch.logisim.gui.shell.SectionPanel;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.prefs.PrefMonitorBoolean;
+import com.cburch.logisim.util.Spacing;
+import java.awt.BorderLayout;
 import java.awt.Component;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
 import java.util.prefs.PreferenceChangeEvent;
 import java.util.prefs.PreferenceChangeListener;
-import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JFileChooser;
@@ -106,13 +105,14 @@ public class FpgaOptions extends OptionsPanel {
   private JCheckBox vhdlKeywordUpperCase;
   private final PreferencesFrame frame;
   private final PrefOptionList HDL_Used;
+  private final SettingsForm form = new SettingsForm();
 
   public FpgaOptions(PreferencesFrame frame) {
     super(frame);
     this.frame = frame;
     AppPreferences.getPrefs().addPreferenceChangeListener(myListener);
 
-    WorkSpacePath = new JTextField(32);
+    WorkSpacePath = new JTextField(16);
     WorkSpacePath.setEditable(false);
     showWorkspace();
     WorkSpaceButton = new JButton();
@@ -127,80 +127,45 @@ public class FpgaOptions extends OptionsPanel {
               new PrefOption(HdlGeneratorFactory.NONE, S.getter("None"))
             });
 
-    GridBagLayout layout = new GridBagLayout();
-    GridBagConstraints gbc = new GridBagConstraints();
-    setLayout(layout);
-
-    gbc.insets = new Insets(2, 4, 4, 2);
-    gbc.anchor = GridBagConstraints.BASELINE_LEADING;
-
-    gbc.gridx = 0;
-    gbc.gridy = 0;
-    gbc.fill = GridBagConstraints.NONE;
-    add(WorkspaceLabel, gbc);
-    gbc.gridx = 2;
-    gbc.gridy = 0;
-    gbc.fill = GridBagConstraints.HORIZONTAL;
-    add(WorkSpaceButton, gbc);
-    gbc.gridx = 1;
-    gbc.gridy = 0;
-    gbc.weightx = 1.0;
-    add(WorkSpacePath, gbc);
-    gbc.gridx = 0;
-    gbc.gridy = 1;
-    gbc.gridwidth = 2;
-    add(HDL_Used.getJLabel(), gbc);
-    gbc.gridx = 2;
-    gbc.gridy = 1;
-    gbc.gridwidth = 1;
-    add(HDL_Used.getJComboBox(), gbc);
-    gbc.gridx = 0;
-    gbc.gridy = 3;
-    gbc.gridwidth = 3;
+    // The shared settings form: one label column for the page and for the rows inside its
+    // sections, one colour per row rather than two label/swatch pairs to a row.
+    final var workspace = new JPanel(new BorderLayout(Spacing.sm(), 0));
+    workspace.add(WorkSpacePath, BorderLayout.CENTER);
+    workspace.add(WorkSpaceButton, BorderLayout.LINE_END);
+    form.addRow(WorkspaceLabel, workspace, true);
+    form.addRow(HDL_Used.getJLabel(), HDL_Used.getJComboBox());
     vhdlSection = new SectionPanel(S.get("VhdlOptions"), getVhdlOptions(), true);
-    add(vhdlSection, gbc);
-    gbc.gridy++;
-    add(AppPreferences.Boards.addRemovePanel(), gbc);
-    gbc.gridy++;
+    form.addFull(vhdlSection, true);
+    form.addFull(AppPreferences.Boards.addRemovePanel(), true);
     reportSection = new SectionPanel(S.get("ReporterOptions"), getReporterOptions(), true);
-    add(reportSection, gbc);
-    gbc.gridy++;
+    form.addFull(reportSection, true);
     editSection = new SectionPanel(S.get("EditColors"), getEditCols(), true);
-    add(editSection, gbc);
-    gbc.gridy++;
+    form.addFull(editSection, true);
     mapSection = new SectionPanel(S.get("MapColors"), getMapCols(), true);
-    add(mapSection, gbc);
+    form.addFull(mapSection, true);
+    setLayout(new BorderLayout());
+    add(form, BorderLayout.NORTH);
     localeChanged();
   }
 
   private JPanel getVhdlOptions() {
     final var isVhdl = AppPreferences.HdlType.get().equals(HdlGeneratorFactory.VHDL);
-    vhdlPan = new JPanel();
-    vhdlPan.setLayout(new GridBagLayout());
-    GridBagConstraints gbc = new GridBagConstraints();
-    gbc.gridx = 0;
-    gbc.gridy = 0;
-    gbc.fill = GridBagConstraints.HORIZONTAL;
+    vhdlPan = form.createNested();
     vhdlKeywordUpperCase =
         ((PrefMonitorBoolean) AppPreferences.VhdlKeywordsUpperCase).getCheckBox();
-    vhdlPan.add(vhdlKeywordUpperCase, gbc);
+    ((SettingsForm) vhdlPan).addFull(vhdlKeywordUpperCase);
     vhdlPan.setEnabled(isVhdl);
     vhdlKeywordUpperCase.setEnabled(isVhdl);
     return vhdlPan;
   }
 
   private JPanel getReporterOptions() {
-    ReportPan = new JPanel();
-    ReportPan.setLayout(new GridBagLayout());
-    GridBagConstraints gbc = new GridBagConstraints();
-    gbc.gridx = 0;
-    gbc.gridy = 0;
-    gbc.fill = GridBagConstraints.HORIZONTAL;
+    final var nested = form.createNested();
+    ReportPan = nested;
     SuppressGated = ((PrefMonitorBoolean) AppPreferences.SuppressGatedClockWarnings).getCheckBox();
-    ReportPan.add(SuppressGated, gbc);
-    gbc.gridy++;
+    nested.addFull(SuppressGated);
     SuppressOpen = ((PrefMonitorBoolean) AppPreferences.SuppressOpenPinWarnings).getCheckBox();
-    ReportPan.add(SuppressOpen, gbc);
+    nested.addFull(SuppressOpen);
     return ReportPan;
   }
 
@@ -216,49 +181,31 @@ public class FpgaOptions extends OptionsPanel {
   }
 
   private JPanel getEditCols() {
-    editPan = new JPanel(new GridBagLayout());
+    final var nested = form.createNested();
+    editPan = nested;
     EditSelectColor = new ColorChooserButton(frame, AppPreferences.FPGA_DEFINE_COLOR);
+    nested.addRow(EditSelectLabel, EditSelectColor);
     EditHighligtColor = new ColorChooserButton(frame, AppPreferences.FPGA_DEFINE_HIGHLIGHT_COLOR);
+    nested.addRow(EditHighligtLabel, EditHighligtColor);
     EditMoveColor = new ColorChooserButton(frame, AppPreferences.FPGA_DEFINE_MOVE_COLOR);
+    nested.addRow(EditMoveLabel, EditMoveColor);
     EditResizeColor = new ColorChooserButton(frame, AppPreferences.FPGA_DEFINE_RESIZE_COLOR);
-    addColorRow(editPan, 0, EditSelectLabel, EditSelectColor);
-    addColorRow(editPan, 1, EditHighligtLabel, EditHighligtColor);
-    addColorRow(editPan, 2, EditMoveLabel, EditMoveColor);
-    addColorRow(editPan, 3, EditResizeLabel, EditResizeColor);
+    nested.addRow(EditResizeLabel, EditResizeColor);
     return editPan;
   }
 
   private JPanel getMapCols() {
-    mapPan = new JPanel(new GridBagLayout());
+    final var nested = form.createNested();
+    mapPan = nested;
     MappedColor = new ColorChooserButton(frame, AppPreferences.FPGA_MAPPED_COLOR);
+    nested.addRow(MappedLabel, MappedColor);
     SelMapColor = new ColorChooserButton(frame, AppPreferences.FPGA_SELECTED_MAPPED_COLOR);
+    nested.addRow(SelMapLabel, SelMapColor);
     SelectMapColor = new ColorChooserButton(frame, AppPreferences.FPGA_SELECTABLE_MAPPED_COLOR);
+    nested.addRow(SelectMapLabel, SelectMapColor);
     SelectColor = new ColorChooserButton(frame, AppPreferences.FPGA_SELECT_COLOR);
-    addColorRow(mapPan, 0, MappedLabel, MappedColor);
-    addColorRow(mapPan, 1, SelMapLabel, SelMapColor);
-    addColorRow(mapPan, 2, SelectMapLabel, SelectMapColor);
-    addColorRow(mapPan, 3, SelectLabel, SelectColor);
+    nested.addRow(SelectLabel, SelectColor);
     return mapPan;
-  }
-
-  /**
-   * One colour per row, caption left and swatch right, as on the Colors page. Two pairs per row
-   * left each swatch pressed against the next caption, with ragged columns.
-   */
-  private static void addColorRow(JPanel panel, int row, JLabel caption, ColorChooserButton swatch) {
-    final var gbc = new GridBagConstraints();
-    gbc.gridy = row;
-    gbc.gridx = 0;
-    gbc.weightx = 1.0;
-    gbc.anchor = GridBagConstraints.LINE_START;
-    gbc.insets = new Insets(2, 0, 2, 12);
-    caption.setLabelFor(swatch);
-    panel.add(caption, gbc);
-    gbc.gridx = 1;
-    gbc.weightx = 0.0;
-    gbc.anchor = GridBagConstraints.LINE_END;
-    gbc.insets = new Insets(2, 0, 2, 0);
-    panel.add(swatch, gbc);
   }
 
   @Override

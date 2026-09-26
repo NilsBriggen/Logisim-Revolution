@@ -12,13 +12,11 @@ package com.cburch.logisim.gui.prefs;
 import static com.cburch.logisim.gui.Strings.S;
 
 import com.cburch.logisim.data.Value;
+import com.cburch.logisim.gui.generic.SettingsForm;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.prefs.PrefMonitor;
 import com.cburch.logisim.proj.Projects;
-import java.awt.Color;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
+import java.awt.BorderLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.Set;
@@ -26,7 +24,6 @@ import java.util.prefs.PreferenceChangeEvent;
 import java.util.prefs.PreferenceChangeListener;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
-import javax.swing.SwingConstants;
 
 public class SimOptions extends OptionsPanel {
 
@@ -47,42 +44,16 @@ public class SimOptions extends OptionsPanel {
     super(window);
     AppPreferences.getPrefs().addPreferenceChangeListener(new MyListener());
 
-    final var gbc = new GridBagConstraints();
-    setLayout(new GridBagLayout());
-    gbc.insets = new Insets(2, 4, 4, 2);
-    gbc.anchor = GridBagConstraints.CENTER;
-    gbc.gridx = 0;
-    gbc.gridy = 0;
-    gbc.fill = GridBagConstraints.HORIZONTAL;
     // Only the value characters remain here. Every colour moved to the Colors page, which owns
     // them all in one grouped list instead of scattering them over two unrelated pages.
-    add(trueCharTitle, gbc);
-    gbc.gridx++;
-    add(trueChar, gbc);
-
-    gbc.gridx = 0;
-    gbc.gridy++;
-    add(falseCharTitle, gbc);
-    gbc.gridx++;
-    add(falseChar, gbc);
-
-    gbc.gridx = 0;
-    gbc.gridy++;
-    add(unknownCharTitle, gbc);
-    gbc.gridx++;
-    add(unknownChar, gbc);
-
-    gbc.gridx = 0;
-    gbc.gridy++;
-    add(errorCharTitle, gbc);
-    gbc.gridx++;
-    add(errorChar, gbc);
-
-    gbc.gridx = 0;
-    gbc.gridy++;
-    add(dontCareCharTitle, gbc);
-    gbc.gridx++;
-    add(dontCareChar, gbc);
+    final var form = new SettingsForm();
+    form.addRow(trueCharTitle, trueChar);
+    form.addRow(falseCharTitle, falseChar);
+    form.addRow(unknownCharTitle, unknownChar);
+    form.addRow(errorCharTitle, errorChar);
+    form.addRow(dontCareCharTitle, dontCareChar);
+    setLayout(new BorderLayout());
+    add(form, BorderLayout.NORTH);
 
     localeChanged();
   }

@@ -27,10 +27,25 @@ import javax.swing.UIManager;
  */
 public final class UiFonts {
 
-  /** Size, relative to the base font, of secondary text. */
-  private static final float SMALL_RATIO = 0.85f;
+  /*
+   * The type scale. Interface text uses four roles and nothing else:
+   *
+   *   display  ~1.6x, bold   the headline of an empty state (about 20px at a 12-13px body)
+   *   header   1.0x,  bold   panel and section headers (about 13px semibold)
+   *   body     1.0x          everything else
+   *   caption  0.85x         hints, status and secondary annotations (about 11px)
+   *
+   * The roles used to sit within about 11-15px of each other, so a headline barely stood out from
+   * the text under it.
+   */
 
-  /** Size, relative to the base font, of a section heading. */
+  /** Size, relative to the base font, of captions and secondary text. */
+  private static final float CAPTION_RATIO = 0.85f;
+
+  /** Size, relative to the base font, of an empty-state headline. */
+  private static final float DISPLAY_RATIO = 1.6f;
+
+  /** Size, relative to the base font, of a heading inside a dialog or document. */
   private static final float HEADING_RATIO = 1.2f;
 
   /** Used only when the look and feel exposes no label font. */
@@ -54,12 +69,30 @@ public final class UiFonts {
     return scale(base(), 1.0f, Font.BOLD);
   }
 
-  /** Returns a smaller font, for captions and secondary annotations. */
+  /** Returns a smaller font, for captions and secondary annotations. Same as {@link #caption()}. */
   public static Font small() {
-    return scale(base(), SMALL_RATIO, base().getStyle());
+    return caption();
   }
 
-  /** Returns a larger bold font, for section headings. */
+  /** The caption role: hints, status text and secondary annotations. */
+  public static Font caption() {
+    return scale(base(), CAPTION_RATIO, base().getStyle());
+  }
+
+  /** The header role: panel and section headers, at body size in bold. */
+  public static Font header() {
+    return scale(base(), 1.0f, Font.BOLD);
+  }
+
+  /** The display role: the headline of an empty state such as the welcome page. */
+  public static Font display() {
+    return scale(base(), DISPLAY_RATIO, Font.BOLD);
+  }
+
+  /**
+   * Returns a larger bold font, for a title inside a dialog or a document such as a board
+   * picture, between {@link #header()} and {@link #display()}.
+   */
   public static Font heading() {
     return scale(base(), HEADING_RATIO, Font.BOLD);
   }

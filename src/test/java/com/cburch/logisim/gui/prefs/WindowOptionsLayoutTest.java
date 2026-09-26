@@ -37,20 +37,19 @@ class WindowOptionsLayoutTest {
   void explicitHelpAndSliderFontsFollowLiveDoubleToSingleScale() throws Exception {
     atScale(2.0, () -> {
       final var options = new WindowOptions(null);
-      final var help = findChild(options, JTextArea.class);
+      final var help = findHelp(options, Strings.S.get("windowScaleHelp"));
       final var slider = findChild(options, JSlider.class);
       assertNotNull(help);
       assertNotNull(slider);
-      assertEquals(Strings.S.get("windowScaleHelp"), help.getText());
       final var largeSize = help.getFont().getSize2D();
-      assertEquals(UiFonts.body().getSize2D(), largeSize);
+      // Hints use the caption role of the type scale, as on every settings page.
+      assertEquals(UiFonts.caption().getSize2D(), largeSize);
 
       UiScale.setFactor(1.0);
       SwingUtilities.updateComponentTreeUI(options);
 
-      assertTrue(help.getFont().isItalic());
       assertTrue(help.getFont().getSize2D() < largeSize);
-      assertEquals(UiFonts.body().getSize2D(), help.getFont().getSize2D());
+      assertEquals(UiFonts.caption().getSize2D(), help.getFont().getSize2D());
       var labels = 0;
       for (final var values = slider.getLabelTable().elements(); values.hasMoreElements(); ) {
         final var label = (JLabel) values.nextElement();
@@ -60,6 +59,17 @@ class WindowOptionsLayoutTest {
       assertEquals(3, labels);
       assertEquals(Strings.S.get("windowScaleHelp"), help.getText());
     });
+  }
+
+  private static JTextArea findHelp(Container parent, String text) {
+    for (final var child : parent.getComponents()) {
+      if (child instanceof JTextArea area && text.equals(area.getText())) return area;
+      if (child instanceof Container nested) {
+        final var found = findHelp(nested, text);
+        if (found != null) return found;
+      }
+    }
+    return null;
   }
 
   private static <T> T findChild(Container parent, Class<T> type) {
