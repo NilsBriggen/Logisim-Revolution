@@ -140,6 +140,7 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
   private static final String TEST_BOTTOM_PANEL = "test";
   private static final String EDIT_EMPTY = "empty";
   private final Project project;
+  private final EditedCircuitTracker editedCircuits = new EditedCircuitTracker();
   private final MyProjectListener myProjectListener = new MyProjectListener();
   // GUI elements shared between views
   private final MainMenuListener menuListener;
@@ -257,6 +258,7 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     project.addProjectListener(myProjectListener);
     project.addLibraryListener(myProjectListener);
     project.addCircuitListener(myProjectListener);
+    editedCircuits.watch(project.getLogisimFile());
 
     // set up elements for the Layout view
     layoutToolbarModel = new LayoutToolbarModel(project);
@@ -794,11 +796,8 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
                 : S.get("titleFileKnown", name))
         .append(" · ")
         .append(BuildInfo.displayName);
-
-    // The icon alone may sometimes be missed so we add additional "[UNSAVED]" to the title too.
-    if (project.isFileDirty()) {
-      title.append(String.format(" [%s]", S.get("titleUnsavedProjectState").toUpperCase()));
-    }
+    // One dirty indicator only: the leading marker survives window-manager truncation, which a
+    // trailing "[UNSAVED]" did not, and the two together said the same thing twice.
 
     this.setTitle(title.toString().trim());
     myProjectListener.enableSave();
@@ -1438,9 +1437,16 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
         buildTitleString();
         enableSave();
         if (!project.isFileDirty()) editorTabModel.clearDirty();
+      } else if (e.getAction() == LibraryEvent.ADD_TOOL
+          && e.getData() instanceof AddTool tool
+          && tool.getFactory() instanceof SubcircuitFactory subcircuitFactory) {
+        // A new circuit is itself an unsaved change: its tab gets the dot, not the one in view.
+        editedCircuits.watch(subcircuitFactory.getSubcircuit());
+        editedCircuits.touch(subcircuitFactory.getSubcircuit());
       } else if (e.getAction() == LibraryEvent.REMOVE_TOOL
           && e.getData() instanceof AddTool tool
           && tool.getFactory() instanceof SubcircuitFactory subcircuitFactory) {
+        editedCircuits.forget(subcircuitFactory.getSubcircuit());
         layoutViewMemory.forget(subcircuitFactory.getSubcircuit());
         editorTabModel.removeTarget(subcircuitFactory.getSubcircuit());
       }
@@ -1453,6 +1459,7 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
       if (action == ProjectEvent.ACTION_SET_FILE) {
         buildTitleString();
         editorTabModel.clear();
+        editedCircuits.watch(project.getLogisimFile());
         project.setTool(project.getOptions().getToolbarData().getFirstTool());
         placeToolbar();
         syncEditorTabs();
@@ -1462,12 +1469,19 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
         // its idempotent setter alone cannot dismiss a separately shown welcome surface.
         project.setStartupScreen(false);
         dismissWelcome();
+        editedCircuits.begin();
+      } else if (action == ProjectEvent.UNDO_START || action == ProjectEvent.REDO_START) {
+        editedCircuits.begin();
       } else if (action == ProjectEvent.ACTION_COMPLETE
           || action == ProjectEvent.UNDO_COMPLETE
           || action == ProjectEvent.REDO_COMPLETE) {
-        // An edit landed: mark the circuit it changed, so its tab says so. Undo and redo change
-        // circuits too; the project's dirty flag decides, so tab dot and title always agree.
-        if (project.isFileDirty()) editorTabModel.setDirty(project.getCurrentCircuit(), true);
+        // An edit landed: mark the circuits it changed, so their tabs say so (the one in view when
+        // the edit reported none, e.g. an appearance change). Undo and redo change circuits too;
+        // the project's dirty flag decides, so tab dots and title always agree.
+        final var changed = editedCircuits.finish(project.getCurrentCircuit());
+        if (project.isFileDirty()) {
+          for (final var circuit : changed) editorTabModel.setDirty(circuit, true);
+        }
       } else if (action == ProjectEvent.ACTION_SET_STATE) {
         // The trail is how the user knows which instance they are inside, and how they get back.
         updateCircuitTrail();

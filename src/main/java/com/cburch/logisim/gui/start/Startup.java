@@ -33,6 +33,7 @@ import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.proj.ProjectActions;
 import com.cburch.logisim.std.base.BaseLibrary;
 import com.cburch.logisim.std.gates.GatesLibrary;
+import com.cburch.logisim.tools.Library;
 import com.cburch.logisim.util.JFileChoosers;
 import com.cburch.logisim.util.LineBuffer;
 import com.cburch.logisim.util.LocaleManager;
@@ -1066,6 +1067,47 @@ public class Startup implements AWTEventListener {
     if (showSplash) {
       monitor.setProgress(SplashScreen.GUI_INIT);
     }
+    // Everything from here on builds Swing components or touches the Project, which the GUI
+    // listens to: do each step on the event thread. Each step is its own invokeAndWait, so the
+    // splash screen can repaint (and show the next stage) between them.
+    onEdt(this::initializeInterface);
+
+    // if user has double-clicked a file to open, we'll
+    // use that as the file to open now.
+    synchronized (filesToOpen) {
+      initialized = true;
+    }
+
+    if (testVector == null && testCircPathInput == null) onEdt(this::handleUnnamedAutosaves);
+
+    onEdt(() -> openStartupProjects(defaultLibraries));
+
+    for (final var fileToPrint : filesToPrint) {
+      onEdt(() -> doPrintFile(fileToPrint));
+    }
+  }
+
+  /** Runs {@code step} on the event dispatch thread and waits for it, rethrowing its failure. */
+  private static void onEdt(Runnable step) {
+    if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+      step.run();
+      return;
+    }
+    try {
+      javax.swing.SwingUtilities.invokeAndWait(step);
+    } catch (InterruptedException ex) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException(ex);
+    } catch (java.lang.reflect.InvocationTargetException ex) {
+      final var cause = ex.getCause();
+      if (cause instanceof RuntimeException runtime) throw runtime;
+      if (cause instanceof Error error) throw error;
+      throw new IllegalStateException(cause);
+    }
+  }
+
+  /** Last-minute interface initialization, on the event thread. */
+  private void initializeInterface() {
     WindowManagers.initialize();
     DoubleShiftTrigger.install();
     if (MacCompatibility.isSwingUsingScreenMenuBar()) {
@@ -1088,38 +1130,34 @@ public class Startup implements AWTEventListener {
                   "SPACE", "pressed",
                   "released SPACE", "released"
                 }));
+  }
 
-    // if user has double-clicked a file to open, we'll
-    // use that as the file to open now.
-    synchronized (filesToOpen) {
-      initialized = true;
-    }
-
-    // Check for unnamed autosaves here and allow to save them and/or open them again
-    if (testVector == null && testCircPathInput == null) {
-      // get list of all unnamed autosave files
-      final var autosaves = Loader.getUnnamedAutosaveDirectory().listFiles(
-            new FilenameFilter() {
-              @Override
-              public boolean accept(File dir, String name) {
-                return name.startsWith(Loader.LOGISIM_UNNAMED_AUTOSAVE_PREFIX)
-                    && name.endsWith(Loader.LOGISIM_UNNAMED_AUTOSAVE_SUFFIX);
-              }
+  /** Offers to save or discard each autosave of an unnamed project, on the event thread. */
+  private void handleUnnamedAutosaves() {
+    // get list of all unnamed autosave files
+    final var autosaves = Loader.getUnnamedAutosaveDirectory().listFiles(
+          new FilenameFilter() {
+            @Override
+            public boolean accept(File dir, String name) {
+              return name.startsWith(Loader.LOGISIM_UNNAMED_AUTOSAVE_PREFIX)
+                  && name.endsWith(Loader.LOGISIM_UNNAMED_AUTOSAVE_SUFFIX);
             }
-          );
+          }
+        );
 
-      // Go over all autosaves to select what to do with each
-      for (final var autosave : autosaves == null ? new File[0] : autosaves) {
-        final var choice = askAboutRecoveredWork(autosave);
-        if (choice == RecoveryChoice.RESTORE) {
-          recoveredToOpen.add(autosave);
-        } else if (choice == RecoveryChoice.DISCARD) {
-          autosave.delete();
-        }
+    // Go over all autosaves to select what to do with each
+    for (final var autosave : autosaves == null ? new File[0] : autosaves) {
+      final var choice = askAboutRecoveredWork(autosave);
+      if (choice == RecoveryChoice.RESTORE) {
+        recoveredToOpen.add(autosave);
+      } else if (choice == RecoveryChoice.DISCARD) {
+        autosave.delete();
       }
     }
+  }
 
-    // load file
+  /** Opens the files given at startup, or else a new project, on the event thread. */
+  private void openStartupProjects(Library[] defaultLibraries) {
     Project proj = null;
     var openedNothing = false;
     if (filesToOpen.isEmpty() && recoveredToOpen.isEmpty()) {
@@ -1179,10 +1217,6 @@ public class Startup implements AWTEventListener {
             final var frame = startupProject.getFrame();
             if (frame != null) frame.showWelcomeScreen();
           });
-    }
-
-    for (final var fileToPrint : filesToPrint) {
-      doPrintFile(fileToPrint);
     }
   }
 

@@ -91,6 +91,33 @@ class AddToolSearchProviderTest {
   }
 
   @Test
+  void findsComponentsOfBuiltinLibrariesThatAreNotLoadedAndLoadsThemOnSelection() {
+    final var file = LogisimFile.createNew(new com.cburch.logisim.file.Loader(null), null);
+    file.stopAutosaveThread(false);
+    final var soc =
+        file.getLoader().getBuiltin().getLibraries().stream()
+            .filter(com.cburch.logisim.soc.Soc.class::isInstance)
+            .findFirst()
+            .orElseThrow();
+    assertFalse(file.getLibraries().contains(soc), "the default template does not load SoC");
+    final var project = mock(Project.class);
+    when(project.getLogisimFile()).thenReturn(file);
+
+    final var candidates = candidates(new AddToolSearchProvider(), project);
+    final var socCandidate =
+        candidates.stream()
+            .filter(c -> c.context().endsWith(soc.getDisplayName()))
+            .findFirst()
+            .orElseThrow();
+    assertEquals(
+        com.cburch.logisim.gui.Strings.S.get("searchLoadsLibraryHint"), socCandidate.hint());
+
+    socCandidate.action().run();
+    verify(project).doAction(org.mockito.ArgumentMatchers.any());
+    verify(project).setTool(org.mockito.ArgumentMatchers.any(AddTool.class));
+  }
+
+  @Test
   void excludesCurrentCircuitBecauseItCannotContainItself() {
     final var currentCircuit = mock(Circuit.class);
     final var currentFactory = mock(SubcircuitFactory.class);

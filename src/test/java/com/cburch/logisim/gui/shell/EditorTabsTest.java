@@ -52,6 +52,21 @@ class EditorTabsTest {
   }
 
   @Test
+  void dirtyTabSaysWhatItsDotMeans() throws Exception {
+    SwingUtilities.invokeAndWait(() -> {
+      final var model = new EditorTabModel();
+      final var tabs = new EditorTabs(model, tab -> "adder");
+      final var circuit = new Object();
+      final var layout = new Tab(Kind.LAYOUT, circuit);
+      model.syncTo(layout);
+      assertEquals("adder", tabs.tooltipFor(layout));
+      model.setDirty(circuit, true);
+      assertEquals(S.get("editorTabUnsavedTip", "adder"), tabs.tooltipFor(layout));
+      assertEquals(S.get("editorTabUnsavedTip", "adder"), tabs.getToolTipTextAt(0));
+    });
+  }
+
+  @Test
   void ctrlTabCyclesFromCanvasAndListButNotFromTextOrTable() throws Exception {
     SwingUtilities.invokeAndWait(() -> {
       final var model = new EditorTabModel();

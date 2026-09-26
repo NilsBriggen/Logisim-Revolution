@@ -274,7 +274,9 @@ public class EditorTabs extends JTabbedPane {
 
   String tooltipFor(Tab tab) {
     final var name = titler.apply(tab);
-    return tab.kind() == Kind.APPEARANCE ? S.get("editorTabAppearanceTip", name) : name;
+    final var tip = tab.kind() == Kind.APPEARANCE ? S.get("editorTabAppearanceTip", name) : name;
+    // Says what the dot in front of the title means.
+    return model.isDirty(tab) ? S.get("editorTabUnsavedTip", tip) : tip;
   }
 
   /** Re-reads the labels, after a circuit was renamed or the language changed. */

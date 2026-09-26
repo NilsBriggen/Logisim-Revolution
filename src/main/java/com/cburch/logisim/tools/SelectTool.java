@@ -406,6 +406,18 @@ public class SelectTool extends Tool {
             }
             break;
 
+          case KeyEvent.VK_ENTER:
+            // Same keyboard model as the Edit tool: Enter drops a floating paste...
+            if (e.getModifiersEx() == 0 && EditTool.commitFloating(canvas)) e.consume();
+            else processKeyEvent(canvas, e, KeyConfigurationEvent.KEY_PRESSED);
+            break;
+
+          case KeyEvent.VK_ESCAPE:
+            // ...and Escape throws it away, or clears the selection.
+            if (e.getModifiersEx() == 0 && EditTool.cancelSelection(canvas)) e.consume();
+            else processKeyEvent(canvas, e, KeyConfigurationEvent.KEY_PRESSED);
+            break;
+
           default:
             processKeyEvent(canvas, e, KeyConfigurationEvent.KEY_PRESSED);
             break;

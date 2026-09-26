@@ -16,6 +16,7 @@ import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import javax.swing.JPanel;
 
@@ -95,8 +96,56 @@ public class IoComponentsInformation {
 
   public boolean tryMap(JPanel parent) {
     if (!mapMode) return false;
-    if (highlighted != null) return highlighted.tryMap(parent);
-    return false;
+    if (highlighted == null) return false;
+    final var bus = busTargets(highlighted, ioComps);
+    if (bus != null) return mapBus(highlighted.getSelectedMapInfo().getMap(), bus);
+    return highlighted.tryMap(parent);
+  }
+
+  /**
+   * The board components a whole multi-bit component can be spread over in one click: the clicked
+   * single-pin I/O for bit 0 and further free I/Os of the same kind in the same row for the other
+   * bits, going left (the usual LSB-right order of LED rows and switch banks), or right when there
+   * are not enough on the left. Null when that does not apply, so the per-bit dialog is used.
+   */
+  static List<FpgaIoInformationContainer> busTargets(
+      FpgaIoInformationContainer clicked, List<FpgaIoInformationContainer> all) {
+    final var info = clicked.getSelectedMapInfo();
+    if (info == null || info.getPin() >= 0 || clicked.getNrOfPins() != 1) return null;
+    final var map = info.getMap();
+    final var bits = map.getNrOfPins();
+    if (bits < 2 || !clicked.isFree()) return null;
+    final var here = clicked.getRectangle();
+    final var left = new ArrayList<FpgaIoInformationContainer>();
+    final var right = new ArrayList<FpgaIoInformationContainer>();
+    for (final var io : all) {
+      if (io == clicked || io.getType() != clicked.getType() || io.getNrOfPins() != 1) continue;
+      if (!io.isSelectable() || !io.isFree()) continue;
+      final var rect = io.getRectangle();
+      final var sameRow =
+          Math.abs(
+                  (rect.getYpos() + rect.getHeight() / 2) - (here.getYpos() + here.getHeight() / 2))
+              <= Math.max(rect.getHeight(), here.getHeight()) / 2;
+      if (!sameRow) continue;
+      if (rect.getXpos() < here.getXpos()) left.add(io);
+      else if (rect.getXpos() > here.getXpos()) right.add(io);
+    }
+    left.sort((a, b) -> Integer.compare(b.getRectangle().getXpos(), a.getRectangle().getXpos()));
+    right.sort(Comparator.comparingInt(io -> io.getRectangle().getXpos()));
+    final var others = left.size() >= bits - 1 ? left : right.size() >= bits - 1 ? right : null;
+    if (others == null) return null;
+    final var ret = new ArrayList<FpgaIoInformationContainer>(bits);
+    ret.add(clicked);
+    ret.addAll(others.subList(0, bits - 1));
+    return ret;
+  }
+
+  private static boolean mapBus(MapComponent map, List<FpgaIoInformationContainer> targets) {
+    map.unmap();
+    var ok = true;
+    for (var bit = 0; bit < targets.size() && ok; bit++) ok = map.tryMap(bit, targets.get(bit), 0);
+    if (!ok) map.unmap();
+    return ok;
   }
 
   public void setSelectable(MapListModel.MapInfo comp, float scale) {
@@ -151,6 +200,16 @@ public class IoComponentsInformation {
     ypos = Math.max(ypos, 0);
     ypos = Math.min(ypos, imageHeight - 1);
     var selected = lookup[xpos][ypos];
+    if (selected == null && mapMode) {
+      // Board LEDs and switches are often a dozen pixels wide: a near miss still picks the
+      // closest one, instead of silently doing nothing.
+      selected = nearest(ioComps, xpos, ypos, HIT_SLOP);
+      if (selected != null) {
+        final var rect = selected.getRectangle();
+        xpos = Math.max(rect.getXpos(), Math.min(xpos, rect.getXpos() + rect.getWidth() - 1));
+        ypos = Math.max(rect.getYpos(), Math.min(ypos, rect.getYpos() + rect.getHeight() - 1));
+      }
+    }
     if (selected == highlighted) {
       if (highlighted != null && highlighted.selectedPinChanged(xpos, ypos))
         fireRedraw(highlighted.getRectangle(), scale);
@@ -165,6 +224,30 @@ public class IoComponentsInformation {
       fireRedraw(selected.getRectangle(), scale);
     }
     highlighted = selected;
+  }
+
+  /** How far (in board image pixels) outside a component a click still reaches it. */
+  static final int HIT_SLOP = 8;
+
+  /** The component whose rectangle is closest to (x, y), if no farther than {@code slop}. */
+  static FpgaIoInformationContainer nearest(
+      List<FpgaIoInformationContainer> comps, int x, int y, int slop) {
+    FpgaIoInformationContainer best = null;
+    var bestDistance = Long.MAX_VALUE;
+    for (final var comp : comps) {
+      final var rect = comp.getRectangle();
+      if (rect == null) continue;
+      final long dx =
+          Math.max(0, Math.max(rect.getXpos() - x, x - (rect.getXpos() + rect.getWidth() - 1)));
+      final long dy =
+          Math.max(0, Math.max(rect.getYpos() - y, y - (rect.getYpos() + rect.getHeight() - 1)));
+      final var distance = dx * dx + dy * dy;
+      if (distance <= (long) slop * slop && distance < bestDistance) {
+        best = comp;
+        bestDistance = distance;
+      }
+    }
+    return best;
   }
 
   public void mouseExited(float scale) {

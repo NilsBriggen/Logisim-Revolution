@@ -37,37 +37,38 @@ class OpenRecent extends JMenu implements PropertyChangeListener {
     renewItems();
   }
 
-  private static String getFileText(File file) {
-    if (file == null) {
-      return S.get("fileOpenRecentNoChoices");
-    } else {
-
-      String ret;
-      try {
-        ret = file.getCanonicalPath();
-      } catch (IOException e) {
-        ret = file.toString();
-      }
-
-      if (ret.length() <= MAX_ITEM_LENGTH) {
-        return ret;
-      } else {
-        ret = ret.substring(ret.length() - MAX_ITEM_LENGTH + 3);
-        int splitLoc = ret.indexOf(File.separatorChar);
-        if (splitLoc >= 0) {
-          ret = ret.substring(splitLoc);
-        }
-        return "..." + ret;
-      }
+  /** The full path of a recent file, for its tooltip. */
+  private static String getFullPath(File file) {
+    try {
+      return file.getCanonicalPath();
+    } catch (IOException e) {
+      return file.toString();
     }
+  }
+
+  /**
+   * The menu text of a recent file: its name first, so it can be found at a glance, then the
+   * folder it is in, shortened from the left when long.
+   */
+  static String getFileText(File file) {
+    if (file == null) return S.get("fileOpenRecentNoChoices");
+    final var full = new File(getFullPath(file));
+    final var parent = full.getParent();
+    if (parent == null) return full.getName();
+    var dir = parent;
+    if (dir.length() > MAX_ITEM_LENGTH) {
+      dir = dir.substring(dir.length() - MAX_ITEM_LENGTH + 1);
+      final var splitLoc = dir.indexOf(File.separatorChar);
+      if (splitLoc >= 0) dir = dir.substring(splitLoc);
+      dir = "\u2026" + dir;
+    }
+    return S.get("fileOpenRecentEntry", full.getName(), dir);
   }
 
   void localeChanged() {
     setText(S.get("fileOpenRecentItem"));
     for (final var item : recentItems) {
-      if (item.file == null) {
-        item.setText(S.get("fileOpenRecentNoChoices"));
-      }
+      item.setText(getFileText(item.file));
     }
   }
 
@@ -105,6 +106,7 @@ class OpenRecent extends JMenu implements PropertyChangeListener {
     RecentItem(File file) {
       super(getFileText(file));
       this.file = file;
+      if (file != null) setToolTipText(getFullPath(file));
       setEnabled(file != null);
       addActionListener(this);
     }

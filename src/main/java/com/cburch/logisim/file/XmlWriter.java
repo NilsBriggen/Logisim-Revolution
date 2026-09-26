@@ -451,7 +451,7 @@ final class XmlWriter {
             "\nThis file is intended to be "
                 + "loaded by "
                 + BuildInfo.displayName
-                + "("
+                + " ("
                 + BuildInfo.url
                 + ").\n"));
     ret.setAttribute("version", "1.0");

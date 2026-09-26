@@ -19,6 +19,7 @@ import com.cburch.logisim.data.Location;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.util.GraphicsUtil;
 import com.cburch.logisim.gui.canvas.CanvasStyle;
+import com.cburch.logisim.instance.InstanceComponent;
 import com.cburch.logisim.proj.Action;
 import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.proj.ProjectEvent;
@@ -67,6 +68,8 @@ public class Selection extends SelectionBase {
         final var gfxNew = g.create();
         context.setGraphics(gfxNew);
         c.getFactory().drawGhost(context, new Color(AppPreferences.COMPONENT_GHOST_COLOR.get()), loc.getX(), loc.getY(), c.getAttributeSet());
+        // The label belongs to the preview too: it is part of what will be dropped.
+        if (c instanceof InstanceComponent instance) instance.drawLabelPreview(context);
         gfxNew.dispose();
       }
     }
@@ -137,6 +140,10 @@ public class Selection extends SelectionBase {
       final var y = loc.getY() + dy;
       context.setGraphics(g.create());
       comp.getFactory().drawGhost(context, new Color(AppPreferences.COMPONENT_GHOST_COLOR.get()), x, y, attrs);
+      if (comp instanceof InstanceComponent instance) {
+        context.getGraphics().translate(x - loc.getX(), y - loc.getY());
+        instance.drawLabelPreview(context);
+      }
       context.getGraphics().dispose();
     }
     context.setGraphics(g);
@@ -191,6 +198,27 @@ public class Selection extends SelectionBase {
       if (bds.contains(comp.getBounds(g))) ret.add(comp);
     }
     return ret;
+  }
+
+  /**
+   * Throws away the floating components (a paste or duplicate not dropped yet) without adding them
+   * to the circuit. They were never part of it, so nothing in the circuit changes.
+   *
+   * @return whether anything was floating
+   */
+  public boolean discardFloating() {
+    if (lifted.isEmpty()) return false;
+    lifted.clear();
+    fireSelectionChanged();
+    return true;
+  }
+
+  /** Deselects everything; only valid when nothing is floating, which would need dropping. */
+  public void deselectAll() {
+    if (!lifted.isEmpty()) throw new IllegalStateException("floating components must be dropped");
+    if (selected.isEmpty()) return;
+    selected.clear();
+    fireSelectionChanged();
   }
 
   public Collection<Component> getFloatingComponents() {

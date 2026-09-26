@@ -252,6 +252,16 @@ public final class InstanceComponent implements Component, AttributeListener, To
     }
   }
 
+  /**
+   * Draws only this component's label, for previews of components that are not in a circuit yet
+   * (a floating paste) where the body is drawn as a ghost: without it the preview hides the labels
+   * the component will have once it is dropped.
+   */
+  public void drawLabelPreview(ComponentDrawContext context) {
+    final var field = textField;
+    if (field != null) field.draw(this, context);
+  }
+
   //
   // methods for InstancePainter
   //

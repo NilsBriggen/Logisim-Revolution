@@ -176,6 +176,31 @@ public class EditTool extends Tool {
     return true;
   }
 
+  /** Drops floating (pasted or duplicated) components into the circuit; false if none float. */
+  public static boolean commitFloating(Canvas canvas) {
+    final var sel = canvas.getSelection();
+    if (sel.getFloatingComponents().isEmpty()) return false;
+    final var act = SelectionActions.dropAll(sel);
+    if (act != null) canvas.getProject().doAction(act);
+    return true;
+  }
+
+  /**
+   * Escape: throws away a floating paste, which was never added to the circuit, or else clears the
+   * selection. False when there was nothing to cancel, so the key can do something else.
+   */
+  public static boolean cancelSelection(Canvas canvas) {
+    final var sel = canvas.getSelection();
+    if (sel.discardFloating()) {
+      canvas.getProject().repaintCanvas();
+      return true;
+    }
+    if (sel.isEmpty()) return false;
+    sel.deselectAll();
+    canvas.getProject().repaintCanvas();
+    return true;
+  }
+
   /** The move an arrow key asks for, or null if {@code code} is not an arrow key. */
   static java.awt.Point nudgeOffset(int code, int modifiers) {
     final var step = (modifiers & InputEvent.SHIFT_DOWN_MASK) != 0 ? 10 * LARGE_NUDGE_STEPS : 10;
@@ -366,6 +391,12 @@ public class EditTool extends Tool {
       } else {
         wiring.keyPressed(canvas, e);
       }
+    } else if (code == KeyEvent.VK_ENTER && modifier == 0 && commitFloating(canvas)) {
+      // Enter drops a floating paste where it is, as a click would (and as Enter places a
+      // component with the Add tool).
+      e.consume();
+    } else if (code == KeyEvent.VK_ESCAPE && modifier == 0 && cancelSelection(canvas)) {
+      e.consume();
     } else if (((PrefMonitorKeyStroke) AppPreferences.HOTKEY_EDIT_TOOL_DUPLICATE)
         .compare(code, modifier)) {
       final var act = SelectionActions.duplicate(canvas.getSelection());

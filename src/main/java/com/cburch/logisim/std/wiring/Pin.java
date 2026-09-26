@@ -47,6 +47,7 @@ import com.cburch.logisim.tools.key.JoinedConfigurator;
 import com.cburch.logisim.util.GraphicsUtil;
 import com.cburch.logisim.util.LocaleListener;
 
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Frame;
@@ -763,7 +764,7 @@ public class Pin extends InstanceFactory {
       Attributes.forOption("behavior", S.getter("pinBehaviorAttr"),
           new AttributeOption[] { SIMPLE, TRISTATE, PULL_DOWN, PULL_UP });
   public static final Attribute<Long> ATTR_INITIAL =
-      Attributes.forHexLong("initial", S.getter("pinResetValue"));;
+      new PinResetValueAttribute("initial", S.getter("pinResetValue"));
 
   public static final Pin FACTORY = new Pin();
   private static final Font ICON_WIDTH_FONT = new Font("SansSerif", Font.BOLD, 9);
@@ -1161,27 +1162,7 @@ public class Pin extends InstanceFactory {
     int pinSize = iconSize >> 2;
     final var baseColor = g.getColor();
     if (attrs.getValue(ProbeAttributes.PROBEAPPEARANCE) == ProbeAttributes.APPEAR_EVOLUTION_NEW) {
-      int arrowHeight = (10 * iconSize) >> 4;
-      int yoff = (3 * iconSize) >> 4;
-      int xoff = output ? pinSize : 0;
-      int[] yPoints =
-          new int[] {yoff, yoff, yoff + (arrowHeight >> 1), yoff + arrowHeight, yoff + arrowHeight};
-      int[] xPoints =
-          new int[] {
-            xoff,
-            xoff + iconSize - (pinSize << 1),
-            xoff + iconSize - pinSize,
-            xoff + iconSize - (pinSize << 1),
-            xoff
-          };
-      g.setColor(baseColor);
-      g.drawPolygon(xPoints, yPoints, xPoints.length);
-      g.setColor(Value.TRUE.getColor());
-      GraphicsUtil.switchToWidth(g, AppPreferences.getScaled(2));
-      if (output)
-        g.drawLine(0, yoff + (arrowHeight >> 1), pinSize, yoff + (arrowHeight >> 1));
-      else
-        g.drawLine(iconSize - pinSize, yoff + (arrowHeight >> 1), iconSize, yoff + (arrowHeight >> 1));
+      paintNewStyleIcon(g, iconSize, output, w.equals(BitWidth.ONE), baseColor);
     } else {
       int iconOffset = AppPreferences.getScaled(4);
       int boxWidth = iconSize - (iconOffset << 1);
@@ -1221,6 +1202,49 @@ public class Pin extends InstanceFactory {
       bw.draw(g, xpos, ypos);
       g.setColor(baseColor);
     }
+  }
+
+  /**
+   * The toolbar and explorer icon of a pin in the "evolution" appearance: the canvas tag, drawn
+   * with sharp corners so its point does not read as the rounded back of an AND gate, with the
+   * pin's value inside as on the canvas, and the connection stub on the side the wire attaches
+   * (after the point for an input, before the flat end for an output).
+   */
+  private static void paintNewStyleIcon(
+      Graphics2D g, int size, boolean output, boolean oneBit, Color outline) {
+    final var oldStroke = g.getStroke();
+    final var stub = size >> 2;
+    final var margin = AppPreferences.getScaled(1);
+    final var top = (3 * size) >> 4;
+    final var height = (10 * size) >> 4;
+    final var mid = top + (height >> 1);
+    final var tip = height >> 1;
+    final var left = output ? stub : margin;
+    final var right = output ? size - margin : size - stub;
+    final int[] xs = {left, right - tip, right, right - tip, left};
+    final int[] ys = {top, top, mid, top + height, top + height};
+    g.setColor(outline);
+    g.setStroke(
+        new BasicStroke(
+            AppPreferences.getScaled(1), BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER));
+    g.drawPolygon(xs, ys, xs.length);
+    g.setColor(Value.TRUE.getColor());
+    g.setStroke(
+        new BasicStroke(
+            AppPreferences.getScaled(2), BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER));
+    if (output) g.drawLine(0, mid, left, mid);
+    else g.drawLine(right, mid, size, mid);
+    if (oneBit) {
+      // The value, as the canvas shows it; wider pins show their width here instead.
+      final var font = ICON_WIDTH_FONT.deriveFont((float) Math.max(6, (height * 9) / 10));
+      final var digit = new TextLayout("1", font, g.getFontRenderContext());
+      final var bodyCenter = (left + right - tip / 2) / 2f;
+      digit.draw(
+          g,
+          bodyCenter - (float) digit.getBounds().getCenterX(),
+          mid - (float) digit.getBounds().getCenterY());
+    }
+    g.setStroke(oldStroke);
   }
 
   @Override

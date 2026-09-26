@@ -53,9 +53,39 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.KeyStroke;
+import javax.swing.Scrollable;
 import javax.swing.TransferHandler;
 
-class MinimizedTab extends AnalyzerTab {
+class MinimizedTab extends AnalyzerTab implements Scrollable {
+  // The tab sits in a scroll pane. Tracking the viewport lets the K-map take the room a larger or
+  // maximised window offers (it zooms to fill it) instead of staying small in the middle; the tab
+  // scrolls only when the window is smaller than what it needs.
+  @Override
+  public Dimension getPreferredScrollableViewportSize() {
+    return getPreferredSize();
+  }
+
+  @Override
+  public int getScrollableUnitIncrement(java.awt.Rectangle visible, int orientation, int dir) {
+    return AppPreferences.getScaled(16);
+  }
+
+  @Override
+  public int getScrollableBlockIncrement(java.awt.Rectangle visible, int orientation, int dir) {
+    return Math.max(visible.height - AppPreferences.getScaled(16), 1);
+  }
+
+  @Override
+  public boolean getScrollableTracksViewportWidth() {
+    return true;
+  }
+
+  @Override
+  public boolean getScrollableTracksViewportHeight() {
+    return getParent() instanceof javax.swing.JViewport viewport
+        && viewport.getHeight() > getPreferredSize().height;
+  }
+
   @SuppressWarnings("rawtypes")
   private static class FormatModel extends AbstractListModel implements ComboBoxModel {
     static int getFormatIndex(int choice) {
@@ -304,8 +334,13 @@ class MinimizedTab extends AnalyzerTab {
     final var cntrl = control();
     gbl.setConstraints(cntrl, gbc);
     add(cntrl);
+    // The map takes the spare room, and zooms to fill it.
+    gbc.fill = GridBagConstraints.BOTH;
+    gbc.weighty = 1.0;
     gbl.setConstraints(karnaughMap, gbc);
     add(karnaughMap);
+    gbc.weighty = 0.0;
+    gbc.fill = GridBagConstraints.NONE;
     final var oldInsets = gbc.insets;
     gbc.insets = new Insets(20, 0, 20, 0);
     gbc.fill = GridBagConstraints.BOTH;

@@ -44,6 +44,7 @@ import javax.xml.transform.TransformerException;
 public class TikZWriter extends Graphics2D {
 
   private final TikZInfo MyInfo;
+  private final RenderingHints hints = new RenderingHints(null);
 
   public TikZWriter() {
     MyInfo = new TikZInfo();
@@ -131,31 +132,33 @@ public class TikZWriter extends Graphics2D {
     return null;
   }
 
+  // Rendering hints do not change the TikZ output, but painters set and read them on every
+  // export; keep them like any Graphics2D would instead of printing to stdout for each call.
   @Override
   public void setRenderingHint(Key hintKey, Object hintValue) {
-    System.out.println("TikZ not yet supported : setRenderingHint(Key hintKey, Object hintValue)");
+    if (hintValue == null) hints.remove(hintKey);
+    else hints.put(hintKey, hintValue);
   }
 
   @Override
   public Object getRenderingHint(Key hintKey) {
-    System.out.println("TikZ not yet supported : getRenderingHint(Key hintKey)");
-    return null;
+    return hints.get(hintKey);
   }
 
   @Override
-  public void addRenderingHints(Map<?, ?> hints) {
-    System.out.println("TikZ not yet supported : addRenderingHints(Map<?, ?> hints)");
+  public void addRenderingHints(Map<?, ?> newHints) {
+    hints.putAll(newHints);
   }
 
   @Override
   public RenderingHints getRenderingHints() {
-    System.out.println("TikZ not yet supported : RenderingHints getRenderingHints()");
-    return null;
+    return (RenderingHints) hints.clone();
   }
 
   @Override
-  public void setRenderingHints(Map<?, ?> hints) {
-    System.out.println("TikZ not yet supported : setRenderingHints(Map<?, ?> hints)");
+  public void setRenderingHints(Map<?, ?> newHints) {
+    hints.clear();
+    hints.putAll(newHints);
   }
 
   @Override
@@ -262,7 +265,9 @@ public class TikZWriter extends Graphics2D {
 
   @Override
   public Graphics create() {
-    return new TikZWriter(MyInfo.clone());
+    final var copy = new TikZWriter(MyInfo.clone());
+    copy.hints.putAll(hints);
+    return copy;
   }
 
   @Override

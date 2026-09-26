@@ -140,9 +140,24 @@ public class TestPanel extends JPanel implements ValueTable.Model, Simulator.Lis
 
   @Override
   public String getColumnName(int i) {
+    // The two action columns get a visible name; they used to be blank, explained only on hover.
+    if (i == 0) return S.get("testShowHeader");
+    if (i == 1) return S.get("testSetHeader");
+    if (i == 2) return S.get("statusHeader");
     if (i < specialHeaders.length) return specialHeaders[i];
     TestVector vec = getModel().getVector();
     return vec.columnName[i - specialHeaders.length];
+  }
+
+  @Override
+  public String getColumnToolTip(int i) {
+    return switch (i) {
+      case 0 -> S.get("toolTipShow");
+      case 1 -> S.get("toolTipSet");
+      case 3 -> S.get("testSetColumnTip");
+      case 4 -> S.get("testSeqColumnTip");
+      default -> null;
+    };
   }
 
   @Override
@@ -209,18 +224,20 @@ public class TestPanel extends JPanel implements ValueTable.Model, Simulator.Lis
 
       // Show button column (column 0)
       Color showButtonBg = activeShowRows.contains(row) ? activeButtonColor() : inactiveButtonColor();
-      rowData[outRow][0] = new ValueTable.Cell("Show", showButtonBg, null, S.get("toolTipShow"));
+      rowData[outRow][0] = new ValueTable.Cell(S.get("testShowButton"), showButtonBg, null, S.get("toolTipShow"));
 
       // Set button column (column 1)
       Color setButtonBg = activeSetRows.contains(row) ? activeButtonColor() : inactiveButtonColor();
-      rowData[outRow][1] = new ValueTable.Cell("Set", setButtonBg, null, S.get("toolTipSet"));
+      rowData[outRow][1] = new ValueTable.Cell(S.get("testSetButton"), setButtonBg, null, S.get("toolTipSet"));
 
       // Status column (column 2)
       rowData[outRow][2] = new ValueTable.Cell(status, rowmsg != null ? failColor() : null, null, rowmsg);
 
       // <set> column (column 3)
       int setValue = vec.setNumbers[row];
-      rowData[outRow][3] = new ValueTable.Cell(Integer.toString(setValue), null, null, "Set: " + setValue);
+      rowData[outRow][3] =
+          new ValueTable.Cell(
+              Integer.toString(setValue), null, null, S.get("testSetCellTip", setValue));
 
       // <seq> column (column 4)
       int seqValue = vec.seqNumbers[row];

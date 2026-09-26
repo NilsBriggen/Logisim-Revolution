@@ -107,6 +107,28 @@ public class HexFileTest {
   }
 
   @Test
+  void decodeWarningsComeFromTheResourceBundle() throws IOException {
+    final var reader =
+        new HexFile.HexReader(
+            BufferedLineReader.forString("v3.0 hex words addressed\n0: 1 zz 3\n"), 4, 8);
+    reader.parseFormat("v3.0 hex words addressed");
+
+    reader.decode();
+
+    assertEquals(1, reader.numWarnings);
+    final var expected = S.get("hexFileLineWarning", 2, S.get("hexFileNonHexWord", "zz"));
+    assertEquals(expected, reader.warnings.toString());
+  }
+
+  @Test
+  void headerErrorsComeFromTheResourceBundle() {
+    final var options = new HexFile.FormatOptions();
+
+    assertEquals(S.get("hexFileHeaderUnknown"), options.parseHeader("v9.0 hex"));
+    assertEquals(S.get("hexFileTagUnknown", "frob"), options.parseHeader("v3.0 frob"));
+  }
+
+  @Test
   void fileFiltersUseLocalizedLabelsWithoutChangingInternalFormats() {
     final var filter = HexFile.getFilter("v3.0 hex words addressed");
 
