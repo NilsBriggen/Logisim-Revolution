@@ -123,6 +123,11 @@ public class LogisimMenuBar extends JMenuBar {
     listener.localeChanged();
   }
 
+  /** Opens the help window at {@code target} ("tutorial", "guide" or "libs"). */
+  public void showHelp(String target) {
+    help.showHelp(target);
+  }
+
   public void disableFile() {
     file.setEnabled(false);
   }

@@ -210,7 +210,7 @@ class MenuHelp extends Menu implements ActionListener {
     }
   }
 
-  private void showHelp(String target) {
+  void showHelp(String target) {
     loadBroker();
     try {
       helpComponent.setCurrentID(target);

@@ -1300,6 +1300,9 @@ public class AppPreferences {
     WINDOW_MAIN_SPLIT.set(0.251);
     WINDOW_LEFT_SPLIT.set(0.51);
     WINDOW_RIGHT_SPLIT.set(0.751);
+    // Without a saved size a new window opens at its default size (see Frame).
+    getPrefs().remove("windowWidth");
+    getPrefs().remove("windowHeight");
   }
 
   public static final PrefMonitor<String> WINDOW_LOCATION =

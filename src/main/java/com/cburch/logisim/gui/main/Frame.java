@@ -72,6 +72,7 @@ import com.cburch.logisim.tools.Tool;
 import com.cburch.logisim.util.JFileChoosers;
 import com.cburch.logisim.util.LocaleListener;
 import com.cburch.logisim.util.LocaleManager;
+import com.cburch.logisim.util.UiScale;
 import com.cburch.logisim.vhdl.base.HdlModel;
 import com.cburch.logisim.vhdl.base.VhdlContent;
 import com.cburch.logisim.vhdl.gui.HdlContentView;
@@ -80,6 +81,7 @@ import com.cburch.logisim.vhdl.gui.VhdlSimulatorConsole;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Container;
+import java.awt.Dimension;
 import java.awt.GraphicsEnvironment;
 import java.awt.IllegalComponentStateException;
 import java.awt.Point;
@@ -104,12 +106,14 @@ import java.util.Set;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JViewport;
 import javax.swing.SwingUtilities;
 import javax.swing.WindowConstants;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
+import org.slf4j.LoggerFactory;
 
 public class Frame extends LFrame.MainWindow implements LocaleListener {
   private static final long serialVersionUID = 1L;
@@ -121,6 +125,9 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
   public static final String EDIT_HDL = "hdl";
   /** The card shown when the application is started without a file. */
   public static final String EDIT_WELCOME = "welcome";
+  /** Smallest logical size of a main window; below it the toolbar and panels stop making sense. */
+  static final int MIN_WINDOW_WIDTH = 560;
+  static final int MIN_WINDOW_HEIGHT = 360;
   /** Identifier of the side view listing the project's circuits and libraries. */
   public static final String EXPLORER_SIDE_VIEW = "explorer";
   /** Identifier of the side view holding the component libraries. */
@@ -300,10 +307,13 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
 
     welcomePanel =
         new WelcomePanel(
-            () -> ProjectActions.doNew(project),
+            this::startNewFromWelcome,
             () -> ProjectActions.doOpen(this, project),
-            file -> ProjectActions.doOpenReplacingBlank(this, project, project, file));
-    mainPanel.addView(EDIT_WELCOME, welcomePanel);
+            file -> ProjectActions.doOpenReplacingBlank(this, project, project, file),
+            this::showHelpTopic);
+    final var welcomeScroll = new JScrollPane(welcomePanel);
+    welcomeScroll.setBorder(null);
+    mainPanel.addView(EDIT_WELCOME, welcomeScroll);
     final var emptyEditor = new JPanel(new java.awt.GridBagLayout());
     emptyEditor.setFocusable(true);
     emptyEditor.add(emptyEditorHint);
@@ -411,19 +421,17 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
 
     localeChanged();
 
-    final var screen = getGraphicsConfiguration().getBounds();
-    final var screenInsets = getToolkit().getScreenInsets(getGraphicsConfiguration());
-    final var availableWidth = screen.width - screenInsets.left - screenInsets.right;
-    final var availableHeight = screen.height - screenInsets.top - screenInsets.bottom;
+    final var available = availableScreenSize();
     // The old fresh default used half the width but the entire screen height, squeezing the
     // editor between two full-size sidebars. Preserve saved sizes, bounded by the current screen.
     final var prefs = AppPreferences.getPrefs();
-    final var initialWidth = prefs.get("windowWidth", null) == null
-        ? availableWidth * 9 / 10 : AppPreferences.WINDOW_WIDTH.get();
-    final var initialHeight = prefs.get("windowHeight", null) == null
-        ? availableHeight * 9 / 10 : AppPreferences.WINDOW_HEIGHT.get();
-    this.setSize(Math.max(1, Math.min(initialWidth, availableWidth)),
-        Math.max(1, Math.min(initialHeight, availableHeight)));
+    final var savedWidth =
+        prefs.get("windowWidth", null) == null ? null : AppPreferences.WINDOW_WIDTH.get();
+    final var savedHeight =
+        prefs.get("windowHeight", null) == null ? null : AppPreferences.WINDOW_HEIGHT.get();
+    final var minimum = minimumWindowSize(available, UiScale.factor());
+    setMinimumSize(minimum);
+    setSize(initialWindowSize(savedWidth, savedHeight, available, minimum));
     final var prefPoint = getInitialLocation();
     if (prefPoint != null) {
       this.setLocation(prefPoint);
@@ -478,6 +486,7 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
       }
 
       var success = false;
+      Exception failure = null;
       event.acceptDrop(DnDConstants.ACTION_COPY);
       try {
         final var transferable = event.getTransferable();
@@ -486,9 +495,10 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
           success = openDroppedFiles(files);
         }
       } catch (Exception ex) {
-        success = false;
+        failure = ex;
       }
       event.dropComplete(success);
+      if (failure != null) reportDropFailure(failure);
     }
   }
 
@@ -528,6 +538,25 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
         installFileDropTarget(child, listener, seen);
       }
     }
+  }
+
+  /**
+   * Tells the user that a drop failed, instead of letting the files silently not open.
+   *
+   * <p>Called after the drop has been completed, so the source application is not left waiting
+   * on a modal dialog, and deferred so the drag-and-drop machinery has unwound first.
+   */
+  private void reportDropFailure(Exception failure) {
+    LoggerFactory.getLogger(Frame.class).error("Could not open dropped files", failure);
+    final var reason =
+        failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage();
+    SwingUtilities.invokeLater(
+        () ->
+            OptionPane.showMessageDialog(
+                this,
+                S.get("dragOpenErrorMessage", reason),
+                S.get("dragOpenErrorTitle"),
+                OptionPane.ERROR_MESSAGE));
   }
 
   private boolean openDroppedFiles(List<?> droppedFiles) {
@@ -683,8 +712,53 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     return false;
   }
 
+  /**
+   * Puts the panels back where they started and, unless the window is maximised, gives it its
+   * default size again.
+   */
   public void resetLayout() {
     shell.resetLayout();
+    if ((getExtendedState() & JFrame.MAXIMIZED_BOTH) == 0) {
+      final var available = availableScreenSize();
+      final var minimum = minimumWindowSize(available, UiScale.factor());
+      setMinimumSize(minimum);
+      setSize(initialWindowSize(null, null, available, minimum));
+      validate();
+    }
+  }
+
+  /** The part of the window's screen not taken by task bars and docks. */
+  private Dimension availableScreenSize() {
+    final var screen = getGraphicsConfiguration().getBounds();
+    final var screenInsets = getToolkit().getScreenInsets(getGraphicsConfiguration());
+    return new Dimension(
+        screen.width - screenInsets.left - screenInsets.right,
+        screen.height - screenInsets.top - screenInsets.bottom);
+  }
+
+  /** The minimum window size at this interface scale, never larger than the screen. */
+  static Dimension minimumWindowSize(Dimension available, double scale) {
+    return new Dimension(
+        Math.max(1, Math.min((int) Math.round(MIN_WINDOW_WIDTH * scale), available.width)),
+        Math.max(1, Math.min((int) Math.round(MIN_WINDOW_HEIGHT * scale), available.height)));
+  }
+
+  /**
+   * The size a window opens at: the saved size if there is one, otherwise nine tenths of the
+   * screen, and in both cases no larger than the screen and no smaller than {@code minimum}. A
+   * saved size of a few pixels, which a window manager can produce, would otherwise come back on
+   * every start.
+   *
+   * @param savedWidth saved width, or {@code null} if none has been saved
+   * @param savedHeight saved height, or {@code null} if none has been saved
+   */
+  static Dimension initialWindowSize(
+      Integer savedWidth, Integer savedHeight, Dimension available, Dimension minimum) {
+    final var width = savedWidth == null ? available.width * 9 / 10 : savedWidth;
+    final var height = savedHeight == null ? available.height * 9 / 10 : savedHeight;
+    return new Dimension(
+        Math.max(minimum.width, Math.min(width, available.width)),
+        Math.max(minimum.height, Math.min(height, available.height)));
   }
 
   public Toolbar getToolbar() {
@@ -853,6 +927,23 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     pendingEditorView = null;
     editorArea.setTabsVisible(true);
     zoomPill.setVisible(true);
+  }
+
+  /**
+   * The welcome screen's "New project".
+   *
+   * <p>The welcome screen covers the blank project Logisim starts with, so starting a new project
+   * from it means using that project here rather than opening a second window beside an empty one.
+   */
+  private void startNewFromWelcome() {
+    if (ProjectActions.doNewReplacingBlank(project) != project) return;
+    dismissWelcome();
+    layoutCanvas.requestFocusInWindow();
+  }
+
+  /** Opens the help window at {@code target}, as the Help menu does. */
+  private void showHelpTopic(String target) {
+    menubar.showHelp(target);
   }
 
   /** Reports the clock rate the simulation is running at. */
@@ -1144,8 +1235,22 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     }
     if (loc != null) AppPreferences.WINDOW_LOCATION.set(loc.x + "," + loc.y);
     shell.savePreferences();
+    savePanelVisibility(shell);
     AppPreferences.WINDOW_EXPLORER_VISIBLE.set(shell.isSideVisible());
     AppPreferences.DIALOG_DIRECTORY.set(JFileChoosers.getCurrentDirectory());
+  }
+
+  /**
+   * Stores which panels {@code shell} shows.
+   *
+   * <p>Toggling a panel in any window writes the shared preference at once, so on its own the
+   * stored state is a mix of every window's last toggle. Saving the whole state of the window
+   * being saved means the next window, and the next run, opens as that window looked.
+   */
+  static void savePanelVisibility(ShellLayout shell) {
+    LayoutPrefs.setSideVisible(shell.isSideVisible());
+    LayoutPrefs.setInspectorVisible(shell.isInspectorVisible());
+    LayoutPrefs.setBottomVisible(shell.isBottomVisible());
   }
 
   void setAttrTableModel(AttrTableModel value) {

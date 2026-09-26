@@ -14,8 +14,8 @@ import com.cburch.logisim.gui.theme.Theme;
 import com.cburch.logisim.gui.theme.Tokens;
 import com.cburch.logisim.util.Spacing;
 import com.cburch.logisim.util.UiScale;
+import java.awt.BorderLayout;
 import java.awt.Dimension;
-import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JPanel;
 import javax.swing.JSeparator;
@@ -28,6 +28,12 @@ import javax.swing.SwingConstants;
  * <p>Both were already toolbars; what is new is that they are one row with the simulation
  * controls pushed to the far side, so starting and stopping the simulation is always in the same
  * place instead of wherever the user last dragged a toolbar to.
+ *
+ * <p>The two halves are pinned to their edges rather than spread by glue. Both toolbars will
+ * stretch, so with glue the free space was shared out between them, and when the drawing tools
+ * were hidden (with no editor open) the simulation controls jumped to the left edge. The row also
+ * keeps the drawing tools' height while they are hidden, so the window does not shift under the
+ * pointer.
  */
 public class MainToolbar extends JPanel {
 
@@ -38,16 +44,19 @@ public class MainToolbar extends JPanel {
   private final JSeparator divider;
 
   public MainToolbar(Toolbar tools, Toolbar simulation) {
+    super(new BorderLayout());
     this.tools = tools;
     this.simulation = simulation;
-    setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
 
-    add(tools);
-    add(Box.createHorizontalGlue());
+    add(tools, BorderLayout.WEST);
     if (simulation != null) {
+      final var trailing = new JPanel();
+      trailing.setLayout(new BoxLayout(trailing, BoxLayout.X_AXIS));
+      trailing.setOpaque(false);
       divider = new JSeparator(SwingConstants.VERTICAL);
-      add(divider);
-      add(simulation);
+      trailing.add(divider);
+      trailing.add(simulation);
+      add(trailing, BorderLayout.EAST);
     } else {
       divider = null;
     }
@@ -76,6 +85,17 @@ public class MainToolbar extends JPanel {
 
   public Toolbar getSimulationToolbar() {
     return simulation;
+  }
+
+  @Override
+  public Dimension getPreferredSize() {
+    final var size = super.getPreferredSize();
+    if (!tools.isVisible()) {
+      final var insets = getInsets();
+      size.height =
+          Math.max(size.height, tools.getPreferredSize().height + insets.top + insets.bottom);
+    }
+    return size;
   }
 
   @Override

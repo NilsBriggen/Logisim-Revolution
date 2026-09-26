@@ -424,14 +424,33 @@ public final class ProjectActions {
   public static Project doOpenReplacingBlank(
       Component parent, Project baseProject, Project current, File file) {
     final var opened = doOpen(parent, baseProject, file);
-    if (opened != null
-        && current != null
-        && opened != current
-        && !current.isFileDirty()
-        && current.getLogisimFile().getLoader().getMainFile() == null) {
+    if (opened != null && opened != current && isUntouchedBlank(current)) {
       current.getFrame().dispose();
     }
     return opened;
+  }
+
+  /**
+   * Starts a new project the way the welcome screen does: in {@code current}'s own window when it
+   * holds only the untouched, unsaved blank project Logisim starts with, and in a new window
+   * otherwise. The blank project was made from the same template, so reusing it gives the same
+   * result without leaving an empty window behind.
+   *
+   * @param current project whose window asked for a new project
+   * @return {@code current} if it was reused, otherwise the project in the new window
+   */
+  public static Project doNewReplacingBlank(Project current) {
+    if (!isUntouchedBlank(current)) return doNew(current);
+    // It is the user's project now, so a later Open must not load over it.
+    current.setStartupScreen(false);
+    return current;
+  }
+
+  /** Whether {@code project} is an unsaved project that nobody has changed yet. */
+  static boolean isUntouchedBlank(Project project) {
+    if (project == null || project.isFileDirty()) return false;
+    final var loader = project.getLogisimFile().getLoader();
+    return loader != null && loader.getMainFile() == null;
   }
 
   public static Project doOpen(Component parent, Project baseProject, File f) {
