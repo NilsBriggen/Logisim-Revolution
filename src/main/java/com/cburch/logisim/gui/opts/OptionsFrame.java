@@ -19,6 +19,7 @@ import com.cburch.logisim.gui.generic.LFrame;
 import com.cburch.logisim.gui.generic.OptionPane;
 import com.cburch.logisim.gui.generic.ScrollableForm;
 import com.cburch.logisim.gui.shell.PanelHeader;
+import com.cburch.logisim.gui.shell.SettingsIndex;
 import com.cburch.logisim.gui.shell.SettingsNav;
 import com.cburch.logisim.gui.theme.AppIcons;
 import com.cburch.logisim.gui.theme.Theme;
@@ -34,6 +35,7 @@ import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Dimension;
 import java.util.Arrays;
+import java.util.List;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
@@ -166,6 +168,31 @@ public class OptionsFrame extends LFrame.Dialog {
   /** The number of pages, for the development snapshot tool. */
   public int getPageCount() {
     return panels.length;
+  }
+
+  /**
+   * The search index of every page, in page order: each page's search text and its individual
+   * controls with their current values.
+   */
+  public List<SettingsIndex.Page> indexSettings() {
+    return Arrays.stream(panels)
+        .map(
+            panel ->
+                new SettingsIndex.Page(
+                    panel.getTitle(), searchPage(panel).text(), SettingsIndex.collect(panel)))
+        .toList();
+  }
+
+  /**
+   * Shows this window at the page at {@code index}. A {@code control} that is not null, one of
+   * those {@link #indexSettings()} listed for the page, is scrolled into view and focused.
+   */
+  public void showSetting(int index, JComponent control) {
+    nav.clearFilter();
+    showPage(index);
+    setVisible(true);
+    toFront();
+    if (control != null) SettingsIndex.reveal(control);
   }
 
   static SettingsNav.SearchPage searchPage(OptionsPanel panel) {

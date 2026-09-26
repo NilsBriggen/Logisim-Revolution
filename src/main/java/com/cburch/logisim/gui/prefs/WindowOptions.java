@@ -235,7 +235,7 @@ class WindowOptions extends OptionsPanel {
   }
 
   /** The localized name of a theme choice, in the order {@link Theme.Mode} declares them. */
-  private static String themeModeLabel(Theme.Mode mode) {
+  static String themeModeLabel(Theme.Mode mode) {
     return switch (mode) {
       case LIGHT -> S.get("windowThemeLight");
       case DARK -> S.get("windowThemeDark");

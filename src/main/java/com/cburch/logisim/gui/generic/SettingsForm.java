@@ -80,7 +80,7 @@ public class SettingsForm extends JPanel {
   }
 
   /** The kinds of entry in a form. */
-  private enum Kind {
+  public enum Kind {
     /** A label and its control. */
     ROW,
     /** A control spanning both columns, from the label column. */
@@ -95,8 +95,11 @@ public class SettingsForm extends JPanel {
     SECTION
   }
 
-  /** One entry: what it is, its components, and whether its control stretches. */
-  private record Entry(Kind kind, JLabel label, JComponent control, boolean fill) {}
+  /**
+   * One entry: what it is, its components, and whether its control stretches. The label is null
+   * for every kind but {@link Kind#ROW}.
+   */
+  public record Entry(Kind kind, JLabel label, JComponent control, boolean fill) {}
 
   private final LabelColumn column;
   private final List<Entry> entries = new ArrayList<>();
@@ -208,6 +211,14 @@ public class SettingsForm extends JPanel {
     add(component);
     entries.add(new Entry(kind, null, component, fill));
     stacked = null;
+  }
+
+  /**
+   * The entries in the order they are shown, for tools that describe the page, such as the search
+   * index of the settings windows.
+   */
+  public List<Entry> getEntries() {
+    return List.copyOf(entries);
   }
 
   /** Whether the labels currently sit above their controls, for a page too narrow for two. */

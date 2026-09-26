@@ -16,6 +16,7 @@ import com.cburch.logisim.fpga.prefs.SoftwaresOptions;
 import com.cburch.logisim.gui.generic.LFrame;
 import com.cburch.logisim.gui.generic.ScrollableForm;
 import com.cburch.logisim.gui.shell.PanelHeader;
+import com.cburch.logisim.gui.shell.SettingsIndex;
 import com.cburch.logisim.gui.shell.SettingsNav;
 import com.cburch.logisim.gui.theme.Theme;
 import com.cburch.logisim.util.LocaleListener;
@@ -29,6 +30,7 @@ import java.awt.Dimension;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
+import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JSplitPane;
@@ -198,6 +200,37 @@ public class PreferencesFrame extends LFrame.Dialog {
     frame.setVisible(true);
   }
 
+  /**
+   * The search index of every page, in {@link #getTabTitles()} order: each page's search text and
+   * its individual controls with their current values.
+   *
+   * <p>The window is built for this if it has not been yet, but not shown.
+   */
+  public static List<SettingsIndex.Page> indexSettings() {
+    return MENU_MANAGER.build().index();
+  }
+
+  List<SettingsIndex.Page> index() {
+    return Arrays.stream(panels)
+        .map(
+            panel ->
+                new SettingsIndex.Page(
+                    panel.getTitle(), searchPage(panel).text(), SettingsIndex.collect(panel)))
+        .toList();
+  }
+
+  /**
+   * Shows the preferences window at the page at {@code index}. A {@code control} that is not null,
+   * one of those {@link #indexSettings()} listed for the page, is scrolled into view and focused.
+   */
+  public static void showSetting(int index, JComponent control) {
+    final var frame = (PreferencesFrame) MENU_MANAGER.getJFrame(true, null);
+    frame.openPage(index);
+    frame.setVisible(true);
+    frame.toFront();
+    if (control != null) SettingsIndex.reveal(control);
+  }
+
   public static void showFPGAPreferences() {
     final var frame = (PreferencesFrame) MENU_MANAGER.getJFrame(true, null);
     frame.setFpgaTab();
@@ -216,15 +249,25 @@ public class PreferencesFrame extends LFrame.Dialog {
       LocaleManager.addLocaleListener(this);
     }
 
+    private boolean opened;
+
     @Override
     public JFrame getJFrame(boolean create, java.awt.Component parent) {
       if (create) {
-        if (window == null) {
-          window = new PreferencesFrame();
-          window.setLocationRelativeTo(parent);
+        final var fresh = window == null;
+        build();
+        if (fresh) window.setLocationRelativeTo(parent);
+        if (!opened) {
+          opened = true;
           frameOpened(window);
         }
       }
+      return window;
+    }
+
+    /** The window, built if need be but not announced as open, as when only its index is read. */
+    PreferencesFrame build() {
+      if (window == null) window = new PreferencesFrame();
       return window;
     }
 

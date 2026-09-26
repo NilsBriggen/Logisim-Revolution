@@ -24,6 +24,7 @@
     <mapID target="gui_toolsbar"        url="en/html/guide/gui/gui-toolsbar.html"/>
 	<mapID target="gui-attribut"        url="en/html/guide/gui/gui-attribut.html" />
 	<mapID target="gui-attrcomp"        url="en/html/guide/gui/gui-attrcomp.html" />
+	<mapID target="gui_search"          url="en/html/guide/gui/gui-search.html" />
 	<mapID target="subcirc"             url="en/html/guide/subcirc/index.html" />
 	<mapID target="subcirc_creating"    url="en/html/guide/subcirc/sub-creating.html" />
 	<mapID target="subcirc_using"       url="en/html/guide/subcirc/sub-using.html" />

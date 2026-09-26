@@ -12,10 +12,15 @@ package com.cburch.logisim.gui.search;
 import static com.cburch.logisim.gui.Strings.S;
 
 import com.cburch.logisim.gui.generic.LFrame;
+import com.cburch.logisim.gui.theme.Tokens;
+import com.cburch.logisim.util.Spacing;
+import com.cburch.logisim.util.UiFonts;
+import com.cburch.logisim.util.UiScale;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dialog;
+import java.awt.Font;
 import java.awt.Toolkit;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
@@ -26,11 +31,13 @@ import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.ArrayList;
-import java.util.Comparator;
+import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import javax.swing.AbstractAction;
@@ -96,9 +103,23 @@ public class OmniSearchDialog extends JDialog {
   private final transient Map<SearchProvider, List<SearchResult>> resultsByProvider =
       new LinkedHashMap<>();
 
+  /** Providers whose groups are shown in full for the current query. */
+  private final transient Set<SearchProvider> expanded =
+      Collections.newSetFromMap(new IdentityHashMap<>());
+
   private final JTextField searchField = new JTextField();
-  private final DefaultListModel<SearchResult> resultModel = new DefaultListModel<>();
-  private final JList<SearchResult> resultList = new JList<>(resultModel);
+  private final DefaultListModel<ResultGroups.Row> resultModel = new DefaultListModel<>();
+  private final JList<ResultGroups.Row> resultList =
+      new JList<>(resultModel) {
+        private static final long serialVersionUID = 1L;
+
+        // Rows take the width of the list, so a long setting name is cut short rather than
+        // pushing the hints on the right out of view behind a horizontal scroll bar.
+        @Override
+        public boolean getScrollableTracksViewportWidth() {
+          return true;
+        }
+      };
   private final JLabel statusLabel = new JLabel();
   private final Timer asyncDebounce;
 
@@ -157,7 +178,8 @@ public class OmniSearchDialog extends JDialog {
 
     buildUi();
     refresh();
-    setSize(DIALOG_WIDTH, DIALOG_HEIGHT);
+    // Logical pixels, like the rest of the interface, so the list keeps its rows at a large scale.
+    setSize(UiScale.scaled(DIALOG_WIDTH), UiScale.scaled(DIALOG_HEIGHT));
     setLocationRelativeTo(context.owner());
   }
 
@@ -194,7 +216,7 @@ public class OmniSearchDialog extends JDialog {
         });
 
     resultList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-    resultList.setCellRenderer(new ResultRenderer());
+    resultList.setCellRenderer(new RowRenderer());
     // Focus stays in the search field; the list is driven from there.
     resultList.setFocusable(false);
     resultList.addMouseListener(
@@ -202,9 +224,12 @@ public class OmniSearchDialog extends JDialog {
           @Override
           public void mouseClicked(MouseEvent event) {
             final var row = resultList.locationToIndex(event.getPoint());
-            if (row < 0) return;
+            if (row < 0 || !resultModel.get(row).isSelectable()) return;
             resultList.setSelectedIndex(row);
-            if (event.getClickCount() >= 2) activateSelection();
+            // "Show all" acts on one click; a result, like a list entry, on two.
+            if (event.getClickCount() >= 2 || resultModel.get(row) instanceof ResultGroups.More) {
+              activateSelection();
+            }
           }
         });
 
@@ -269,6 +294,8 @@ public class OmniSearchDialog extends JDialog {
   private void refresh() {
     final var query = currentQuery();
     generation++;
+    // A group opened in full was opened for the previous query.
+    expanded.clear();
 
     for (final var provider : providers) {
       if (provider.isAsynchronous()) {
@@ -325,51 +352,44 @@ public class OmniSearchDialog extends JDialog {
   }
 
   /**
-   * Merges every provider's current results into one ranked list.
+   * Merges every provider's current results into the list, grouped by provider.
    */
   private void rebuildModel() {
-    final var merged = new ArrayList<SearchResult>();
-    // Keyed by identity: SearchResult carries an int[], for which record equality is reference
-    // equality anyway, and two providers may well offer equal-looking results.
-    final var priorities = new IdentityHashMap<SearchResult, Integer>();
+    final var groups = new ArrayList<ResultGroups.Group>();
     for (final var provider : providers) {
       final var results = resultsByProvider.get(provider);
-      if (results == null) continue;
-      for (final var result : results) {
-        merged.add(result);
-        priorities.put(result, provider.getPriority());
-      }
+      if (results != null) groups.add(new ResultGroups.Group(provider, results));
     }
-    // Stable sort, so results that score alike keep provider order and, within a provider, the
-    // order it produced them in - which for the menus is menu order.
-    merged.sort(
-        Comparator.<SearchResult>comparingInt(SearchResult::score)
-            .thenComparingInt(result -> priorities.getOrDefault(result, 0))
-            .reversed());
+    final var rows = ResultGroups.arrange(groups, !currentQuery().isEmpty(), expanded);
 
     final var previous = resultList.getSelectedValue();
-    replaceResults(resultModel, merged);
+    replaceResults(resultModel, rows);
 
-    var selection = previous == null ? -1 : resultModel.indexOf(previous);
-    if (selection < 0 && !resultModel.isEmpty()) selection = 0;
-    if (selection >= 0) {
-      resultList.setSelectedIndex(selection);
-      resultList.ensureIndexIsVisible(selection);
-    }
+    var selection = previous == null ? -1 : rows.indexOf(previous);
+    if (selection < 0) selection = ResultGroups.firstSelectable(rows);
+    select(selection);
 
     final var providerCount = String.valueOf(providers.size());
+    final var count = ResultGroups.resultCount(rows);
     statusLabel.setText(
-        resultModel.isEmpty()
+        count == 0
             ? S.get("searchNoResults", providerCount)
-            : S.get(
-                "searchResultCount",
-                String.valueOf(resultModel.size()),
-                providerCount));
+            : S.get("searchResultCount", String.valueOf(count), providerCount));
   }
 
-  /** Replaces the visible results using one removal and one addition event. */
-  static void replaceResults(
-      DefaultListModel<SearchResult> model, List<SearchResult> results) {
+  private void select(int row) {
+    if (row < 0) {
+      resultList.clearSelection();
+      return;
+    }
+    resultList.setSelectedIndex(row);
+    // Keep the group heading in view above the first result of a group.
+    if (row > 0 && !resultModel.get(row - 1).isSelectable()) resultList.ensureIndexIsVisible(row - 1);
+    resultList.ensureIndexIsVisible(row);
+  }
+
+  /** Replaces the visible rows using one removal and one addition event. */
+  static <T> void replaceResults(DefaultListModel<T> model, List<? extends T> results) {
     model.clear();
     model.addAll(results);
   }
@@ -421,21 +441,28 @@ public class OmniSearchDialog extends JDialog {
   }
 
   private void moveSelection(int delta) {
-    final var size = resultModel.size();
-    if (size == 0) return;
-    // Wrap around, so pressing Up at the top lands on the last result rather than sticking.
-    final var next = ((resultList.getSelectedIndex() + delta) % size + size) % size;
-    resultList.setSelectedIndex(next);
-    resultList.ensureIndexIsVisible(next);
+    final var rows = Collections.list(resultModel.elements());
+    if (rows.isEmpty()) return;
+    // Wraps around, so pressing Up at the top lands on the last result rather than sticking, and
+    // steps over the group headings.
+    select(ResultGroups.step(rows, resultList.getSelectedIndex(), delta));
   }
 
   /**
    * Runs the selected candidate, if it is available, and closes the dialog.
    */
   private void activateSelection() {
-    final var result = resultList.getSelectedValue();
-    if (result == null) return;
-    final var candidate = result.candidate();
+    final var row = resultList.getSelectedValue();
+    if (row instanceof ResultGroups.More more) {
+      final var at = resultList.getSelectedIndex();
+      expanded.add(more.provider());
+      rebuildModel();
+      // The first of the results just revealed takes the place of the "show all" row.
+      select(at);
+      return;
+    }
+    if (!(row instanceof ResultGroups.Item item)) return;
+    final var candidate = item.result().candidate();
     if (!candidate.enabled()) {
       Toolkit.getDefaultToolkit().beep();
       return;
@@ -483,6 +510,69 @@ public class OmniSearchDialog extends JDialog {
 
 
   /**
+   * Renders the rows of the list: a group heading, a result, or the row that shows a group in full.
+   */
+  private static final class RowRenderer implements ListCellRenderer<ResultGroups.Row> {
+    private final ResultRenderer result = new ResultRenderer();
+    private final JPanel header = new JPanel(new BorderLayout(Spacing.sm(), 0));
+    private final JLabel headerTitle = new JLabel();
+    private final JLabel headerCount = new JLabel();
+    private final JLabel more = new JLabel();
+
+    RowRenderer() {
+      header.add(headerTitle, BorderLayout.CENTER);
+      header.add(headerCount, BorderLayout.EAST);
+    }
+
+    @Override
+    public Component getListCellRendererComponent(
+        JList<? extends ResultGroups.Row> list,
+        ResultGroups.Row value,
+        int index,
+        boolean isSelected,
+        boolean cellHasFocus) {
+      if (value instanceof ResultGroups.Item item) {
+        return result.render(list, item.result(), isSelected);
+      }
+      if (value instanceof ResultGroups.Header heading) {
+        final var muted = secondaryColor();
+        header.setOpaque(true);
+        header.setBackground(list.getBackground());
+        // A rule above every group but the first, so the groups read as separate lists.
+        final var rule =
+            index == 0
+                ? BorderFactory.createEmptyBorder()
+                : BorderFactory.createMatteBorder(1, 0, 0, 0, Tokens.divider());
+        header.setBorder(
+            BorderFactory.createCompoundBorder(
+                rule,
+                BorderFactory.createEmptyBorder(
+                    index == 0 ? Spacing.xs() : Spacing.sm(), 6, Spacing.xs() / 2, 6)));
+        final var font = UiFonts.caption();
+        headerTitle.setFont(font.deriveFont(Font.BOLD));
+        headerTitle.setForeground(muted);
+        headerTitle.setText(heading.title().toUpperCase(Locale.getDefault()));
+        headerCount.setFont(font);
+        headerCount.setForeground(muted);
+        headerCount.setText(String.valueOf(heading.count()));
+        return header;
+      }
+      final var hidden = ((ResultGroups.More) value).hidden();
+      final var background =
+          isSelected ? ResultRenderer.activeSelectionBackground(list) : list.getBackground();
+      final var foreground =
+          isSelected ? ResultRenderer.activeSelectionForeground(list) : Tokens.accent();
+      more.setOpaque(true);
+      more.setBackground(background);
+      more.setForeground(foreground);
+      more.setFont(UiFonts.caption());
+      more.setBorder(BorderFactory.createEmptyBorder(3, 6, 3, 6));
+      more.setText(S.get("searchShowMore", String.valueOf(hidden)));
+      return more;
+    }
+  }
+
+  /**
    * Renders one result: context in a muted colour, matched runs picked out with a
    * highlighter chip.
    *
@@ -492,7 +582,7 @@ public class OmniSearchDialog extends JDialog {
    * itself is a fixed hue - amber reads clearly against white, against a dark grey,
    * and against the blue that most themes select rows with.
    */
-  private static class ResultRenderer extends JPanel implements ListCellRenderer<SearchResult> {
+  private static class ResultRenderer extends JPanel {
 
     private static final long serialVersionUID = 1L;
 
@@ -506,6 +596,9 @@ public class OmniSearchDialog extends JDialog {
 
     /** Text drawn on the chip; 8.5:1 against {@link #CHIP_BACKGROUND}. */
     private static final Color CHIP_FOREGROUND = new Color(0x1A, 0x1A, 0x1A);
+
+    /** Stands for the leading path segments left out of a row too narrow for them. */
+    private static final String ELLIPSIS = "…" + SearchCandidate.CONTEXT_SEPARATOR;
 
     /** How far the menu path is faded towards the row background. */
     private static final double CONTEXT_FADE = 0.30;
@@ -523,13 +616,7 @@ public class OmniSearchDialog extends JDialog {
       add(hintLabel, BorderLayout.EAST);
     }
 
-    @Override
-    public Component getListCellRendererComponent(
-        JList<? extends SearchResult> list,
-        SearchResult value,
-        int index,
-        boolean isSelected,
-        boolean cellHasFocus) {
+    Component render(JList<?> list, SearchResult value, boolean isSelected) {
       final var candidate = value.candidate();
       final var enabled = candidate.enabled();
 
@@ -558,17 +645,47 @@ public class OmniSearchDialog extends JDialog {
       hintLabel.setForeground(contextColor);
 
       textLabel.setIcon(enabled ? candidate.icon() : null);
-      textLabel.setText(toHtml(candidate, value.highlights(), contextColor));
       hintLabel.setText(candidate.hint());
+      textLabel.setText(
+          toHtml(candidate, value.highlights(), contextColor, contextCut(list, candidate)));
       return this;
     }
 
-    private static Color activeSelectionBackground(JList<?> list) {
+    /**
+     * How many leading characters of the context to leave out so the title fits: whole path
+     * segments are dropped from the front, as the title is the part that says what the row is.
+     */
+    private int contextCut(JList<?> list, SearchCandidate candidate) {
+      final var text = candidate.displayText();
+      final var titleOffset = candidate.titleOffset();
+      if (titleOffset == 0 || list.getWidth() <= 0) return 0;
+      final var insets = getInsets();
+      final var icon = textLabel.getIcon();
+      final var hint = hintLabel.getText();
+      var available = list.getWidth() - insets.left - insets.right;
+      if (hint != null && !hint.isEmpty()) {
+        available -= hintLabel.getPreferredSize().width + ((BorderLayout) getLayout()).getHgap();
+      }
+      if (icon != null) available -= icon.getIconWidth() + textLabel.getIconTextGap();
+      final var metrics = textLabel.getFontMetrics(textLabel.getFont());
+      // Matched characters are drawn bold on a chip, which takes a little more room.
+      final var slack = metrics.charWidth('m') * 2;
+      var cut = 0;
+      while (metrics.stringWidth((cut > 0 ? ELLIPSIS : "") + text.substring(cut)) + slack
+          > available) {
+        final var next = text.indexOf(SearchCandidate.CONTEXT_SEPARATOR, cut);
+        if (next < 0 || next + SearchCandidate.CONTEXT_SEPARATOR.length() > titleOffset) break;
+        cut = next + SearchCandidate.CONTEXT_SEPARATOR.length();
+      }
+      return cut;
+    }
+
+    static Color activeSelectionBackground(JList<?> list) {
       final var color = UIManager.getColor("List.selectionBackground");
       return color != null ? color : list.getSelectionBackground();
     }
 
-    private static Color activeSelectionForeground(JList<?> list) {
+    static Color activeSelectionForeground(JList<?> list) {
       final var color = UIManager.getColor("List.selectionForeground");
       return color != null ? color : list.getSelectionForeground();
     }
@@ -579,7 +696,7 @@ public class OmniSearchDialog extends JDialog {
      * behind it looks like.
      */
     private static String toHtml(
-        SearchCandidate candidate, int[] highlights, Color contextColor) {
+        SearchCandidate candidate, int[] highlights, Color contextColor, int cut) {
       final var text = candidate.displayText();
       final var length = text.length();
       final var titleOffset = candidate.titleOffset();
@@ -598,9 +715,10 @@ public class OmniSearchDialog extends JDialog {
       var tinted = titleOffset > 0;
       if (tinted) {
         html.append("<font color=\"").append(toHexColor(contextColor)).append("\">");
+        if (cut > 0) html.append(ELLIPSIS);
       }
 
-      var i = 0;
+      var i = Math.min(Math.max(0, cut), titleOffset);
       while (i < length) {
         if (tinted && i == titleOffset) {
           html.append("</font>");

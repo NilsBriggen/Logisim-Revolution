@@ -256,6 +256,23 @@ public class Canvas extends JPanel implements LocaleListener, CanvasPaneContents
     setScrollBar(xpos, ypos);
   }
 
+  /**
+   * Scrolls {@code bounds}, in circuit coordinates, into view: centred on it, unless all of it is
+   * already on screen.
+   */
+  public void revealBounds(Bounds bounds) {
+    if (canvasPane == null || bounds == null) return;
+    final var zoom = getZoomFactor();
+    final var view = getViewableBaseRect();
+    final var x = (int) Math.round((bounds.getX() - originX) * zoom);
+    final var y = (int) Math.round((bounds.getY() - originY) * zoom);
+    final var width = (int) Math.round(bounds.getWidth() * zoom);
+    final var height = (int) Math.round(bounds.getHeight() * zoom);
+    if (view.contains(x, y, width, height)) return;
+    setScrollBar(
+        Math.max(0, x + width / 2 - view.width / 2), Math.max(0, y + height / 2 - view.height / 2));
+  }
+
   public void closeCanvas() {
     stopAutoPan();
     // paintCoordinator.requestStop();

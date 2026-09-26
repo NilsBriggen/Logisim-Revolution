@@ -1,0 +1,92 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html lang="en">
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="content-type" content="text/html; charset=utf-8">
+    <meta http-equiv="Content-Language" content="en">
+    <title>
+      Find Action
+    </title>
+    <link rel="stylesheet" type="text/css" href="../../style.css">
+  </head>
+  <body>
+    <div class="maindiv">
+      <h1>
+        Find Action
+      </h1>
+      <p>
+        <b>Find Action</b> searches everything Logisim can do from one text field. Open it with
+        <b class="tkeybd">Ctrl-Shift-A</b> (<b class="tkeybd">Cmd-Shift-A</b> on macOS), by tapping
+        <b class="tkeybd">Shift</b> twice, with the search button in the activity bar, or with
+        <b>Help &rarr; Find Action</b>. Type a
+        few letters of what you are looking for; the letters need not be next to each other, so
+        <code>expim</code> finds <i>Export Image</i>.
+      </p>
+      <h2>
+        What it searches
+      </h2>
+      <p>
+        Results are grouped by kind, under a heading that gives the number of matches. The group
+        holding the best match comes first.
+      </p>
+      <ul>
+        <li>
+          <b>Menus</b> - every menu command. Commands that are unavailable just now are shown
+          dimmed.
+        </li>
+        <li>
+          <b>Circuits</b> - the circuits and VHDL entities of the project. Choosing one opens it.
+        </li>
+        <li>
+          <b>Add</b> - the components of the loaded libraries, and of the built-in libraries not
+          loaded yet. Choosing one selects it for placing, loading its library first if needed.
+        </li>
+        <li>
+          <b>Placed Components</b> - the components already placed in the project's circuits,
+          found by their label or by their type: <code>clk</code> finds the pin labelled
+          <i>clk</i>, <code>RAM</code> finds every RAM. Each result shows the circuit it is in and
+          its type, or its position when it has no label. Choosing one opens its circuit, selects
+          it and scrolls it into view.
+        </li>
+        <li>
+          <b>Settings</b> - every page and every setting of the <a href="../prefs/index.html">Preferences</a>
+          window and of the <a href="../opts/index.html">Project Options</a> window, with the
+          setting's current value on the right. A setting is also found by one of its choices or
+          by words from its page or section, so <code>dark</code> finds the Theme setting.
+          Choosing a setting opens its window at its page, scrolls to it, outlines it briefly and
+          gives it the keyboard focus.
+        </li>
+        <li>
+          <b>Recent Files</b> - the files opened recently.
+        </li>
+      </ul>
+      <p>
+        Before anything is typed the list shows the menus, circuits, components to add and
+        settings pages, as an index to browse. Placed components and individual settings appear
+        only once you type.
+      </p>
+      <h2>
+        Using the keyboard
+      </h2>
+      <p>
+        <b class="tkeybd">Up</b> and <b class="tkeybd">Down</b> move through the results, stepping
+        over the group headings and wrapping around at either end; <b class="tkeybd">Page Up</b>
+        and <b class="tkeybd">Page Down</b> move ten rows at a time. <b class="tkeybd">Enter</b>
+        runs the selected result and <b class="tkeybd">Esc</b> closes the window.
+      </p>
+      <p>
+        Each group shows its best few results. When there are more, the last row of the group
+        reads <i>Show N more</i>: select it and press <b class="tkeybd">Enter</b>, or click it, to
+        list the whole group.
+      </p>
+      <p>
+        Tapping <b class="tkeybd">Shift</b> twice can be turned off in the Window page of the
+        Preferences, and the <b class="tkeybd">Ctrl-Shift-A</b> shortcut can be changed in its
+        Hotkey settings page.
+      </p>
+      <p>
+        <b>Next:</b> <a href="../subcirc/index.html">Subcircuits</a>.
+      </p>
+    </div>
+  </body>
+</html>

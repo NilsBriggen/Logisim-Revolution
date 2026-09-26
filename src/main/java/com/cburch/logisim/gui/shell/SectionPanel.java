@@ -121,6 +121,16 @@ public class SectionPanel extends JPanel {
     badgeLabel.setIcon(icon == null ? null : AppIcons.colored(icon, 12, Tokens.mutedForeground()));
   }
 
+  /** The heading text. */
+  public String getTitle() {
+    return titleButton.getText();
+  }
+
+  /** The folded part, without the heading. */
+  public JComponent getContent() {
+    return content;
+  }
+
   public final void setTitle(String title) {
     titleButton.setText(title == null ? "" : title);
     titleButton.getAccessibleContext().setAccessibleName(titleButton.getText());

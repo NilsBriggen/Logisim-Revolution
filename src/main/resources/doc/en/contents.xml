@@ -22,6 +22,7 @@
 			<tocitem target="gui_toolsbar" text="The tools bars"/>
 			<tocitem target="gui-attribut" text="The attribute table" />
 			<tocitem target="gui-attrcomp" text="Tool and component attributes" />
+			<tocitem target="gui_search" text="Find Action" />
 		</tocitem>
 		<tocitem target="subcirc" text="Subcircuits">
 			<tocitem target="subcirc_creating" text="Creating circuits" />

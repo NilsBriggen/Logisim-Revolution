@@ -58,14 +58,32 @@ public abstract class IndexedSearchProvider implements SearchProvider {
         results.add(SearchResult.of(candidate, 0));
         continue;
       }
-      final var match = FuzzyMatcher.match(query.text(), candidate.displayText());
-      if (match == null) continue;
-      var score = match.score();
-      if (match.positions()[0] >= candidate.titleOffset())
-        score += TITLE_MATCH_BONUS;
-      if (!candidate.enabled()) score -= DISABLED_PENALTY;
-      results.add(new SearchResult(candidate, score, match.positions()));
+      final var result = score(query, candidate, 0);
+      if (result != null) results.add(result);
     }
     return results;
+  }
+
+  /**
+   * Scores {@code candidate} against a non-empty {@code query} the way every indexed provider
+   * does, or returns {@code null} when it does not match.
+   *
+   * @param matchFrom where in {@link SearchCandidate#displayText()} matching starts, so that a
+   *     leading part shown only for orientation, such as the name of the window a setting is in,
+   *     does not make everything under it match
+   */
+  public static SearchResult score(SearchQuery query, SearchCandidate candidate, int matchFrom) {
+    final var text = candidate.displayText();
+    final var from = Math.max(0, Math.min(matchFrom, candidate.titleOffset()));
+    final var match = FuzzyMatcher.match(query.text(), from == 0 ? text : text.substring(from));
+    if (match == null) return null;
+    final var positions = match.positions();
+    if (from > 0) {
+      for (var i = 0; i < positions.length; i++) positions[i] += from;
+    }
+    var score = match.score();
+    if (positions[0] >= candidate.titleOffset()) score += TITLE_MATCH_BONUS;
+    if (!candidate.enabled()) score -= DISABLED_PENALTY;
+    return new SearchResult(candidate, score, positions);
   }
 }

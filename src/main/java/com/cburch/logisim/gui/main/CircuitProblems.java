@@ -169,7 +169,7 @@ final class CircuitProblems {
       final var wire = net.stream().filter(Wire.class::isInstance).map(Wire.class::cast).findFirst();
       wire.ifPresent(w -> canvas.setHighlightedWires(circuit.getWireSet(w)));
     }
-    scrollTo(boundsOf(problem));
+    canvas.revealBounds(boundsOf(problem));
     canvas.repaint();
   }
 
@@ -178,20 +178,6 @@ final class CircuitProblems {
     var bounds = Bounds.EMPTY_BOUNDS;
     for (var i = 0; i < problem.size(); i++) bounds = bounds.add(problem.getPoint(i));
     return bounds.expand(20);
-  }
-
-  /** Centres the view on the problem unless all of it is already on screen. */
-  private void scrollTo(Bounds bounds) {
-    if (canvas.getCanvasPane() == null) return;
-    final var zoom = canvas.getZoomFactor();
-    final var view = canvas.getViewableBaseRect();
-    final var x = (int) Math.round(bounds.getX() * zoom);
-    final var y = (int) Math.round(bounds.getY() * zoom);
-    final var width = (int) Math.round(bounds.getWidth() * zoom);
-    final var height = (int) Math.round(bounds.getHeight() * zoom);
-    if (view.contains(x, y, width, height)) return;
-    canvas.setScrollBar(
-        Math.max(0, x + width / 2 - view.width / 2), Math.max(0, y + height / 2 - view.height / 2));
   }
 
   private void showHelp() {

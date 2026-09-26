@@ -111,6 +111,9 @@ public final class FuzzyMatcher {
     final var queryLen = query.length();
     final var candLen = candidate.length();
     if (queryLen == 0 || candLen == 0 || queryLen > candLen) return null;
+    // Most candidates do not contain the query at all; a linear scan rejects them without
+    // allocating the tables, which keeps large indexes (every placed component) cheap to search.
+    if (!isSubsequence(query, candidate)) return null;
 
     // best[i][j] is the score of matching query[0..i] with query[i] landing exactly on
     // candidate[j]; from[i][j] records which candidate index query[i - 1] used, so the winning
@@ -238,6 +241,16 @@ public final class FuzzyMatcher {
       return CAMEL_BONUS;
     }
     return 0;
+  }
+
+  /** Whether {@code query}'s characters occur in {@code candidate} in order, ignoring case. */
+  public static boolean isSubsequence(String query, String candidate) {
+    var next = 0;
+    final var queryLen = query.length();
+    for (var j = 0; j < candidate.length() && next < queryLen; j++) {
+      if (matches(query.charAt(next), candidate.charAt(j))) next++;
+    }
+    return next == queryLen;
   }
 
   private static boolean matches(char query, char candidate) {
