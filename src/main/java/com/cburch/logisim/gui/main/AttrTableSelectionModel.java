@@ -175,7 +175,7 @@ class AttrTableSelectionModel extends AttributeSetTableModel implements Selectio
       if (label != null && label.length() > 0) {
         return factory.getDisplayName() + " \"" + label + "\"";
       } else if (loc != null) {
-        return factory.getDisplayName() + " " + loc;
+        return S.get("selectionAtLocation", factory.getDisplayName(), loc.toString());
       } else {
         return factory.getDisplayName();
       }

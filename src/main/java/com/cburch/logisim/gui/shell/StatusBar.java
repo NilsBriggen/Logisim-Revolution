@@ -114,6 +114,18 @@ public class StatusBar extends JPanel {
   }
 
   /**
+   * Hides the circuit name and zoom reading while the welcome screen is showing.
+   *
+   * <p>Both keep whatever value the last open circuit left behind, since nothing clears them when
+   * a project closes down to the welcome screen. Left alone, that stale "main" and "100%" look
+   * like a live, open document nobody had asked for.
+   */
+  public void setWelcomeMode(boolean on) {
+    circuitLabel.setVisible(!on);
+    zoomButton.setVisible(!on);
+  }
+
+  /**
    * The chain of circuits the user has descended through, each one clickable.
    *
    * <p>Descending into a subcircuit used to show its name and nothing else, identical to what is

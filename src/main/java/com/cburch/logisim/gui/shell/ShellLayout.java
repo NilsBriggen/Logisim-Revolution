@@ -509,6 +509,7 @@ public class ShellLayout extends JPanel {
       applyInspectorVisible(inspectorBeforeWelcome, false);
       activityBar.setSelected(isSideVisible() ? sidePanel.activeId() : null);
     }
+    statusBar.setWelcomeMode(on);
   }
 
   public boolean isWelcomeMode() {

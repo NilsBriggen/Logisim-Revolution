@@ -10,6 +10,7 @@
 package com.cburch.draw.util;
 
 import com.cburch.logisim.data.Bounds;
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 
 import java.awt.Color;
 import java.awt.Font;
@@ -239,7 +240,11 @@ public class EditableLabel implements Cloneable {
 
   public void paint(Graphics g) {
     g.setFont(font);
-    g.setColor(color);
+    // The shipped black is a placeholder, not a chosen colour: resolve it to the canvas ink so
+    // an appearance-editor label (a shape's text, or a pin-name label) stays visible on a dark
+    // canvas, while honouring the print palette for export and printing. A colour the user
+    // actually picked is painted exactly as stored.
+    g.setColor(CanvasStyle.textColor(color));
     computeDimensions(g);
     float x0 = getLeftX();
     float y0 = getBaseY();
