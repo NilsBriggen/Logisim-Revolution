@@ -190,4 +190,32 @@ class ComponentTileTest {
       assertEquals(0, chosen.get());
     });
   }
+
+  @Test
+  void compactListRowsWrapTheWholeNameInsteadOfEllipsizingIt() throws Exception {
+    SwingUtilities.invokeAndWait(() -> {
+      final var tile = new ComponentTile(tool("Sub", "counter_sub"), ignored -> {}, ignored -> {});
+      final var metrics = tile.getFontMetrics(tile.getFont());
+      final var narrow = metrics.stringWidth("counter_s");
+      final var lines = ComponentTile.wrappedLines("counter_sub", metrics, narrow);
+      assertEquals(List.of("counter_", "sub"), lines);
+
+      final var words = ComponentTile.wrappedLines(
+          "Controlled Inverter Gate", metrics, metrics.stringWidth("Inverter Gate"));
+      assertEquals(List.of("Controlled", "Inverter Gate"), words);
+
+      for (final var width : new int[] {1, metrics.stringWidth("m"), narrow / 2}) {
+        final var pieces = ComponentTile.wrappedLines("mismatch_detector", metrics, width);
+        assertEquals("mismatch_detector", String.join("", pieces), "a character was lost");
+        assertTrue(pieces.stream().noneMatch(line -> line.contains("\u2026")));
+      }
+
+      tile.setCompact(true);
+      tile.setSize(metrics.stringWidth("counter") + 200, 40);
+      assertEquals("counter_sub", String.join("", tile.visibleCaptionLines()));
+      tile.setSize(40, 40);
+      assertTrue(tile.compactHeight(40) >= metrics.getHeight() * 2,
+          "a narrow row must grow to show every line of the name");
+    });
+  }
 }

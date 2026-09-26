@@ -119,6 +119,30 @@ class ShellResponsiveLayoutTest {
     });
   }
 
+  @Test
+  void restoredTallDrawerLeavesTheEditorItsReserve() throws Exception {
+    SwingUtilities.invokeAndWait(() -> {
+      try (final var metrics = new NativeMetrics();
+          final var preferences = mockStatic(LayoutPrefs.class)) {
+        configurePreferences(preferences);
+        preferences.when(LayoutPrefs::bottomHeight).thenAnswer(ignored -> UiScale.scaled(720));
+        preferences.when(LayoutPrefs::bottomVisible).thenReturn(true);
+        final var bottom = new BottomPanel();
+        bottom.addPanel("console", "Console", null, new JPanel());
+        final var shell = new ShellLayout(new MainToolbar(new Toolbar(null), null),
+            new ActivityBar(), new SidePanel(),
+            new EditorArea(new EditorTabs(new EditorTabModel(), tab -> "HDL"), new JPanel()),
+            new Inspector("Properties"), bottom, new StatusBar());
+        assertTrue(shell.isBottomVisible());
+        layout(shell, 1280);
+        final var column = shell.getEditorArea().getParent();
+        assertTrue(shell.getEditorArea().getHeight() >= ShellLayout.editorReserve(
+            column.getHeight()), "the restored drawer hid the canvas");
+        assertTrue(bottom.getHeight() > 0);
+      }
+    });
+  }
+
   private static void configurePreferences(MockedStatic<LayoutPrefs> preferences) {
     preferences.when(LayoutPrefs::sideWidth).thenAnswer(ignored -> UiScale.scaled(260));
     preferences.when(LayoutPrefs::inspectorWidth).thenAnswer(ignored -> UiScale.scaled(280));

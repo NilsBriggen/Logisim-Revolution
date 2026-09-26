@@ -27,6 +27,7 @@ public class EditorArea extends JPanel {
   private final JLayeredPane body = new JLayeredPane();
   private final JComponent editor;
   private JComponent overlay;
+  private int reservedHeight;
 
   public EditorArea(EditorTabs tabs, JComponent editor) {
     super(new BorderLayout());
@@ -64,6 +65,18 @@ public class EditorArea extends JPanel {
           size.width,
           size.height);
     }
+  }
+
+  /** Sets the height the drawer below may not take from the editor. */
+  void setReservedHeight(int height) {
+    reservedHeight = Math.max(0, height);
+  }
+
+  @Override
+  public Dimension getMinimumSize() {
+    final var minimum = super.getMinimumSize();
+    if (isMinimumSizeSet()) return minimum;
+    return new Dimension(minimum.width, Math.max(minimum.height, reservedHeight));
   }
 
   @Override

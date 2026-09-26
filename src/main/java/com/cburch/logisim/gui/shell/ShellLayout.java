@@ -32,6 +32,17 @@ public class ShellLayout extends JPanel {
   /** Thickness of a divider, in pixels, when the panel beside it is showing. */
   private static final int DIVIDER_SIZE = 5;
 
+  /**
+   * The editor height, in logical pixels, that the drawer below it may never take away.
+   *
+   * <p>A drawer restored at its remembered height in a shorter window used to push the canvas down
+   * to a sliver, and a zoom-to-fit computed on that sliver then opened the circuit at 20%.
+   */
+  static final int MIN_EDITOR_HEIGHT = 120;
+
+  /** Above this, in logical pixels, the drawer may have whatever the editor does not need. */
+  static final int MAX_EDITOR_RESERVE = 240;
+
   private final ActivityBar activityBar;
   private final SidePanel sidePanel;
   private final EditorArea editorArea;
@@ -67,6 +78,7 @@ public class ShellLayout extends JPanel {
         LayoutPrefs::bottomHeight,
         LayoutPrefs::setBottomHeight);
     bottomSplit.setResizeWeight(1.0);
+    bottomSplit.beforeAllocation = this::reserveEditorHeight;
     inspectorSplit = split(
         JSplitPane.HORIZONTAL_SPLIT,
         bottomSplit,
@@ -123,6 +135,21 @@ public class ShellLayout extends JPanel {
     final var size = new java.awt.Dimension(
         Math.max(UiScale.scaled(LayoutPrefs.MIN_PANEL), textWidth + UiScale.scaled(16)), 0);
     if (!size.equals(panel.getMinimumSize())) panel.setMinimumSize(size);
+  }
+
+  private void reserveEditorHeight() {
+    editorArea.setReservedHeight(editorReserve(bottomSplit.getHeight()));
+  }
+
+  /**
+   * How much of a vertical split of this height the editor keeps however tall the drawer is.
+   *
+   * <p>Half the height, but never less than enough to see and click the canvas and never more
+   * than the drawer should have to give up in a tall window.
+   */
+  static int editorReserve(int splitHeight) {
+    return Math.min(UiScale.scaled(MAX_EDITOR_RESERVE),
+        Math.max(UiScale.scaled(MIN_EDITOR_HEIGHT), splitHeight / 2));
   }
 
   private void allocateHorizontalSpace() {
@@ -232,8 +259,15 @@ public class ShellLayout extends JPanel {
               dragging = false;
               if (extent() <= 0 || !hasBothChildren()) return;
               if (getDividerLocation() == dragStartLocation) return;
-              wantedSize = sizeOfStoredChild();
+              final var dragged = sizeOfStoredChild();
+              // The drag itself is only bounded by the other child's minimum; what is kept, in
+              // memory as well as on disk, is bounded like every other panel size.
+              wantedSize = Math.min(dragged, UiScale.scaled(LayoutPrefs.MAX_PANEL));
               sizeChanged.accept(wantedSize);
+              if (wantedSize != dragged) {
+                allocationChanged = true;
+                revalidate();
+              }
             }
           });
     }
@@ -241,6 +275,23 @@ public class ShellLayout extends JPanel {
     /** Asks for the remembered size to be applied again. */
     void reapply() {
       restorePending = true;
+      revalidate();
+    }
+
+    /**
+     * Makes the remembered child at least this big, for a panel that is useless any smaller.
+     *
+     * <p>The editor's reserve still applies, so a short window shows as much as it can.
+     */
+    void ensureAtLeast(int size) {
+      if (restorePending) {
+        wantedSize = storedSize.getAsInt();
+        lastScale = UiScale.factor();
+        restorePending = false;
+      }
+      if (size <= wantedSize) return;
+      wantedSize = Math.min(size, UiScale.scaled(LayoutPrefs.MAX_PANEL));
+      allocationChanged = true;
       revalidate();
     }
 
@@ -426,10 +477,17 @@ public class ShellLayout extends JPanel {
     activityBar.setSelected(id);
   }
 
-  /** Brings a drawer panel to the front, opening the drawer if it was closed. */
+  /**
+   * Brings a drawer panel to the front, opening the drawer if it was closed.
+   *
+   * <p>A panel that needs more room than the drawer has, such as the timing options, grows it to
+   * its own opening height; asking again for the panel already showing leaves the user's size.
+   */
   public void showBottomPanel(String id) {
+    final var alreadyShowing = isBottomVisible() && bottomPanel.isPanelSelected(id);
     if (!bottomPanel.showPanel(id)) return;
     setBottomVisible(true);
+    if (!alreadyShowing) bottomSplit.ensureAtLeast(UiScale.scaled(bottomPanel.openHeight(id)));
   }
 
   /** Writes the current sizes down, so the next run opens the same way. */

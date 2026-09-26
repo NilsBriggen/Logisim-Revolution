@@ -35,7 +35,7 @@ public class BottomPanel extends JTabbedPane {
 
   private static final long serialVersionUID = 1L;
 
-  private record Panel(String title, javax.swing.Icon icon, JComponent content) {}
+  private record Panel(String title, javax.swing.Icon icon, JComponent content, int openHeight) {}
 
   private final Map<String, Panel> panels = new LinkedHashMap<>();
 
@@ -73,7 +73,18 @@ public class BottomPanel extends JTabbedPane {
 
   /** Adds a panel, or replaces the one already registered under {@code id}. */
   public void addPanel(String id, String title, javax.swing.Icon icon, JComponent panel) {
-    final var existing = panels.put(id, new Panel(title, icon, panel));
+    addPanel(id, title, icon, panel, 0);
+  }
+
+  /**
+   * Adds a panel that the drawer grows to fit when it is brought to the front.
+   *
+   * @param openHeight the drawer height, in logical pixels, the panel needs to be usable; 0 keeps
+   *     whatever height the drawer already has
+   */
+  public void addPanel(
+      String id, String title, javax.swing.Icon icon, JComponent panel, int openHeight) {
+    final var existing = panels.put(id, new Panel(title, icon, panel, Math.max(0, openHeight)));
     if (existing != null) {
       final var index = indexOfComponent(existing.content());
       if (index >= 0) remove(index);
@@ -92,6 +103,18 @@ public class BottomPanel extends JTabbedPane {
     return true;
   }
 
+  /** The drawer height, in logical pixels, the panel asks for when shown; 0 when it has none. */
+  public int openHeight(String id) {
+    final var panel = panels.get(id);
+    return panel == null ? 0 : panel.openHeight();
+  }
+
+  /** Whether the panel registered under {@code id} is the tab in front. */
+  public boolean isPanelSelected(String id) {
+    final var panel = panels.get(id);
+    return panel != null && getSelectedComponent() == panel.content();
+  }
+
   public boolean hasPanels() {
     return getTabCount() > 0;
   }
@@ -100,7 +123,7 @@ public class BottomPanel extends JTabbedPane {
   public void setTitle(String id, String title) {
     final var panel = panels.get(id);
     if (panel == null) return;
-    panels.put(id, new Panel(title, panel.icon(), panel.content()));
+    panels.put(id, new Panel(title, panel.icon(), panel.content(), panel.openHeight()));
     final var index = indexOfComponent(panel.content());
     if (index >= 0) setTitleAt(index, title);
   }

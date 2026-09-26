@@ -10,7 +10,6 @@
 package com.cburch.logisim.gui.main;
 
 import com.cburch.contracts.BaseMouseListenerContract;
-import com.cburch.draw.toolbar.Toolbar;
 import com.cburch.logisim.gui.menu.MenuListener;
 import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.proj.ProjectEvent;
@@ -34,10 +33,8 @@ class SimulationExplorer extends JPanel implements ProjectListener, BaseMouseLis
     super(new BorderLayout());
     this.project = proj;
 
-    final var toolbarModel = new SimulationToolbarModel(proj, menu);
-    final var toolbar = new Toolbar(toolbarModel);
-    add(toolbar, BorderLayout.NORTH);
-
+    // The run, step and tick controls live once, in the main toolbar above every panel; a second
+    // copy here only made the window show the same buttons two or three times over.
     model = new SimulationTreeModel(proj.getRootCircuitStates());
     model.setCurrentView(project.getCircuitState());
     tree = new ScaledTree(model);

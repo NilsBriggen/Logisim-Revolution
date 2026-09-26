@@ -156,6 +156,13 @@ public final class UiSnapshot {
     Theme.install();
     AppPreferences.applyThemeColors();
 
+    // A remembered drawer height, in logical pixels, to review how a restored drawer is fitted.
+    final var bottomHeight = Integer.getInteger("snapshot.bottomHeight", 0);
+    if (bottomHeight > 0) {
+      AppPreferences.getPrefs().putInt("shell.bottomHeight", bottomHeight);
+      AppPreferences.getPrefs().putBoolean("shell.logicalSizes", true);
+    }
+
     // A named file lets a real circuit be reviewed, which is the only way to judge canvas work.
     final var circuitFile = System.getProperty("snapshot.file", "");
     final var project =
@@ -208,6 +215,21 @@ public final class UiSnapshot {
       });
     } else if (!sideView.isEmpty()) {
       SwingUtilities.invokeAndWait(() -> frame.showSideView(sideView));
+    }
+
+    final var drawer = System.getProperty("snapshot.drawer", "");
+    if (!drawer.isEmpty()) {
+      SwingUtilities.invokeAndWait(
+          () -> {
+            frame.pack();
+            frame.setSize(width, height);
+            frame.validate();
+            switch (drawer) {
+              case "timing" -> frame.showLogPanel();
+              case "test" -> frame.showTestPanel();
+              default -> frame.setVhdlSimulatorConsoleStatusVisible();
+            }
+          });
     }
 
     SwingUtilities.invokeAndWait(

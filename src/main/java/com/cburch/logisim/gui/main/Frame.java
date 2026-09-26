@@ -1016,6 +1016,7 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
         LOG_BOTTOM_PANEL,
         S.get("logPanelTab"),
         AppIcons.Id.WAVEFORM,
+        LayoutPrefs.TIMING_DRAWER_HEIGHT,
         () -> project.getLogFrame().dockedContent());
   }
 
@@ -1025,13 +1026,18 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
         TEST_BOTTOM_PANEL,
         S.get("testPanelTab"),
         AppIcons.Id.TEST,
+        LayoutPrefs.TEST_DRAWER_HEIGHT,
         () -> project.getTestFrame().dockedContent());
   }
 
   private void showDockedPanel(
-      String id, String title, AppIcons.Id icon, java.util.function.Supplier<JComponent> content) {
+      String id,
+      String title,
+      AppIcons.Id icon,
+      int openHeight,
+      java.util.function.Supplier<JComponent> content) {
     if (!dockedPanels.contains(id)) {
-      bottomPanel.addPanel(id, title, AppIcons.get(icon, 14), content.get());
+      bottomPanel.addPanel(id, title, AppIcons.get(icon, 14), content.get(), openHeight);
       dockedPanels.add(id);
     }
     shell.showBottomPanel(id);
@@ -1152,6 +1158,21 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
 
   private void initializeLayoutView(Circuit circuit) {
     if (circuit == null || project.getCurrentCircuit() != circuit) return;
+    final var viewport = layoutCanvasPane.getViewport();
+    if (viewport.getWidth() <= 0 || viewport.getHeight() <= 0) {
+      // Fitting to a viewport that has not been laid out yet picks the smallest zoom there is.
+      // Wait for the window to give the canvas its real size.
+      viewport.addComponentListener(
+          new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentResized(java.awt.event.ComponentEvent event) {
+              if (viewport.getWidth() <= 0 || viewport.getHeight() <= 0) return;
+              viewport.removeComponentListener(this);
+              SwingUtilities.invokeLater(() -> initializeLayoutView(circuit));
+            }
+          });
+      return;
+    }
 
     final var graphics = layoutCanvas.getGraphics();
     final var bounds = graphics == null ? circuit.getBounds() : circuit.getBounds(graphics);

@@ -50,7 +50,9 @@ public class SimulationIcon implements Icon {
       case SIM_PAUSE -> AppIcons.Id.PAUSE;
       case SIM_STEP -> AppIcons.Id.STEP;
       case SIM_ENABLE -> AppIcons.Id.TICK_ENABLED;
-      case SIM_DISABLE -> AppIcons.Id.PAUSE;
+      // Ticking is shown by the same clock glyph, lit and pressed, rather than a second pause
+      // symbol that could not be told from the run/stop button beside it.
+      case SIM_DISABLE -> AppIcons.Id.TICK_ENABLED;
       case SIM_HALF_TICK -> AppIcons.Id.TICK_HALF;
       case SIM_FULL_TICK -> AppIcons.Id.TICK_FULL;
       default -> AppIcons.Id.RUN;
