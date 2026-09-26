@@ -106,7 +106,7 @@ public class ProjectExplorer extends JTree implements LocaleListener {
     proj.addProjectListener(myListener);
     AppPreferences.GATE_SHAPE.addPropertyChangeListener(myListener);
     AppPreferences.UI_ANTIALIASING.addPropertyChangeListener(myListener);
-    LocaleManager.addLocaleListener(this);
+    LocaleManager.addLocaleListener(this, this);
     refreshUiMetrics();
     Theme.addListener(this, this::refreshUiMetrics);
   }

@@ -368,6 +368,8 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     inspectorBody.add(stateSection, BorderLayout.SOUTH);
     inspector = new Inspector(S.get("propertiesTab"));
     inspector.setContent(inspectorBody);
+    // Follows every model the table shows, including the appearance editor's, and their renames.
+    attrTable.setTitleListener(() -> inspector.setTitle(inspectorTitle()));
 
     bottomPanel = new BottomPanel();
     bottomPanel.addPanel(
@@ -450,7 +452,7 @@ public class Frame extends LFrame.MainWindow implements LocaleListener {
     placeToolbar();
     installFileDropTargets();
 
-    LocaleManager.addLocaleListener(this);
+    LocaleManager.addLocaleListener(this, this);
     toolbox.updateStructure();
 
     syncEditorTabs();

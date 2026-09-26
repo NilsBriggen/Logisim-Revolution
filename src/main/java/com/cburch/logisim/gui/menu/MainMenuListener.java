@@ -135,7 +135,7 @@ public class MainMenuListener extends MenuListener {
         canSetMain = file.getMainCircuit() != cur;
         canMoveUp = curIndex > 0;
         canMoveDown = curIndex < file.getTools().size() - 1;
-        canRemove = file.getCircuits().size() > 1 && proj.getDependencies().canRemove(cur);
+        canRemove = ProjectCircuitActions.canRemoveCircuit(proj, cur);
         canRevert = viewAppearance && !cur.getAppearance().isDefaultAppearance();
       } else if (proj.getCurrentHdl() != null) {
         canRemove = true;

@@ -132,25 +132,24 @@ public class EditTool extends Tool {
   }
 
   /** Returns whether anything in the selection could be turned to {@code facing}. */
-  private boolean attemptReface(Canvas canvas, final Direction facing, KeyEvent e) {
+  boolean attemptReface(Canvas canvas, final Direction facing, KeyEvent e) {
     /* cancel the limit of no modifier*/
     final var circuit = canvas.getCircuit();
     final var sel = canvas.getSelection();
     final var act = new SetAttributeAction(circuit, S.getter("selectionRefaceAction"));
+    var refaceable = false;
     for (final var comp : sel.getComponents()) {
       if (!(comp instanceof Wire)) {
         final var attr = getFacingAttribute(comp);
-        if (attr != null) {
-          act.set(comp, attr, facing);
-        }
+        if (attr == null) continue;
+        refaceable = true;
+        // Pressing the arrow the component already faces must not leave an empty undo step.
+        if (!facing.equals(comp.getAttributeSet().getValue(attr))) act.set(comp, attr, facing);
       }
     }
-    if (!act.isEmpty()) {
-      canvas.getProject().doAction(act);
-      e.consume();
-      return true;
-    }
-    return false;
+    if (!act.isEmpty()) canvas.getProject().doAction(act);
+    if (refaceable) e.consume();
+    return refaceable;
   }
 
   /** Grid steps a Shift+arrow nudge moves the selection. */

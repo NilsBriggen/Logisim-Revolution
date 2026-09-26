@@ -69,7 +69,9 @@ public class AddToolSearchProvider extends IndexedSearchProvider {
       boolean projectRoot) {
     if ((!projectRoot && library.isHidden()) || !ancestors.add(library)) return;
     try {
-      final var path = appendPath(parentPath, displayNameOf(library));
+      // The project's own name is on every one of its circuits, so matching it would make a search
+      // for a word in the file name return every circuit; it adds nothing to the breadcrumb.
+      final var path = projectRoot ? parentPath : appendPath(parentPath, displayNameOf(library));
       for (final var tool : library.getTools()) {
         if (tool instanceof AddTool addTool && isPlaceable(addTool, project)) {
           candidates.add(

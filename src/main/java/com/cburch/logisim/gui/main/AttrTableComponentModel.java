@@ -76,7 +76,8 @@ class AttrTableComponentModel extends AttributeSetTableModel {
           return;
         }
       }
-      final var act = new SetAttributeAction(circ, S.getter("changeAttributeAction"));
+      final var act = new SetAttributeAction(
+          circ, AttributeActionNames.forAttributes(values.keySet(), "changeAttributeAction"));
       final var compAttrSet = comp.getAttributeSet();
       for (final var entry : values.entrySet()) {
         final var attr = entry.getKey();

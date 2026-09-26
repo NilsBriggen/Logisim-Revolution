@@ -205,7 +205,8 @@ class AttrTableSelectionModel extends AttributeSetTableModel implements Selectio
     if (!project.getLogisimFile().contains(circuit)) {
       throw new AttrTableSetException(S.get("cannotModifyCircuitError"));
     }
-    final var act = new SetAttributeAction(circuit, S.getter("selectionAttributeAction"));
+    final var act = new SetAttributeAction(circuit,
+        AttributeActionNames.forAttributes(values.keySet(), "selectionAttributeAction"));
     final var circuitChanges = new CircuitMutation(circuit);
     for (final var entry : values.entrySet()) {
       final var attr = entry.getKey();
@@ -268,7 +269,8 @@ class AttrTableSelectionModel extends AttributeSetTableModel implements Selectio
     }
     Action action = act.isEmpty() ? null : act;
     if (!circuitChanges.isEmpty()) {
-      final var change = circuitChanges.toAction(S.getter("selectionAttributeAction"));
+      final var change = circuitChanges.toAction(
+          AttributeActionNames.forAttributes(values.keySet(), "selectionAttributeAction"));
       action = action == null ? change : action.append(change);
     }
     if (action != null) {

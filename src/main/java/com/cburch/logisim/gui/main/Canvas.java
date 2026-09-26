@@ -145,7 +145,7 @@ public class Canvas extends JPanel implements LocaleListener, CanvasPaneContents
     proj.addCircuitListener(myProjectListener);
     proj.getSimulator().addSimulatorListener(tickCounter);
     selection.addListener(myProjectListener);
-    LocaleManager.addLocaleListener(this);
+    LocaleManager.addLocaleListener(this, this);
 
     final var options = proj.getOptions().getAttributeSet();
     options.addAttributeListener(myProjectListener);

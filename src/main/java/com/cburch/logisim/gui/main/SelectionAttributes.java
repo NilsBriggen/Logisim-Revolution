@@ -144,6 +144,17 @@ class SelectionAttributes extends AbstractAttributeSet implements VariousValues 
     return false;
   }
 
+  /**
+   * The components whose attributes the panel shows. Wires only carry their read-only direction
+   * and length, so a box drawn around components and the wires between them would otherwise
+   * leave no attribute in common; the wires are left out unless nothing else is selected.
+   * Setting a value already skips wires.
+   */
+  static Collection<Component> attributeSources(Collection<Component> sel) {
+    final var nonWires = sel.stream().filter(comp -> !(comp instanceof Wire)).toList();
+    return nonWires.isEmpty() ? sel : nonWires;
+  }
+
   private static Set<Component> createSet(Collection<Component> comps) {
     if (comps == null) return Collections.emptySet();
     return new HashSet<>(comps);
@@ -335,7 +346,8 @@ class SelectionAttributes extends AbstractAttributeSet implements VariousValues 
       }
     }
 
-    final var attrMap = computeAttributes(newSel);
+    final var sources = attributeSources(newSel);
+    final var attrMap = computeAttributes(sources);
     final var same = isSame(attrMap, this.attrs, this.values);
 
     if (same) {
@@ -353,7 +365,7 @@ class SelectionAttributes extends AbstractAttributeSet implements VariousValues 
         i++;
         newAttrs[i] = entry.getKey();
         newValues[i] = entry.getValue();
-        newReadOnly[i] = computeReadOnly(newSel, newAttrs[i]);
+        newReadOnly[i] = computeReadOnly(sources, newAttrs[i]);
       }
       if (newSel != oldSel) {
         this.selected = newSel;

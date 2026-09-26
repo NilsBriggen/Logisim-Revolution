@@ -261,6 +261,18 @@ public class ProjectCircuitActions {
     }
   }
 
+  /**
+   * Whether {@code circuit} can be removed: it belongs to the project, is not the last circuit and
+   * no other circuit uses it. Every place offering removal asks this, so they agree.
+   */
+  public static boolean canRemoveCircuit(Project proj, Circuit circuit) {
+    final var file = proj.getLogisimFile();
+    return circuit != null
+        && file.contains(circuit)
+        && file.getCircuitCount() > 1
+        && proj.getDependencies().canRemove(circuit);
+  }
+
   public static void doRemoveCircuit(Project proj, Circuit circuit) {
     if (proj.getLogisimFile().getCircuits().size() == 1) {
       OptionPane.showMessageDialog(

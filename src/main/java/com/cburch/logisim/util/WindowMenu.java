@@ -169,7 +169,7 @@ public class WindowMenu extends Menu {
     computeContents();
     addMenuListener(myListener);
 
-    LocaleManager.addLocaleListener(myListener);
+    LocaleManager.addLocaleListener(this, myListener);
     myListener.localeChanged();
   }
 

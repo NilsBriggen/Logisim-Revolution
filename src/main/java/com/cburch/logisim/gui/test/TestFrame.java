@@ -111,7 +111,7 @@ public class TestFrame extends LFrame.SubWindowWithSimulation {
     body.add(buttonPanel, BorderLayout.SOUTH);
     getContentPane().add(body, BorderLayout.CENTER);
 
-    LocaleManager.addLocaleListener(myListener);
+    LocaleManager.addLocaleListener(this, myListener);
     myListener.localeChanged();
     pack();
   }

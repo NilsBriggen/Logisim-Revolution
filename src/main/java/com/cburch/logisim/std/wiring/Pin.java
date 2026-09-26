@@ -812,9 +812,9 @@ public class Pin extends InstanceFactory {
     String endType = attrs.isOutput() ? Port.INPUT : Port.OUTPUT;
     Port port = new Port(0, 0, endType, StdAttr.WIDTH);
     if (attrs.isOutput()) {
-      port.setToolTip(S.getter("pinOutputToolTip"));
+      port.setToolTip(S.getter("pinOutputPortToolTip"));
     } else {
-      port.setToolTip(S.getter("pinInputToolTip"));
+      port.setToolTip(S.getter("pinInputPortToolTip"));
     }
     instance.setPorts(new Port[] {port});
   }

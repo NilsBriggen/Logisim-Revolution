@@ -48,6 +48,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.KeyStroke;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
@@ -75,6 +76,7 @@ public class AttrTable extends JPanel implements LocaleListener {
   private final TableModelAdapter tableModel;
   private final CellEditor editor = new CellEditor();
   private boolean titleEnabled;
+  private Runnable titleListener = () -> {};
 
   public AttrTable(Window parent) {
     super(new BorderLayout());
@@ -100,6 +102,9 @@ public class AttrTable extends JPanel implements LocaleListener {
       }
     };
     table.setDefaultEditor(Object.class, editor);
+    // Enter edits the selected property, as F2 does, rather than silently moving down a row.
+    table.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
+        .put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "startEditing");
     table.setTableHeader(null);
     table.setDefaultRenderer(String.class, new HdlColorRenderer());
     table.addMouseWheelListener(this::handleMouseWheel);
@@ -119,7 +124,7 @@ public class AttrTable extends JPanel implements LocaleListener {
 
     this.add(propPanel, BorderLayout.CENTER);
 
-    LocaleManager.addLocaleListener(this);
+    LocaleManager.addLocaleListener(this, this);
     localeChanged();
     refreshUiMetrics();
     Theme.addListener(this, this::refreshUiMetrics);
@@ -306,7 +311,17 @@ public class AttrTable extends JPanel implements LocaleListener {
     tableModel.fireTableChanged();
   }
 
+  /**
+   * Runs {@code listener} whenever the shown model or its title changes, for a heading kept
+   * outside the table. The appearance editor swaps models without going through the frame, so
+   * such a heading cannot rely on its own calls to {@link #setAttrTableModel}.
+   */
+  public void setTitleListener(Runnable listener) {
+    titleListener = listener == null ? () -> {} : listener;
+  }
+
   private void updateTitle() {
+    titleListener.run();
     if (titleEnabled) {
       final var text = tableModel.attrModel.getTitle();
       if (text == null) {
@@ -419,6 +434,8 @@ public class AttrTable extends JPanel implements LocaleListener {
     boolean choiceChanged;
     boolean multiEditActive = false;
     boolean stoppedCellEditing = false;
+    /** Whether the edit being started should drop a list of choices open straight away. */
+    boolean openChoices = false;
 
     //
     // ActionListener methods
@@ -540,6 +557,13 @@ public class AttrTable extends JPanel implements LocaleListener {
       if (editor instanceof JComboBox box) {
         box.addActionListener(this);
         editor.addFocusListener(this);
+        // A click or Enter on a choice means "choose": without this the list needed one click
+        // to start editing, a second to open and a third to pick.
+        if (openChoices) {
+          SwingUtilities.invokeLater(() -> {
+            if (currentEditor == box && box.isShowing()) box.showPopup();
+          });
+        }
         rowIndexes = table.getSelectedRows();
         if (isSelected && row.supportsMultiEdit() && rowIndexes.length > 1) {
           multiEditActive = true;
@@ -604,6 +628,11 @@ public class AttrTable extends JPanel implements LocaleListener {
 
     @Override
     public boolean isCellEditable(EventObject anEvent) {
+      // Typing a character edits by typing; a click, Enter, F2 or Space means "show me".
+      openChoices = !(anEvent instanceof KeyEvent started)
+          || started.getKeyCode() == KeyEvent.VK_F2
+          || started.getKeyCode() == KeyEvent.VK_SPACE
+          || started.getKeyCode() == KeyEvent.VK_ENTER;
       if (anEvent instanceof KeyEvent key) {
         if (key.isMetaDown() || ((key.isControlDown() || key.isAltDown())
             && !key.isAltGraphDown())) return false;

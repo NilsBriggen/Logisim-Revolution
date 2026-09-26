@@ -239,7 +239,7 @@ public class EditorTabs extends JTabbedPane {
       for (var index = 0; index < tabs.size(); index++) {
         final var tab = tabs.get(index);
         final var prefix = model.isDirty(tab) ? DIRTY_MARK : "";
-        final var title = prefix + titler.apply(tab);
+        final var title = prefix + labelFor(tab);
         if (index == getTabCount()) {
           addTab(title, iconFor(tab), null, tooltipFor(tab));
         } else {
@@ -266,9 +266,15 @@ public class EditorTabs extends JTabbedPane {
         14);
   }
 
-  private String tooltipFor(Tab tab) {
+  /** A circuit's layout and appearance can both be open, so their tabs must read differently. */
+  String labelFor(Tab tab) {
     final var name = titler.apply(tab);
-    return tab.kind() == Kind.APPEARANCE ? name + " \u2014 appearance" : name;
+    return tab.kind() == Kind.APPEARANCE ? S.get("editorTabAppearanceTitle", name) : name;
+  }
+
+  String tooltipFor(Tab tab) {
+    final var name = titler.apply(tab);
+    return tab.kind() == Kind.APPEARANCE ? S.get("editorTabAppearanceTip", name) : name;
   }
 
   /** Re-reads the labels, after a circuit was renamed or the language changed. */

@@ -478,7 +478,12 @@ public class MenuSimulate extends Menu {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-      if (currentSim != null) {
+      if (currentSim == null) return;
+      if (Math.abs(currentSim.getTickFrequency() - freq) < 0.001) return;
+      final var proj = menubar.getSimulationProject();
+      if (proj != null && proj.getSimulator() == currentSim) {
+        proj.doAction(new SetTickFrequencyAction(currentSim, freq));
+      } else {
         currentSim.setTickFrequency(freq);
       }
     }

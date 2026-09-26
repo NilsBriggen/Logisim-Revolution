@@ -70,8 +70,8 @@ class AddToolSearchProviderTest {
     final var candidates = candidates(new AddToolSearchProvider(), project);
 
     assertEquals(2, candidates.size());
-    assertCandidate(candidates.get(0), rootTool, "Add › Demo");
-    assertCandidate(candidates.get(1), leafTool, "Add › Demo › Parent › Leaf");
+    assertCandidate(candidates.get(0), rootTool, "Add");
+    assertCandidate(candidates.get(1), leafTool, "Add › Parent › Leaf");
   }
 
   @Test

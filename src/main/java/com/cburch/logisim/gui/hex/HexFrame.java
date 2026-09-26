@@ -112,7 +112,7 @@ public class HexFrame extends LFrame.SubWindow {
     contents.add(header, BorderLayout.NORTH);
     contents.add(scroll, BorderLayout.CENTER);
 
-    LocaleManager.addLocaleListener(myListener);
+    LocaleManager.addLocaleListener(this, myListener);
     myListener.localeChanged();
     ScrollableForm.sizeWindow(this, new Dimension(900, 560), new Dimension(680, 360), true);
     Theme.addListener(getRootPane(), () -> {
@@ -299,7 +299,7 @@ public class HexFrame extends LFrame.SubWindow {
   private class WindowMenuManager extends WindowMenuItemManager implements LocaleListener {
     WindowMenuManager() {
       super(S.get("hexFrameMenuItem"), false);
-      LocaleManager.addLocaleListener(this);
+      LocaleManager.addLocaleListener(HexFrame.this, this);
     }
 
     @Override

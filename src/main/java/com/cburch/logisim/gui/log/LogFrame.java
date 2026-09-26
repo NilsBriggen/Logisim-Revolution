@@ -238,7 +238,7 @@ public class LogFrame extends LFrame.SubWindowWithSimulation {
     tabbedPane.setPreferredSize(new Dimension(w, h));
     if (!dockedInDrawer) contents.add(modelView, BorderLayout.CENTER);
 
-    LocaleManager.addLocaleListener(myListener);
+    LocaleManager.addLocaleListener(this, myListener);
     myListener.localeChanged();
     pack();
     h = getSize().height;

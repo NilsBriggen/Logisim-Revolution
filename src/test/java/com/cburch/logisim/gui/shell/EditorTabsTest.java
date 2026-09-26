@@ -9,8 +9,10 @@
 
 package com.cburch.logisim.gui.shell;
 
+import static com.cburch.logisim.gui.Strings.S;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.cburch.logisim.gui.shell.EditorTabModel.Kind;
@@ -33,6 +35,21 @@ import javax.swing.SwingUtilities;
 import org.junit.jupiter.api.Test;
 
 class EditorTabsTest {
+
+  @Test
+  void layoutAndAppearanceTabsOfOneCircuitReadDifferently() throws Exception {
+    SwingUtilities.invokeAndWait(() -> {
+      final var model = new EditorTabModel();
+      final var tabs = new EditorTabs(model, tab -> "adder");
+      final var circuit = new Object();
+      final var layout = new Tab(Kind.LAYOUT, circuit);
+      final var appearance = new Tab(Kind.APPEARANCE, circuit);
+      assertEquals("adder", tabs.labelFor(layout));
+      assertEquals(S.get("editorTabAppearanceTitle", "adder"), tabs.labelFor(appearance));
+      assertNotEquals(tabs.labelFor(layout), tabs.labelFor(appearance));
+      assertEquals(S.get("editorTabAppearanceTip", "adder"), tabs.tooltipFor(appearance));
+    });
+  }
 
   @Test
   void ctrlTabCyclesFromCanvasAndListButNotFromTextOrTable() throws Exception {

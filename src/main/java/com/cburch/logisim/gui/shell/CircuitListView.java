@@ -18,6 +18,7 @@ import com.cburch.logisim.file.LibraryEvent;
 import com.cburch.logisim.file.LibraryListener;
 import com.cburch.logisim.file.LogisimFileActions;
 import com.cburch.logisim.gui.generic.OptionPane;
+import com.cburch.logisim.gui.main.Frame;
 import com.cburch.logisim.gui.main.StatisticsDialog;
 import com.cburch.logisim.gui.menu.ProjectCircuitActions;
 import com.cburch.logisim.gui.theme.AppIcons;
@@ -330,11 +331,28 @@ public class CircuitListView extends JPanel {
     if (!event.isPopupTrigger()) return;
     final var index = list.locationToIndex(event.getPoint());
     if (index < 0) return;
-    list.setSelectedIndex(index);
+    final var menu = buildPopup(index);
+    if (menu != null) menu.show(list, event.getX(), event.getY());
+  }
+
+  /** The context menu for row {@code index}, or {@code null} when that row has none. */
+  JPopupMenu buildPopup(int index) {
+    // Point the list at the circuit the menu is about, without opening it: a right-click must
+    // not switch the editor away from what the user is working on.
+    selecting = true;
+    try {
+      list.setSelectedIndex(index);
+    } finally {
+      selecting = false;
+    }
     final var entry = model.get(index);
-    if (!(entry.target() instanceof Circuit circuit) || !containsTarget(circuit)) return;
+    if (!(entry.target() instanceof Circuit circuit) || !containsTarget(circuit)) return null;
 
     final var menu = new JPopupMenu();
+    menu.add(item(S.get("projectEditCircuitLayoutItem"), () -> edit(circuit, Frame.EDIT_LAYOUT)));
+    menu.add(item(S.get("projectEditCircuitAppearanceItem"), () ->
+        edit(circuit, Frame.EDIT_APPEARANCE)));
+    menu.addSeparator();
     menu.add(item(S.get("circuitRenameItem"), this::renameSelected));
     menu.add(item(S.get("projectSetAsMainItem"), () ->
         ProjectCircuitActions.doSetAsMainCircuit(project, circuit)));
@@ -351,8 +369,18 @@ public class CircuitListView extends JPanel {
     menu.add(item(S.get("projectExportCircuitItem"), () ->
         ProjectCircuitActions.doExportCircuit(project, circuit)));
     menu.addSeparator();
-    menu.add(item(S.get("projectRemoveCircuitItem"), this::removeSelected));
-    menu.show(list, event.getX(), event.getY());
+    final var remove = item(S.get("projectRemoveCircuitItem"), this::removeSelected);
+    remove.setEnabled(ProjectCircuitActions.canRemoveCircuit(project, circuit));
+    menu.add(remove);
+    return menu;
+  }
+
+  /** Opens {@code circuit} in the given editor view, as the Project menu entries do. */
+  private void edit(Circuit circuit, String view) {
+    if (project.getCurrentCircuit() != circuit) project.setCurrentCircuit(circuit);
+    final var frame = project.getFrame();
+    if (frame != null) frame.setEditorView(view);
+    onOpen.run();
   }
 
   private javax.swing.JMenuItem item(String text, Runnable action) {

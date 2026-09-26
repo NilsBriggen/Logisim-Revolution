@@ -94,7 +94,7 @@ public class OptionsFrame extends LFrame.Dialog {
     split.setResizeWeight(0.0);
 
     getContentPane().add(split, BorderLayout.CENTER);
-    LocaleManager.addLocaleListener(myListener);
+    LocaleManager.addLocaleListener(this, myListener);
     myListener.localeChanged();
     showPage(0);
     updateWindowSize(true);

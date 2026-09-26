@@ -60,7 +60,8 @@ public class AttrTableCircuitModel extends AttributeSetTableModel {
           xn.setForCircuit(entry.getKey(), entry.getValue());
         }
       }
-      if (!xn.isEmpty()) proj.doAction(xn.toAction(S.getter("changeCircuitAttrAction")));
+      if (!xn.isEmpty()) proj.doAction(xn.toAction(
+          AttributeActionNames.forAttributes(values.keySet(), "changeCircuitAttrAction")));
     }
   }
 }

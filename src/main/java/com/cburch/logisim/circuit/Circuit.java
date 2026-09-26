@@ -1019,8 +1019,8 @@ public class Circuit {
   public void setTickFrequency(double value) {
     final var currentTickFrequency = staticAttrs.getValue(CircuitAttributes.SIMULATION_FREQUENCY);
     if (value != currentTickFrequency) {
+      // Not marked dirty here: a user's change arrives as an undoable action, which does that.
       staticAttrs.setValue(CircuitAttributes.SIMULATION_FREQUENCY, value);
-      if ((proj != null) && (currentTickFrequency > 0)) proj.setForcedDirty();
     }
   }
 

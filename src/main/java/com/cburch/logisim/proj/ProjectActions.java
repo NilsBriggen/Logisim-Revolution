@@ -751,10 +751,19 @@ public final class ProjectActions {
    * @return true if success, false otherwise
    */
   public static boolean doExportProject(Project proj) {
-    var ret = true;
-    final var loader = proj.getLogisimFile().getLoader();
+    // Every way out, including cancelling a dialog, must give the user back their tool.
     final var oldTool = proj.getTool();
     proj.setTool(null);
+    try {
+      return exportProjectBundle(proj);
+    } finally {
+      proj.setTool(oldTool);
+    }
+  }
+
+  private static boolean exportProjectBundle(Project proj) {
+    var ret = true;
+    final var loader = proj.getLogisimFile().getLoader();
     var mainFileName = loader.getMainFile() == null ? "Untitled.circ" : loader.getMainFile().getName();
     var zipFile = mainFileName.replace(Loader.LOGISIM_EXTENSION, Loader.LOGISIM_PROJECT_BUNDLE_EXTENSION);
     final var chooser = loader.createChooser();
@@ -766,7 +775,6 @@ public final class ProjectActions {
     do {
       ret &= chooser.showSaveDialog(proj.getFrame()) == JFileChooser.APPROVE_OPTION;
       if (!ret) {
-        proj.setTool(oldTool);
         return false;
       }
       try {
@@ -799,11 +807,9 @@ public final class ProjectActions {
         }
       } catch (IOException e) {
         OptionPane.showMessageDialog(proj.getFrame(), S.get("ProjUnableToCreate", e.getMessage()));
-        proj.setTool(oldTool);
         return false;
       }
     } while (!isCorrectFile);
-    proj.setTool(oldTool);
     return ret;
   }
 

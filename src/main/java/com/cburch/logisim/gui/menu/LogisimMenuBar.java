@@ -120,7 +120,7 @@ public class LogisimMenuBar extends JMenuBar {
     add(new WindowMenu(parent));
     add(help = new MenuHelp(this));
 
-    LocaleManager.addLocaleListener(listener);
+    LocaleManager.addLocaleListener(this, listener);
     listener.localeChanged();
   }
 

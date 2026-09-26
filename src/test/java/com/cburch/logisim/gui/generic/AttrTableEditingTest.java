@@ -31,10 +31,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.swing.JComboBox;
+import javax.swing.JComponent;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 import org.junit.jupiter.api.Test;
 
@@ -287,6 +289,19 @@ class AttrTableEditingTest {
         fixture.panel.setAttrTableModel(null);
         assertEquals(12, fixture.model.getAttributeSet().getValue(NUMBER));
         assertEquals(1, fixture.model.commits.size());
+      }
+    });
+  }
+
+  @Test
+  void enterStartsEditingInsteadOfMovingToTheNextRow() throws Exception {
+    SwingUtilities.invokeAndWait(() -> {
+      try (final var fixture = new Fixture()) {
+        final var binding = fixture.table
+            .getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
+            .get(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0));
+        assertEquals("startEditing", binding);
+        assertTrue(fixture.table.getActionMap().get("startEditing") != null);
       }
     });
   }

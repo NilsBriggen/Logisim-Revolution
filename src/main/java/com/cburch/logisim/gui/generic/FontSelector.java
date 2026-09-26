@@ -74,7 +74,7 @@ public class FontSelector extends JPanel implements JInputComponent, ActionListe
     add(new JScrollPane(selectableFontFamilies), BorderLayout.WEST);
     add(new JScrollPane(selectableFontSize), BorderLayout.CENTER);
     add(new JScrollPane(getStyle()), BorderLayout.EAST);
-    LocaleManager.addLocaleListener(this);
+    LocaleManager.addLocaleListener(this, this);
     localeChanged();
   }
 
