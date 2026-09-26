@@ -42,6 +42,13 @@ public class LogisimMenuBar extends JMenuBar {
   public static final LogisimMenuItem LOWER_BOTTOM = new LogisimMenuItem("LowerBottom");
   public static final LogisimMenuItem ADD_CONTROL = new LogisimMenuItem("AddControl");
   public static final LogisimMenuItem REMOVE_CONTROL = new LogisimMenuItem("RemoveControl");
+  /**
+   * Undo and Redo in a window that has no project but keeps its own history; windows with a
+   * project undo through the project instead.
+   */
+  public static final LogisimMenuItem UNDO = new LogisimMenuItem("Undo");
+
+  public static final LogisimMenuItem REDO = new LogisimMenuItem("Redo");
   public static final LogisimMenuItem[] EDIT_ITEMS = {
     // UNDO, REDO,
     CUT,

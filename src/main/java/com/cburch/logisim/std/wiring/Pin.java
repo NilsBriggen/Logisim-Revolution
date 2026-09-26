@@ -64,6 +64,7 @@ import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JFormattedTextField;
+import javax.swing.JLabel;
 import javax.swing.SwingUtilities;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
@@ -82,6 +83,23 @@ public class Pin extends InstanceFactory {
     return project == null ? null : project.getFrame();
   }
 
+  /** The smallest and largest decimal value a pin of this width accepts. */
+  static BigInteger[] decimalRange(int bitWidth, boolean signed) {
+    if (signed) {
+      return new BigInteger[] {
+        BigInteger.ONE.negate().shiftLeft(bitWidth - 1),
+        BigInteger.ONE.shiftLeft(bitWidth - 1).subtract(BigInteger.ONE)
+      };
+    }
+    return new BigInteger[] {BigInteger.ZERO, BigInteger.ONE.shiftLeft(bitWidth).subtract(BigInteger.ONE)};
+  }
+
+  static String decimalRangeHint(int bitWidth, boolean signed, boolean tristate) {
+    final var range = decimalRange(bitWidth, signed);
+    final var hint = S.get("PinDecimalRange", range[0].toString(), range[1].toString());
+    return tristate ? hint + " " + S.get("PinDecimalRangeFloating", Character.toString(Value.UNKNOWNCHAR)) : hint;
+  }
+
   @SuppressWarnings("serial")
   private static class EditDecimal extends JDialog implements BaseKeyListenerContract, LocaleListener {
 
@@ -95,12 +113,14 @@ public class Pin extends InstanceFactory {
     private static final Color INVALID_COLOR = new Color(0xff, 0x66, 0x66);
     final JButton ok;
     final JButton cancel;
+    private final JLabel rangeHint = new JLabel();
 
     @Override
     public void localeChanged() {
       setTitle(S.get("PinEnterDecimal"));
       ok.setText(S.get("PinOkay"));
       cancel.setText(S.get("PinCancel"));
+      rangeHint.setText(decimalRangeHint(bitWidth, radix == RadixOption.RADIX_10_SIGNED, tristate));
     }
 
     public EditDecimal(InstanceState state) {
@@ -158,11 +178,20 @@ public class Pin extends InstanceFactory {
               });
 
       gbc.gridx = 0;
-      gbc.gridy = 1;
+      gbc.gridy = 2;
       add(cancel, gbc);
       gbc.gridx = 1;
-      gbc.gridy = 1;
+      gbc.gridy = 2;
       add(ok, gbc);
+      // Say what is accepted, so a rejected (red) entry is not a guessing game.
+      final var hintConstraints = new GridBagConstraints();
+      hintConstraints.gridx = 0;
+      hintConstraints.gridy = 1;
+      hintConstraints.gridwidth = GridBagConstraints.REMAINDER;
+      hintConstraints.anchor = GridBagConstraints.WEST;
+      hintConstraints.insets = new Insets(0, 4, 4, 4);
+      rangeHint.setText(decimalRangeHint(bitWidth, radix == RadixOption.RADIX_10_SIGNED, tristate));
+      add(rangeHint, hintConstraints);
       gbc.gridx = 0;
       gbc.gridy = 0;
       gbc.gridwidth = GridBagConstraints.REMAINDER;

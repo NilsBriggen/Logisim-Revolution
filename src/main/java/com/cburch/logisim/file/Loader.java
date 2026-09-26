@@ -38,6 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Stack;
+import java.util.jar.JarFile;
 import com.cburch.logisim.util.LineBuffer;
 import java.util.zip.ZipOutputStream;
 
@@ -308,6 +309,89 @@ public class Loader implements LibraryLoader {
   public Library loadJarLibrary(File file, String className) {
     final var actual = getSubstitution(file);
     return LibraryManager.instance.loadJarLibrary(this, actual, className);
+  }
+
+  /**
+   * What a JAR file offers to load as a library.
+   *
+   * @param manifestClass the manifest's {@code Library-Class} attribute, or null if the JAR has no
+   *     manifest or the manifest does not name one
+   * @param classNames the JAR's top-level classes, sorted, as candidates for the library class
+   */
+  record JarLibraryClasses(String manifestClass, List<String> classNames) {}
+
+  /**
+   * Reads a JAR file without loading any of its classes.
+   *
+   * @throws IOException if the file cannot be read or is not a JAR (ZIP) file
+   */
+  static JarLibraryClasses inspectJar(File file) throws IOException {
+    try (final var jar = new JarFile(file)) {
+      String manifestClass = null;
+      final var manifest = jar.getManifest();
+      if (manifest != null) {
+        manifestClass = manifest.getMainAttributes().getValue("Library-Class");
+      }
+      final var classNames = new ArrayList<String>();
+      final var entries = jar.entries();
+      while (entries.hasMoreElements()) {
+        final var name = entries.nextElement().getName();
+        if (!name.endsWith(".class") || name.contains("$") || name.startsWith("META-INF/")) {
+          continue;
+        }
+        classNames.add(name.substring(0, name.length() - ".class".length()).replace('/', '.'));
+      }
+      Collections.sort(classNames);
+      return new JarLibraryClasses(manifestClass, classNames);
+    }
+  }
+
+  /**
+   * Determines the library class to load from a JAR: the manifest's {@code Library-Class}
+   * attribute, or else the user's choice among the classes the JAR contains.
+   *
+   * @return the class name, or null when the file is not a readable JAR, contains no classes, or
+   *     the user cancels (the user has then been told why, except on cancel)
+   */
+  public String askJarLibraryClass(File file) {
+    final JarLibraryClasses info;
+    try {
+      info = inspectJar(getSubstitution(file));
+    } catch (IOException e) {
+      OptionPane.showMessageDialog(
+          parent,
+          S.get("jarOpenError", file.getName(), e.getLocalizedMessage()),
+          S.get("fileErrorTitle"),
+          OptionPane.ERROR_MESSAGE);
+      return null;
+    }
+    if (info.manifestClass() != null) return info.manifestClass();
+    if (info.classNames().isEmpty()) {
+      OptionPane.showMessageDialog(
+          parent,
+          S.get("jarNoClassesError", file.getName()),
+          S.get("fileErrorTitle"),
+          OptionPane.ERROR_MESSAGE);
+      return null;
+    }
+    final var candidates = info.classNames();
+    var initial = candidates.get(0);
+    for (final var name : candidates) {
+      if (name.endsWith("Library")) {
+        initial = name;
+        break;
+      }
+    }
+    final var choice =
+        OptionPane.showInputDialog(
+            parent,
+            S.get("jarClassChoicePrompt", file.getName()),
+            S.get("jarClassNameTitle"),
+            OptionPane.QUESTION_MESSAGE,
+            null,
+            candidates.toArray(),
+            initial);
+    return choice == null ? null : choice.toString();
   }
 
   //

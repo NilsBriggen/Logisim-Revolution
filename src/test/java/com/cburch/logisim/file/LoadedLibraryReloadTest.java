@@ -99,6 +99,40 @@ class LoadedLibraryReloadTest {
     assertFalse(hostLoader.hasErrors(), hostLoader.errors());
   }
 
+  @Test
+  void reloadTellsListenersThatTheToolsChanged() throws Exception {
+    // The explorer tree rebuilds a library's children on ADD_TOOL/REMOVE_TOOL. A reloaded tool
+    // has the same name but a new factory, and no event was fired for it, so the tree kept
+    // showing the old tools.
+    final var libraryPath = tempDir.resolve("library.circ");
+    final var loader = new RecordingLoader();
+    save(loader, newProject(loader, "Child"), libraryPath.toFile());
+
+    final var hostLoader = new RecordingLoader();
+    final var library =
+        assertInstanceOf(LoadedLibrary.class, hostLoader.loadLogisimLibrary(libraryPath.toFile()));
+    final var oldTool = tool(library, "Child");
+
+    final var events = new ArrayList<LibraryEvent>();
+    final LibraryListener listener = events::add;
+    library.addLibraryListener(listener);
+    try {
+      hostLoader.reload(library);
+    } finally {
+      library.removeLibraryListener(listener);
+    }
+
+    final var newTool = tool(library, "Child");
+    assertNotSame(oldTool, newTool);
+    assertTrue(
+        events.stream()
+            .anyMatch(e -> e.getAction() == LibraryEvent.REMOVE_TOOL && e.getData() == oldTool));
+    assertTrue(
+        events.stream()
+            .anyMatch(e -> e.getAction() == LibraryEvent.ADD_TOOL && e.getData() == newTool));
+    assertFalse(hostLoader.hasErrors(), hostLoader.errors());
+  }
+
   private static void addPin(Circuit circuit) {
     final var component =
         Pin.FACTORY.createComponent(

@@ -47,6 +47,8 @@ public class Caret {
   private long mark;
   private long cursor;
   private Object highlight;
+  /** Hex digits typed into the cell under the cursor since the cursor arrived there. */
+  private int digitsTyped;
 
   Caret(HexEditor hex) {
     this.hex = hex;
@@ -134,6 +136,7 @@ public class Caret {
     }
     if (cursor != value) {
       final var oldValue = cursor;
+      digitsTyped = 0;
       if (highlight != null) {
         hex.getHighlighter().remove(highlight);
         highlight = null;
@@ -301,9 +304,14 @@ public class Caret {
             if (model != null
                     && cursor >= model.getFirstOffset()
                     && cursor <= model.getLastOffset()) {
-              final var curValue = model.get(cursor);
-              final var newValue = 16 * curValue + digit;
-              model.set(cursor, newValue);
+              final var cell = cursor;
+              hex.edit(cell, 1, () -> model.set(cell, 16 * model.get(cell) + digit), true);
+              // Once a whole value has been typed, move on to the next one, as other hex editors
+              // do, so a run of values can be typed without pressing Space after each.
+              digitsTyped++;
+              if (digitsTyped >= hex.getMeasures().getCellChars() && cell < model.getLastOffset()) {
+                setDot(cell + 1, false);
+              }
             }
           }
         }

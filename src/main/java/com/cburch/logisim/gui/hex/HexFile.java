@@ -50,7 +50,6 @@ import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
-import javax.swing.JCheckBox;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -485,17 +484,17 @@ public class HexFile {
     JRadioButton bin;
     JRadioButton asc;
 
-    JCheckBox hexWords;
-    JCheckBox hexBytes;
-    JCheckBox hexAddr;
-    JCheckBox hexPlain;
-    JCheckBox hexAuto;
-    JCheckBox hexBig;
-    JCheckBox hexLittle;
-    JCheckBox binBig;
-    JCheckBox binLittle;
-    JCheckBox ascBig;
-    JCheckBox ascLittle;
+    JRadioButton hexWords;
+    JRadioButton hexBytes;
+    JRadioButton hexAddr;
+    JRadioButton hexPlain;
+    JRadioButton hexAuto;
+    JRadioButton hexBig;
+    JRadioButton hexLittle;
+    JRadioButton binBig;
+    JRadioButton binLittle;
+    JRadioButton ascBig;
+    JRadioButton ascLittle;
 
     JTextArea warnings;
     JTextArea previewMem;
@@ -519,13 +518,17 @@ public class HexFile {
       p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
       final var scaledTen = scaled(10);
       p.setBorder(BorderFactory.createEmptyBorder(scaledTen, scaledTen, 0, scaledTen));
+      // A fixed wrapping width: the message can quote a (long) line of the file, and an
+      // unconstrained HTML label would make the dialog as wide as that line.
       var m =
           new JLabel(
-              "<html>"
-                  + msg
+              "<html><body style='width: "
+                  + scaled(560)
+                  + "px'>"
+                  + escapeHtml(msg)
                   + "<br><br>"
-                  + S.get("hexFormatSelectPrompt")
-                  + "</html>");
+                  + escapeHtml(S.get("hexFormatSelectPrompt"))
+                  + "</body></html>");
       final var f = m.getFont();
       m.setFont(f.deriveFont(f.getStyle() & ~Font.BOLD));
       m.setAlignmentX(CENTER_ALIGNMENT);
@@ -564,37 +567,37 @@ public class HexFile {
 
       pos.gridx = 1;
       hexWords =
-          new JCheckBox(S.get("hexFormatOptionWords"), this.reader.taggedOrUnset("size", "words"));
+          new JRadioButton(S.get("hexFormatOptionWords"), this.reader.taggedOrUnset("size", "words"));
       grid.setConstraints(hexWords, pos);
       opts.add(hexWords);
 
       pos.gridx = 2;
-      hexBytes = new JCheckBox(S.get("hexFormatOptionBytes"), this.reader.tagged("size", "bytes"));
+      hexBytes = new JRadioButton(S.get("hexFormatOptionBytes"), this.reader.tagged("size", "bytes"));
       grid.setConstraints(hexBytes, pos);
       opts.add(hexBytes);
 
       pos.gridy = 3;
       pos.gridx = 1;
-      hexAuto = new JCheckBox(S.get("hexFormatOptionAuto"), !this.reader.tags.containsKey("style"));
+      hexAuto = new JRadioButton(S.get("hexFormatOptionAuto"), !this.reader.tags.containsKey("style"));
       grid.setConstraints(hexAuto, pos);
       opts.add(hexAuto);
       pos.gridx = 2;
       hexAddr =
-          new JCheckBox(S.get("hexFormatOptionAddressed"), this.reader.tagged("style", "addressed"));
+          new JRadioButton(S.get("hexFormatOptionAddressed"), this.reader.tagged("style", "addressed"));
       grid.setConstraints(hexAddr, pos);
       opts.add(hexAddr);
       pos.gridx = 3;
-      hexPlain = new JCheckBox(S.get("hexFormatOptionPlain"), this.reader.tagged("style", "plain"));
+      hexPlain = new JRadioButton(S.get("hexFormatOptionPlain"), this.reader.tagged("style", "plain"));
       grid.setConstraints(hexPlain, pos);
       opts.add(hexPlain);
 
       pos.gridy = 4;
       pos.gridx = 1;
-      hexBig = new JCheckBox(S.get("hexFormatOptionBigEndian"), this.reader.bigEndian());
+      hexBig = new JRadioButton(S.get("hexFormatOptionBigEndian"), this.reader.bigEndian());
       grid.setConstraints(hexBig, pos);
       opts.add(hexBig);
       pos.gridx = 2;
-      hexLittle = new JCheckBox(S.get("hexFormatOptionLittleEndian"), !this.reader.bigEndian());
+      hexLittle = new JRadioButton(S.get("hexFormatOptionLittleEndian"), !this.reader.bigEndian());
       grid.setConstraints(hexLittle, pos);
       opts.add(hexLittle);
 
@@ -609,11 +612,11 @@ public class HexFile {
       pos.gridy = 6;
       pos.gridx = 1;
       pos.gridwidth = 1;
-      binBig = new JCheckBox(S.get("hexFormatOptionBigEndian"), this.reader.bigEndian());
+      binBig = new JRadioButton(S.get("hexFormatOptionBigEndian"), this.reader.bigEndian());
       grid.setConstraints(binBig, pos);
       opts.add(binBig);
       pos.gridx = 2;
-      binLittle = new JCheckBox(S.get("hexFormatOptionLittleEndian"), !this.reader.bigEndian());
+      binLittle = new JRadioButton(S.get("hexFormatOptionLittleEndian"), !this.reader.bigEndian());
       grid.setConstraints(binLittle, pos);
       opts.add(binLittle);
 
@@ -627,11 +630,11 @@ public class HexFile {
       pos.gridy = 8;
       pos.gridx = 1;
       pos.gridwidth = 1;
-      ascBig = new JCheckBox(S.get("hexFormatOptionBigEndian"), this.reader.bigEndian());
+      ascBig = new JRadioButton(S.get("hexFormatOptionBigEndian"), this.reader.bigEndian());
       grid.setConstraints(ascBig, pos);
       opts.add(ascBig);
       pos.gridx = 2;
-      ascLittle = new JCheckBox(S.get("hexFormatOptionLittleEndian"), !this.reader.bigEndian());
+      ascLittle = new JRadioButton(S.get("hexFormatOptionLittleEndian"), !this.reader.bigEndian());
       grid.setConstraints(ascLittle, pos);
       opts.add(ascLittle);
 
@@ -799,6 +802,10 @@ public class HexFile {
       setMinimumSize(new Dimension(scaled(600), scaled(400)));
       opts.setMaximumSize(opts.getMinimumSize());
       pack();
+    }
+
+    private static String escapeHtml(String text) {
+      return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br>");
     }
 
     void setWarnings() {
@@ -993,7 +1000,7 @@ public class HexFile {
     }
   }
 
-  private static class HexReader extends FormatOptions {
+  static class HexReader extends FormatOptions {
 
     private final long[] data = new long[4096];
     final BufferedLineReader in;
@@ -1088,7 +1095,17 @@ public class HexFile {
       else if (tagged("style", "plain")) decodeHexPlain();
       else if (tagged("style", "addressed")) decodeHexAddressed();
       else decodeHexAuto();
+      // Part of decoding, so the format dialog (which decodes again) lists it too, instead of
+      // saying "no errors" under a message about a warning.
+      warnAboutTruncation();
       return dst;
+    }
+
+    private void warnAboutTruncation() {
+      if (tagged("size", "bytes") && (memMaxAddr - memEnd) * memWidth >= 8)
+        warn("File contained %d extra bytes, which were not loaded.", (memMaxAddr - memEnd) * memWidth / 8);
+      else if (!tagged("size", "bytes") && (memMaxAddr - memEnd) > 0)
+        warn("File contained %d extra words, which were not loaded.", memMaxAddr - memEnd);
     }
 
     ////////////////////////////////////////////////////////
@@ -1096,18 +1113,11 @@ public class HexFile {
 
     protected MemContents decodeOrWarn() throws IOException {
       decode();
-      if (tagged("size", "bytes") && (memMaxAddr - memEnd) * memWidth >= 8)
-        warn("File contained %f extra bytes.", (memMaxAddr - memEnd) * memWidth / 8.0);
-      else if (!tagged("size", "bytes") && (memMaxAddr - memEnd) > 0)
-        warn("File contained %d extra words.", memMaxAddr - memEnd);
       if (numWarnings > 0) {
         return warnAndAsk(
-            "Decoding with format '"
-                + headerToString()
-                + "'"
-                + " produced "
-                + numWarnings
-                + " warnings.");
+            numWarnings == 1
+                ? S.get("hexFormatDecodedOneWarning", headerToString())
+                : S.get("hexFormatDecodedManyWarnings", headerToString(), numWarnings));
       }
       return dst;
     }

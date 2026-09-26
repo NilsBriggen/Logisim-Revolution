@@ -18,16 +18,37 @@ import java.awt.Graphics2D;
 import java.awt.Graphics;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import javax.swing.JComponent;
 import javax.swing.Scrollable;
 import javax.swing.SwingConstants;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 
 public class HexEditor extends JComponent implements Scrollable {
   private static final long serialVersionUID = 1L;
+
+  /** Edits spanning more values than this are not kept for undo (they clear the history). */
+  static final long MAX_UNDO_SPAN = 1L << 20;
+
+  /** Number of edits kept for undo. */
+  static final int MAX_UNDO_STEPS = 500;
+
+  /** One edit made through the editor: the values from {@code start} before and after it. */
+  private record Edit(long start, long[] before, long[] after, boolean typing) {}
+
   private final Listener listener;
   private final Measures measures;
   private final Caret caret;
   private final Highlighter highlighter;
+  private final ArrayDeque<Edit> undoStack = new ArrayDeque<>();
+  private final ArrayDeque<Edit> redoStack = new ArrayDeque<>();
+  private final List<ChangeListener> historyListeners = new ArrayList<>();
+  /** Whether the next typed digit continues the last typing edit (same cell, cursor not moved). */
+  private boolean typingRun;
   private HexModel model;
 
   public HexEditor(HexModel model) {
@@ -39,8 +60,106 @@ public class HexEditor extends JComponent implements Scrollable {
 
     setOpaque(true);
     if (model != null) model.addHexModelListener(listener);
+    caret.addChangeListener(e -> typingRun = false);
 
     measures.recompute();
+  }
+
+  /**
+   * Makes a change to the values from {@code start} to {@code start + length - 1} through the
+   * editor, and records it so that {@link #undo} can revert it.
+   *
+   * <p>The values of the range are read before and after the change, so the change may use any of
+   * the model's methods. Changes made to the model directly (such as a running simulation writing
+   * to a RAM) are not recorded.
+   */
+  public void edit(long start, long length, Runnable change) {
+    edit(start, length, change, false);
+  }
+
+  void edit(long start, long length, Runnable change, boolean typing) {
+    if (model == null || length <= 0) {
+      change.run();
+      return;
+    }
+    final var first = Math.max(start, model.getFirstOffset());
+    final var last = Math.min(start + length - 1, model.getLastOffset());
+    if (last < first) {
+      change.run();
+      return;
+    }
+    if (last - first + 1 > MAX_UNDO_SPAN) {
+      change.run();
+      clearHistory();
+      return;
+    }
+    final var before = read(first, last);
+    change.run();
+    final var after = read(first, last);
+    if (Arrays.equals(before, after)) return;
+    final var previous = undoStack.peekLast();
+    if (typing && typingRun && previous != null && previous.typing() && previous.start() == first) {
+      // the digits typed into one cell are one step
+      undoStack.removeLast();
+      undoStack.addLast(new Edit(first, previous.before(), after, true));
+    } else {
+      undoStack.addLast(new Edit(first, before, after, typing));
+      while (undoStack.size() > MAX_UNDO_STEPS) undoStack.removeFirst();
+    }
+    typingRun = typing;
+    redoStack.clear();
+    fireHistoryChanged();
+  }
+
+  private long[] read(long first, long last) {
+    final var values = new long[(int) (last - first + 1)];
+    for (var i = 0; i < values.length; i++) values[i] = model.get(first + i);
+    return values;
+  }
+
+  public boolean canUndo() {
+    return !undoStack.isEmpty();
+  }
+
+  public boolean canRedo() {
+    return !redoStack.isEmpty();
+  }
+
+  /** Reverts the last edit made through the editor. */
+  public void undo() {
+    final var edit = undoStack.pollLast();
+    if (edit == null || model == null) return;
+    model.set(edit.start(), edit.before());
+    redoStack.addLast(edit);
+    caret.setDot(edit.start(), false);
+    fireHistoryChanged();
+  }
+
+  /** Makes the last undone edit again. */
+  public void redo() {
+    final var edit = redoStack.pollLast();
+    if (edit == null || model == null) return;
+    model.set(edit.start(), edit.after());
+    undoStack.addLast(edit);
+    caret.setDot(edit.start(), false);
+    fireHistoryChanged();
+  }
+
+  public void clearHistory() {
+    if (undoStack.isEmpty() && redoStack.isEmpty()) return;
+    undoStack.clear();
+    redoStack.clear();
+    fireHistoryChanged();
+  }
+
+  /** Registers a listener told whenever {@link #canUndo} or {@link #canRedo} may have changed. */
+  public void addHistoryListener(ChangeListener l) {
+    historyListeners.add(l);
+  }
+
+  private void fireHistoryChanged() {
+    final var event = new ChangeEvent(this);
+    for (final var l : new ArrayList<>(historyListeners)) l.stateChanged(event);
   }
 
   public Object addHighlight(int start, int end, Color color) {
@@ -56,7 +175,9 @@ public class HexEditor extends JComponent implements Scrollable {
       p0 = p1;
       p1 = t;
     }
-    model.fill(p0, p1 - p0 + 1, 0);
+    final var start = p0;
+    final var length = p1 - p0 + 1;
+    edit(start, length, () -> model.fill(start, length, 0));
   }
 
   public Caret getCaret() {
@@ -79,6 +200,9 @@ public class HexEditor extends JComponent implements Scrollable {
     if (model == value) return;
     if (model != null) model.removeHexModelListener(listener);
     model = value;
+    undoStack.clear();
+    redoStack.clear();
+    fireHistoryChanged();
     highlighter.clear();
     caret.setDot(-1, false);
     if (model != null) model.addHexModelListener(listener);

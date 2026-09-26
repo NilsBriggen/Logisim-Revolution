@@ -15,6 +15,7 @@ import com.cburch.logisim.circuit.Circuit;
 import com.cburch.logisim.file.LoadFailedException;
 import com.cburch.logisim.file.LoadedLibrary;
 import com.cburch.logisim.file.Loader;
+import com.cburch.logisim.file.LoaderException;
 import com.cburch.logisim.file.LogisimFile;
 import com.cburch.logisim.file.LogisimFileActions;
 import com.cburch.logisim.file.ProjectBundlePaths;
@@ -354,11 +355,21 @@ public final class ProjectActions {
       if (circuitsToMerge.isEmpty()) return;
     }
 
-    baseProject.doAction(LogisimFileActions.mergeFile(
-        mergelib,
-        baseProject.getLogisimFile(),
-        circuitsToMerge,
-        includeDependencies));
+    try {
+      baseProject.doAction(LogisimFileActions.mergeFile(
+          mergelib,
+          baseProject.getLogisimFile(),
+          circuitsToMerge,
+          includeDependencies));
+    } catch (LoaderException ex) {
+      if (!ex.isShown()) {
+        OptionPane.showMessageDialog(
+            parent,
+            S.get("fileMergeError", ex.getMessage()),
+            S.get("FileMergeErrorItem"),
+            OptionPane.ERROR_MESSAGE);
+      }
+    }
   }
 
   private static void updatecircs(LogisimFile lib, Project proj) {

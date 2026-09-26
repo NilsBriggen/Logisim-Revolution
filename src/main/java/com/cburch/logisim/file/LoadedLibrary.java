@@ -213,14 +213,16 @@ public class LoadedLibrary extends Library implements LibraryEventSource {
     }
     replaceAll(componentMap, toolMap);
 
+    // Compare the tool lists themselves: a reloaded tool with the same name is a new tool (with a
+    // new factory), so views such as the explorer tree have to drop the old one and show the new.
     var toolChanges = new HashSet<Tool>(old.getTools());
-    toolChanges.removeAll(toolMap.keySet());
+    base.getTools().forEach(toolChanges::remove);
     for (Tool tool : toolChanges) {
       fireLibraryEvent(LibraryEvent.REMOVE_TOOL, tool);
     }
 
     toolChanges = new HashSet<>(base.getTools());
-    toolChanges.removeAll(toolMap.values());
+    old.getTools().forEach(toolChanges::remove);
     for (Tool tool : toolChanges) {
       fireLibraryEvent(LibraryEvent.ADD_TOOL, tool);
     }

@@ -92,6 +92,21 @@ public class HexFileTest {
   }
 
   @Test
+  void oversizedImageWarningIsPartOfDecoding() throws IOException {
+    // The format dialog decodes again and lists the warnings of that decode. The "extra words"
+    // warning used to be added only outside decode(), so the dialog said "No errors" under a
+    // message announcing a warning.
+    final var reader =
+        new HexFile.HexReader(BufferedLineReader.forString("v3.0 hex words plain\n1 2 3 4 5 6\n"), 2, 8);
+    reader.parseFormat("v3.0 hex words plain");
+
+    reader.decode();
+
+    assertEquals(1, reader.numWarnings);
+    assertTrue(reader.warnings.toString().contains("2 extra words"), reader.warnings.toString());
+  }
+
+  @Test
   void fileFiltersUseLocalizedLabelsWithoutChangingInternalFormats() {
     final var filter = HexFile.getFilter("v3.0 hex words addressed");
 

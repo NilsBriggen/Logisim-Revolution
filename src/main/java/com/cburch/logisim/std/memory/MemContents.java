@@ -144,7 +144,7 @@ public class MemContents implements Cloneable, HexModel {
             final var oldValues = page.get(startOffs, vals.length);
             page.load(startOffs, vals, mask);
             if (value == 0 && page.isClear()) pages[pageStart] = null;
-            fireBytesChanged(start, PAGE_SIZE - pageStart, oldValues);
+            fireBytesChanged(start, PAGE_SIZE - startOffs, oldValues);
           }
         }
       }
@@ -166,11 +166,11 @@ public class MemContents implements Cloneable, HexModel {
         }
       }
       if (endOffs >= 0) {
-        final var page = pages[pageEnd];
-        if (value == 0 && page == null) {
+        if (value == 0 && pages[pageEnd] == null) {
           // nothing to do
         } else {
           ensurePage(pageEnd);
+          final var page = pages[pageEnd];
           final var vals = new long[endOffs + 1];
           Arrays.fill(vals, value);
           if (!page.matches(vals, 0, mask)) {
@@ -249,7 +249,7 @@ public class MemContents implements Cloneable, HexModel {
   @Override
   public void removeHexModelListener(HexModelListener l) {
     if (listeners == null) return;
-    listeners.add(l);
+    listeners.remove(l);
     if (listeners.isEmpty()) listeners = null;
   }
 
@@ -301,7 +301,7 @@ public class MemContents implements Cloneable, HexModel {
           final var oldValues = page.get(startOffs, vals.length);
           page.load(startOffs, vals, mask);
           if (page.isClear()) pages[pageStart] = null;
-          fireBytesChanged(start, PAGE_SIZE - pageStart, oldValues);
+          fireBytesChanged(start, PAGE_SIZE - startOffs, oldValues);
         }
         nextOffs = vals.length;
       }
@@ -324,7 +324,7 @@ public class MemContents implements Cloneable, HexModel {
         }
         if (page != null) {
           System.arraycopy(values, offs, vals, 0, PAGE_SIZE);
-          if (!page.matches(vals, startOffs, mask)) {
+          if (!page.matches(vals, 0, mask)) {
             final var oldValues = page.get(0, PAGE_SIZE);
             page.load(0, vals, mask);
             if (page.isClear()) pages[i] = null;
@@ -337,7 +337,7 @@ public class MemContents implements Cloneable, HexModel {
         vals = new long[endOffs + 1];
         System.arraycopy(values, offs, vals, 0, endOffs + 1);
         final var page = pages[pageEnd];
-        if (!page.matches(vals, startOffs, mask)) {
+        if (!page.matches(vals, 0, mask)) {
           final var oldValues = page.get(0, endOffs + 1);
           page.load(0, vals, mask);
           if (page.isClear()) pages[pageEnd] = null;
