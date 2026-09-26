@@ -115,6 +115,14 @@
 
 <!-- Librairie -->
 	<mapID target="libs"                url="en/html/libs/index.html" />
+	<mapID target="base"                url="en/html/libs/base/index.html" />
+	<mapID target="base_poke"           url="en/html/libs/base/poke.html" />
+	<mapID target="base_edit"           url="en/html/libs/base/edit.html" />
+	<mapID target="base_select"         url="en/html/libs/base/select.html" />
+	<mapID target="base_wiring"         url="en/html/libs/base/wiring.html" />
+	<mapID target="base_text"           url="en/html/libs/base/text.html" />
+	<mapID target="base_menu"           url="en/html/libs/base/menu.html" />
+	<mapID target="base_label"          url="en/html/libs/base/label.html" />
 	<mapID target="wiring"              url="en/html/libs/wiring/index.html" />
 	<mapID target="wiring_splitter"     url="en/html/libs/wiring/splitter.html" />
 	<mapID target="wiring_pin"          url="en/html/libs/wiring/pin.html" />
@@ -214,11 +222,12 @@
     <mapID target="socsimcontrol"       url="en/html/libs/soc/socsimcontrol.html" />
 	
 <!-- Icon help tree -->
-	<mapID target="icon_poke"        url="icons/1616/poke.png" />
-	<mapID target="icon_edit"        url="icons/1616/select.png" />
-	<mapID target="icon_select"      url="icons/1616/select.png" />
-	<mapID target="icon_wiring"      url="icons/1616/wiring.png" />
-	<mapID target="icon_text"        url="icons/1616/text.png" />
+	<mapID target="icon_poke"        url="icons/1616/toolpoke.png" />
+	<mapID target="icon_edit"        url="icons/1616/toolselect.png" />
+	<mapID target="icon_select"      url="icons/1616/toolselect.png" />
+	<mapID target="icon_wiring"      url="icons/1616/toolwiring.png" />
+	<mapID target="icon_text"        url="icons/1616/tooltext.png" />
+	<mapID target="icon_label"       url="icons/1616/tooltext.png" />
 	<mapID target="icon_menu"        url="icons/1616/menu.png" />
 	
 	<mapID target="icon_splitter"    url="icons/1616/splitter.png" />
