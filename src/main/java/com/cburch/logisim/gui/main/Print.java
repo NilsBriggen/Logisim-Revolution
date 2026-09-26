@@ -59,7 +59,7 @@ public class Print {
             parmsPanel,
             S.get("printParmsTitle"),
             OptionPane.OK_CANCEL_OPTION,
-            OptionPane.QUESTION_MESSAGE);
+            OptionPane.PLAIN_MESSAGE);
     if (action != OptionPane.OK_OPTION) return;
     List<Circuit> circuits = list.getSelectedCircuits();
     if (circuits.isEmpty()) return;
@@ -188,7 +188,7 @@ public class Print {
       // Now change coordinate system for circuit, including
       // translation and possible scaling
       if (g2 != null) {
-        if (scale < 1.0) {
+        if (scale != 1.0) {
           g2.scale(scale, scale);
           imWidth /= scale;
           imHeight /= scale;
@@ -231,6 +231,7 @@ public class Print {
       printerView.setSelected(true);
       header = new JTextField(20);
       header.setText("%n (%p of %P)");
+      header.setToolTipText(S.get("labelHeaderTip"));
 
       // set up panel
       gridbag = new GridBagLayout();

@@ -42,7 +42,7 @@ public class MenuSimulate extends Menu {
   private final LogisimMenuBar menubar;
   private final MyListener myListener = new MyListener();
   private final MenuItemCheckImpl runToggle;
-  private final JMenuItem reset = new JMenuItem();
+  private final MenuItemImpl reset;
   private final MenuItemImpl step;
   private final MenuItemImpl vhdlSimFiles;
   private final MenuItemCheckImpl simulateVhdlEnable;
@@ -68,6 +68,7 @@ public class MenuSimulate extends Menu {
   public MenuSimulate(LogisimMenuBar menubar) {
     this.menubar = menubar;
     runToggle = new MenuItemCheckImpl(this, LogisimMenuBar.SIMULATE_RUN_TOGGLE);
+    reset = new MenuItemImpl(this, LogisimMenuBar.SIMULATE_RESET);
     step = new MenuItemImpl(this, LogisimMenuBar.SIMULATE_STEP);
     simulateVhdlEnable = new MenuItemCheckImpl(this, LogisimMenuBar.SIMULATE_VHDL_ENABLE);
     vhdlSimFiles = new MenuItemImpl(this, LogisimMenuBar.GENERATE_VHDL_SIM_FILES);
@@ -76,6 +77,7 @@ public class MenuSimulate extends Menu {
     tickFull = new MenuItemImpl(this, LogisimMenuBar.TICK_FULL);
 
     menubar.registerItem(LogisimMenuBar.SIMULATE_RUN_TOGGLE, runToggle);
+    menubar.registerItem(LogisimMenuBar.SIMULATE_RESET, reset);
     menubar.registerItem(LogisimMenuBar.SIMULATE_STEP, step);
     menubar.registerItem(LogisimMenuBar.SIMULATE_VHDL_ENABLE, simulateVhdlEnable);
     menubar.registerItem(LogisimMenuBar.GENERATE_VHDL_SIM_FILES, vhdlSimFiles);
@@ -142,6 +144,7 @@ public class MenuSimulate extends Menu {
 
     runToggle.addChangeListener(myListener);
     menubar.addActionListener(LogisimMenuBar.SIMULATE_RUN_TOGGLE, myListener);
+    menubar.addActionListener(LogisimMenuBar.SIMULATE_RESET, myListener);
     menubar.addActionListener(LogisimMenuBar.SIMULATE_STEP, myListener);
     menubar.addActionListener(LogisimMenuBar.SIMULATE_VHDL_ENABLE, myListener);
     menubar.addActionListener(LogisimMenuBar.GENERATE_VHDL_SIM_FILES, myListener);
@@ -149,7 +152,7 @@ public class MenuSimulate extends Menu {
     menubar.addActionListener(LogisimMenuBar.TICK_HALF, myListener);
     menubar.addActionListener(LogisimMenuBar.TICK_FULL, myListener);
     // runToggle.addActionListener(myListener);
-    reset.addActionListener(myListener);
+    // reset.addActionListener(myListener);
     // step.addActionListener(myListener);
     // tickHalf.addActionListener(myListener);
     // tickFull.addActionListener(myListener);
@@ -394,7 +397,7 @@ public class MenuSimulate extends Menu {
       } else if (src == runToggle || src == LogisimMenuBar.SIMULATE_RUN_TOGGLE) {
         sim.setAutoPropagation(!sim.isAutoPropagating());
         proj.repaintCanvas();
-      } else if (src == reset) {
+      } else if (src == reset || src == LogisimMenuBar.SIMULATE_RESET) {
         /* Restart VHDL simulation (in QuestaSim) */
         if (vhdl != null && vhdl.isRunning()) {
           vhdl.reset();

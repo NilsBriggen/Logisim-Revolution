@@ -16,6 +16,7 @@ import com.cburch.draw.toolbar.ToolbarItem;
 import com.cburch.logisim.gui.icons.SimulationIcon;
 import com.cburch.logisim.gui.menu.LogisimMenuBar;
 import com.cburch.logisim.gui.menu.MenuListener;
+import com.cburch.logisim.gui.theme.AppIcons;
 import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.util.UnmodifiableList;
 import java.util.List;
@@ -28,6 +29,7 @@ public class SimulationToolbarModel extends AbstractToolbarModel implements Chan
   private final SimulationIcon enableDisableIcon = new SimulationIcon(SimulationIcon.SIM_ENABLE);
   private final Project project;
   private final LogisimToolbarItem simRunToggle;
+  private final LogisimToolbarItem simReset;
   private final LogisimToolbarItem simStep;
   private final LogisimToolbarItem tickEnable;
   private final LogisimToolbarItem tickHalf;
@@ -40,6 +42,12 @@ public class SimulationToolbarModel extends AbstractToolbarModel implements Chan
     simRunToggle =
         new LogisimToolbarItem(
             menu, runToggleIcon, LogisimMenuBar.SIMULATE_RUN_TOGGLE, S.getter("simulateRunTip"));
+    simReset =
+        new LogisimToolbarItem(
+            menu,
+            AppIcons.get(AppIcons.Id.RESET),
+            LogisimMenuBar.SIMULATE_RESET,
+            S.getter("simulateResetTip"));
     simStep =
         new LogisimToolbarItem(
             menu,
@@ -68,7 +76,7 @@ public class SimulationToolbarModel extends AbstractToolbarModel implements Chan
     items =
         UnmodifiableList.create(
             new ToolbarItem[] {
-              simRunToggle, simStep, tickEnable, tickHalf, tickFull,
+              simRunToggle, simReset, simStep, tickEnable, tickHalf, tickFull,
             });
 
     menu.getMenuBar().addEnableListener(this);

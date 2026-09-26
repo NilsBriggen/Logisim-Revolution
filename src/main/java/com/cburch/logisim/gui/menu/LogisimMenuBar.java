@@ -82,6 +82,7 @@ public class LogisimMenuBar extends JMenuBar {
   public static final LogisimMenuItem SIMULATE_RUN = new LogisimMenuItem("SimulateRun");
   public static final LogisimMenuItem SIMULATE_RUN_TOGGLE = new LogisimMenuItem("SimulateRun");
   public static final LogisimMenuItem SIMULATE_STEP = new LogisimMenuItem("SimulateStep");
+  public static final LogisimMenuItem SIMULATE_RESET = new LogisimMenuItem("SimulateReset");
   public static final LogisimMenuItem SIMULATE_VHDL_ENABLE =
       new LogisimMenuItem("SimulateVhdlEnable");
   public static final LogisimMenuItem GENERATE_VHDL_SIM_FILES =

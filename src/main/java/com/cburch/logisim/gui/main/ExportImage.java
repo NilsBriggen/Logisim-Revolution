@@ -132,6 +132,7 @@ public class ExportImage {
     } else {
       chooser.setFileFilter(filter);
       chooser.setDialogTitle(S.get("exportImageFileSelect"));
+      chooser.setSelectedFile(new File(circuits.get(0).getName() + filter.extensions[0]));
     }
     final var returnVal = chooser.showDialog(frame, S.get("exportImageButton"));
     if (returnVal != JFileChooser.APPROVE_OPTION) return;
@@ -244,7 +245,7 @@ public class ExportImage {
       this.monitor = monitor;
     }
 
-    private void export(Circuit circuit) {
+    private boolean export(Circuit circuit) {
       final var bds = exportBounds(circuit);
       final var width = (int) Math.round(bds.getWidth() * scale);
       final var height = (int) Math.round(bds.getHeight() * scale);
@@ -274,6 +275,7 @@ public class ExportImage {
       } else {
         OptionPane.showMessageDialog(frame, S.get("couldNotCreateImage"));
         monitor.close();
+        return false;
       }
 
       final var circuitState = canvas.getProject().getCircuitState(circuit);
@@ -300,23 +302,25 @@ public class ExportImage {
         }
       } catch (Exception e) {
         OptionPane.showMessageDialog(frame, S.get("couldNotCreateFile"));
-        e.printStackTrace();
+        logger.error("Could not write exported image to {}", where, e);
         monitor.close();
-        return;
+        return false;
       }
       g.dispose();
       monitor.close();
+      return true;
     }
 
     @Override
     public void run() {
+      var allSucceeded = true;
       for (final var circ : circuits) {
         try {
-          export(circ);
+          allSucceeded &= export(circ);
         } catch (RuntimeException | OutOfMemoryError e) {
           // Too large a raster, or a component that fails to draw: say so rather than stopping
           // silently with the progress monitor still up.
-          e.printStackTrace();
+          logger.error("Could not export circuit {}", circ.getName(), e);
           monitor.close();
           SwingUtilities.invokeLater(
               () ->
@@ -324,6 +328,10 @@ public class ExportImage {
                       frame, S.get("couldNotCreateImage") + "\n" + circ.getName()));
           return;
         }
+      }
+      if (allSucceeded) {
+        SwingUtilities.invokeLater(
+            () -> OptionPane.showMessageDialog(frame, S.get("exportImageCompleteMessage")));
       }
     }
   }

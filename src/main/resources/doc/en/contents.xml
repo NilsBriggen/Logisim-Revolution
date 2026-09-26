@@ -243,7 +243,8 @@
 		<tocitem target="hdl" text="HDL-IP">
 			<tocitem target="hdl_vhdlentity" text="VHDL Entity" image="icon_vhdl" />
 		</tocitem>
-		
+
+-->
 
 		<tocitem target="base" text="Base library">
 			<tocitem target="base_poke" text="Poke Tool" image="icon_poke" />
@@ -254,11 +255,6 @@
 			<tocitem target="base_menu" text="Menu Tool" image="icon_menu" />
 			<tocitem target="base_label" text="Text" image="icon_label" />
 		</tocitem>
--->
-	<tocitem target="Tests_for_doc" text="Tests for documentation">
-		<tocitem target="test_hmlcss" text="test_hml_css" />
-		<tocitem target="Translation_status" text="Translation status" />
-	</tocitem>
   </tocitem>
 </tocitem>
 </toc>

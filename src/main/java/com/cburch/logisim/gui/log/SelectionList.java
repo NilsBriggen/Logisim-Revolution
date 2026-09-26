@@ -116,7 +116,7 @@ public class SelectionList extends JTable {
     final JPanel panel = new JPanel();
     final JLabel label = new JLabel();
     final JButton button = new JButton(AppIcons.get(AppIcons.Id.CHEVRON_DOWN));
-    final JPopupMenu popup = new JPopupMenu("Options");
+    final JPopupMenu popup = new JPopupMenu(S.get("logSelectionOptions"));
     SignalInfo item;
     SignalInfo.List items;
     final Map<RadixOption, JRadioButtonMenuItem> radixMenuItems = new HashMap<>();
@@ -143,7 +143,7 @@ public class SelectionList extends JTable {
       }
 
       popup.addSeparator();
-      final var m = new JMenuItem("Delete");
+      final var m = new JMenuItem(S.get("logSelectionDelete"));
       popup.add(m);
       m.addActionListener(
           e -> {
@@ -153,7 +153,7 @@ public class SelectionList extends JTable {
 
       button.setMargin(new Insets(0, 0, 0, 0));
       button.setHorizontalTextPosition(SwingConstants.LEFT);
-      button.setText("Options");
+      button.setText(S.get("logSelectionOptions"));
       button.addActionListener(e -> popup.show(panel, button.getX(), button.getY() + button.getHeight()));
       button.setMinimumSize(button.getPreferredSize());
 

@@ -530,12 +530,15 @@ public class Pin extends InstanceFactory {
         CircuitState circState = canvas.getCircuitState();
         java.awt.Component frame = SwingUtilities.getRoot(canvas);
         int choice =
-            OptionPane.showConfirmDialog(
+            OptionPane.showOptionDialog(
                 frame,
                 S.get("pinFrozenQuestion"),
                 S.get("pinFrozenTitle"),
                 OptionPane.OK_CANCEL_OPTION,
-                OptionPane.WARNING_MESSAGE);
+                OptionPane.WARNING_MESSAGE,
+                null,
+                new Object[] {S.get("pinFrozenNewStateOption"), S.get("pinFrozenCancelOption")},
+                S.get("pinFrozenNewStateOption"));
         if (choice == OptionPane.OK_OPTION) {
           circState = circState.cloneAsNewRootState();
           canvas.getProject().setCircuitState(circState);

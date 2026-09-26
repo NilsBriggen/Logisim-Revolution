@@ -293,7 +293,7 @@ public class HexFile {
       final var r = new HexReader(in, addrSize, wordSize);
       r.parseFormat(desc);
       final var loaded = interactive ? r.decodeOrWarn() : r.decode();
-      if (loaded == null) throw new IOException("Could not parse memory image data.");
+      if (loaded == null) throw new IOException(S.get("hexFileParseError"));
       return new ParseResult(loaded, (int) (r.memMaxAddr + 1));
     } finally {
       try {
@@ -1069,7 +1069,7 @@ public class HexFile {
     }
 
     protected MemContents detectFormatAndDecode() throws IOException {
-      if (in.byteLength() == 0) throw new IOException("File contains no data.");
+      if (in.byteLength() == 0) throw new IOException(S.get("hexFileEmptyError"));
 
       var hdr = in.readLine();
       while (hdr != null && (hdr = hdr.trim()).length() == 0) hdr = in.readLine();
