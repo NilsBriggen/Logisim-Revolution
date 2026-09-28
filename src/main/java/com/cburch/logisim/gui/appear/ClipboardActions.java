@@ -14,6 +14,8 @@ import static com.cburch.logisim.gui.Strings.S;
 import com.cburch.draw.model.CanvasModel;
 import com.cburch.draw.model.CanvasObject;
 import com.cburch.draw.util.ZOrder;
+import com.cburch.logisim.circuit.Circuit;
+import com.cburch.logisim.circuit.EditLockedException;
 import com.cburch.logisim.circuit.appear.AppearanceAnchor;
 import com.cburch.logisim.data.Direction;
 import com.cburch.logisim.data.Location;
@@ -26,6 +28,7 @@ public class ClipboardActions extends Action {
 
   private final boolean remove;
   private final AppearanceCanvas canvas;
+  private final Circuit circuit;
   private final CanvasModel canvasModel;
   private final Map<CanvasObject, Integer> affected;
   private final ClipboardContents newClipboard;
@@ -34,6 +37,7 @@ public class ClipboardActions extends Action {
   private ClipboardActions(boolean remove, AppearanceCanvas canvas) {
     this.remove = remove;
     this.canvas = canvas;
+    this.circuit = canvas.getCircuit();
     this.canvasModel = canvas.getModel();
 
     final var contents = new ArrayList<CanvasObject>();
@@ -64,11 +68,17 @@ public class ClipboardActions extends Action {
 
   @Override
   public void doIt(Project proj) {
+    if (remove && circuit.isEditLocked()) throw new EditLockedException(circuit, null);
     oldClipboard = Clipboard.get();
     Clipboard.set(newClipboard);
     if (remove) {
       canvasModel.removeObjects(affected.keySet());
     }
+  }
+
+  @Override
+  public boolean isModification() {
+    return remove;
   }
 
   @Override

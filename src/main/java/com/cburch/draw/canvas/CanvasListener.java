@@ -107,16 +107,28 @@ class CanvasListener
 
   @Override
   public void keyPressed(KeyEvent e) {
+    if (!canvas.beforeToolInput()) {
+      e.consume();
+      return;
+    }
     if (tool != null) tool.keyPressed(canvas, e);
   }
 
   @Override
   public void keyReleased(KeyEvent e) {
+    if (!canvas.beforeToolInput()) {
+      e.consume();
+      return;
+    }
     if (tool != null) tool.keyReleased(canvas, e);
   }
 
   @Override
   public void keyTyped(KeyEvent e) {
+    if (!canvas.beforeToolInput()) {
+      e.consume();
+      return;
+    }
     if (tool != null) tool.keyTyped(canvas, e);
   }
 
@@ -133,6 +145,10 @@ class CanvasListener
 
   @Override
   public void mouseDragged(MouseEvent e) {
+    if (!canvas.beforeToolInput()) {
+      e.consume();
+      return;
+    }
     canvas.setTooltip(null, null);
     if (isButton1(e)) {
       if (tool != null) tool.mouseDragged(canvas, e);
@@ -163,7 +179,8 @@ class CanvasListener
     if (e.isPopupTrigger()) {
       handlePopupTrigger(e);
     } else if (e.getButton() == 1 && tool != null) {
-      tool.mousePressed(canvas, e);
+      if (canvas.beforeToolInput()) tool.mousePressed(canvas, e);
+      else e.consume();
     }
   }
 
@@ -173,7 +190,8 @@ class CanvasListener
       if (tool != null) tool.cancelMousePress(canvas);
       handlePopupTrigger(e);
     } else if (e.getButton() == 1 && tool != null) {
-      tool.mouseReleased(canvas, e);
+      if (canvas.beforeToolInput()) tool.mouseReleased(canvas, e);
+      else e.consume();
     }
   }
 }

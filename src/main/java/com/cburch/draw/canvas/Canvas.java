@@ -48,6 +48,16 @@ public class Canvas extends JComponent {
     setPreferredSize(new Dimension(200, 200));
   }
 
+  /** Whether tools must limit their gestures to selection and navigation. */
+  public boolean isReadOnly() {
+    return false;
+  }
+
+  /** Called before a tool handles a key or starts/continues a mouse gesture. */
+  protected boolean beforeToolInput() {
+    return true;
+  }
+
   public void doAction(UndoAction action) {
     dispatcher.doAction(action);
   }

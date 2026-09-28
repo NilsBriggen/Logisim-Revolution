@@ -13,6 +13,7 @@ import static com.cburch.logisim.fpga.Strings.S;
 
 import com.cburch.contracts.BaseWindowListenerContract;
 import com.cburch.logisim.Main;
+import com.cburch.logisim.circuit.EditLockedException;
 import com.cburch.logisim.fpga.data.BoardInformation;
 import com.cburch.logisim.fpga.data.ComponentMapParser;
 import com.cburch.logisim.fpga.gui.ComponentMapDialog;
@@ -274,7 +275,12 @@ public class Download extends DownloadBase implements Runnable, BaseWindowListen
     if (!configurationValid) return false;
     final var root = myProject.getLogisimFile().getCircuit(topLevelSheet);
     if (root != null) {
-      root.annotate(myProject, false, false);
+      try {
+        root.annotate(myProject, false, false);
+      } catch (EditLockedException refused) {
+        Reporter.report.addFatalError(refused.getMessage());
+        return false;
+      }
     } else {
       Reporter.report.addFatalError(S.get("FPGAToplevelSheetNotFound", topLevelSheet));
       return false;

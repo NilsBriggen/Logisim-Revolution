@@ -11,6 +11,7 @@ package com.cburch.logisim.std.memory;
 
 import com.cburch.hex.HexModel;
 import com.cburch.hex.HexModelListener;
+import com.cburch.logisim.circuit.EditLockedException;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.util.EventSourceWeakSupport;
 import java.util.Arrays;
@@ -31,6 +32,7 @@ public class MemContents implements Cloneable, HexModel {
   private long mask;
   private Page[] pages;
   private boolean randomize;
+  private Runnable writeCheck;
 
   private MemContents(int addrBits, int width, boolean randomize) {
     listeners = null;
@@ -47,13 +49,34 @@ public class MemContents implements Cloneable, HexModel {
     listeners.add(l);
   }
 
+  // ROM contents are part of the design; RAM contents are simulation state and have no guard.
+  void setWriteCheck(Runnable check) {
+    writeCheck = check;
+  }
+
+  void checkWritable() {
+    if (writeCheck != null) writeCheck.run();
+  }
+
+  /** Checks the current lock and reports a refused write through the owning project. */
+  public boolean isWritable() {
+    try {
+      checkWritable();
+      return true;
+    } catch (EditLockedException refused) {
+      return false;
+    }
+  }
+
   public void clear() {
+    if (!isWritable()) return;
     for (var i = 0; i < pages.length; i++) {
       if (pages[i] != null) clearPage(i);
     }
   }
 
   public void condClear() {
+    if (!isWritable()) return;
     if (!AppPreferences.Memory_Startup_Unknown.getBoolean()) clear();
     else {
       for (var i = 0; i < pages.length; i++) {
@@ -90,6 +113,7 @@ public class MemContents implements Cloneable, HexModel {
     try {
       final var ret = (MemContents) super.clone();
       ret.listeners = null;
+      ret.writeCheck = null;
       ret.pages = new Page[this.pages.length];
       for (var i = 0; i < ret.pages.length; i++) {
         if (this.pages[i] != null) {
@@ -110,6 +134,7 @@ public class MemContents implements Cloneable, HexModel {
 
   @Override
   public void fill(long start, long len, long value) {
+    if (!isWritable()) return;
     if (len == 0) return;
 
     var pageStart = (int) (start >>> PAGE_SIZE_BITS);
@@ -255,6 +280,7 @@ public class MemContents implements Cloneable, HexModel {
 
   @Override
   public void set(long addr, long value) {
+    if (!isWritable()) return;
     final var page = (int) (addr >>> PAGE_SIZE_BITS);
     long offs = (addr & PAGE_MASK);
     if (page < 0 || page >= pages.length) return;
@@ -271,6 +297,7 @@ public class MemContents implements Cloneable, HexModel {
 
   @Override
   public void set(long start, long[] values) {
+    if (!isWritable()) return;
     if (values.length == 0) return;
 
     var pageStart = (int) (start >>> PAGE_SIZE_BITS);
@@ -348,6 +375,7 @@ public class MemContents implements Cloneable, HexModel {
   }
 
   public void copyFrom(long start, MemContents src, long offs, int count) {
+    if (!isWritable()) return;
     count = (int) Math.min(count, getLastOffset() - start + 1);
     if (count <= 0) return;
     if (src.addrBits != addrBits)
@@ -434,6 +462,7 @@ public class MemContents implements Cloneable, HexModel {
   }
 
   public void condFillRandom() {
+    if (!isWritable()) return;
     if (AppPreferences.Memory_Startup_Unknown.get()) {
       final var pageLength = (addrBits < PAGE_SIZE_BITS) ? 1 << addrBits : PAGE_SIZE;
       for (var i = 0; i < pages.length; i++)

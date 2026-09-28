@@ -56,6 +56,11 @@ public class TextTool extends AbstractTool {
     fieldAction.put("cancel", new CancelListener());
   }
 
+  @Override
+  public void cancelMousePress(Canvas canvas) {
+    cancelText(canvas);
+  }
+
   private void cancelText(Canvas canvas) {
     final var cur = curText;
     if (cur != null) {

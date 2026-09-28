@@ -13,6 +13,7 @@ import static com.cburch.logisim.fpga.Strings.S;
 
 import com.cburch.contracts.BaseWindowListenerContract;
 import com.cburch.logisim.circuit.Circuit;
+import com.cburch.logisim.circuit.EditLockedException;
 import com.cburch.logisim.circuit.CircuitEvent;
 import com.cburch.logisim.circuit.CircuitListener;
 import com.cburch.logisim.file.LibraryEvent;
@@ -513,9 +514,13 @@ public class FpgaCommander
       if (ClearExistingLabels) {
         root.clearAnnotationLevel();
       }
-      root.annotate(ClearExistingLabels, false);
+      try {
+        root.annotate(MyProject, ClearExistingLabels, false);
+      } catch (EditLockedException refused) {
+        MyProject.reportRefusedEdit(refused);
+        return;
+      }
       Reporter.report.addInfo(S.get("FpgaGuiAnnotationDone"));
-      MyProject.setForcedDirty();
       MyProject.repaintCanvas();
     }
   }

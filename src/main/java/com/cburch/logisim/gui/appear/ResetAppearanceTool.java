@@ -58,12 +58,15 @@ public class ResetAppearanceTool implements ToolbarClickableItem {
   @Override
   public void clicked() {
     if (canvas == null || canvas.getCircuit() == null) return;
-    final var appearance = canvas.getCircuit().getAppearance();
+    if (!canvas.checkCanEdit()) return;
+    final var circuit = canvas.getCircuit();
+    final var appearance = circuit.getAppearance();
     if (appearance == null) return;
     if (OptionPane.showConfirmDialog(canvas,
         S.get("resetAppearanceConfirmMessage"),
         isClear ? S.get("resetCustomAppearanceTip") : S.get("resetLogisimAppearanceTip"),
         JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
+      if (canvas.getCircuit() != circuit || !canvas.checkCanEdit()) return;
       if (isClear) appearance.resetDefaultCustomAppearance();
       else appearance.loadDefaultLogisimAppearance();
       canvas.repaint(canvas.getBounds(null));

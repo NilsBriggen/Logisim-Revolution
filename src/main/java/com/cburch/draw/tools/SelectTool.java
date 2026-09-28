@@ -242,6 +242,7 @@ public class SelectTool extends AbstractTool {
     final var ch = e.getKeyChar();
     final var selected = canvas.getSelection();
     if ((ch == '\b' || ch == '\u007F') && !selected.isEmpty()) {
+      if (canvas.isReadOnly()) return;
       final var toRemove = new ArrayList<CanvasObject>();
       for (final var shape : selected.getSelected()) {
         if (shape.canRemove()) {
@@ -289,7 +290,7 @@ public class SelectTool extends AbstractTool {
         final var dx = han.getX() - mx;
         final var dy = han.getY() - my;
         if (dx >= -halfSize && dx <= halfSize && dy >= -halfSize && dy <= halfSize) {
-          if (shape.canMoveHandle(han)) {
+          if (shape.canMoveHandle(han) && !canvas.isReadOnly()) {
             curAction = MOVE_HANDLE;
             curGesture = new HandleGesture(han, 0, 0, e.getModifiersEx());
             repaintArea(canvas);
@@ -315,8 +316,12 @@ public class SelectTool extends AbstractTool {
           selection.clearSelected();
         }
         selection.setSelected(clicked, true);
-        selection.setMovingShapes(selection.getSelected(), 0, 0);
-        curAction = MOVE_ALL;
+        if (canvas.isReadOnly()) {
+          curAction = IDLE;
+        } else {
+          selection.setMovingShapes(selection.getSelected(), 0, 0);
+          curAction = MOVE_ALL;
+        }
       }
       repaintArea(canvas);
       return;
@@ -328,8 +333,12 @@ public class SelectTool extends AbstractTool {
         selection.setSelected(clicked, false);
         curAction = IDLE;
       } else {
-        selection.setMovingShapes(selection.getSelected(), 0, 0);
-        curAction = MOVE_ALL;
+        if (canvas.isReadOnly()) {
+          curAction = IDLE;
+        } else {
+          selection.setMovingShapes(selection.getSelected(), 0, 0);
+          curAction = MOVE_ALL;
+        }
       }
       repaintArea(canvas);
       return;

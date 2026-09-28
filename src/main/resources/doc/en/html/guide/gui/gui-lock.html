@@ -28,6 +28,7 @@
       <ul>
         <li>cannot be moved, deleted, cut or rotated;</li>
         <li>cannot have its properties changed: its rows in the properties panel are read-only, with a note above them saying why;</li>
+        <li>cannot have its ROM contents changed, including through an already-open memory editor, image loading or the Poke tool; RAM contents remain writable simulation state;</li>
         <li>still works in the simulation, and an input pin, button or switch can still be poked with the Poke tool.</li>
       </ul>
       <p>
@@ -40,6 +41,13 @@
       </p>
       <p>
         A locked circuit has a padlock beside its name in the circuit list and in the status bar. Choose the same menu entry again to unlock it.
+      </p>
+
+      <p>
+        Locking a circuit also cancels unfinished gestures and text editing in its appearance editor. Selecting and copying shapes, clearing the selection, zooming and panning remain available. Unlock the circuit before drawing or editing its appearance again.
+      </p>
+      <p>
+        FPGA annotation checks the complete subcircuit hierarchy before changing any labels. If a label that needs changing belongs to a locked component or circuit, the whole annotation is refused. Existing valid locked labels can be kept when annotating only missing labels.
       </p>
 
       <h2>When an edit is refused</h2>

@@ -16,6 +16,7 @@ import com.cburch.draw.model.Drawing;
 import com.cburch.logisim.circuit.Circuit;
 import com.cburch.logisim.circuit.CircuitAttributes;
 import com.cburch.logisim.circuit.CircuitState;
+import com.cburch.logisim.circuit.EditLockedException;
 import com.cburch.logisim.circuit.ReplacementMap;
 import com.cburch.logisim.data.AttributeEvent;
 import com.cburch.logisim.data.AttributeListener;
@@ -159,6 +160,7 @@ public class CircuitAppearance extends Drawing implements AttributeListener {
 
   /** Replaces the custom appearance by a freshly generated default, as for a new circuit. */
   public void resetDefaultCustomAppearance() {
+    if (circuit.isEditLocked()) throw new EditLockedException(circuit, null);
     legacyDefaultCustom = false;
     super.removeObjects(this.getCustomObjectsFromBottom());
     defaultCustomAppearance = buildDefaultCustomAppearance();
@@ -166,6 +168,7 @@ public class CircuitAppearance extends Drawing implements AttributeListener {
   }
 
   public void loadDefaultLogisimAppearance() {
+    if (circuit.isEditLocked()) throw new EditLockedException(circuit, null);
     super.removeObjects(this.getCustomObjectsFromBottom());
     defaultCustomAppearance.clear();
     setObjectsForce(DefaultEvolutionAppearance.build(circuitPins.getPins(), circuit.getName(), true), false);

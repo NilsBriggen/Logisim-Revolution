@@ -49,6 +49,7 @@ public class ShowStateTool implements ToolbarClickableItem {
 
   @Override
   public void clicked() {
+    if (!canvas.checkCanEdit()) return;
     final var w = new ShowStateDialog(view.getFrame(), canvas);
     final var p = view.getFrame().getLocation();
     p.translate(80, 50);

@@ -43,7 +43,6 @@ import com.cburch.logisim.std.memory.Rom;
 import com.cburch.logisim.std.wiring.Clock;
 import com.cburch.logisim.std.wiring.Pin;
 import com.cburch.logisim.std.wiring.Tunnel;
-import com.cburch.logisim.tools.LibraryTools;
 import com.cburch.logisim.tools.SetAttributeAction;
 import com.cburch.logisim.util.AutoLabel;
 import com.cburch.logisim.util.CollectionUtil;
@@ -385,6 +384,38 @@ public class Circuit {
   }
 
   public void annotate(boolean clearExistingLabels, boolean insideLibrary) {
+    checkAnnotationEditLocks(clearExistingLabels, new HashSet<>());
+    annotateUnchecked(clearExistingLabels, insideLibrary);
+  }
+
+  // Check the entire hierarchy before the first label action, so refusal cannot leave half an
+  // annotation in the project or mark a circuit annotated when its labels were refused.
+  private void checkAnnotationEditLocks(boolean clearExistingLabels, Set<Circuit> visited) {
+    if (isAnnotated || !visited.add(this)) return;
+    final var labels = new HashSet<String>();
+    final var identity = labelIdentity();
+    for (final var comp : getNonWires()) {
+      if (comp.getFactory() instanceof Tunnel) continue;
+      final var attrs = comp.getAttributeSet();
+      if (attrs.containsAttribute(StdAttr.LABEL)) {
+        final var label = attrs.getValue(StdAttr.LABEL);
+        final var remove =
+            !label.isEmpty()
+                && (!CorrectLabel.isCorrectLabel(label)
+                    || !labels.add(CircuitLabelValidator.labelKey(label, identity)));
+        final var assign =
+            comp.getFactory().requiresNonZeroLabel() && (clearExistingLabels || label.isEmpty());
+        if ((remove || assign) && isEditLockedFor(comp)) {
+          throw new EditLockedException(this, isEditLocked() ? null : comp);
+        }
+      }
+      if (comp.getFactory() instanceof SubcircuitFactory sub) {
+        sub.getSubcircuit().checkAnnotationEditLocks(clearExistingLabels, visited);
+      }
+    }
+  }
+
+  private void annotateUnchecked(boolean clearExistingLabels, boolean insideLibrary) {
     /* If I am already completely annotated, return */
     if (isAnnotated) {
       Reporter.report.addInfo(S.get("annotateNoAction"));
@@ -394,7 +425,7 @@ public class Circuit {
     final var labelers = new HashMap<String, AutoLabel>();
     final var labelNames = new LinkedHashSet<String>();
     final var labelIdentity = labelIdentity();
-    final var subCircuits = new LinkedHashSet<String>();
+    final var subCircuits = new LinkedHashSet<Circuit>();
     for (final var comp : getNonWires()) {
       if (comp.getFactory() instanceof Tunnel) continue;
       /* we are directly going to remove duplicated labels */
@@ -438,7 +469,7 @@ public class Circuit {
       }
       /* if the current component is a sub-circuit, recurse into it */
       if (comp.getFactory() instanceof SubcircuitFactory sub) {
-        subCircuits.add(sub.getName());
+        subCircuits.add(sub.getSubcircuit());
       }
     }
     /* Now Annotate */
@@ -467,10 +498,10 @@ public class Circuit {
       Reporter.report.addSevereWarning(S.fmt("annotateSizeChange", this.getName()));
     isAnnotated = true;
     /* Now annotate all circuits below me */
-    for (final var subs : subCircuits) {
-      final var circ = LibraryTools.getCircuitFromLibs(proj.getLogisimFile(), subs.toUpperCase());
+    for (final var circ : subCircuits) {
       final var inLibrary = !proj.getLogisimFile().getCircuits().contains(circ);
-      circ.annotate(proj, clearExistingLabels, inLibrary);
+      if (circ.proj == null) circ.proj = proj;
+      circ.annotateUnchecked(clearExistingLabels, inLibrary);
     }
   }
 
@@ -952,6 +983,7 @@ public class Circuit {
       if (factory instanceof Clock) {
         clocks.add(c);
       } else if (factory instanceof Rom) {
+        Rom.setContentsOwner(this, c);
         Rom.closeHexFrame(c);
       } else if (factory instanceof SubcircuitFactory subFactory) {
         final var subcirc = subFactory;

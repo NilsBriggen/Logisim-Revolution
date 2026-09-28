@@ -151,6 +151,7 @@ public class ShowStateDialog extends JDialog implements ActionListener {
   }
 
   private void apply() {
+    if (!canvas.checkCanEdit()) return;
     final var model = canvas.getModel();
     final var root = (RefTreeNode) tree.getModel().getRoot();
 

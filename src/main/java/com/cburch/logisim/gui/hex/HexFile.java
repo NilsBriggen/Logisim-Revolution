@@ -235,6 +235,7 @@ public class HexFile {
       Frame parent, // for window positioning
       Project proj,
       Instance instance) { // for recent file access
+    if (!dst.isWritable()) return;
     final var mem = (instance == null) ? null : (Mem) instance.getFactory();
     final var recent = getRecent(proj, mem, instance);
 
@@ -244,8 +245,7 @@ public class HexFile {
     if (choice == JFileChooser.APPROVE_OPTION) {
       final var f = chooser.getSelectedFile();
       try {
-        open(dst, f);
-        mem.setCurrentImage(instance, f);
+        if (open(dst, f) && mem != null) mem.setCurrentImage(instance, f);
       } catch (IOException e) {
         OptionPane.showMessageDialog(parent, e.getMessage(), S.get("ramLoadErrorTitle"), OptionPane.ERROR_MESSAGE);
       }
@@ -257,6 +257,7 @@ public class HexFile {
   }
 
   protected static boolean open(MemContents dst, File src, String desc) throws IOException {
+    if (!dst.isWritable()) return false;
     final var in = BufferedLineReader.forFile(src);
     try {
       final var r = new HexReader(in, dst.getLogLength(), dst.getValueWidth());
@@ -268,6 +269,7 @@ public class HexFile {
         loaded = r.decodeOrWarn();
       }
       if (loaded == null) return false;
+      if (!dst.isWritable()) return false;
       dst.copyFrom(0, loaded, 0, (int) (loaded.getLastOffset() + 1));
       return true;
     } finally {
