@@ -18,21 +18,28 @@ import com.cburch.logisim.gui.theme.Tokens;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.util.Spacing;
 import com.cburch.logisim.util.UiFonts;
+import com.cburch.logisim.util.UiScale;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.awt.Rectangle;
+import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.util.List;
 import java.util.function.Consumer;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
-import javax.swing.JComponent;
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JViewport;
+import javax.swing.Scrollable;
+import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
 
 /**
  * What the window shows when Logisim-evolution is started without a file.
@@ -40,14 +47,19 @@ import javax.swing.JPanel;
  * <p>It used to open straight onto an empty grid, which says nothing about what the application
  * is, offers no way back to yesterday's work, and leaves a beginner looking at a blank page. This
  * offers the three things somebody actually wants at that moment: start something, open something,
- * or go back to what they had open last.
+ * or go back to what they had open last. Somebody with nothing to go back to is most likely new, so
+ * in place of the empty recent list they are offered the tutorial and the user's guide.
  */
-public class WelcomePanel extends JPanel {
+public class WelcomePanel extends JPanel implements Scrollable {
 
   private static final long serialVersionUID = 1L;
 
   /** How many recent projects to offer before the list stops being a shortcut. */
   private static final int MAX_RECENT = 8;
+
+  /** Help-set targets for the learning routes, as the Help menu names them. */
+  public static final String HELP_TUTORIAL = "tutorial";
+  public static final String HELP_GUIDE = "guide";
 
   private final JLabel titleLabel = new JLabel();
   private final JLabel subtitleLabel = new JLabel();
@@ -58,12 +70,42 @@ public class WelcomePanel extends JPanel {
   private final Runnable onNew;
   private final Runnable onOpen;
   private final Consumer<File> onOpenRecent;
+  private final Consumer<String> onShowHelp;
+
+  /**
+   * Refreshes the recent list when a project is opened or saved while this panel exists.
+   *
+   * <p>Held in a field because the preference support only keeps weak references to listeners.
+   */
+  private final PropertyChangeListener recentListener =
+      event -> {
+        if (SwingUtilities.isEventDispatchThread()) {
+          refresh();
+        } else {
+          SwingUtilities.invokeLater(this::refresh);
+        }
+      };
 
   public WelcomePanel(Runnable onNew, Runnable onOpen, Consumer<File> onOpenRecent) {
+    this(onNew, onOpen, onOpenRecent, null);
+  }
+
+  /**
+   * Creates the panel.
+   *
+   * @param onShowHelp opens the help window at the given target; {@code null} leaves the learning
+   *     routes out
+   */
+  public WelcomePanel(
+      Runnable onNew,
+      Runnable onOpen,
+      Consumer<File> onOpenRecent,
+      Consumer<String> onShowHelp) {
     super(new GridBagLayout());
     this.onNew = onNew;
     this.onOpen = onOpen;
     this.onOpenRecent = onOpenRecent;
+    this.onShowHelp = onShowHelp;
 
     final var column = new JPanel();
     column.setLayout(new BoxLayout(column, BoxLayout.Y_AXIS));
@@ -89,22 +131,26 @@ public class WelcomePanel extends JPanel {
     column.add(Box.createVerticalStrut(Spacing.xs()));
     column.add(recent);
 
+    // The column keeps its own width and sits in the middle of the editor area; stretching it
+    // across the whole area left every line hard against the left edge of a wide window.
     final var constraints = new GridBagConstraints();
     constraints.anchor = GridBagConstraints.CENTER;
-    constraints.fill = GridBagConstraints.HORIZONTAL;
+    constraints.fill = GridBagConstraints.NONE;
     constraints.weightx = 1;
+    constraints.weighty = 1;
     constraints.insets = Spacing.formGaps();
     add(column, constraints);
 
     refresh();
     Theme.addListener(this, this::refresh);
+    AppPreferences.addPropertyChangeListener(AppPreferences.RECENT_PROJECTS, recentListener);
   }
 
   /** Rebuilds the contents, after a change of theme, language, or recent files. */
   public final void refresh() {
     setBackground(Tokens.color("Logisim.sidePanel.background", getBackground()));
     titleLabel.setText(BuildInfo.name);
-    titleLabel.setFont(UiFonts.heading());
+    titleLabel.setFont(UiFonts.display());
     subtitleLabel.setText(S.get("welcomeSubtitle"));
     subtitleLabel.setFont(UiFonts.body());
     subtitleLabel.setForeground(Tokens.mutedForeground());
@@ -116,18 +162,37 @@ public class WelcomePanel extends JPanel {
 
     recent.removeAll();
     final var files = recentFiles();
-    recentHeading.setText(S.get("welcomeRecent"));
     recentHeading.setFont(UiFonts.small());
     recentHeading.setForeground(Tokens.sidePanelHeaderForeground());
-    recentHeading.setVisible(!files.isEmpty());
-    for (final var file : files) {
-      final var parent = file.getParentFile();
+    if (!files.isEmpty()) {
+      recentHeading.setText(S.get("welcomeRecent"));
+      recentHeading.setVisible(true);
+      for (final var file : files) {
+        final var parent = file.getParentFile();
+        recent.add(
+            action(
+                AppIcons.Id.CIRCUIT,
+                file.getName(),
+                parent == null ? "" : parent.getPath(),
+                () -> onOpenRecent.accept(file)));
+      }
+    } else if (onShowHelp != null) {
+      recentHeading.setText(S.get("welcomeLearn"));
+      recentHeading.setVisible(true);
       recent.add(
           action(
-              AppIcons.Id.CIRCUIT,
-              file.getName(),
-              parent == null ? "" : parent.getPath(),
-              () -> onOpenRecent.accept(file)));
+              AppIcons.Id.INFO,
+              S.get("welcomeTutorial"),
+              S.get("welcomeTutorialHint"),
+              () -> onShowHelp.accept(HELP_TUTORIAL)));
+      recent.add(
+          action(
+              AppIcons.Id.QUESTION,
+              S.get("welcomeGuide"),
+              S.get("welcomeGuideHint"),
+              () -> onShowHelp.accept(HELP_GUIDE)));
+    } else {
+      recentHeading.setVisible(false);
     }
     revalidate();
     repaint();
@@ -175,5 +240,35 @@ public class WelcomePanel extends JPanel {
   @Override
   public Component add(Component component) {
     return super.add(component);
+  }
+
+  // Scrollable: fills the viewport while it fits, and scrolls instead of clipping at large
+  // interface scales in small windows.
+
+  @Override
+  public Dimension getPreferredScrollableViewportSize() {
+    return getPreferredSize();
+  }
+
+  @Override
+  public int getScrollableUnitIncrement(Rectangle visible, int orientation, int direction) {
+    return UiScale.scaled(16);
+  }
+
+  @Override
+  public int getScrollableBlockIncrement(Rectangle visible, int orientation, int direction) {
+    return orientation == SwingConstants.VERTICAL ? visible.height : visible.width;
+  }
+
+  @Override
+  public boolean getScrollableTracksViewportWidth() {
+    return getParent() instanceof JViewport viewport
+        && viewport.getWidth() >= getPreferredSize().width;
+  }
+
+  @Override
+  public boolean getScrollableTracksViewportHeight() {
+    return getParent() instanceof JViewport viewport
+        && viewport.getHeight() >= getPreferredSize().height;
   }
 }

@@ -38,6 +38,12 @@ public abstract class EditHandler {
 
   public void removeControlPoint() {}
 
+  /**
+   * Runs one of the Edit &gt; Arrange commands ({@link LogisimMenuBar#ARRANGE_ITEMS}). Handlers
+   * that cannot arrange their selection leave it alone.
+   */
+  public void arrange(LogisimMenuItem item) {}
+
   public abstract void computeEnabled();
 
   protected void setEnabled(LogisimMenuItem action, boolean value) {
@@ -65,6 +71,14 @@ public abstract class EditHandler {
     else if (src == LogisimMenuBar.LOWER_BOTTOM) lowerBottom();
     else if (src == LogisimMenuBar.ADD_CONTROL) addControlPoint();
     else if (src == LogisimMenuBar.REMOVE_CONTROL) removeControlPoint();
+    else if (src instanceof LogisimMenuItem item && isArrangeItem(item)) arrange(item);
+  }
+
+  private static boolean isArrangeItem(LogisimMenuItem item) {
+    for (final var arrangeItem : LogisimMenuBar.ARRANGE_ITEMS) {
+      if (arrangeItem == item) return true;
+    }
+    return false;
   }
 
   public interface Listener {

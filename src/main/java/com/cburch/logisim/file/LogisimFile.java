@@ -11,6 +11,7 @@ package com.cburch.logisim.file;
 
 import static com.cburch.logisim.file.Strings.S;
 
+import com.cburch.logisim.Main;
 import com.cburch.logisim.circuit.Circuit;
 import com.cburch.logisim.circuit.CircuitAttributes;
 import com.cburch.logisim.circuit.CircuitEvent;
@@ -26,33 +27,49 @@ import com.cburch.logisim.tools.AddTool;
 import com.cburch.logisim.tools.Library;
 import com.cburch.logisim.tools.Tool;
 import com.cburch.logisim.util.EventSourceWeakSupport;
+import com.cburch.logisim.util.StringUtil;
 import com.cburch.logisim.util.SyntaxChecker;
 import com.cburch.logisim.util.UniquelyNamedThread;
 import com.cburch.logisim.vhdl.base.VhdlContent;
 import com.cburch.logisim.vhdl.base.VhdlEntity;
 import java.io.BufferedInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InterruptedIOException;
 import java.io.OutputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.function.BooleanSupplier;
 import java.util.function.LongSupplier;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.TransformerConfigurationException;
 import javax.xml.transform.TransformerException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
+import org.xml.sax.SAXParseException;
 
 public class LogisimFile extends Library implements LibraryEventSource, CircuitListener {
+  private static final Logger logger = LoggerFactory.getLogger(LogisimFile.class);
+
 
   private static class WritingThread extends UniquelyNamedThread {
     final OutputStream out;
@@ -99,9 +116,20 @@ public class LogisimFile extends Library implements LibraryEventSource, CircuitL
         }
         if (!run) return;
         if (!file.isAutosaveDirty) continue;
-        if (file.getLoader().autosave(file)) {
-          file.isAutosaveDirty = false;
-        } else {
+        // Clear first, so an edit made while this write runs is picked up next time.
+        file.isAutosaveDirty = false;
+        boolean saved;
+        try {
+          saved = file.getLoader().autosave(file);
+        } catch (RuntimeException e) {
+          // Serialising while the circuit is edited can fail transiently; try again next time
+          // rather than ending autosave for the rest of the session.
+          logger.warn("Autosave of {} failed; retrying at the next interval", file.name, e);
+          file.isAutosaveDirty = true;
+          continue;
+        }
+        if (!saved) {
+          file.isAutosaveDirty = true;
           reportError(file.loader, S.get("autosaveError", file.name));
           run = false;
         }
@@ -143,6 +171,7 @@ public class LogisimFile extends Library implements LibraryEventSource, CircuitL
     }
   }
 
+  private static final long SNAPSHOT_POLL_MILLIS = 100;
   private final EventSourceWeakSupport<LibraryListener> listeners = new EventSourceWeakSupport<>();
   private final LinkedList<String> messages = new LinkedList<>();
   private final Options options = new Options();
@@ -155,6 +184,8 @@ public class LogisimFile extends Library implements LibraryEventSource, CircuitL
   private volatile boolean isAutosaveDirty = false;
   private AutosaveThread autosaveThread = null;
   private boolean autosaveLoaded = false;
+  // Set when reading reported problems: the project may lack content the file on disk still has.
+  private boolean loadedWithErrors = false;
 
   LogisimFile(Loader loader) {
     this(loader, AppPreferences.AUTOSAVE_ENABLED.getBoolean(),
@@ -251,10 +282,9 @@ public class LogisimFile extends Library implements LibraryEventSource, CircuitL
   public static LogisimFile load(File file, Loader loader) throws IOException {
     // Get the Path of this file's autosave if it exists
     final var autosave = Loader.findAutosaveFile(file);
-    var loadFile = file; // Select the given file to be opened by default
-    var autosaveLoading = false;
 
-    if (autosave.isPresent()) { // If autosave is present prompt user about it
+    // Without a GUI nobody can answer the prompt: open the real file and keep the recovery file.
+    if (autosave.isPresent() && Main.hasGui()) {
       final var res = loader.showOptions(S.get("contentHandleAutosave", file.getName()),
           S.get("titleHandleAutosave"), new String[] {S.get("loadOption"), S.get("discardOption")},
           0);
@@ -262,47 +292,103 @@ public class LogisimFile extends Library implements LibraryEventSource, CircuitL
       if (res == JOptionPane.CLOSED_OPTION) { // If the prompt was closed do nothing and fail
         return null;
       } else if (res == 0) { // If load is selected select the autosave to be loaded
-        loadFile = autosave.get(); // Set load file to the autosave path
         loader.setAutosavePath(autosave.get());
-        autosaveLoading = true; // Also set this to true to remember an autosave was loaded
+        try {
+          final var recovered = loadFrom(autosave.get(), loader, file);
+          // Remember the autosave was loaded: its edits are not in the real file yet.
+          recovered.autosaveLoaded = true;
+          return recovered;
+        } catch (LoaderException e) {
+          throw e;
+        } catch (Exception e) {
+          // An unreadable recovery file must not block the real one, nor be blamed on it.
+          logger.warn("Unable to read autosave {}", autosave.get(), e);
+          loader.showError(
+              S.get("autosaveUnreadable", file.getName(), describeLoadFailure(autosave.get(), e)));
+        }
       } else if (res == 1) {
         autosave.get().delete();
       }
     }
 
-    LogisimFile result = null;
-    FileInputStream inputStream = new FileInputStream(loadFile);
-    Throwable firstExcept = null;
     try {
-      result = loadSub(inputStream, loader, file);
+      return loadFrom(file, loader, file);
+    } catch (LoaderException | IOException e) {
+      throw e;
+    } catch (Exception e) {
+      // Reported once, by whoever asked for the file, as "could not open": see describeLoadFailure.
+      logger.warn("Unable to read {}", file, e);
+      throw new LoadFailure(e);
+    }
+  }
+
+  /**
+   * Explains in plain words why {@code file} could not be opened, for a message of the form
+   * "Could not open “name”: reason". The exception itself is for the details of an error report.
+   */
+  static String describeLoadFailure(File file, Throwable failure) {
+    var cause = failure;
+    while (cause instanceof LoadFailure && cause.getCause() != null) cause = cause.getCause();
+    if (cause instanceof FileNotFoundException || cause instanceof NoSuchFileException) {
+      return file != null && !file.exists()
+          ? S.get("fileReasonNotFound")
+          : S.get("fileReasonUnreadable");
+    }
+    if (file != null && file.isFile() && file.length() == 0) return S.get("fileReasonEmpty");
+    if (cause instanceof SAXParseException parse) {
+      return parse.getLineNumber() > 0
+          ? S.get("fileReasonMalformedXmlAt", parse.getLineNumber())
+          : S.get("fileReasonMalformedXml");
+    }
+    if (cause instanceof SAXException) return S.get("fileReasonNotProject");
+    if (cause instanceof IOException && StringUtil.isNotEmpty(cause.getMessage())) {
+      final var message = cause.getMessage();
+      return message.endsWith(".") ? message.substring(0, message.length() - 1) : message;
+    }
+    return S.get("fileReasonInvalid");
+  }
+
+  /**
+   * Reads {@code source} as the project {@code base}. Falls back to a Latin-1 reader for files from
+   * Logisim versions prior to 2.5.1, which were not saved as UTF-8 although the XML declared it.
+   * Library loading failures ({@link LoaderException}) have already been reported and abort; a
+   * file that cannot be opened at all surfaces as an {@link IOException}.
+   */
+  private static LogisimFile loadFrom(File source, Loader loader, File base) throws Exception {
+    Throwable firstExcept;
+    final var inputStream = new FileInputStream(source);
+    try (inputStream) {
+      return loadSub(inputStream, loader, base);
+    } catch (LoaderException e) {
+      throw e;
     } catch (Throwable t) {
       firstExcept = t;
-    } finally {
-      inputStream.close();
+    }
+    // Such files are Latin-1; the platform default (UTF-8 since JDK 18) would mangle them.
+    try (final var legacy =
+        new ReaderInputStream(new FileReader(source, StandardCharsets.ISO_8859_1), "UTF8")) {
+      return loadSub(legacy, loader, base);
+    } catch (LoaderException e) {
+      throw e;
+    } catch (Exception ignored) {
+      // Report the original failure: the legacy reader is only a compatibility attempt.
+    }
+    // Parse errors are reported to the user; wrap them so they are not taken for I/O failures.
+    throw new LoadFailure(firstExcept);
+  }
+
+  /** Carries the original parse failure, reported with its own message. */
+  private static final class LoadFailure extends IOException {
+    private static final long serialVersionUID = 1L;
+
+    LoadFailure(Throwable cause) {
+      super(cause);
     }
 
-    // We'll now try to do it using a reader. This is to work around
-    // Logisim versions prior to 2.5.1, when files were not saved using
-    // UTF-8 as the encoding (though the XML file reported otherwise).
-    if (firstExcept != null) {
-      try {
-        final var readerInputStream = new ReaderInputStream(new FileReader(loadFile), "UTF8");
-        result = loadSub(readerInputStream, loader, file);
-      } catch (Exception t) {
-        firstExcept.printStackTrace();
-        loader.showError(S.get("xmlFormatError", firstExcept.toString()));
-      } finally {
-        try {
-          inputStream.close();
-        } catch (Exception ignored) {
-          // Do nothing.
-        }
-      }
+    @Override
+    public String toString() {
+      return getCause().toString();
     }
-
-    // Save to the resulting LogisimFile that it was loaded from an autosave
-    if (result != null) result.autosaveLoaded = autosaveLoading;
-    return result;
   }
 
   public static LogisimFile load(InputStream in, Loader loader) throws IOException {
@@ -325,11 +411,11 @@ public class LogisimFile extends Library implements LibraryEventSource, CircuitL
     final var firstLine = getFirstLine(inBuffered);
 
     if (firstLine == null) {
-      throw new IOException("File is empty");
+      throw new IOException(S.get("fileReasonEmpty"));
     } else if (firstLine.equals("Logisim v1.0")) {
       // if this is a 1.0 file, then set up a pipe to translate to
       // 2.0 and then interpret as a 2.0 file
-      throw new IOException("Version 1.0 files no longer supported");
+      throw new IOException(S.get("fileReasonVersion1"));
     }
 
     final var xmlReader = new XmlReader(loader, file);
@@ -355,8 +441,9 @@ public class LogisimFile extends Library implements LibraryEventSource, CircuitL
     addVhdlContent(content, tools.size());
   }
 
+  /** Adds a VHDL entity or a Verilog module ({@link VhdlContent#isVerilog()}) to the project. */
   public void addVhdlContent(VhdlContent content, int index) {
-    final var tool = new AddTool(new VhdlEntity(content));
+    final var tool = new AddTool(content.createFactory());
     tools.add(index, tool);
     fireEvent(LibraryEvent.ADD_TOOL, tool);
   }
@@ -532,6 +619,7 @@ public class LogisimFile extends Library implements LibraryEventSource, CircuitL
     return -1;
   }
 
+  /** The project's HDL components: VHDL entities and Verilog modules, in toolbox order. */
   public List<VhdlContent> getVhdlContents() {
     final var ret = new ArrayList<VhdlContent>(tools.size());
     for (final var tool : tools) {
@@ -642,13 +730,24 @@ public class LogisimFile extends Library implements LibraryEventSource, CircuitL
 
     int index = indexOfCircuit(circuit);
     if (index >= 0) {
+      final var successor = mainCircuitAfterRemoving(circuit);
       final Tool circuitTool = tools.remove(index);
 
-      if (main == circuit) {
-        setMainCircuit(((SubcircuitFactory) tools.get(0).getFactory()).getSubcircuit());
-      }
+      if (main == circuit) setMainCircuit(successor);
       fireEvent(LibraryEvent.REMOVE_TOOL, circuitTool);
     }
+  }
+
+  /**
+   * The circuit that is main once {@code circuit} is removed: the current main circuit, or if
+   * that is the one removed, the first remaining circuit in the list (never a VHDL entity).
+   */
+  public Circuit mainCircuitAfterRemoving(Circuit circuit) {
+    if (main != circuit) return main;
+    for (final var candidate : getCircuits()) {
+      if (candidate != circuit) return candidate;
+    }
+    return null;
   }
 
   public void removeVhdl(VhdlContent vhdl) {
@@ -757,6 +856,95 @@ public class LogisimFile extends Library implements LibraryEventSource, CircuitL
     if (errors.firstError != null) throw new IOException(errors.firstError);
   }
 
+  /**
+   * The content an autosave writes to {@code destination}, or {@code null} if the project has been
+   * saved since the autosave was due.
+   *
+   * <p>The editor changes circuits on the event thread without taking the circuit locks, so an
+   * autosave worker must never walk them itself: it has the event thread take the snapshot and
+   * waits for it, giving up if the worker is stopped meanwhile (the event thread may be waiting
+   * for the worker to end). Problems are logged rather than shown, as nobody asked for this save.
+   */
+  byte[] autosaveSnapshot(LibraryLoader loader, File destination) throws IOException {
+    if (!(Thread.currentThread() instanceof AutosaveThread worker)) {
+      return serialize(loader, destination);
+    }
+    final var quiet = quietLoader(loader);
+    final var snapshot = new CompletableFuture<byte[]>();
+    SwingUtilities.invokeLater(
+        () -> {
+          if (!worker.run) {
+            snapshot.cancel(false);
+            return;
+          }
+          try {
+            snapshot.complete(isDirty ? serialize(quiet, destination) : null);
+          } catch (Throwable t) {
+            snapshot.completeExceptionally(t);
+          }
+        });
+    return awaitSnapshot(snapshot, () -> worker.run);
+  }
+
+  /**
+   * Waits for {@code snapshot} while {@code keepWaiting} holds. An interrupt (a save waking the
+   * worker) does not end the wait; stopping does.
+   */
+  static <T> T awaitSnapshot(CompletableFuture<T> snapshot, BooleanSupplier keepWaiting)
+      throws IOException {
+    var interrupted = false;
+    try {
+      while (true) {
+        if (!keepWaiting.getAsBoolean()) {
+          throw new InterruptedIOException("autosave stopped before the snapshot was taken");
+        }
+        try {
+          return snapshot.get(SNAPSHOT_POLL_MILLIS, TimeUnit.MILLISECONDS);
+        } catch (TimeoutException e) {
+          // check keepWaiting again
+        } catch (InterruptedException e) {
+          interrupted = true;
+        } catch (CancellationException e) {
+          throw new InterruptedIOException("autosave stopped before the snapshot was taken");
+        } catch (ExecutionException e) {
+          final var cause = e.getCause();
+          if (cause instanceof IOException io) throw io;
+          if (cause instanceof RuntimeException runtime) throw runtime;
+          if (cause instanceof Error error) throw error;
+          throw new IOException(cause);
+        }
+      }
+    } finally {
+      if (interrupted) Thread.currentThread().interrupt();
+    }
+  }
+
+  private byte[] serialize(LibraryLoader loader, File destination) throws IOException {
+    final var out = new ByteArrayOutputStream();
+    write(out, loader, destination, null);
+    return out.toByteArray();
+  }
+
+  /** {@code delegate}, except that problems are logged instead of shown. */
+  private static LibraryLoader quietLoader(LibraryLoader delegate) {
+    return new LibraryLoader() {
+      @Override
+      public String getDescriptor(Library library) {
+        return delegate.getDescriptor(library);
+      }
+
+      @Override
+      public Library loadLibrary(String descriptor) {
+        return delegate.loadLibrary(descriptor);
+      }
+
+      @Override
+      public void showError(String description) {
+        logger.warn("Autosave: {}", description);
+      }
+    };
+  }
+
   /** XmlWriter can report missing content without throwing; that still invalidates the save. */
   private static final class WriteErrors implements LibraryLoader {
     private final LibraryLoader delegate;
@@ -815,7 +1003,29 @@ public class LogisimFile extends Library implements LibraryEventSource, CircuitL
     if (interrupted) Thread.currentThread().interrupt();
   }
 
+  /** Records that this project was read from a recovery file, not from the file it belongs to. */
+  void markAutosaveLoaded() {
+    autosaveLoaded = true;
+  }
+
   public boolean isAutosaveLoaded() {
     return autosaveLoaded;
+  }
+
+  /**
+   * Whether problems were reported while reading this file, meaning some of its content (unknown
+   * components, unreadable settings) may be missing here. Saving over the original then loses it.
+   */
+  public boolean isLoadedWithErrors() {
+    return loadedWithErrors;
+  }
+
+  void setLoadedWithErrors(boolean value) {
+    loadedWithErrors = value;
+  }
+
+  /** Called once this project's content has been written, so the original is no longer at risk. */
+  public void clearLoadedWithErrors() {
+    loadedWithErrors = false;
   }
 }

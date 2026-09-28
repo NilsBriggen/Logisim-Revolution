@@ -26,12 +26,70 @@ public class AnalyzerModel {
   private final OutputExpressions outputExpressions;
   private Project currentProject = null;
   private Circuit currentCircuit = null;
+  // Whether the table or the variables were changed by hand since they were last replaced
+  // wholesale (by analysing a circuit or importing a file); nothing can undo such a replacement.
+  private boolean edited = false;
+  private int replacing = 0;
+  private boolean changedWhileReplacing = false;
 
   public AnalyzerModel() {
     // the order here is important, because the output expressions
     // need the truth table to exist for listening.
     table = new TruthTable(this);
     outputExpressions = new OutputExpressions(this);
+    // Expression edits reach the truth table too, so these listeners see every change of content.
+    final var editTracker = new EditTracker();
+    table.addTruthTableListener(editTracker);
+    inputs.addVariableListListener(editTracker);
+    outputs.addVariableListListener(editTracker);
+  }
+
+  private class EditTracker implements TruthTableListener, VariableListListener {
+    @Override
+    public void rowsChanged(TruthTableEvent event) {
+      contentChanged();
+    }
+
+    @Override
+    public void cellsChanged(TruthTableEvent event) {
+      contentChanged();
+    }
+
+    @Override
+    public void structureChanged(TruthTableEvent event) {
+      contentChanged();
+    }
+
+    @Override
+    public void listChanged(VariableListEvent event) {
+      contentChanged();
+    }
+  }
+
+  private void contentChanged() {
+    if (replacing > 0) {
+      changedWhileReplacing = true;
+    } else {
+      edited = true;
+    }
+  }
+
+  /** True if the user changed the table, expressions or variables since the last replacement. */
+  public boolean isEdited() {
+    return edited;
+  }
+
+  /**
+   * Brackets a wholesale replacement of the contents, such as analysing a circuit or importing a
+   * truth table. Changes made in between do not count as hand edits; if anything changed, the model
+   * counts as unedited afterwards. Calls must be paired with {@link #endReplacement()}.
+   */
+  public void beginReplacement() {
+    if (replacing++ == 0) changedWhileReplacing = false;
+  }
+
+  public void endReplacement() {
+    if (--replacing == 0 && changedWhileReplacing) edited = false;
   }
 
   public Circuit getCurrentCircuit() {

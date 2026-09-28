@@ -260,6 +260,11 @@ public class ValueTable extends JPanel {
 
     String getColumnName(int i);
 
+    /** Explains column {@code i} in its header's tooltip, or null for the default tooltip. */
+    default String getColumnToolTip(int i) {
+      return null;
+    }
+
     int getColumnValueRadix(int i);
 
     BitWidth getColumnValueWidth(int i);
@@ -457,6 +462,9 @@ public class ValueTable extends JPanel {
     public String getToolTipText(MouseEvent event) {
       int col = model == null ? -1 : findColumn(event.getX(), getSize().width);
       if (col < 0) return null;
+
+      final var tip = model.getColumnToolTip(col);
+      if (tip != null) return tip;
 
       int radix = model.getColumnValueRadix(col);
 

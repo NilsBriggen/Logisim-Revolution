@@ -16,6 +16,7 @@ import com.cburch.logisim.data.Bounds;
 import com.cburch.logisim.gui.icons.ZoomIcon;
 import com.cburch.logisim.gui.main.Canvas;
 import com.cburch.logisim.prefs.AppPreferences;
+import com.cburch.logisim.util.UiScale;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -176,8 +177,33 @@ public class ZoomControl extends JPanel {
 
   public static double computeInitialZoomFactor(
       Bounds bounds, Dimension viewportSize, List<Double> zoomOptions) {
+    return computeInitialZoomFactor(bounds, viewportSize, zoomOptions, 1.0);
+  }
+
+  /**
+   * The zoom a circuit opens at: {@code actualSize} (the interface scale, so the drawing matches
+   * the size of the controls around it) unless the circuit needs less to fit.
+   */
+  public static double computeInitialZoomFactor(
+      Bounds bounds, Dimension viewportSize, List<Double> zoomOptions, double actualSize) {
     final var fitZoom = computeFitZoomFactor(bounds, viewportSize, zoomOptions);
-    return Double.isNaN(fitZoom) ? 1.0 : Math.min(1.0, fitZoom);
+    return Double.isNaN(fitZoom) ? actualSize : Math.min(actualSize, fitZoom);
+  }
+
+  /**
+   * The document zoom that shows as 100%: the interface scale. At a 200% interface scale a
+   * drawing at zoom 2.0 is the same size relative to the controls as zoom 1.0 is at 100%, so the
+   * percentage is shown relative to it. Only the display and the starting zoom use this; zooming
+   * stays independent of the interface scale.
+   */
+  public static double actualSizeZoom() {
+    final var factor = UiScale.factor();
+    return Double.isFinite(factor) && factor > 0 ? factor : 1.0;
+  }
+
+  /** The zoom as the percentage shown to the user, relative to {@link #actualSizeZoom()}. */
+  public static String percentText(double zoom) {
+    return Math.round(zoom / actualSizeZoom() * 100) + "%";
   }
 
   public void setAutoZoomButtonEnabled(boolean val) {

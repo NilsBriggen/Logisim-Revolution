@@ -1,0 +1,10 @@
+Loading test vector “inverter-vectors.txt”…
+Running 4 vectors…
+1 2 3 
+Error on test vector 3:
+  y = 0 (expected 1)
+4 
+Error on test vector 4:
+  y = 1 (expected 0)
+
+Passed: 2, Failed: 2

@@ -17,6 +17,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
@@ -66,6 +67,9 @@ class WireRepair extends CircuitTransaction {
   }
 
   private final Circuit circuit;
+
+  /** How far beside a wire {@link Wire#contains} still counts a point as on it. */
+  private static final int CONTAINS_TOLERANCE = 2;
 
   public WireRepair(Circuit circuit) {
     this.circuit = circuit;
@@ -197,13 +201,20 @@ class WireRepair extends CircuitTransaction {
   }
 
   private void doSplits(CircuitMutator mutator) {
-    final var allLocs = circuit.wires.points.getAllLocations();
+    // Points indexed by column and by row: each wire then only visits the points on its own line,
+    // instead of every point of the circuit (which made loading large circuits quadratic).
+    final var byColumn = new HashMap<Integer, TreeSet<Location>>();
+    final var byRow = new HashMap<Integer, TreeSet<Location>>();
+    for (final var loc : circuit.wires.points.getAllLocations()) {
+      byColumn.computeIfAbsent(loc.getX(), key -> new TreeSet<>()).add(loc);
+      byRow.computeIfAbsent(loc.getY(), key -> new TreeSet<>()).add(loc);
+    }
     final var repl = new ReplacementMap();
     for (final var w : circuit.getWires()) {
       final var w0 = w.getEnd0();
       final var w1 = w.getEnd1();
       ArrayList<Location> splits = null;
-      for (final var loc : allLocs) {
+      for (final var loc : pointsOn(w, byColumn, byRow)) {
         if (w.contains(loc) && !loc.equals(w0) && !loc.equals(w1)) {
           if (splits == null) splits = new ArrayList<>();
           splits.add(loc);
@@ -222,6 +233,37 @@ class WireRepair extends CircuitTransaction {
       }
     }
     mutator.replace(circuit, repl);
+  }
+
+  /**
+   * The indexed points {@link Wire#contains} can accept for {@code wire}: those on its line, or up
+   * to {@value #CONTAINS_TOLERANCE} units beside it, between its ends. Ordered along the wire.
+   */
+  private static List<Location> pointsOn(
+      Wire wire, Map<Integer, TreeSet<Location>> byColumn, Map<Integer, TreeSet<Location>> byRow) {
+    final var e0 = wire.getEnd0();
+    final var e1 = wire.getEnd1();
+    final var found = new ArrayList<Location>();
+    for (var offset = -CONTAINS_TOLERANCE; offset <= CONTAINS_TOLERANCE; offset++) {
+      if (wire.isVertical()) {
+        final var x = e0.getX() + offset;
+        final var column = byColumn.get(x);
+        if (column == null) continue;
+        found.addAll(
+            column.subSet(
+                Location.create(x, e0.getY(), false), true,
+                Location.create(x, e1.getY(), false), true));
+      } else {
+        final var y = e0.getY() + offset;
+        final var row = byRow.get(y);
+        if (row == null) continue;
+        found.addAll(
+            row.subSet(
+                Location.create(e0.getX(), y, false), true,
+                Location.create(e1.getX(), y, false), true));
+      }
+    }
+    return found;
   }
 
   @Override

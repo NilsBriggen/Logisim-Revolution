@@ -19,12 +19,16 @@ import com.cburch.logisim.prefs.PrefMonitorKeyStroke;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.GridLayout;
+import java.awt.KeyboardFocusManager;
 import java.awt.event.ActionEvent;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
+import java.awt.event.HierarchyEvent;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.Locale;
 import java.util.prefs.BackingStoreException;
 import javax.swing.AbstractAction;
@@ -36,7 +40,10 @@ import javax.swing.KeyStroke;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 
-/** A shortcut draft is applied explicitly; leaving the editor never changes the binding. */
+/**
+ * A shortcut draft is recorded only after explicit activation (click, Enter or Space) and applied
+ * explicitly; leaving or hiding the editor never changes the binding.
+ */
 public class JHotkeyInput extends JPanel {
   private static final long serialVersionUID = 1L;
   private final JButton resetButton = new JButton();
@@ -56,12 +63,17 @@ public class JHotkeyInput extends JPanel {
     hotkeyInputField.setHorizontalAlignment(SwingConstants.CENTER);
     // The key listener owns the draft, not JTextField's ordinary text editing bindings.
     hotkeyInputField.setEditable(false);
-    hotkeyInputField.addFocusListener(new FocusAdapter() {
+    // Recording starts only on explicit activation (click, Enter or Space): merely tabbing
+    // through the list must never blank the displayed bindings.
+    hotkeyInputField.addMouseListener(new MouseAdapter() {
       @Override
-      public void focusGained(FocusEvent event) {
+      public void mousePressed(MouseEvent event) {
+        if (!hotkeyInputField.isEnabled()) return;
+        hotkeyInputField.requestFocusInWindow();
         enterEditMode();
       }
-
+    });
+    hotkeyInputField.addFocusListener(new FocusAdapter() {
       @Override
       public void focusLost(FocusEvent event) {
         final var next = event.getOppositeComponent();
@@ -74,32 +86,55 @@ public class JHotkeyInput extends JPanel {
     hotkeyInputField.addKeyListener(new KeyAdapter() {
       @Override
       public void keyPressed(KeyEvent event) {
+        final var code = event.getKeyCode();
+        if (!editing) {
+          // Outside capture only the activation keys are ours; everything else (e.g. Escape
+          // closing the window) keeps its normal meaning.
+          if ((code == KeyEvent.VK_ENTER || code == KeyEvent.VK_SPACE)
+              && event.getModifiersEx() == 0) {
+            event.consume();
+            enterEditMode();
+          }
+          return;
+        }
         // Consume before validation or window-level Escape bindings can handle this key.
         event.consume();
-        if (event.getKeyCode() == KeyEvent.VK_ESCAPE) {
+        if (code == KeyEvent.VK_ESCAPE) {
           exitEditModeWithoutRefresh();
           return;
         }
-        enterEditMode();
         capture(event);
       }
 
       @Override
       public void keyReleased(KeyEvent event) {
         // In particular, Escape's release must not erase the restored binding.
-        event.consume();
+        if (editing || event.getKeyCode() == KeyEvent.VK_ESCAPE) event.consume();
       }
 
       @Override
       public void keyTyped(KeyEvent event) {
-        event.consume();
+        if (editing) event.consume();
       }
     });
     getInputMap(WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
         .put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "cancelCapture");
     getActionMap().put("cancelCapture", new AbstractAction() {
       @Override
+      public boolean isEnabled() {
+        // A disabled binding leaves Escape to the enclosing window when nothing is recorded.
+        return editing;
+      }
+
+      @Override
       public void actionPerformed(ActionEvent event) {
+        exitEditModeWithoutRefresh();
+      }
+    });
+    // A draft never survives the editor being hidden (e.g. the Preferences window closing).
+    addHierarchyListener(event -> {
+      if ((event.getChangeFlags() & HierarchyEvent.SHOWING_CHANGED) != 0 && !isShowing()
+          && editing) {
         exitEditModeWithoutRefresh();
       }
     });
@@ -132,6 +167,11 @@ public class JHotkeyInput extends JPanel {
     // Reserve action space even outside capture, so neighbouring controls never jump.
     if (actions != null && !actions.isVisible()) size.width += actions.getPreferredSize().width;
     return size;
+  }
+
+  /** Whether a new shortcut is currently being recorded. */
+  public boolean isEditing() {
+    return editing;
   }
 
   private void enterEditMode() {
@@ -186,8 +226,13 @@ public class JHotkeyInput extends JPanel {
   }
 
   public void exitEditModeWithoutRefresh() {
+    // Keep keyboard focus on this row when the buttons that may own it disappear.
+    final var focusOwner = KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();
+    final var focusInActions =
+        focusOwner != null && SwingUtilities.isDescendingFrom(focusOwner, actions);
     editing = false;
     clearDraft();
+    if (focusInActions) hotkeyInputField.requestFocusInWindow();
     actions.setVisible(false);
     hotkeyInputField.setText(previousData);
     revalidate();

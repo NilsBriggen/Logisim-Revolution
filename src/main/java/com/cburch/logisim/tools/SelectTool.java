@@ -12,6 +12,7 @@ package com.cburch.logisim.tools;
 import static com.cburch.logisim.tools.Strings.S;
 
 import com.cburch.logisim.LogisimVersion;
+import com.cburch.logisim.circuit.EditLockedException;
 import com.cburch.logisim.circuit.ReplacementMap;
 import com.cburch.logisim.comp.Component;
 import com.cburch.logisim.comp.ComponentDrawContext;
@@ -151,6 +152,15 @@ public class SelectTool extends Tool {
   }
 
 
+  /**
+   * Limits a drag so it does not carry the selection past zero, where {@code boundsMin} is where
+   * the selection starts. A selection already partly below zero (a label hanging off the edge) may
+   * stay put or move back; it is never pushed, so a click without a drag moves nothing.
+   */
+  static int clampMove(int delta, int boundsMin) {
+    return Math.max(delta, Math.min(0, -boundsMin));
+  }
+
   private void computeDxDy(Project proj, MouseEvent e, Graphics g) {
     final var bds = proj.getSelection().getBounds(g);
     int dx;
@@ -159,8 +169,8 @@ public class SelectTool extends Tool {
       dx = e.getX() - start.getX();
       dy = e.getY() - start.getY();
     } else {
-      dx = Math.max(e.getX() - start.getX(), -bds.getX());
-      dy = Math.max(e.getY() - start.getY(), -bds.getY());
+      dx = clampMove(e.getX() - start.getX(), bds.getX());
+      dy = clampMove(e.getY() - start.getY(), bds.getY());
     }
 
     final var sel = proj.getSelection();
@@ -397,6 +407,18 @@ public class SelectTool extends Tool {
             }
             break;
 
+          case KeyEvent.VK_ENTER:
+            // Same keyboard model as the Edit tool: Enter drops a floating paste...
+            if (e.getModifiersEx() == 0 && EditTool.commitFloating(canvas)) e.consume();
+            else processKeyEvent(canvas, e, KeyConfigurationEvent.KEY_PRESSED);
+            break;
+
+          case KeyEvent.VK_ESCAPE:
+            // ...and Escape throws it away, or clears the selection.
+            if (e.getModifiersEx() == 0 && EditTool.cancelSelection(canvas)) e.consume();
+            else processKeyEvent(canvas, e, KeyConfigurationEvent.KEY_PRESSED);
+            break;
+
           default:
             processKeyEvent(canvas, e, KeyConfigurationEvent.KEY_PRESSED);
             break;
@@ -419,9 +441,30 @@ public class SelectTool extends Tool {
     processKeyEvent(canvas, e, KeyConfigurationEvent.KEY_TYPED);
   }
 
+  /**
+   * Whether the selection cannot be moved because it, or its circuit, is locked. The drag then
+   * shows nothing moving; letting go reports why in the status bar.
+   */
+  private static boolean isMoveLocked(Canvas canvas) {
+    return moveRefusal(canvas) != null;
+  }
+
+  /** Why the selection cannot be moved, or {@code null} when it can. */
+  private static EditLockedException moveRefusal(Canvas canvas) {
+    final var circuit = canvas.getCircuit();
+    if (circuit == null) return null;
+    if (circuit.isEditLocked()) return new EditLockedException(circuit, null);
+    for (final var comp : canvas.getSelection().getComponents()) {
+      if (circuit.isComponentEditLocked(comp)) return new EditLockedException(circuit, comp);
+    }
+    return null;
+  }
+
   @Override
   public void mouseDragged(Canvas canvas, Graphics g, MouseEvent e) {
-    if (state == MOVING) {
+    if (state == MOVING && isMoveLocked(canvas)) {
+      return;
+    } else if (state == MOVING) {
       final var proj = canvas.getProject();
       computeDxDy(proj, e, g);
       handleMoveDrag(canvas, curDx, curDy, e.getModifiersEx());
@@ -502,8 +545,11 @@ public class SelectTool extends Tool {
       int dx = curDx;
       int dy = curDy;
       if (dx != 0 || dy != 0) {
+        final var refusal = moveRefusal(canvas);
         if (!proj.getLogisimFile().contains(canvas.getCircuit())) {
           canvas.setErrorMessage(S.getter("cannotModifyError"));
+        } else if (refusal != null) {
+          proj.reportRefusedEdit(refusal);
         } else if (proj.getSelection().hasConflictWhenMoved(dx, dy)) {
           canvas.setErrorMessage(S.getter("exclusiveError"));
         } else {

@@ -69,6 +69,33 @@ class SettingsNavTest {
         });
   }
 
+  /** A filter typed in the old language must not strand the user after a language switch. */
+  @Test
+  void replacingPagesAfterALanguageChangeClearsTheFilter() throws Exception {
+    SwingUtilities.invokeAndWait(
+        () -> {
+          final var selected = new ArrayList<Integer>();
+          final var nav = new SettingsNav("Filter", selected::add);
+          nav.setPages(
+              List.of(
+                  new SettingsNav.SearchPage("Template", "Load a template"),
+                  new SettingsNav.SearchPage("Window", "Theme scale font")));
+          nav.setSelectedIndex(1);
+          final var filter = findFilter(nav);
+          filter.setText("Window");
+          filter.flushPendingChange();
+          assertEquals(List.of(1), nav.visibleIndexes());
+
+          nav.setPages(
+              List.of(
+                  new SettingsNav.SearchPage("Vorlage", "Eine Vorlage laden"),
+                  new SettingsNav.SearchPage("Fenster", "Thema Skalierung Schrift")));
+          assertEquals("", filter.getText());
+          assertEquals(List.of(0, 1), nav.visibleIndexes());
+          assertEquals(1, selected.getLast());
+        });
+  }
+
   @Test
   void enterFlushesPendingFilterBeforeSelectingMatchingPage() throws Exception {
     SwingUtilities.invokeAndWait(

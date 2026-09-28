@@ -93,7 +93,7 @@ class CircuitHdlGeneratorFactoryTest extends TestBase {
           "Clock component found with no connection, skipping: 'TestClock'",
           "INTERNAL ERROR: Cannot find clocknet!",
           "BUG: did not find IOpin",
-          "INTERNAL ERROR! Could not find the end-index of a sub-circuit component: 'TestPin'");
+          "INTERNAL ERROR! Could not find the end-index of a subcircuit component: 'TestPin'");
       assertCircuitGenerationDiagnostics(
           Locale.SIMPLIFIED_CHINESE,
           "内部错误：找不到元件 TestComponent 的 VHDL 生成器工厂",

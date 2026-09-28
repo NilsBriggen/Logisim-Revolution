@@ -10,8 +10,11 @@
 package com.cburch.logisim.util;
 
 import com.cburch.logisim.prefs.AppPreferences;
+import java.awt.Component;
+import java.awt.HeadlessException;
 import java.io.File;
 import java.io.IOException;
+import javax.swing.JDialog;
 import javax.swing.JFileChooser;
 
 public final class JFileChoosers {
@@ -21,6 +24,9 @@ public final class JFileChoosers {
   };
 
   private static String currentDirectory = "";
+
+  private static final int MIN_DIALOG_WIDTH = 760;
+  private static final int MIN_DIALOG_HEIGHT = 520;
 
   private JFileChoosers() {
     throw new IllegalStateException("Utility class. No instantiation allowed.");
@@ -42,6 +48,26 @@ public final class JFileChoosers {
 
     LogisimFileChooser(File initSelected) {
       super(initSelected);
+    }
+
+    /**
+     * Opens at a size where file names are readable; Swing's default fits only a handful of
+     * entries and truncates longer names.
+     */
+    @Override
+    protected JDialog createDialog(Component parent) throws HeadlessException {
+      final var dialog = super.createDialog(parent);
+      final var size = dialog.getSize();
+      final var screen = dialog.getGraphicsConfiguration().getBounds();
+      final var wanted = Math.min(UiScale.scaled(MIN_DIALOG_WIDTH), screen.width * 9 / 10);
+      final var wantedHeight = Math.min(UiScale.scaled(MIN_DIALOG_HEIGHT), screen.height * 9 / 10);
+      final var width = Math.max(size.width, wanted);
+      final var height = Math.max(size.height, wantedHeight);
+      if (width != size.width || height != size.height) {
+        dialog.setSize(width, height);
+        dialog.setLocationRelativeTo(parent);
+      }
+      return dialog;
     }
 
     @Override

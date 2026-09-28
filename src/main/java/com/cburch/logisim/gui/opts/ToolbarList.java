@@ -75,6 +75,7 @@ class ToolbarList extends JList {
       }
       if (ret instanceof JLabel label) {
         label.setIcon(icon);
+        label.setIconTextGap(Tokens.iconTextGap());
       }
       return ret;
     }
@@ -87,20 +88,24 @@ class ToolbarList extends JList {
       this.tool = tool;
     }
 
+    // The tool draws its icon in a scaled box; a fixed 20 pixels let it spill onto the label at
+    // any interface scale above one.
     @Override
     public int getIconHeight() {
-      return 20;
+      return AppPreferences.getScaled(AppPreferences.BOX_SIZE);
     }
 
     @Override
     public int getIconWidth() {
-      return 20;
+      return AppPreferences.getScaled(AppPreferences.BOX_SIZE);
     }
 
     @Override
     public void paintIcon(Component comp, Graphics g, int x, int y) {
       final var gfxNew = g.create();
-      tool.paintIcon(new ComponentDrawContext(comp, null, null, g, gfxNew), x + 2, y + 2);
+      final var border = AppPreferences.getScaled(AppPreferences.ICON_BORDER);
+      tool.paintIcon(
+          new ComponentDrawContext(comp, null, null, g, gfxNew), x + border, y + border);
       gfxNew.dispose();
     }
   }

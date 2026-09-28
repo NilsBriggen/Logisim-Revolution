@@ -341,7 +341,7 @@ public class Counter extends InstanceFactory implements DynamicElementProvider {
       var value = "";
       if (val.isFullyDefined()) {
         g.setColor(Color.DARK_GRAY);
-        value = StringUtil.toHexString(width, val.toLongValue()).toUpperCase();
+        value = StringUtil.toHexString(width, val.toLongValue());
       } else {
         g.setColor(Color.YELLOW);
         for (var i = 0; i < StringUtil.toHexString(width, val.toLongValue()).length(); i++)

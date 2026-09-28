@@ -18,8 +18,6 @@ import com.cburch.logisim.circuit.Circuit;
 import com.cburch.logisim.circuit.CircuitState;
 import com.cburch.logisim.data.Value;
 import com.cburch.logisim.file.FileStatistics;
-import com.cburch.logisim.file.LoadFailedException;
-import com.cburch.logisim.file.Loader;
 import com.cburch.logisim.file.LogisimFile;
 import com.cburch.logisim.gui.hex.HexFile;
 import com.cburch.logisim.instance.Instance;
@@ -35,11 +33,13 @@ import com.cburch.logisim.util.UniquelyNamedThread;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.Reader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.Map;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,9 +55,16 @@ public class TtyInterface {
   public static final int FORMAT_TABLE_CSV = 64;
   public static final int FORMAT_TABLE_BIN = 128;
   public static final int FORMAT_TABLE_HEX = 256;
-  static final int EXIT_SUCCESS = 0;
-  static final int EXIT_FAILURE = -1;
-  static final int EXIT_OSCILLATION = 1;
+  static final int EXIT_SUCCESS = ExitCode.SUCCESS;
+  static final int EXIT_FAILURE = ExitCode.FAILURE;
+  static final int EXIT_OSCILLATION = ExitCode.SIMULATION_FAILED;
+  static final int EXIT_LOAD_ERROR = ExitCode.LOAD_ERROR;
+
+  /** Largest number of input bits a truth table can enumerate (its row count must fit an int). */
+  static final int MAX_TABLE_INPUT_BITS = 30;
+
+  /** Keyboard input chunks buffered ahead of the simulation before the reader waits. */
+  private static final int STDIN_QUEUE_CAPACITY = 1024;
   static final Logger logger = LoggerFactory.getLogger(TtyInterface.class);
   private static boolean lastIsNewline = true;
 
@@ -236,7 +243,10 @@ public class TtyInterface {
         if (loadFile != null) {
           final var memState = circState.getInstanceState(comp);
           final var m = memFactory.getContents(memState);
-          HexFile.open(m, loadFile);
+          // A rejected image leaves the memory empty; running on regardless gives wrong results.
+          if (!HexFile.open(m, loadFile)) {
+            throw new IOException(S.get("loadImageRejectedError", loadFile.getPath()));
+          }
           circState.markComponentAsDirty(comp);
           found.add(key);
         }
@@ -290,17 +300,10 @@ public class TtyInterface {
 
   public static int run(Startup args) {
     final var fileToOpen = args.getFilesToOpen().get(0);
-    final var loader = new Loader(null);
-    LogisimFile file;
+    final var proj = new CliLoader().openProject(fileToOpen, args.getSubstitutions());
+    if (proj == null) return EXIT_LOAD_ERROR;
     try {
-      file = loader.openLogisimFile(fileToOpen, args.getSubstitutions());
-    } catch (LoadFailedException e) {
-      logger.error("{}", S.get("ttyLoadError", fileToOpen.getName()));
-      return EXIT_FAILURE;
-    }
-    final var proj = new Project(file);
-    try {
-      return run(args, file, proj);
+      return run(args, proj.getLogisimFile(), proj);
     } finally {
       proj.getSimulator().shutDown();
     }
@@ -315,6 +318,10 @@ public class TtyInterface {
     final var circuit = (circuitToTest == null || circuitToTest.length() == 0)
         ? file.getMainCircuit()
         : file.getCircuit(circuitToTest);
+    if (circuit == null) {
+      logger.error("{}", S.get("cliCircuitNotFoundError", circuitToTest));
+      return EXIT_FAILURE;
+    }
 
     var format = args.getTtyFormat();
     if ((format & FORMAT_STATISTICS) != 0) {
@@ -342,8 +349,13 @@ public class TtyInterface {
       }
     }
     if (haltPin == null && (format & FORMAT_TABLE) != 0) {
-      doTableAnalysis(proj, circuit, pinNames, format);
-      return EXIT_SUCCESS;
+      if (!args.getMemoryLoadFiles().isEmpty() || args.getSaveFile() != null) {
+        // The truth table starts every row from the circuit as saved: an image passed with
+        // --load would silently not be used, so refuse rather than print a misleading table.
+        logger.error("{}", S.get("ttyTableMemoryError"));
+        return EXIT_FAILURE;
+      }
+      return doTableAnalysis(proj, circuit, pinNames, format);
     }
 
     CircuitState circState = CircuitState.createRootState(proj, circuit, Thread.currentThread());
@@ -361,10 +373,16 @@ public class TtyInterface {
           return EXIT_FAILURE;
         }
       } catch (IOException e) {
-        logger.error("{}: {}", S.get("loadIoError"), e.toString());
+        logger.error("{}: {}", S.get("loadIoError"), e.getMessage());
         return EXIT_FAILURE;
       }
       prop.propagate(); // propagate memory values before running simulation.
+    }
+
+    if (haltPin == null && (format & FORMAT_TTY) == 0) {
+      // Without a halt pin only an interactive TTY session has a way to end (interrupting it).
+      logger.error("{}", S.get("ttyNoHaltPinError"));
+      return EXIT_FAILURE;
     }
 
     final var ttyFormat = args.getTtyFormat();
@@ -391,7 +409,7 @@ public class TtyInterface {
     return simCode;
   }
 
-  private static int doTableAnalysis(Project proj, Circuit circuit, Map<Instance, String> pinLabels, int format) {
+  static int doTableAnalysis(Project proj, Circuit circuit, Map<Instance, String> pinLabels, int format) {
 
     final var inputPins = new ArrayList<Instance>();
     final var inputVars = new ArrayList<Var>();
@@ -437,8 +455,13 @@ public class TtyInterface {
     }
 
     final var inputCount = inputNames.size();
+    if (inputCount > MAX_TABLE_INPUT_BITS) {
+      logger.error("{}", S.get("ttyTooManyInputsError", inputCount, MAX_TABLE_INPUT_BITS));
+      return EXIT_FAILURE;
+    }
     final var rowCount = 1 << inputCount;
 
+    var oscillated = false;
     var needTableHeader = true;
     final var valueMap = new HashMap<Instance, Value>();
     for (var i = 0; i < rowCount; i++) {
@@ -466,6 +489,7 @@ public class TtyInterface {
       // TODO: Search for circuit state
 
 
+      oscillated |= prop.isOscillating();
       for (final var pin : outputPins) {
         if (prop.isOscillating()) {
           final var width = pin.getAttributeValue(StdAttr.WIDTH);
@@ -484,7 +508,11 @@ public class TtyInterface {
       needTableHeader = false;
     }
 
-    return 0;
+    if (oscillated) {
+      logger.error("{}", S.get("ttyTableOscillationError"));
+      return EXIT_OSCILLATION;
+    }
+    return EXIT_SUCCESS;
   }
 
   static int runSimulation(
@@ -558,12 +586,11 @@ public class TtyInterface {
     }
     final var elapse = System.currentTimeMillis() - start;
     if (showTty) ensureLineTerminated();
-    if (showHalt || retCode != 0) {
-      if (retCode == 0) {
-        logger.error("{}", S.get("ttyHaltReasonPin"));
-      } else if (retCode == 1) {
-        logger.error("{}", S.get("ttyHaltReasonOscillation"));
-      }
+    if (retCode == EXIT_OSCILLATION) {
+      logger.error("{}", S.get("ttyHaltReasonOscillation"));
+    } else if (showHalt) {
+      // A normal end is information, not an error.
+      logger.info("{}", S.get("ttyHaltReasonPin"));
     }
     if (showSpeed) {
       displaySpeed(tickCount, elapse);
@@ -580,36 +607,43 @@ public class TtyInterface {
   // System.in.available(),
   // but this doesn't quite work because on some systems, the keyboard input
   // is not interactively echoed until System.in.read() is invoked.
-  private static class StdinThread extends UniquelyNamedThread {
-    private final LinkedList<char[]> queue; // of char[]
+  static class StdinThread extends UniquelyNamedThread {
+    // Bounded, so that input arriving faster than the simulation consumes it blocks the reader
+    // instead of filling the heap.
+    private final BlockingQueue<char[]> queue = new ArrayBlockingQueue<>(STDIN_QUEUE_CAPACITY);
+    private final Reader input;
 
     public StdinThread() {
+      this(new InputStreamReader(System.in));
+    }
+
+    StdinThread(Reader input) {
       super("TtyInterface-StdInThread");
-      queue = new LinkedList<>();
+      this.input = input;
+      setDaemon(true);
     }
 
     public char[] getBuffer() {
-      synchronized (queue) {
-        return queue.isEmpty() ? null : queue.removeFirst();
-      }
+      return queue.poll();
     }
 
     @Override
     public void run() {
-      final var stdin = new InputStreamReader(System.in);
       final var buffer = new char[32];
-      while (true) {
-        try {
-          int nbytes = stdin.read(buffer);
-          if (nbytes > 0) {
-            final var add = new char[nbytes];
-            System.arraycopy(buffer, 0, add, 0, nbytes);
-            synchronized (queue) {
-              queue.addLast(add);
-            }
+      try {
+        while (true) {
+          final var nchars = input.read(buffer);
+          if (nchars < 0) return; // end of input: nothing more will ever arrive
+          if (nchars > 0) {
+            final var add = new char[nchars];
+            System.arraycopy(buffer, 0, add, 0, nchars);
+            queue.put(add);
           }
-        } catch (IOException ignored) {
         }
+      } catch (IOException e) {
+        logger.error("{}", e.getMessage());
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
       }
     }
   }

@@ -18,5 +18,13 @@ public interface AttrTableModel {
 
   String getTitle();
 
+  /**
+   * Why the values cannot be changed, when what is shown is locked against edits; {@code null}
+   * otherwise. Shown above the table so read-only rows do not look like a fault.
+   */
+  default String getEditLockNote() {
+    return null;
+  }
+
   void removeAttrTableModelListener(AttrTableModelListener listener);
 }

@@ -11,6 +11,7 @@ package com.cburch.logisim;
 
 import com.cburch.logisim.generated.BuildInfo;
 import com.cburch.logisim.gui.generic.OptionPane;
+import com.cburch.logisim.gui.start.ExitCode;
 import com.cburch.logisim.gui.start.Startup;
 import com.cburch.logisim.gui.theme.Theme;
 import com.cburch.logisim.prefs.PreferenceBootstrap;
@@ -42,17 +43,31 @@ public class Main {
     }
 
     final var startup = Startup.parseArgs(args);
-    if (startup == null) System.exit(10);
-    if (startup.shallQuit()) System.exit(0);
+    if (startup == null) System.exit(ExitCode.USAGE);
+    if (startup.shallQuit()) System.exit(ExitCode.SUCCESS);
 
     try {
       startup.run();
     } catch (Throwable e) {
+      reportFatalError(e);
+      System.exit(ExitCode.INTERNAL_ERROR);
+    }
+  }
+
+  /**
+   * Reports an error that escaped startup. The trace always goes to standard error; a dialog is
+   * added only when one can be shown, since reporting must not itself fail without a display.
+   */
+  private static void reportFatalError(Throwable error) {
+    error.printStackTrace();
+    if (!hasGui() || GraphicsEnvironment.isHeadless()) return;
+    try {
       final var strWriter = new StringWriter();
       final var printWriter = new PrintWriter(strWriter);
-      e.printStackTrace(printWriter);
+      error.printStackTrace(printWriter);
       OptionPane.showMessageDialog(null, strWriter.toString());
-      System.exit(100);
+    } catch (Throwable dialogError) {
+      // The trace is already on standard error.
     }
   }
 

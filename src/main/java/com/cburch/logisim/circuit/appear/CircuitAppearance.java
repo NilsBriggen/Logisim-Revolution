@@ -16,6 +16,7 @@ import com.cburch.draw.model.Drawing;
 import com.cburch.logisim.circuit.Circuit;
 import com.cburch.logisim.circuit.CircuitAttributes;
 import com.cburch.logisim.circuit.CircuitState;
+import com.cburch.logisim.circuit.EditLockedException;
 import com.cburch.logisim.circuit.ReplacementMap;
 import com.cburch.logisim.data.AttributeEvent;
 import com.cburch.logisim.data.AttributeListener;
@@ -60,6 +61,8 @@ public class CircuitAppearance extends Drawing implements AttributeListener {
   private final ArrayList<CanvasObject> defaultCanvasObjects;
   private boolean suppressRecompute;
   private List<CanvasObject> defaultCustomAppearance;
+  /** Whether the generated custom appearance is the pre-label one; see {@link #useLegacyDefaultCustomAppearance}. */
+  private boolean legacyDefaultCustom;
 
   public CircuitAppearance(Circuit circuit) {
     this.circuit = circuit;
@@ -72,7 +75,7 @@ public class CircuitAppearance extends Drawing implements AttributeListener {
     if (circuit != null) circuit.getStaticAttributes().addAttributeListener(this);
     defaultCanvasObjects = new ArrayList<>();
     recomputeDefaultAppearance();
-    defaultCustomAppearance = DefaultCustomAppearance.build(circuitPins.getPins());
+    defaultCustomAppearance = buildDefaultCustomAppearance();
     setObjectsForce(defaultCustomAppearance, false);
   }
 
@@ -108,13 +111,64 @@ public class CircuitAppearance extends Drawing implements AttributeListener {
     return !currentCustom.isEmpty();
   }
 
+  private List<CanvasObject> buildDefaultCustomAppearance() {
+    return DefaultCustomAppearance.build(circuitPins.getPins(), !legacyDefaultCustom);
+  }
+
+  /**
+   * Makes the generated custom appearance the one used before pin names were added. A file that
+   * uses the generated appearance does not store it, so a circuit read from a file must regenerate
+   * exactly what it showed before. Must be called before the circuit gets its pins.
+   */
+  public void useLegacyDefaultCustomAppearance() {
+    if (legacyDefaultCustom) return;
+    legacyDefaultCustom = true;
+    if (!hasCustomAppearance()) {
+      super.removeObjects(this.getCustomObjectsFromBottom());
+      defaultCustomAppearance = buildDefaultCustomAppearance();
+      setObjectsForce(defaultCustomAppearance, false);
+    }
+  }
+
+  /** Whether the generated custom appearance is the pre-label one. */
+  public boolean isLegacyDefaultCustomAppearance() {
+    return legacyDefaultCustom;
+  }
+
+  /**
+   * Whether the custom appearance is the generated, labelled one. It is saved with the file, since
+   * reading a file without it regenerates the legacy one.
+   */
+  public boolean isLabelledDefaultCustomAppearance() {
+    return !legacyDefaultCustom && !hasCustomAppearance();
+  }
+
+  /**
+   * After a stored appearance has been read: when it is exactly the labelled default for the
+   * circuit's pins, treat it as generated again, so it keeps following pin changes.
+   */
+  public void adoptLabelledDefaultIfMatching() {
+    if (!legacyDefaultCustom) return;
+    final var saved = defaultCustomAppearance;
+    legacyDefaultCustom = false;
+    defaultCustomAppearance = buildDefaultCustomAppearance();
+    if (hasCustomAppearance()) {
+      legacyDefaultCustom = true;
+      defaultCustomAppearance = saved;
+    }
+  }
+
+  /** Replaces the custom appearance by a freshly generated default, as for a new circuit. */
   public void resetDefaultCustomAppearance() {
+    if (circuit.isEditLocked()) throw new EditLockedException(circuit, null);
+    legacyDefaultCustom = false;
     super.removeObjects(this.getCustomObjectsFromBottom());
-    defaultCustomAppearance = DefaultCustomAppearance.build(circuitPins.getPins());
+    defaultCustomAppearance = buildDefaultCustomAppearance();
     setObjectsForce(defaultCustomAppearance, false);
   }
 
   public void loadDefaultLogisimAppearance() {
+    if (circuit.isEditLocked()) throw new EditLockedException(circuit, null);
     super.removeObjects(this.getCustomObjectsFromBottom());
     defaultCustomAppearance.clear();
     setObjectsForce(DefaultEvolutionAppearance.build(circuitPins.getPins(), circuit.getName(), true), false);
@@ -450,12 +504,12 @@ public class CircuitAppearance extends Drawing implements AttributeListener {
       suppressRecompute = true;
       final var hasCustom = hasCustomAppearance();
       if (hasCustom) {
-        defaultCustomAppearance = DefaultCustomAppearance.build(circuitPins.getPins());
+        defaultCustomAppearance = buildDefaultCustomAppearance();
         removeObjects(removes);
         addObjects(getCustomObjectsFromBottom().size() - 1, adds);
       } else {
         super.removeObjects(getCustomObjectsFromBottom());
-        defaultCustomAppearance = DefaultCustomAppearance.build(circuitPins.getPins());
+        defaultCustomAppearance = buildDefaultCustomAppearance();
         setObjectsForce(defaultCustomAppearance, false);
       }
     } finally {

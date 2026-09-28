@@ -56,6 +56,11 @@ public class TextTool extends AbstractTool {
     fieldAction.put("cancel", new CancelListener());
   }
 
+  @Override
+  public void cancelMousePress(Canvas canvas) {
+    cancelText(canvas);
+  }
+
   private void cancelText(Canvas canvas) {
     final var cur = curText;
     if (cur != null) {
@@ -113,7 +118,8 @@ public class TextTool extends AbstractTool {
 
   @Override
   public void mousePressed(Canvas canvas, MouseEvent e) {
-    if (curText != null) {
+    final var wasEditing = curText != null;
+    if (wasEditing) {
       commitText(canvas);
     }
 
@@ -130,6 +136,11 @@ public class TextTool extends AbstractTool {
       }
     }
     if (!found) {
+      // Clicking empty space while editing means "done", not "start another text here".
+      if (wasEditing) {
+        canvas.repaint();
+        return;
+      }
       clicked = attrs.applyTo(new Text(mx, my, ""));
     }
 

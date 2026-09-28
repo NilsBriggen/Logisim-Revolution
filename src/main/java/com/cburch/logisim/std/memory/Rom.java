@@ -156,6 +156,11 @@ public class Rom extends Mem {
     return instance.getAttributeValue(CONTENTS_ATTR);
   }
 
+  /** Binds the shared ROM image to its design lock, including editors opened before locking. */
+  public static void setContentsOwner(Circuit circuit, Component component) {
+    ((RomAttributes) component.getAttributeSet()).setOwner(circuit, component);
+  }
+
   public static void closeHexFrame(Component c) {
     if (!(c instanceof InstanceComponent)) return;
     final var inst = ((InstanceComponent) c).getInstance();

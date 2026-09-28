@@ -44,7 +44,7 @@ class ZoomPillTest {
       final var pill = new ZoomPill(control, layout);
       final var readings = new ArrayList<String>();
       pill.setZoomTextListener(readings::add);
-      assertEquals(List.of("100%"), readings);
+      assertEquals(List.of(ZoomControl.percentText(1.0)), readings);
       assertEquals(0, layout.listenerCount(), "undisplayed pill must not retain model listeners");
       pill.addNotify();
       try {
@@ -66,23 +66,27 @@ class ZoomPillTest {
         pill.setModel(appearance);
         assertEquals(0, layout.listenerCount());
         assertEquals(2, appearance.listenerCount());
-        assertEquals("200%", readings.getLast());
+        assertEquals(ZoomControl.percentText(2.0), readings.getLast());
         layout.setZoomFactor(3.0);
-        assertEquals("200%", readings.getLast(), "inactive model changed the status");
+        assertEquals(
+            ZoomControl.percentText(2.0), readings.getLast(), "inactive model changed the status");
         ShellChromeTest.activate(buttons.get(1), KeyEvent.VK_ENTER);
-        assertEquals(1.0, appearance.getZoomFactor());
+        assertEquals(ZoomControl.actualSizeZoom(), appearance.getZoomFactor(), 1e-9);
         assertEquals(1, appearance.centerRequests);
-        assertEquals("100%", readings.getLast());
+        assertEquals(ZoomControl.percentText(ZoomControl.actualSizeZoom()), readings.getLast());
 
         pill.setModel(appearance);
         assertEquals(2, appearance.listenerCount(), "same-model refresh duplicated subscriptions");
         pill.removeNotify();
         assertEquals(0, appearance.listenerCount());
         appearance.setZoomFactor(4.0);
-        assertEquals("100%", readings.getLast(), "disposed pill still updated the status");
+        assertEquals(
+            ZoomControl.percentText(ZoomControl.actualSizeZoom()),
+            readings.getLast(),
+            "disposed pill still updated the status");
         pill.addNotify();
         assertEquals(2, appearance.listenerCount());
-        assertEquals("400%", readings.getLast());
+        assertEquals(ZoomControl.percentText(4.0), readings.getLast());
         pill.setModel(null);
         assertEquals(0, appearance.listenerCount());
         assertEquals("", readings.getLast());
@@ -107,7 +111,8 @@ class ZoomPillTest {
               new Font(Font.DIALOG, Font.PLAIN, (int) Math.round(13 * nextScale)));
           Theme.fireChanged();
           final var percent = ShellChromeTest.components(pill, AbstractButton.class).get(1);
-          assertEquals("125%", percent.getText());
+          // The percentage is relative to the interface scale, and follows it.
+          assertEquals(Math.round(125 / UiScale.factor()) + "%", percent.getText());
           assertEquals(UiFonts.small(), percent.getFont());
           assertEquals(Spacing.XS, percent.getMargin().left);
           assertEquals(Spacing.xs(), pill.getInsets().top);

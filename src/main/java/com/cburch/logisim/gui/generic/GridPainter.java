@@ -98,11 +98,20 @@ public class GridPainter implements PropertyChangeListener {
   }
 
   public void paintGrid(Graphics g) {
+    paintGrid(g, 0, 0);
+  }
+
+  /**
+   * Paints the grid so that its points line up with a document origin drawn at pixel ({@code
+   * originX}, {@code originY}).
+   */
+  public void paintGrid(Graphics g, int originX, int originY) {
     if (!showGrid) return;
 
     final var clip = g.getClipBounds();
-    final var x0 = (clip.x / gridImageWidth) * gridImageWidth; // round down to multiple of w
-    final var y0 = (clip.y / gridImageWidth) * gridImageWidth;
+    // round down to a whole tile from the origin
+    final var x0 = originX + Math.floorDiv(clip.x - originX, gridImageWidth) * gridImageWidth;
+    final var y0 = originY + Math.floorDiv(clip.y - originY, gridImageWidth) * gridImageWidth;
     for (var x = 0; x < clip.width + gridImageWidth; x += gridImageWidth) {
       for (var y = 0; y < clip.height + gridImageWidth; y += gridImageWidth) {
         g.drawImage(gridImage, x0 + x, y0 + y, destination);

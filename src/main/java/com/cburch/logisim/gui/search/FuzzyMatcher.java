@@ -82,6 +82,9 @@ public final class FuzzyMatcher {
    */
   private static final int NO_SCORE = Integer.MIN_VALUE / 2;
 
+  /** A run of adjacent matched characters at least this long counts even inside a word. */
+  private static final int MIN_ANCHORED_RUN = 3;
+
   private FuzzyMatcher() {
     throw new UnsupportedOperationException("Utility class, do not instantiate.");
   }
@@ -108,6 +111,9 @@ public final class FuzzyMatcher {
     final var queryLen = query.length();
     final var candLen = candidate.length();
     if (queryLen == 0 || candLen == 0 || queryLen > candLen) return null;
+    // Most candidates do not contain the query at all; a linear scan rejects them without
+    // allocating the tables, which keeps large indexes (every placed component) cheap to search.
+    if (!isSubsequence(query, candidate)) return null;
 
     // best[i][j] is the score of matching query[0..i] with query[i] landing exactly on
     // candidate[j]; from[i][j] records which candidate index query[i - 1] used, so the winning
@@ -195,7 +201,32 @@ public final class FuzzyMatcher {
       positions[i] = cursor;
       cursor = from[i][cursor];
     }
+    if (!isCoherent(candidate, positions)) return null;
     return new Match(finalScore, positions);
+  }
+
+  /**
+   * Whether an alignment reads as a deliberate match rather than letters picked up here and there.
+   *
+   * <p>The matched positions form fragments (runs of adjacent characters). A fragment is anchored
+   * when it starts a word or is at least {@link #MIN_ANCHORED_RUN} characters long. At least one
+   * fragment must be anchored, and loose fragments may not outnumber anchored ones by more than
+   * one. So "xor" no longer finds "Export" (x…or inside one word) and "dark" no longer finds
+   * "Matrix Keypad", while "stats" still finds "Statistics" and "dmux" "Demultiplexer".
+   */
+  private static boolean isCoherent(String candidate, int[] positions) {
+    var anchored = 0;
+    var loose = 0;
+    var start = 0;
+    while (start < positions.length) {
+      var end = start;
+      while (end + 1 < positions.length && positions[end + 1] == positions[end] + 1) end++;
+      final var length = end - start + 1;
+      if (charScore(candidate, positions[start]) > 0 || length >= MIN_ANCHORED_RUN) anchored++;
+      else loose++;
+      start = end + 1;
+    }
+    return anchored > 0 && loose <= anchored + 1;
   }
 
   /**
@@ -210,6 +241,16 @@ public final class FuzzyMatcher {
       return CAMEL_BONUS;
     }
     return 0;
+  }
+
+  /** Whether {@code query}'s characters occur in {@code candidate} in order, ignoring case. */
+  public static boolean isSubsequence(String query, String candidate) {
+    var next = 0;
+    final var queryLen = query.length();
+    for (var j = 0; j < candidate.length() && next < queryLen; j++) {
+      if (matches(query.charAt(next), candidate.charAt(j))) next++;
+    }
+    return next == queryLen;
   }
 
   private static boolean matches(char query, char candidate) {

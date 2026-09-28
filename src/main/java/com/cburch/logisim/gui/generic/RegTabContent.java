@@ -84,7 +84,7 @@ public class RegTabContent extends JScrollPane
     Theme.addListener(this, this::refreshAppearance);
 
     localeChanged();
-    LocaleManager.addLocaleListener(this);
+    LocaleManager.addLocaleListener(this, this);
 
     addComponentListener(new ComponentAdapter() {
       public void componentShown(ComponentEvent e) {

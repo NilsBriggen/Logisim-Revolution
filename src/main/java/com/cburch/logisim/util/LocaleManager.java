@@ -11,6 +11,8 @@ package com.cburch.logisim.util;
 
 import static com.cburch.logisim.util.Strings.S;
 
+import java.awt.Component;
+import java.awt.event.HierarchyEvent;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -19,6 +21,7 @@ import java.util.MissingResourceException;
 import java.util.Objects;
 import java.util.ResourceBundle;
 import java.util.StringTokenizer;
+import java.util.concurrent.CopyOnWriteArrayList;
 import javax.swing.JComponent;
 import javax.swing.JScrollPane;
 import javax.swing.UIManager;
@@ -88,7 +91,9 @@ public class LocaleManager {
   private static final String SETTINGS_NAME = "settings";
   private static final ArrayList<LocaleManager> managers = new ArrayList<>();
   public static final SimpleDateFormat PARSER_SDF = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ");
-  private static final ArrayList<LocaleListener> listeners = new ArrayList<>();
+  // Copy-on-write: a listener may register or remove listeners while the locale change is fired.
+  private static final CopyOnWriteArrayList<LocaleListener> listeners =
+      new CopyOnWriteArrayList<>();
   private static final HashMap<Character, String> repl = null;
   private static Locale curLocale = null;
 
@@ -104,8 +109,36 @@ public class LocaleManager {
     managers.add(this);
   }
 
+  /**
+   * Registers a listener for the lifetime of the application. Windows and their components must
+   * use {@link #addLocaleListener(Component, LocaleListener)} instead, or the static list keeps
+   * every closed window reachable.
+   */
   public static void addLocaleListener(LocaleListener l) {
     listeners.add(l);
+  }
+
+  /**
+   * Registers a listener that lives as long as {@code owner} is in use. The listener is dropped
+   * when the owner stops being displayable (its window was disposed), so closed windows can be
+   * collected, and it is registered again, catching up on missed changes, if the owner is shown
+   * again.
+   */
+  public static void addLocaleListener(Component owner, LocaleListener l) {
+    listeners.addIfAbsent(l);
+    owner.addHierarchyListener(
+        event -> {
+          if ((event.getChangeFlags() & HierarchyEvent.DISPLAYABILITY_CHANGED) == 0) return;
+          if (owner.isDisplayable()) {
+            if (listeners.addIfAbsent(l)) l.localeChanged();
+          } else {
+            listeners.remove(l);
+          }
+        });
+  }
+
+  static boolean isLocaleListenerRegistered(LocaleListener l) {
+    return listeners.contains(l);
   }
 
   private static void fireLocaleChanged() {

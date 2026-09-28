@@ -26,11 +26,31 @@ import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JMenuItem;
 import javax.swing.JRadioButtonMenuItem;
 import javax.swing.WindowConstants;
+import javax.swing.event.MenuEvent;
+import javax.swing.event.MenuListener;
 
 import com.cburch.logisim.data.Direction;
 
 public class WindowMenu extends Menu {
-  private class MyListener implements LocaleListener, ActionListener, PropertyChangeListener {
+  private class MyListener
+      implements LocaleListener, ActionListener, PropertyChangeListener, MenuListener {
+    @Override
+    public void menuSelected(MenuEvent e) {
+      // The navigation pane can be shown or hidden from the activity bar, a panel's close button
+      // or the preferences, none of which tell this menu; read the window's state as it opens.
+      syncCheckStates();
+    }
+
+    @Override
+    public void menuDeselected(MenuEvent e) {
+      // Nothing to do.
+    }
+
+    @Override
+    public void menuCanceled(MenuEvent e) {
+      // Nothing to do.
+    }
+
     @Override
     public void actionPerformed(ActionEvent e) {
       final var src = e.getSource();
@@ -147,8 +167,9 @@ public class WindowMenu extends Menu {
 
     computeEnabled();
     computeContents();
+    addMenuListener(myListener);
 
-    LocaleManager.addLocaleListener(myListener);
+    LocaleManager.addLocaleListener(this, myListener);
     myListener.localeChanged();
   }
 
@@ -219,6 +240,12 @@ public class WindowMenu extends Menu {
       explorer.setEnabled(true);
       explorer.setState(isExplorerVisible());
     }
+  }
+
+  /** Brings the "Show toolbar" and "Show navigation pane" check marks up to date. */
+  void syncCheckStates() {
+    toolbar.setState(isToolbarVisible());
+    if (hasExplorerToggle()) explorer.setState(isExplorerVisible());
   }
 
   void doClose() {

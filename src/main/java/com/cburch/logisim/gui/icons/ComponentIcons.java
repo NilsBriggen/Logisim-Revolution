@@ -140,6 +140,7 @@ public final class ComponentIcons {
     icons.put("com.cburch.logisim.circuit.SubcircuitFactory",
         new Symbol(Shape.MODULE, "", false));
     icons.put("com.cburch.logisim.vhdl.base.VhdlEntity", new Symbol(Shape.MODULE, "HDL", false));
+    icons.put("com.cburch.logisim.vhdl.base.VerilogModule", new Symbol(Shape.MODULE, "V", false));
     // Explicit built-in part names: a plug-in in a similarly named package must not be remapped.
     for (final var part : TTL_PARTS.split(" ")) {
       put(icons, "ttl", "Ttl" + part, Shape.TTL, "", false);

@@ -44,6 +44,7 @@ public class StatusBar extends JPanel {
   private final JButton zoomButton = statusButton("");
   private Runnable zoomAction;
   private boolean messageError;
+  private boolean messageNotice;
 
   public StatusBar() {
     setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
@@ -94,7 +95,10 @@ public class StatusBar extends JPanel {
     zoomButton.setFont(font);
     zoomButton.setForeground(Tokens.statusBarForeground());
     zoomButton.setMargin(new Insets(0, Spacing.XS, 0, Spacing.XS));
-    messageLabel.setForeground(messageError ? Tokens.error() : Tokens.mutedForeground());
+    messageLabel.setForeground(
+        messageError
+            ? Tokens.error()
+            : messageNotice ? Tokens.statusBarForeground() : Tokens.mutedForeground());
     for (final var component : breadcrumb.getComponents()) {
       component.setFont(font);
       if (component instanceof JButton button) {
@@ -111,6 +115,30 @@ public class StatusBar extends JPanel {
   /** The name of the circuit being edited. */
   public void setCircuitName(String name) {
     circuitLabel.setText(name == null ? "" : name);
+  }
+
+  /**
+   * Hides the circuit name and zoom reading while the welcome screen is showing.
+   *
+   * <p>Both keep whatever value the last open circuit left behind, since nothing clears them when
+   * a project closes down to the welcome screen. Left alone, that stale "main" and "100%" look
+   * like a live, open document nobody had asked for.
+   */
+  public void setWelcomeMode(boolean on) {
+    circuitLabel.setVisible(!on);
+    zoomButton.setVisible(!on);
+  }
+
+  /**
+   * Marks the circuit's name with a padlock while the circuit is locked against edits.
+   *
+   * @param tooltip what the padlock means, or {@code null} to take it away
+   */
+  public void setCircuitLock(javax.swing.Icon icon, String tooltip) {
+    circuitLabel.setIcon(tooltip == null ? null : icon);
+    circuitLabel.setIconTextGap(Spacing.xs());
+    circuitLabel.setHorizontalTextPosition(javax.swing.SwingConstants.LEADING);
+    circuitLabel.setToolTipText(tooltip);
   }
 
   /**
@@ -177,8 +205,31 @@ public class StatusBar extends JPanel {
    */
   public void setMessage(String text, boolean error) {
     messageError = error;
+    messageNotice = false;
+    messageLabel.setIcon(null);
     messageLabel.setText(text == null ? "" : text);
     messageLabel.setForeground(error ? Tokens.error() : Tokens.mutedForeground());
+    messageLabel.setToolTipText(null);
+  }
+
+  /**
+   * A remark the user should notice without being interrupted, such as why an edit was turned
+   * down: in the normal text colour rather than the muted one, after {@code icon}.
+   */
+  public void setNotice(String text, javax.swing.Icon icon) {
+    messageError = false;
+    messageNotice = true;
+    messageLabel.setIcon(icon);
+    messageLabel.setIconTextGap(Spacing.xs());
+    messageLabel.setText(text == null ? "" : text);
+    messageLabel.setForeground(Tokens.statusBarForeground());
+    // The bar may be too narrow for the whole sentence.
+    messageLabel.setToolTipText(text);
+  }
+
+  /** The remark currently shown, for tests; empty when there is none. */
+  public String getMessage() {
+    return messageLabel.getText();
   }
 
   public void setSimulationState(String text) {

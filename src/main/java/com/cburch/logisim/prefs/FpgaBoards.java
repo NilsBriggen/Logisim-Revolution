@@ -14,7 +14,6 @@ import static com.cburch.logisim.proj.Strings.S;
 import com.cburch.logisim.fpga.file.BoardReaderClass;
 import com.cburch.logisim.fpga.settings.BoardList;
 import com.cburch.logisim.gui.generic.OptionPane;
-import java.awt.Color;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.event.ActionEvent;
@@ -305,7 +304,8 @@ public class FpgaBoards implements ActionListener {
     final int nrBoards = extBoardModel.nrOfExternalBoards();
     final var gbc = new GridBagConstraints();
     panel.setLayout(new GridBagLayout());
-    panel.setBorder(BorderFactory.createLineBorder(Color.BLACK, 2));
+    // No frame: it used to be a hard 2px black line, unlike every other group on the page.
+    panel.setBorder(BorderFactory.createEmptyBorder(4, 0, 4, 0));
     gbc.gridwidth = 2;
     gbc.gridx = 0;
     gbc.gridy = 0;

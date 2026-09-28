@@ -30,16 +30,34 @@ public class SubcircuitPoker extends InstancePoker {
     final var bds = painter.getInstance().getBounds();
     int cx = bds.getX() + bds.getWidth() / 2;
     int cy = bds.getY() + bds.getHeight() / 2;
-    return Bounds.create(cx - 5, cy - 5, 15, 15);
+    // The whole body is the click target, so a second click of a double-click keeps this caret.
+    return bds.add(Bounds.create(cx - 10, cy - 10, 26, 26));
   }
 
+  /**
+   * Whether a click opens the subcircuit: anywhere on its body, except over an element of its
+   * appearance that handles clicks itself (such as a CPU's control buttons). It used to be only the
+   * magnifier's 8-pixel circle, which is small and hard to find.
+   */
   private boolean isWithin(InstanceState state, MouseEvent e) {
-    final var bds = state.getInstance().getBounds();
-    int cx = bds.getX() + bds.getWidth() / 2;
-    int cy = bds.getY() + bds.getHeight() / 2;
-    int dx = e.getX() - cx;
-    int dy = e.getY() - cy;
-    return dx * dx + dy * dy <= 60;
+    return opensAt(state.getInstance().getBounds(), e.getX(), e.getY())
+        && !overInteractiveElement(state, e);
+  }
+
+  /** The instance body, where a double-click opens the subcircuit. */
+  static boolean opensAt(Bounds body, int x, int y) {
+    return body.contains(x, y);
+  }
+
+  private static boolean overInteractiveElement(InstanceState state, MouseEvent e) {
+    for (final var c :
+        ((SubcircuitFactory) state.getInstance().getFactory())
+            .getSubcircuit()
+            .getAppearance()
+            .getObjectsFromTop()) {
+      if (c instanceof DynamicElementWithPoker dynEl && dynEl.mouseInside(state, e)) return true;
+    }
+    return false;
   }
 
   @Override

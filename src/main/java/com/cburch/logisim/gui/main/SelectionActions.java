@@ -11,9 +11,11 @@ package com.cburch.logisim.gui.main;
 
 import static com.cburch.logisim.gui.Strings.S;
 
+import com.cburch.logisim.circuit.Circuit;
 import com.cburch.logisim.circuit.CircuitMutation;
 import com.cburch.logisim.circuit.CircuitTransaction;
 import com.cburch.logisim.circuit.CircuitTransactionResult;
+import com.cburch.logisim.circuit.EditLockedException;
 import com.cburch.logisim.circuit.ReplacementMap;
 import com.cburch.logisim.circuit.SubcircuitFactory;
 import com.cburch.logisim.circuit.Wire;
@@ -39,6 +41,23 @@ import javax.swing.JTextArea;
 public class SelectionActions {
 
   private SelectionActions() {}
+
+  /**
+   * Refuses, before the selection is touched, an edit of the selection in a locked circuit or of a
+   * locked component in it. The circuit mutation would refuse it too, but only after the selection
+   * had already been rearranged for it.
+   *
+   * @param changesComponents whether the edit removes, moves or alters the selected components, as
+   *     opposed to only adding new ones
+   */
+  static void checkEditLocks(Circuit circuit, Selection sel, boolean changesComponents) {
+    if (circuit == null) return;
+    if (circuit.isEditLocked()) throw new EditLockedException(circuit, null);
+    if (!changesComponents) return;
+    for (final var comp : sel.getComponents()) {
+      if (circuit.isComponentEditLocked(comp)) throw new EditLockedException(circuit, comp);
+    }
+  }
 
   /**
    * Code taken from Cornell's version of Logisim: http://www.cs.cornell.edu/courses/cs3410/2015sp/
@@ -358,6 +377,7 @@ public class SelectionActions {
 
     @Override
     public void doItFirstTime(Project proj) {
+      checkEditLocks(proj.getCurrentCircuit(), sel, true);
       oldClip = Clipboard.get();
       Clipboard.set(sel, sel.getAttributeSet());
       newClip = Clipboard.get();
@@ -392,6 +412,7 @@ public class SelectionActions {
     @Override
     public void doItFirstTime(Project proj) {
       final var circuit = proj.getCurrentCircuit();
+      checkEditLocks(circuit, sel, true);
       final var xn = new CircuitMutation(circuit);
       sel.deleteAllHelper(xn);
       xnForward = xn;
@@ -468,6 +489,7 @@ public class SelectionActions {
     @Override
     public void doItFirstTime(Project proj) {
       final var circuit = proj.getCurrentCircuit();
+      checkEditLocks(circuit, sel, false);
       final var xn = new CircuitMutation(circuit);
       sel.duplicateHelper(xn);
       xnForward = xn;
@@ -512,6 +534,7 @@ public class SelectionActions {
     public void doItFirstTime(Project proj) {
       final var clip = Clipboard.get();
       final var circuit = proj.getCurrentCircuit();
+      checkEditLocks(circuit, sel, false);
       final var xn = new CircuitMutation(circuit);
       final var comps = clip.getComponents();
       final var toAdd = computeAdditions(comps);
@@ -567,6 +590,7 @@ public class SelectionActions {
     @Override
     public void doItFirstTime(Project proj) {
       final var circuit = proj.getCurrentCircuit();
+      checkEditLocks(circuit, sel, true);
       final var xn = new CircuitMutation(circuit);
       sel.translateHelper(xn, dx, dy);
       if (replacements != null) {

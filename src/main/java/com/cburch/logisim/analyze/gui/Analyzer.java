@@ -12,21 +12,26 @@ package com.cburch.logisim.analyze.gui;
 import static com.cburch.logisim.analyze.Strings.S;
 
 import com.cburch.logisim.analyze.file.AnalyzerTexWriter;
+import com.cburch.logisim.analyze.model.AnalyzerHistory;
 import com.cburch.logisim.analyze.model.AnalyzerModel;
 import com.cburch.logisim.analyze.model.Implicant;
 import com.cburch.logisim.analyze.model.TruthTableEvent;
 import com.cburch.logisim.analyze.model.TruthTableListener;
 import com.cburch.logisim.gui.generic.LFrame;
+import com.cburch.logisim.gui.menu.LogisimMenuBar;
+import com.cburch.logisim.gui.theme.Theme;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.util.LocaleListener;
 import com.cburch.logisim.util.LocaleManager;
 import com.cburch.logisim.util.Spacing;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
+import java.awt.event.ActionListener;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JComponent;
@@ -37,6 +42,7 @@ import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.ScrollPaneConstants;
+import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
@@ -141,6 +147,7 @@ public class Analyzer extends LFrame.SubWindow {
   public static final int MINIMIZED_TAB = 3;
 
   private final AnalyzerModel model = new AnalyzerModel();
+  private final AnalyzerHistory history;
 
   private JTabbedPane tabbedPane = new JTabbedPane();
   private final VariableTab ioPanel;
@@ -160,6 +167,18 @@ public class Analyzer extends LFrame.SubWindow {
     final var tableListener = new TableListener();
     model.getTruthTable().addTruthTableListener(tableListener);
     menuListener = new AnalyzerMenuListener(menubar);
+    // The analyzer's own history: its edits are not project actions, so Edit > Undo (Ctrl+Z) in
+    // this window undoes the last change of the table, expressions or variables.
+    history = new AnalyzerHistory(model, SwingUtilities::invokeLater);
+    final ActionListener undoRedo =
+        event -> {
+          if (event.getSource() == LogisimMenuBar.UNDO) history.undo();
+          else if (event.getSource() == LogisimMenuBar.REDO) history.redo();
+        };
+    menubar.addActionListener(LogisimMenuBar.UNDO, undoRedo);
+    menubar.addActionListener(LogisimMenuBar.REDO, undoRedo);
+    history.addListener(this::updateUndoItems);
+    updateUndoItems();
     ioPanel = new VariableTab(model.getInputs(), model.getOutputs(), menubar);
     truthTablePanel = new TableTab(model.getTruthTable());
     expressionPanel = new ExpressionTab(model, menubar);
@@ -195,27 +214,46 @@ public class Analyzer extends LFrame.SubWindow {
     // The six actions were a centred FlowLayout strip that re-wrapped onto a second row when the
     // window narrowed. They now sit at the trailing edge, grouped: the two that change the table,
     // then the one that builds a circuit, then the two that export.
-    final var buttonPanel = new JPanel();
-    buttonPanel.setLayout(new BoxLayout(buttonPanel, BoxLayout.X_AXIS));
-    buttonPanel.setBorder(Spacing.panelBorder());
-    buttonPanel.add(Box.createHorizontalGlue());
-    buttonPanel.add(importTable);
-    buttonPanel.add(Box.createHorizontalStrut(Spacing.sm()));
-    buttonPanel.add(minimizeMinterms);
-    buttonPanel.add(Box.createHorizontalStrut(Spacing.sm()));
-    buttonPanel.add(minimizeMaxterms);
-    buttonPanel.add(Box.createHorizontalStrut(Spacing.lg()));
-    buttonPanel.add(exportTable);
-    buttonPanel.add(Box.createHorizontalStrut(Spacing.sm()));
-    buttonPanel.add(exportTex);
-    buttonPanel.add(Box.createHorizontalStrut(Spacing.lg()));
+    // When the groups do not fit next to each other (a large interface scale, long labels), the
+    // later groups move onto rows of their own instead of being cut off.
+    final var tableGroup = new JPanel();
+    tableGroup.setLayout(new BoxLayout(tableGroup, BoxLayout.X_AXIS));
+    tableGroup.add(importTable);
+    tableGroup.add(Box.createHorizontalStrut(Spacing.sm()));
+    tableGroup.add(minimizeMinterms);
+    tableGroup.add(Box.createHorizontalStrut(Spacing.sm()));
+    tableGroup.add(minimizeMaxterms);
+    final var outputGroup = new JPanel();
+    outputGroup.setLayout(new BoxLayout(outputGroup, BoxLayout.X_AXIS));
+    outputGroup.add(exportTable);
+    outputGroup.add(Box.createHorizontalStrut(Spacing.sm()));
+    outputGroup.add(exportTex);
+    outputGroup.add(Box.createHorizontalStrut(Spacing.lg()));
     // Building the circuit is what the window is for, and the only one that changes the project.
     buildCircuit.putClientProperty("JButton.buttonType", "default");
-    buttonPanel.add(buildCircuit);
+    outputGroup.add(buildCircuit);
+    final var buttonPanel = new JPanel(new ButtonRowLayout(Spacing.lg()));
+    buttonPanel.setBorder(Spacing.panelBorder());
+    buttonPanel.add(tableGroup);
+    buttonPanel.add(outputGroup);
+    buttonPanel.addComponentListener(
+        new ComponentAdapter() {
+          @Override
+          public void componentResized(ComponentEvent event) {
+            // One row or several depends on the width, so the height follows it.
+            if (buttonPanel.getPreferredSize().height != buttonPanel.getHeight()) {
+              buttonPanel.revalidate();
+            }
+          }
+        });
 
     contents.add(tabbedPane, BorderLayout.CENTER);
     contents.add(buttonPanel, BorderLayout.SOUTH);
     getRootPane().setDefaultButton(buildCircuit);
+
+    // A new interface scale (or theme) changes every font: grow to fit, as for a new language,
+    // instead of cutting off the expression area and the buttons.
+    Theme.addListener(getRootPane(), this::resizeForScaleChange);
 
     final var myLocaleListener = new MyLocaleListener();
     LocaleManager.addLocaleListener(myLocaleListener);
@@ -234,6 +272,10 @@ public class Analyzer extends LFrame.SubWindow {
     final var pane = new JScrollPane(comp,
         ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
         ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+    // This scroll pane is the whole tab. With a border, the look and feel drew a focus ring round
+    // the entire window content whenever the tab's panel held the focus; the focused control inside
+    // shows its own.
+    pane.setBorder(BorderFactory.createEmptyBorder());
     pane.addComponentListener(new ComponentAdapter() {
       @Override
       public void componentResized(ComponentEvent event) {
@@ -248,6 +290,16 @@ public class Analyzer extends LFrame.SubWindow {
     return model;
   }
 
+  /** The undo history of this window's content. */
+  public AnalyzerHistory getHistory() {
+    return history;
+  }
+
+  private void updateUndoItems() {
+    menubar.setEnabled(LogisimMenuBar.UNDO, history.canUndo());
+    menubar.setEnabled(LogisimMenuBar.REDO, history.canRedo());
+  }
+
   public void setSelectedTab(int index) {
     if (tabbedPane.getComponentAt(index) instanceof AnalyzerTab found) {
       model.getOutputExpressions().enableUpdates();
@@ -258,6 +310,12 @@ public class Analyzer extends LFrame.SubWindow {
     tabbedPane.setSelectedIndex(index);
   }
 
+  private void resizeForScaleChange() {
+    setMinimumSize(
+        new Dimension(AppPreferences.getScaled(450), AppPreferences.getScaled(300)));
+    resizeForLocaleChange();
+  }
+
   private void resizeForLocaleChange() {
     getContentPane().invalidate();
     invalidate();
@@ -265,7 +323,15 @@ public class Analyzer extends LFrame.SubWindow {
     final var current = getSize();
     if (current.width <= 0 || current.height <= 0) return;
 
-    final var expanded = expandedSizeForLocaleChange(current, getPreferredSize());
+    var expanded = expandedSizeForLocaleChange(current, getPreferredSize());
+    final var config = getGraphicsConfiguration();
+    if (config != null) {
+      final var screen = config.getBounds();
+      expanded =
+          new Dimension(
+              Math.min(expanded.width, Math.max(current.width, screen.width * 9 / 10)),
+              Math.min(expanded.height, Math.max(current.height, screen.height * 9 / 10)));
+    }
     if (!expanded.equals(current)) {
       setSize(expanded);
     }

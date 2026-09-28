@@ -30,6 +30,23 @@ import org.junit.jupiter.api.Test;
 class BottomPanelTest {
 
   @Test
+  void panelsRememberTheirOpeningHeightAcrossRenamesAndReportWhichIsInFront() throws Exception {
+    SwingUtilities.invokeAndWait(() -> {
+      final var drawer = new BottomPanel();
+      drawer.addPanel("console", "Console", null, new JPanel());
+      drawer.addPanel("timing", "Timing", null, new JPanel(), LayoutPrefs.TIMING_DRAWER_HEIGHT);
+      assertEquals(0, drawer.openHeight("console"), "the console keeps the drawer's height");
+      assertEquals(LayoutPrefs.TIMING_DRAWER_HEIGHT, drawer.openHeight("timing"));
+      drawer.setTitle("timing", "Renamed");
+      assertEquals(LayoutPrefs.TIMING_DRAWER_HEIGHT, drawer.openHeight("timing"));
+      assertEquals(0, drawer.openHeight("missing"));
+      assertTrue(drawer.showPanel("console"));
+      assertTrue(drawer.isPanelSelected("console"));
+      assertTrue(!drawer.isPanelSelected("timing"));
+    });
+  }
+
+  @Test
   void closingOnePanelKeepsOthersAndExistingActionsReopenTheSameContent() throws Exception {
     SwingUtilities.invokeAndWait(() -> {
       final var drawer = new BottomPanel();

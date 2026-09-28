@@ -108,7 +108,7 @@ public class FactoryAttributes implements AttributeSet, AttributeListener, Clone
       if (fact == null) {
         ret = AttributeSets.EMPTY;
       } else {
-        ret = fact.createAttributeSet();
+        ret = fact.createToolAttributeSet();
         ret.addAttributeListener(this);
       }
       baseAttrs = ret;

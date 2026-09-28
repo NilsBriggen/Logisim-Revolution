@@ -102,7 +102,13 @@ public class XmlCircuitReader extends CircuitTransaction {
       ramAttrs.updateAttributes();
       defaults = null;
     }
-    reader.initAttributeSet(elt, attrs, defaults, isHolyCross, isEvolution);
+    try {
+      reader.initAttributeSet(elt, attrs, defaults, isHolyCross, isEvolution);
+    } catch (XmlReaderException e) {
+      // Unreadable attribute values keep their defaults: dropping the whole component would
+      // delete it from the file on the next save. The load still reports the problem.
+      reader.addErrors(e, toComponentString(elt));
+    }
     if (source instanceof VhdlEntity vhdl) {
       initLegacyVhdlAppearance(elt, reader, vhdl);
     }
@@ -223,6 +229,7 @@ public class XmlCircuitReader extends CircuitTransaction {
     }
 
     final var componentsAt = new HashMap<Bounds, Component>();
+    final var lockedComponents = new ArrayList<Component>();
     final var overlapComponents = new ArrayList<Component>();
     for (final var subElement : XmlIterator.forChildElements(element)) {
       final var subEltName = subElement.getTagName();
@@ -250,6 +257,7 @@ public class XmlCircuitReader extends CircuitTransaction {
             } else {
               mutator.add(dest, comp);
               componentsAt.put(bds, comp);
+              if (isEditLocked(subElement)) lockedComponents.add(comp);
             }
           }
         } catch (XmlReaderException e) {
@@ -283,6 +291,14 @@ public class XmlCircuitReader extends CircuitTransaction {
       componentsAt.put(comp.getBounds(), comp);
       mutator.add(dest, comp);
     }
+    // Only once the circuit is built: a lock refuses edits, and building it is one.
+    dest.setComponentsEditLocked(lockedComponents, true);
+    if (isEditLocked(element)) dest.setEditLocked(true);
+  }
+
+  /** Whether a {@code circuit} or {@code comp} element is marked as locked against edits. */
+  private static boolean isEditLocked(Element elt) {
+    return "true".equalsIgnoreCase(elt.getAttribute(XmlWriter.EDIT_LOCK_ATTRIBUTE).trim());
   }
 
   private void buildDynamicAppearance(XmlReader.CircuitData circData) {
@@ -338,14 +354,24 @@ public class XmlCircuitReader extends CircuitTransaction {
   @Override
   protected void run(CircuitMutator mutator) {
     for (final var circuitData : circuitsData) {
-      buildCircuit(circuitData, mutator);
+      final var circuit = circuitData.circuit;
+      // Labels are checked once the circuit is complete, never while it is half-built.
+      circuit.setLabelChecksDeferred(true);
+      try {
+        buildCircuit(circuitData, mutator);
+      } finally {
+        circuit.setLabelChecksDeferred(false);
+      }
+      for (final var rename : circuit.resolveLabelConflicts()) {
+        reader.addLabelRename(circuit.getName(), rename.oldLabel(), rename.newLabel());
+      }
     }
     for (final var circuitData : circuitsData) {
       buildDynamicAppearance(circuitData);
     }
   }
 
-  private String toComponentString(Element elt) {
+  private static String toComponentString(Element elt) {
     final var name = elt.getAttribute("name");
     final var loc = elt.getAttribute("loc");
     return String.format("%s(%s)", name, loc);

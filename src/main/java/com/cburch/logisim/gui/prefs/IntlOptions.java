@@ -11,18 +11,15 @@ package com.cburch.logisim.gui.prefs;
 
 import static com.cburch.logisim.gui.Strings.S;
 
+import com.cburch.logisim.gui.generic.SettingsForm;
 import com.cburch.logisim.prefs.AppPreferences;
-import java.awt.Component;
-import java.awt.Dimension;
-import javax.swing.Box;
-import javax.swing.BoxLayout;
+import java.awt.BorderLayout;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
-import javax.swing.JPanel;
 
 class IntlOptions extends OptionsPanel {
   private static final long serialVersionUID = 1L;
-  private final JLabel localeLabel = new RestrictedLabel();
+  private final JLabel localeLabel = new JLabel();
   private final JComponent locale;
   private final PrefOptionList gateShape;
 
@@ -40,24 +37,11 @@ class IntlOptions extends OptionsPanel {
             });
     // new PrefOption(AppPreferences.SHAPE_DIN40700, S.getter("shapeDIN40700"))
 
-    final var localePanel = new Box(BoxLayout.X_AXIS);
-    localePanel.add(Box.createGlue());
-    localePanel.add(localeLabel);
-    localeLabel.setMaximumSize(localeLabel.getPreferredSize());
-    localeLabel.setAlignmentY(Component.TOP_ALIGNMENT);
-    localePanel.add(locale);
-    locale.setAlignmentY(Component.TOP_ALIGNMENT);
-    localePanel.add(Box.createGlue());
-
-    final var shapePanel = new JPanel();
-    shapePanel.add(gateShape.getJLabel());
-    shapePanel.add(gateShape.getJComboBox());
-
-    setLayout(new BoxLayout(this, BoxLayout.PAGE_AXIS));
-    add(Box.createGlue());
-    add(shapePanel);
-    add(localePanel);
-    add(Box.createGlue());
+    final var form = new SettingsForm();
+    form.addRow(gateShape.getJLabel(), gateShape.getJComboBox());
+    form.addRow(localeLabel, locale);
+    setLayout(new BorderLayout());
+    add(form, BorderLayout.NORTH);
   }
 
   @Override
@@ -73,15 +57,6 @@ class IntlOptions extends OptionsPanel {
   @Override
   public void localeChanged() {
     gateShape.localeChanged();
-    localeLabel.setText(S.get("intlLocale") + " ");
-  }
-
-  private static class RestrictedLabel extends JLabel {
-    private static final long serialVersionUID = 1L;
-
-    @Override
-    public Dimension getMaximumSize() {
-      return getPreferredSize();
-    }
+    localeLabel.setText(S.get("intlLocale"));
   }
 }

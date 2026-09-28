@@ -14,6 +14,8 @@ import static com.cburch.logisim.gui.Strings.S;
 import com.cburch.logisim.circuit.SubcircuitFactory;
 import com.cburch.logisim.file.LibraryEvent;
 import com.cburch.logisim.file.LibraryListener;
+import com.cburch.logisim.gui.menu.ComponentHelp;
+import com.cburch.logisim.gui.menu.LogisimMenuBar;
 import com.cburch.logisim.gui.shell.FilterField;
 import com.cburch.logisim.gui.theme.AppIcons;
 import com.cburch.logisim.gui.theme.Theme;
@@ -34,6 +36,7 @@ import java.awt.Dimension;
 import java.awt.KeyboardFocusManager;
 import java.awt.LayoutManager;
 import java.awt.Rectangle;
+import java.awt.event.ActionEvent;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.awt.event.KeyAdapter;
@@ -48,6 +51,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
+import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -58,6 +62,7 @@ import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
+import javax.swing.KeyStroke;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingUtilities;
 
@@ -72,6 +77,7 @@ import javax.swing.SwingUtilities;
 public class ComponentPalette extends JPanel implements ProjectListener, LibraryListener {
 
   private static final long serialVersionUID = 1L;
+  private static final String HELP_ACTION = "componentHelp";
 
   /** One component, with where it came from, ready to be placed in a group. */
   private record Item(Tool tool, String libraryId, String libraryName, String key) {}
@@ -348,7 +354,17 @@ public class ComponentPalette extends JPanel implements ProjectListener, Library
         BorderFactory.createEmptyBorder(0, Spacing.sm(), Spacing.sm(), Spacing.sm()));
     for (final var item : items) {
       final var tile =
-          new ComponentTile(item.tool(), this::choose, chosen -> showTileMenu(chosen, item.key()));
+          new ComponentTile(item.tool(), tool -> chooseFromTile(tool, id),
+              chosen -> showTileMenu(chosen, item.key()));
+      tile.getInputMap(JComponent.WHEN_FOCUSED)
+          .put(KeyStroke.getKeyStroke(KeyEvent.VK_F1, 0), HELP_ACTION);
+      tile.getActionMap().put(HELP_ACTION,
+          new AbstractAction(S.get("libHelpItem", item.tool().getDisplayName())) {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+              showHelp(item.tool());
+            }
+          });
       tile.setFavourite(favourites.contains(item.key()));
       tile.setFocusable(false);
       tile.putClientProperty("palette.group", id);
@@ -383,6 +399,10 @@ public class ComponentPalette extends JPanel implements ProjectListener, Library
 
   private void showTileMenu(ComponentTile tile, String key) {
     final var menu = new JPopupMenu();
+    final var help = new JMenuItem(tile.getActionMap().get(HELP_ACTION));
+    help.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F1, 0));
+    menu.add(help);
+    menu.addSeparator();
     final var pinned = favourites.contains(key);
     final var item = new JMenuItem(S.get(pinned ? "paletteUnpin" : "palettePin"));
     item.addActionListener(
@@ -397,6 +417,13 @@ public class ComponentPalette extends JPanel implements ProjectListener, Library
         });
     menu.add(item);
     menu.show(tile, tile.getWidth() / 2, tile.getHeight() / 2);
+  }
+
+  private void showHelp(Tool tool) {
+    final var frame = project.getFrame();
+    if (frame != null && frame.getJMenuBar() instanceof LogisimMenuBar menuBar) {
+      menuBar.showHelp(ComponentHelp.getHelpTarget(tool, project.getLogisimFile()));
+    }
   }
 
   /** Arms the first component the filter left, which is what Enter in a filter means. */
@@ -422,6 +449,18 @@ public class ComponentPalette extends JPanel implements ProjectListener, Library
       saveRecents.accept(recents);
       rebuild();
     }
+  }
+
+  private void chooseFromTile(Tool tool, String group) {
+    final var key = keyOf(tool);
+    choose(tool);
+    // A mouse press requests focus asynchronously. Rebuilding recents can remove the clicked
+    // tile before it receives focus, so explicitly transfer focus to its replacement.
+    final var replacement = visibleTiles().stream()
+        .filter(tile -> java.util.Objects.equals(key, keyOf(tile.tool())))
+        .filter(tile -> group.equals(tile.getClientProperty("palette.group")))
+        .findFirst().orElse(null);
+    if (replacement != null) setLead(replacement, true);
   }
 
   private String keyOf(Tool tool) {

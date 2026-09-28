@@ -14,11 +14,14 @@ import static com.cburch.logisim.gui.Strings.S;
 import com.cburch.logisim.circuit.Circuit;
 import com.cburch.logisim.circuit.CircuitEvent;
 import com.cburch.logisim.circuit.CircuitListener;
+import com.cburch.logisim.circuit.EditLockAction;
 import com.cburch.logisim.file.LibraryEvent;
 import com.cburch.logisim.file.LibraryListener;
 import com.cburch.logisim.file.LogisimFileActions;
 import com.cburch.logisim.gui.generic.OptionPane;
+import com.cburch.logisim.gui.main.Frame;
 import com.cburch.logisim.gui.main.StatisticsDialog;
+import com.cburch.logisim.gui.menu.Popups;
 import com.cburch.logisim.gui.menu.ProjectCircuitActions;
 import com.cburch.logisim.gui.theme.AppIcons;
 import com.cburch.logisim.gui.theme.Theme;
@@ -330,11 +333,28 @@ public class CircuitListView extends JPanel {
     if (!event.isPopupTrigger()) return;
     final var index = list.locationToIndex(event.getPoint());
     if (index < 0) return;
-    list.setSelectedIndex(index);
+    final var menu = buildPopup(index);
+    if (menu != null) menu.show(list, event.getX(), event.getY());
+  }
+
+  /** The context menu for row {@code index}, or {@code null} when that row has none. */
+  JPopupMenu buildPopup(int index) {
+    // Point the list at the circuit the menu is about, without opening it: a right-click must
+    // not switch the editor away from what the user is working on.
+    selecting = true;
+    try {
+      list.setSelectedIndex(index);
+    } finally {
+      selecting = false;
+    }
     final var entry = model.get(index);
-    if (!(entry.target() instanceof Circuit circuit) || !containsTarget(circuit)) return;
+    if (!(entry.target() instanceof Circuit circuit) || !containsTarget(circuit)) return null;
 
     final var menu = new JPopupMenu();
+    menu.add(item(S.get("projectEditCircuitLayoutItem"), () -> edit(circuit, Frame.EDIT_LAYOUT)));
+    menu.add(item(S.get("projectEditCircuitAppearanceItem"), () ->
+        edit(circuit, Frame.EDIT_APPEARANCE)));
+    menu.addSeparator();
     menu.add(item(S.get("circuitRenameItem"), this::renameSelected));
     menu.add(item(S.get("projectSetAsMainItem"), () ->
         ProjectCircuitActions.doSetAsMainCircuit(project, circuit)));
@@ -351,8 +371,25 @@ public class CircuitListView extends JPanel {
     menu.add(item(S.get("projectExportCircuitItem"), () ->
         ProjectCircuitActions.doExportCircuit(project, circuit)));
     menu.addSeparator();
-    menu.add(item(S.get("projectRemoveCircuitItem"), this::removeSelected));
-    menu.show(list, event.getX(), event.getY());
+    final var lock = Popups.circuitLockItem(circuit);
+    lock.addActionListener(event -> {
+      if (containsTarget(circuit)) {
+        project.doAction(EditLockAction.setCircuitLocked(circuit, !circuit.isEditLocked()));
+      }
+    });
+    menu.add(lock);
+    final var remove = item(S.get("projectRemoveCircuitItem"), this::removeSelected);
+    remove.setEnabled(ProjectCircuitActions.canRemoveCircuit(project, circuit));
+    menu.add(remove);
+    return menu;
+  }
+
+  /** Opens {@code circuit} in the given editor view, as the Project menu entries do. */
+  private void edit(Circuit circuit, String view) {
+    if (project.getCurrentCircuit() != circuit) project.setCurrentCircuit(circuit);
+    final var frame = project.getFrame();
+    if (frame != null) frame.setEditorView(view);
+    onOpen.run();
   }
 
   private javax.swing.JMenuItem item(String text, Runnable action) {
@@ -370,13 +407,48 @@ public class CircuitListView extends JPanel {
     rebuild();
   }
 
-  /** Draws a row: an icon, the name, and a note for the circuit the project starts in. */
+  /**
+   * Draws a row: an icon, the name, a note for the circuit the project starts in, and a padlock
+   * at the end of the row when the circuit is locked against edits.
+   */
   private final class EntryRenderer extends DefaultListCellRenderer {
     private static final long serialVersionUID = 1L;
+    private final JPanel row = new JPanel(new BorderLayout());
+    private final javax.swing.JLabel badge = new javax.swing.JLabel();
+
+    EntryRenderer() {
+      row.add(badge, BorderLayout.EAST);
+    }
 
     @Override
     public Component getListCellRendererComponent(
         JList<?> source, Object value, int index, boolean selected, boolean focused) {
+      final var label = label(source, value, index, selected, focused);
+      final var locked = ((Entry) value).target() instanceof Circuit circuit
+          && circuit.isEditLocked();
+      if (!locked) return label;
+      // The list's renderer pane takes the label whenever it paints an unlocked row on its own,
+      // so it is put back into the row each time.
+      row.add(label, BorderLayout.CENTER);
+      row.setOpaque(true);
+      row.setBackground(label.getBackground());
+      row.setBorder(label.getBorder());
+      label.setBorder(null);
+      label.setOpaque(false);
+      badge.setIcon(
+          AppIcons.colored(
+              AppIcons.Id.LOCK, 12, selected ? label.getForeground() : Tokens.mutedForeground()));
+      badge.setBorder(BorderFactory.createEmptyBorder(0, Spacing.xs(), 0, 0));
+      // Read out with the row, and shown on hover, so the padlock is not the only sign.
+      row.setToolTipText(S.get("explorerLockedTip"));
+      row.getAccessibleContext().setAccessibleName(
+          label.getText() + ", " + S.get("explorerLockedSuffix"));
+      return row;
+    }
+
+    private EntryRenderer label(
+        JList<?> source, Object value, int index, boolean selected, boolean focused) {
+      setOpaque(true);
       super.getListCellRendererComponent(source, value, index, selected, focused);
       final var entry = (Entry) value;
       final var isCurrent = entry.target() == currentTarget();
@@ -386,6 +458,7 @@ public class CircuitListView extends JPanel {
               entry.target() instanceof Circuit ? AppIcons.Id.CIRCUIT : AppIcons.Id.HDL,
               AppIcons.SIZE,
               isCurrent && !selected ? Tokens.accent() : Tokens.iconForeground()));
+      setIconTextGap(Tokens.iconTextGap());
       setFont(isCurrent ? UiFonts.bodyBold() : UiFonts.body());
       if (isCurrent && !selected) setForeground(Tokens.accent());
       setBorder(
@@ -399,6 +472,7 @@ public class CircuitListView extends JPanel {
     @Override
     public void circuitChanged(CircuitEvent event) {
       if (event.getAction() == CircuitEvent.ACTION_SET_NAME) rebuild();
+      if (event.getAction() == CircuitEvent.ACTION_SET_EDIT_LOCK) list.repaint();
     }
 
     @Override

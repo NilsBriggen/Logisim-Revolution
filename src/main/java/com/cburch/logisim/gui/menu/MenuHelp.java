@@ -33,7 +33,7 @@ import javax.help.HelpSet;
 import javax.help.JHelp;
 import javax.swing.JMenuItem;
 
-class MenuHelp extends Menu implements ActionListener {
+public class MenuHelp extends Menu implements ActionListener {
 
   private static final long serialVersionUID = 1L;
   private static final String ENGLISH_HELP_SET = "doc/doc_en.hs";
@@ -210,7 +210,7 @@ class MenuHelp extends Menu implements ActionListener {
     }
   }
 
-  private void showHelp(String target) {
+  public void showHelp(String target) {
     loadBroker();
     try {
       helpComponent.setCurrentID(target);

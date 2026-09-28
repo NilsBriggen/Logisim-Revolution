@@ -3,6 +3,27 @@
 # Changes #
 
 * @dev (????-??-??)
+  * Enforced circuit and component locks in ROM contents, appearance editing and FPGA
+    annotation, including already-open editors and recursive annotation preflight (@NilsBriggen).
+  * Fixed Auto scale readouts and prevented Preferences layout changes from persisting a manual
+    scale; mouse and keyboard choices still snap to quarter steps (@NilsBriggen).
+  * Connected F1 and component-help context menus to the redesigned component picker
+    (@NilsBriggen).
+  * Repaired translated command-line help continuations and a missing Russian format argument,
+    with regression coverage for all twelve language bundles (@NilsBriggen).
+  * Made release retries reuse their prepared draft, pinned hosted builds to immutable mirror
+    snapshots, and embedded the canonical Gitea source identity in every platform build
+    (@NilsBriggen).
+  * Fixed the findings of the September 2026 usability audit (`docs/qa/2026-09-24-fresh`).
+    Recovered autosaves, redo and unparseable components can no longer lose work silently; the
+    timing diagram, RAM redo and several load, merge and export paths no longer crash; the
+    expression parser uses the documented precedence; command-line modes run headless and
+    return documented exit codes. Width errors get a clickable problems list and wire tooltips,
+    every settings page shares one form layout, the canvas supports keyboard placement and
+    nudging, and the analyzer and hex editor gained undo (@NilsBriggen).
+  * Added align and distribute commands, circuit and component locking, per-project label and
+    text styles, print and export previews, component help on F1, settings and component
+    search in Find Action, and Verilog modules alongside VHDL entities (@NilsBriggen).
   * Reworked Gitea CI and manual all-platform release builds, added complete native-package
     publication checks, and documented realistic installation methods (@NilsBriggen).
   * Gave Revolution its own application identity, loading splash, vector icon family, readable

@@ -36,9 +36,18 @@ public class ListModelCellRenderer extends JLabel implements ListCellRenderer<Ob
 
   private static final DrcIcon NoDRC = new DrcIcon(false);
   private static final DrcIcon DRCError = new DrcIcon(true);
+  private static final DrcIcon DRCWarning = new DrcIcon(true, true);
+
+  private final DrcIcon drcMarker;
 
   public ListModelCellRenderer(boolean countLines) {
+    this(countLines, false);
+  }
+
+  /** A renderer for the warnings list shows the warning icon on entries with DRC marks. */
+  public ListModelCellRenderer(boolean countLines, boolean warnings) {
     CountLines = countLines;
+    drcMarker = warnings ? DRCWarning : DRCError;
     setOpaque(true);
   }
 
@@ -53,7 +62,7 @@ public class ListModelCellRenderer extends JLabel implements ListCellRenderer<Ob
     if (value instanceof SimpleDrcContainer cont) {
       msg = cont;
     }
-    setIcon((msg != null && msg.isDrcInfoPresent()) ? DRCError : NoDRC);
+    setIcon((msg != null && msg.isDrcInfoPresent()) ? drcMarker : NoDRC);
     if (msg != null) {
       switch (msg.getSeverity()) {
         case SimpleDrcContainer.LEVEL_SEVERE ->

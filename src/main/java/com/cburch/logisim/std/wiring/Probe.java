@@ -35,8 +35,9 @@ import com.cburch.logisim.prefs.PrefMonitorBooleanConvert;
 import com.cburch.logisim.tools.key.DirectionConfigurator;
 import com.cburch.logisim.util.GraphicsUtil;
 import java.awt.Color;
-import java.awt.Graphics2D;
+import java.awt.Font;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.event.KeyEvent;
 import java.util.Objects;
 
@@ -211,9 +212,12 @@ public class Probe extends InstanceFactory implements DynamicElementProvider {
         if (!IsOutput) {
           final var fill = value.get(0).getColor();
           g.setColor(fill);
-          g.fillOval(x + 5, y + 4, 11, 13);
+          g.fillOval(x + 4, y + 3, 13, 15);
           g.setColor(CanvasStyle.contrastInk(fill));
         }
+        // A single bit has the whole body to itself: draw it larger than the multi-digit values,
+        // whose 12-point digits are laid out on a fixed pitch.
+        g.setFont(SINGLE_BIT_FONT);
         GraphicsUtil.drawCenteredText(g, value.get(0).toDisplayString(), x + 10, y + 9);
       } else paintOldStyleValue(painter, value);
       return;
@@ -273,6 +277,8 @@ public class Probe extends InstanceFactory implements DynamicElementProvider {
   }
 
   public static final Probe FACTORY = new Probe();
+
+  private static final Font SINGLE_BIT_FONT = Pin.DEFAULT_FONT.deriveFont(Font.BOLD, 14f);
 
   public Probe() {
     super(_ID, S.getter("probeComponent"));

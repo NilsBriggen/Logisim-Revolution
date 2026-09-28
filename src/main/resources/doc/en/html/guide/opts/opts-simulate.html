@@ -31,7 +31,7 @@
         </li>
         <li>
           <p>
-            The <strong>Iterations Until Oscillation</strong> drop-down menu specifies how long to simulate a circuit before deciding that it is oscillating. The number represents the number of clicks of the internal hidden clock (a simple gate takes just one click). The default of 1,000 is good enough for almost all purposes, even for large circuits.<br>
+            The <strong>Iterations Until Oscillation</strong> drop-down menu specifies how long to simulate a circuit before deciding that it is oscillating. The number represents the number of clicks of the internal hidden clock (a simple gate takes just one click). Passing a value into or out of a subcircuit does not count as a click, so deeply nested circuits do not need a higher limit. The default of 1,000 is good enough for almost all purposes, even for large circuits.<br>
             But you may want to increase the number of iterations if you are working with a circuit where Logisim reports false oscillations. This is unlikely to be a problem in practice, but one such a circumstance is a circuit that incorporates many of the below latch circuits with random noise enabled. You may want to decrease the number of iterations if you are working with a circuit that is prone to oscillating and you are using an unusually slow processor.
           </p>
         </li>
@@ -57,7 +57,7 @@
 		-->
       </ul>
       <p>
-        <b>Next:</b> <a href="opts-toolbar.html">The Toolbar tab</a>.
+        <b>Next:</b> <a href="opts-style.html">The Style page</a>.
       </p>
     </div>
   </body>

@@ -27,9 +27,12 @@ import java.util.Map;
 public final class CircuitMutation extends CircuitTransaction {
   private final Circuit primary;
   private final List<CircuitChange> changes;
+  private boolean enforceEditLocks = true;
 
+  /** A mutation replaying the reverse of one already done, for undo; locks do not apply. */
   CircuitMutation() {
     this(null);
+    enforceEditLocks = false;
   }
 
   public CircuitMutation(Circuit circuit) {
@@ -122,8 +125,36 @@ public final class CircuitMutation extends CircuitTransaction {
     }
   }
 
+  /**
+   * Lets this mutation through locked circuits and components.
+   *
+   * <p>Only for changes the program makes on the user's behalf that must reach locked parts too,
+   * such as swapping in the components of a reloaded library. Never for an edit the user asked for.
+   *
+   * @return this mutation
+   */
+  public CircuitMutation ignoringEditLocks() {
+    enforceEditLocks = false;
+    return this;
+  }
+
+  /**
+   * Refuses the whole mutation, before any of it happens, when a change in it would alter a
+   * locked circuit or component.
+   *
+   * @throws EditLockedException naming the first lock that stands in the way
+   */
+  public void checkEditLocks() {
+    if (!enforceEditLocks) return;
+    for (final var change : changes) {
+      final var refusal = change.editLockViolation();
+      if (refusal != null) throw refusal;
+    }
+  }
+
   @Override
   protected void run(CircuitMutator mutator) {
+    checkEditLocks();
     Circuit curCircuit = null;
     ReplacementMap curReplacements = null;
     for (final var change : changes) {

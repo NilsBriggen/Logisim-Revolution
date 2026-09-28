@@ -10,6 +10,7 @@
 package com.cburch.logisim.gui.main;
 
 import com.cburch.logisim.circuit.Circuit;
+import com.cburch.logisim.circuit.WidthIncompatibilityData;
 import com.cburch.logisim.circuit.WireSet;
 import com.cburch.logisim.comp.Component;
 import com.cburch.logisim.comp.ComponentDrawContext;
@@ -21,13 +22,21 @@ import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.tools.PokeTool;
 import com.cburch.logisim.util.CollectionUtil;
 import com.cburch.logisim.util.GraphicsUtil;
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.geom.Arc2D;
+import java.awt.geom.Ellipse2D;
+import java.awt.geom.Line2D;
+import java.awt.geom.RoundRectangle2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.Collections;
 import java.util.Set;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 class CanvasPainter implements PropertyChangeListener {
   private static final Set<Component> NO_COMPONENTS = Collections.emptySet();
@@ -54,7 +63,8 @@ class CanvasPainter implements PropertyChangeListener {
   }
 
   private void drawWidthIncompatibilityData(Graphics base, Graphics g, Project proj) {
-    final var exceptions = proj.getCurrentCircuit().getWidthIncompatibilityData();
+    final var circuit = proj.getCurrentCircuit();
+    final var exceptions = circuit.getWidthIncompatibilityData();
     if (CollectionUtil.isNullOrEmpty(exceptions)) return;
 
     final var fm = base.getFontMetrics(g.getFont());
@@ -74,14 +84,7 @@ class CanvasPainter implements PropertyChangeListener {
         }
         if (drawn) continue;
 
-        // compute the caption combining all similar points
-        final var caption = new StringBuilder("" + w.getWidth());
-        for (var j = i + 1; j < ex.size(); j++) {
-          if (ex.getPoint(j).equals(p)) {
-            caption.append("/" + ex.getBitWidth(j));
-            break;
-          }
-        }
+        final var caption = widthCaption(ex, i);
         GraphicsUtil.switchToWidth(g, 2);
         if (common != null && !w.equals(common)) {
           g.setColor(Value.widthErrorHighlightColor());
@@ -90,11 +93,25 @@ class CanvasPainter implements PropertyChangeListener {
         g.setColor(Value.widthErrorColor());
         g.drawOval(p.getX() - 4, p.getY() - 4, 8, 8);
         GraphicsUtil.switchToWidth(g, 3);
+        // Put the caption on the side of the point away from the components there, so it does not
+        // cover their text (a splitter's bit labels sit right next to its ends).
+        var awayX = 1;
+        var awayY = 1;
+        for (final var comp : circuit.getNonWires(p)) {
+          final var bds = comp.getBounds(g);
+          final var cx = bds.getX() + bds.getWidth() / 2;
+          final var cy = bds.getY() + bds.getHeight() / 2;
+          if (cx > p.getX()) awayX = -1;
+          if (cy > p.getY()) awayY = -1;
+        }
+        final var text = caption.toString();
+        final var textX = awayX > 0 ? p.getX() + 4 : p.getX() - 4 - fm.stringWidth(text);
+        final var textY = awayY > 0 ? p.getY() + 1 + fm.getAscent() : p.getY() - 1 - fm.getDescent();
         GraphicsUtil.outlineText(
             g,
-            caption.toString(),
-            p.getX() + 4,
-            p.getY() + 1 + fm.getAscent(),
+            text,
+            textX,
+            textY,
             Value.widthErrorCaptionColor(),
             common != null && !w.equals(common)
                 ? Value.widthErrorHighlightColor()
@@ -103,6 +120,35 @@ class CanvasPainter implements PropertyChangeListener {
     }
     g.setColor(componentColor());
     GraphicsUtil.switchToWidth(g, 1);
+  }
+
+  /**
+   * The badge for one end of a width conflict.
+   *
+   * <p>Two widths at the same point read "8/4", as before. An end that agrees with its own
+   * neighbours now also names the widths it clashes with, "8≠4": through a tunnel the two
+   * halves of a net each looked self-consistent (8 and 8, 4 and 4), with nothing pointing at the
+   * other side.
+   */
+  static String widthCaption(WidthIncompatibilityData ex, int index) {
+    final var p = ex.getPoint(index);
+    final var w = ex.getBitWidth(index);
+    final var caption = new StringBuilder(String.valueOf(w.getWidth()));
+    for (var j = index + 1; j < ex.size(); j++) {
+      if (ex.getPoint(j).equals(p)) {
+        return caption.append('/').append(ex.getBitWidth(j).getWidth()).toString();
+      }
+    }
+    final var others = new TreeSet<Integer>();
+    for (var j = 0; j < ex.size(); j++) {
+      final var other = ex.getBitWidth(j).getWidth();
+      if (other != w.getWidth()) others.add(other);
+    }
+    if (!others.isEmpty()) {
+      caption.append('\u2260');
+      caption.append(others.stream().map(String::valueOf).collect(Collectors.joining("/")));
+    }
+    return caption.toString();
   }
 
   private void drawWithUserState(Graphics base, Graphics g, Project proj) {
@@ -130,15 +176,17 @@ class CanvasPainter implements PropertyChangeListener {
       GraphicsUtil.switchToWidth(g, 1);
       g.setColor(componentColor());
     }
+    TunnelPartners.draw(g, circ, sel.getComponents(), haloedCircuit == circ ? haloedComponent : null);
 
     // draw circuit and selection
     final var circState = proj.getCircuitState();
     final var context = new ComponentDrawContext(canvas, circ, circState, base, g, false);
     context.setHighlightedWires(highlightedWires);
+    final var showSelection = !(proj.getTool() instanceof PokeTool);
+    if (showSelection) sel.drawUnderlay(context, hidden);
     circ.draw(context, hidden);
-    if (!(proj.getTool() instanceof PokeTool)) {
-      sel.draw(context, hidden);
-    }
+    drawEditLockBadges(g, circ, hidden);
+    if (showSelection) sel.draw(context, hidden);
 
     // draw tool
     final var tool = dragTool != null ? dragTool : proj.getTool();
@@ -148,6 +196,43 @@ class CanvasPainter implements PropertyChangeListener {
       tool.draw(canvas, context);
       gfxCopy.dispose();
     }
+  }
+
+  /**
+   * A small padlock on the top-right corner of every locked component, so the user can tell before
+   * trying to move one. Only on screen: printing and image export do not come through here.
+   */
+  private static void drawEditLockBadges(Graphics g, Circuit circ, Set<Component> hidden) {
+    final var locked = circ.getEditLockedComponents();
+    if (locked.isEmpty()) return;
+    final var g2 = (Graphics2D) g.create();
+    try {
+      g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+      for (final var comp : locked) {
+        if (hidden.contains(comp)) continue;
+        final var bds = comp.getBounds(g);
+        // Just outside the corner, clear of the selection handle that sits on it.
+        paintLockBadge(g2, bds.getX() + bds.getWidth() + 6, bds.getY() - 6);
+      }
+    } finally {
+      g2.dispose();
+    }
+  }
+
+  /** Paints the padlock centred on ({@code x}, {@code y}), in circuit coordinates. */
+  static void paintLockBadge(Graphics2D g, int x, int y) {
+    // A disc in the canvas colour keeps the glyph legible over wires and component outlines.
+    g.setColor(new Color(AppPreferences.CANVAS_BG_COLOR.get()));
+    g.fill(new Ellipse2D.Double(x - 6.5, y - 6.5, 13, 13));
+    final var ink = CanvasStyle.lockBadge();
+    g.setColor(ink);
+    g.setStroke(new BasicStroke(1.3f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+    g.draw(new Ellipse2D.Double(x - 6.5, y - 6.5, 13, 13));
+    // Shackle, then body.
+    g.draw(new Arc2D.Double(x - 2.3, y - 4.6, 4.6, 5.2, 0, 180, Arc2D.OPEN));
+    g.draw(new Line2D.Double(x - 2.3, y - 2.0, x - 2.3, y - 0.8));
+    g.draw(new Line2D.Double(x + 2.3, y - 2.0, x + 2.3, y - 0.8));
+    g.fill(new RoundRectangle2D.Double(x - 3.6, y - 0.9, 7.2, 5.2, 1.6, 1.6));
   }
 
   private void exposeHaloedComponent(Graphics gfx) {
@@ -193,7 +278,10 @@ class CanvasPainter implements PropertyChangeListener {
     final var size = canvas.getSize();
     final double zoomFactor = canvas.getZoomFactor();
 
-    grid.paintGrid(g);
+    final var originX = canvas.getOriginX();
+    final var originY = canvas.getOriginY();
+    grid.paintGrid(
+        g, (int) Math.round(-originX * zoomFactor), (int) Math.round(-originY * zoomFactor));
     g.setColor(componentColor());
 
     final var gfxScaled = g.create();
@@ -201,6 +289,8 @@ class CanvasPainter implements PropertyChangeListener {
     if (zoomFactor != 1.0 && gfxScaled instanceof Graphics2D g2d) {
       g2d.scale(zoomFactor, zoomFactor);
     }
+    // Content above or left of zero extends the canvas instead of being clipped (see Canvas).
+    gfxScaled.translate(-originX, -originY);
     final var circ = proj.getCurrentCircuit();
     if (circ == null) {
       gfxScaled.dispose();

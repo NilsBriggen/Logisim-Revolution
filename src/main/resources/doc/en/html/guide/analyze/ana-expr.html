@@ -45,23 +45,16 @@
 	  </dl>
 	  </p>
       <p>
-        Just below the selector, the expressions are displayed in a list. You can edit the expression in the text panel by double-clicking on the line of the expression.
+        Just below the selector, the expressions are displayed in a list. To edit an expression, double-click its line (or select it and press F2 or Enter), type the new expression and press Enter to make it take effect; doing this also updates the truth table to correspond. Press Escape to cancel the edit. If the expression cannot be understood, the error is shown and the offending part is selected.
       </p>
 	  <p>
-	    Note that your truth table will be irretrievably altered if you edit the expressions and vice versa. 
+	    Note that your truth table will be irretrievably altered if you edit the expressions and vice versa.
 	  </p>
-      <p>
-        The text pane below this displays the same information in ASCII form. Here, a NOT is represented with a tilde ('~').
-      </p>
-	  
-      <p>
-        You can edit the expression in the text pane and click the <b class="button">Enter</b> button to make it take effect; doing this will also update the truth table to make it correspond. The <b class="button">Clear</b> button clears the text pane, and the <b class="button">Revert</b> button changes the pane back to representing the current expression.
-      </p>
       <p>
         Note that your edited expression will be lost if you edit the truth table.
       </p>
       <p>
-        In addition to multiplication and addition standing for AND and OR, an expression you type may contain any of C/Java logical operators, as well as simply the words themselves.
+        In addition to multiplication and addition standing for AND and OR, an expression you type may contain any of C/Java logical operators, the logic symbols shown by the notations above, as well as simply the words themselves (in upper or lower case). Every spelling of an operator has the same precedence, so you can mix them freely; use parentheses to group differently.
       </p>
       <center>
         <table>
@@ -71,7 +64,7 @@
                 highest precedence
               </th>
               <td align="center">
-                <tt>~</tt> <tt>!</tt> <tt>'</tt>
+                <tt>~</tt> <tt>!</tt> <tt>'</tt> <tt>-</tt> <tt>¬</tt> <tt>NOT</tt>
               </td>
               <th>
                 NOT
@@ -80,7 +73,7 @@
             <tr>
               <th></th>
               <td align="center">
-                (none) <tt>&amp;</tt> <tt>&amp;&amp;</tt>
+                (none) <tt>*</tt> <tt>&amp;</tt> <tt>&amp;&amp;</tt> <tt>⋅</tt> <tt>∧</tt> <tt>AND</tt>
               </td>
               <th>
                 AND
@@ -89,10 +82,19 @@
             <tr>
               <th></th>
               <td align="center">
-                <tt>^</tt>
+                <tt>^</tt> <tt>!=</tt> <tt>⊕</tt> <tt>⊻</tt> <tt>≢</tt> <tt>XOR</tt>
               </td>
               <th>
                 XOR
+              </th>
+            </tr>
+            <tr>
+              <th></th>
+              <td align="center">
+                <tt>+</tt> <tt>|</tt> <tt>||</tt> <tt>∨</tt> <tt>OR</tt>
+              </td>
+              <th>
+                OR
               </th>
             </tr>
             <tr>
@@ -100,15 +102,18 @@
                 lowest precedence
               </th>
               <td align="center">
-                <tt>+</tt> <tt>|</tt> <tt>||</tt>
+                <tt>==</tt> <tt>=</tt> <tt>⊙</tt> <tt>≡</tt> <tt>EQUALS</tt>
               </td>
               <th>
-                OR
+                XNOR
               </th>
             </tr>
           </tbody>
         </table>
       </center>
+      <p>
+        For example, <tt>a + b c</tt>, <tt>a | b &amp; c</tt> and <tt>a OR b AND c</tt> all mean <tt>a + (b c)</tt>, and <tt>a + b ^ c</tt> means <tt>a + (b ^ c)</tt>.
+      </p>
       <p>
         The following examples are all valid representations of the same expression. You could also mix the operators.
       </p>
@@ -187,7 +192,7 @@
 	    The selector <b class="button">Notation:</b> has the same properties as the panel <a href="#not">Expression selector (see above)</a>
 	  </p>
       <p>
-        A Karnaugh map corresponding to the variable will appear below the selector. You can click the Karnaugh map to change the corresponding truth table values. The Karnaugh map will also display the currently selected terms for the minimized expression as solid semitransparent rounded rectangles. 
+        A Karnaugh map corresponding to the variable will appear below the selector. You can click the Karnaugh map to change the corresponding truth table values. The Karnaugh map will also display the currently selected terms for the minimized expression as solid semitransparent rounded rectangles.
       </p>
       <p>
         Below this is the minimized expression itself, formatted as in the Expression tab's display.  Logisim uses the Quine-McCluskey algorithm to compute the minimized expression. This is equivalent to a Karnaugh map, but it applies to any number of input variables.

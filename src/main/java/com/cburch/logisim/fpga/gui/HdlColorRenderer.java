@@ -81,6 +81,9 @@ public class HdlColorRenderer extends JLabel implements TableCellRenderer {
       if (isSelected) {
         setForeground(javax.swing.UIManager.getColor("Table.selectionForeground"));
         setBackground(javax.swing.UIManager.getColor("Table.selectionBackground"));
+      } else if (columnIdx == VALUE && !table.isCellEditable(rowIdx, columnIdx)) {
+        // A value that cannot be changed, such as a locked component's, reads as such.
+        setForeground(Tokens.mutedForeground());
       }
       setText(value);
       setHorizontalAlignment(JLabel.LEFT);

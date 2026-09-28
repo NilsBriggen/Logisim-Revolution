@@ -31,6 +31,7 @@ import com.cburch.logisim.util.InputEventUtil;
 import com.cburch.logisim.util.LineBuffer;
 import com.cburch.logisim.util.StringUtil;
 import com.cburch.logisim.util.XmlUtil;
+import com.cburch.logisim.vhdl.base.VerilogContent;
 import com.cburch.logisim.vhdl.base.VhdlContent;
 import java.io.File;
 import java.io.FileInputStream;
@@ -273,11 +274,24 @@ final class XmlWriter {
     return null;
   }
 
+  /**
+   * Marks a {@code circuit} or {@code comp} element as locked against edits. Absent means
+   * unlocked, which is how every file written before locks existed reads.
+   */
+  static final String EDIT_LOCK_ATTRIBUTE = "locked";
+
   Element fromCircuit(Circuit circuit) {
     final var ret = doc.createElement("circuit");
     ret.setAttribute("name", circuit.getName());
+    // Optional, and written only when set: older versions ignore attributes they do not know.
+    if (circuit.isEditLocked()) ret.setAttribute(EDIT_LOCK_ATTRIBUTE, "true");
     addAttributeSetContent(ret, circuit.getStaticAttributes(), CircuitAttributes.DEFAULT_STATIC_ATTRIBUTES, false);
-    if (circuit.getAppearance().hasCustomAppearance()) {
+    final var appearance = circuit.getAppearance();
+    final var usesLabelledDefault =
+        appearance.isLabelledDefaultCustomAppearance()
+            && circuit.getStaticAttributes().getValue(CircuitAttributes.APPEARANCE_ATTR)
+                == CircuitAttributes.APPEAR_CUSTOM;
+    if (appearance.hasCustomAppearance() || usesLabelledDefault) {
       final var appear = doc.createElement("appear");
       for (Object obj : circuit.getAppearance().getCustomObjectsFromBottom()) {
         if (obj instanceof AbstractCanvasObject canvasObject) {
@@ -294,7 +308,10 @@ final class XmlWriter {
     }
     for (final var comp : circuit.getNonWires()) {
       final var elt = fromComponent(comp);
-      if (elt != null) ret.appendChild(elt);
+      if (elt != null) {
+        if (circuit.isComponentEditLocked(comp)) elt.setAttribute(EDIT_LOCK_ATTRIBUTE, "true");
+        ret.appendChild(elt);
+      }
     }
     for (final var board : circuit.getBoardMapNamestoSave()) {
       final var elt = fromMap(circuit, board);
@@ -307,6 +324,9 @@ final class XmlWriter {
     vhdl.aboutToSave();
     final var ret = doc.createElement("vhdl");
     ret.setAttribute("name", vhdl.getName());
+    // A Verilog module shares the element; versions without Verilog support ignore the attribute
+    // and report the unparsable entity instead of refusing the whole file.
+    if (vhdl.isVerilog()) ret.setAttribute("language", VerilogContent.LANGUAGE);
     ret.setAttribute("appearance", StdAttr.APPEARANCE.toStandardString(vhdl.getAppearance()));
     ret.setTextContent(vhdl.getContent());
     return ret;
@@ -451,7 +471,7 @@ final class XmlWriter {
             "\nThis file is intended to be "
                 + "loaded by "
                 + BuildInfo.displayName
-                + "("
+                + " ("
                 + BuildInfo.url
                 + ").\n"));
     ret.setAttribute("version", "1.0");

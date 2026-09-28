@@ -58,6 +58,27 @@ class ZoomControlTest {
   }
 
   @Test
+  void initialViewFollowsTheInterfaceScale() {
+    // At a 200% interface scale a small circuit opens at zoom 2.0, matching the controls.
+    assertEquals(
+        2.0,
+        ZoomControl.computeInitialZoomFactor(
+            Bounds.create(0, 0, 300, 200), new Dimension(1000, 800), ZOOM_OPTIONS, 2.0),
+        ZOOM_DELTA);
+    assertEquals(
+        2.0,
+        ZoomControl.computeInitialZoomFactor(
+            Bounds.EMPTY_BOUNDS, new Dimension(1000, 800), ZOOM_OPTIONS, 2.0),
+        ZOOM_DELTA);
+    // ...but still no larger than fits.
+    assertEquals(
+        0.5,
+        ZoomControl.computeInitialZoomFactor(
+            Bounds.create(40, 30, 1900, 900), new Dimension(1000, 500), ZOOM_OPTIONS, 2.0),
+        ZOOM_DELTA);
+  }
+
+  @Test
   void initialViewShrinksLargeCircuitsToFit() {
     assertEquals(
         0.5,

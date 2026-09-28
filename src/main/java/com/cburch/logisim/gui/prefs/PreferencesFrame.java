@@ -16,6 +16,7 @@ import com.cburch.logisim.fpga.prefs.SoftwaresOptions;
 import com.cburch.logisim.gui.generic.LFrame;
 import com.cburch.logisim.gui.generic.ScrollableForm;
 import com.cburch.logisim.gui.shell.PanelHeader;
+import com.cburch.logisim.gui.shell.SettingsIndex;
 import com.cburch.logisim.gui.shell.SettingsNav;
 import com.cburch.logisim.gui.theme.Theme;
 import com.cburch.logisim.util.LocaleListener;
@@ -29,6 +30,7 @@ import java.awt.Dimension;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
+import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JSplitPane;
@@ -111,16 +113,23 @@ public class PreferencesFrame extends LFrame.Dialog {
   /** Unscaled width of the page list. */
   private static final int NAV_WIDTH = 220;
 
-  /** Unscaled size the window opens at. */
+  /** Unscaled size the window opens at, at least. */
   private static final int WINDOW_WIDTH = 820;
 
   private static final int WINDOW_HEIGHT = 560;
+
+  /** Unscaled width beyond which a wide page scrolls rather than widening the window. */
+  private static final int MAX_WINDOW_WIDTH = 1100;
 
   private void updateWindowSize(boolean initial) {
     nav.setPreferredSize(new Dimension(UiScale.scaled(NAV_WIDTH), 0));
     nav.setMinimumSize(new Dimension(UiScale.scaled(120), 0));
     ScrollableForm.sizeWindow(
-        this, new Dimension(WINDOW_WIDTH, WINDOW_HEIGHT), new Dimension(600, 360), initial);
+        this,
+        ScrollableForm.windowSizeFor(
+            panels, NAV_WIDTH, new Dimension(WINDOW_WIDTH, WINDOW_HEIGHT), MAX_WINDOW_WIDTH),
+        new Dimension(600, 360),
+        initial);
     if (initial || layoutScale != UiScale.factor()) {
       split.setDividerLocation(Math.min(UiScale.scaled(NAV_WIDTH), getWidth() / 3));
     }
@@ -160,6 +169,11 @@ public class PreferencesFrame extends LFrame.Dialog {
     openPage(index);
   }
 
+  /** The number of pages, for the development snapshot tool. */
+  public int getPageCount() {
+    return panels.length;
+  }
+
   /** Builds a window without showing it, for the development snapshot tool. */
   public static PreferencesFrame buildForSnapshot() {
     return new PreferencesFrame();
@@ -186,6 +200,37 @@ public class PreferencesFrame extends LFrame.Dialog {
     frame.setVisible(true);
   }
 
+  /**
+   * The search index of every page, in {@link #getTabTitles()} order: each page's search text and
+   * its individual controls with their current values.
+   *
+   * <p>The window is built for this if it has not been yet, but not shown.
+   */
+  public static List<SettingsIndex.Page> indexSettings() {
+    return MENU_MANAGER.build().index();
+  }
+
+  List<SettingsIndex.Page> index() {
+    return Arrays.stream(panels)
+        .map(
+            panel ->
+                new SettingsIndex.Page(
+                    panel.getTitle(), searchPage(panel).text(), SettingsIndex.collect(panel)))
+        .toList();
+  }
+
+  /**
+   * Shows the preferences window at the page at {@code index}. A {@code control} that is not null,
+   * one of those {@link #indexSettings()} listed for the page, is scrolled into view and focused.
+   */
+  public static void showSetting(int index, JComponent control) {
+    final var frame = (PreferencesFrame) MENU_MANAGER.getJFrame(true, null);
+    frame.openPage(index);
+    frame.setVisible(true);
+    frame.toFront();
+    if (control != null) SettingsIndex.reveal(control);
+  }
+
   public static void showFPGAPreferences() {
     final var frame = (PreferencesFrame) MENU_MANAGER.getJFrame(true, null);
     frame.setFpgaTab();
@@ -204,15 +249,25 @@ public class PreferencesFrame extends LFrame.Dialog {
       LocaleManager.addLocaleListener(this);
     }
 
+    private boolean opened;
+
     @Override
     public JFrame getJFrame(boolean create, java.awt.Component parent) {
       if (create) {
-        if (window == null) {
-          window = new PreferencesFrame();
-          window.setLocationRelativeTo(parent);
+        final var fresh = window == null;
+        build();
+        if (fresh) window.setLocationRelativeTo(parent);
+        if (!opened) {
+          opened = true;
           frameOpened(window);
         }
       }
+      return window;
+    }
+
+    /** The window, built if need be but not announced as open, as when only its index is read. */
+    PreferencesFrame build() {
+      if (window == null) window = new PreferencesFrame();
       return window;
     }
 

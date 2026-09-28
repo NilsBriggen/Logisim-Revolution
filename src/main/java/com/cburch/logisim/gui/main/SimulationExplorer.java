@@ -10,7 +10,6 @@
 package com.cburch.logisim.gui.main;
 
 import com.cburch.contracts.BaseMouseListenerContract;
-import com.cburch.draw.toolbar.Toolbar;
 import com.cburch.logisim.gui.menu.MenuListener;
 import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.proj.ProjectEvent;
@@ -34,10 +33,8 @@ class SimulationExplorer extends JPanel implements ProjectListener, BaseMouseLis
     super(new BorderLayout());
     this.project = proj;
 
-    final var toolbarModel = new SimulationToolbarModel(proj, menu);
-    final var toolbar = new Toolbar(toolbarModel);
-    add(toolbar, BorderLayout.NORTH);
-
+    // The run, step and tick controls live once, in the main toolbar above every panel; a second
+    // copy here only made the window show the same buttons two or three times over.
     model = new SimulationTreeModel(proj.getRootCircuitStates());
     model.setCurrentView(project.getCircuitState());
     tree = new ScaledTree(model);
@@ -46,6 +43,25 @@ class SimulationExplorer extends JPanel implements ProjectListener, BaseMouseLis
     tree.setToggleClickCount(3);
     add(new JScrollPane(tree), BorderLayout.CENTER);
     proj.addProjectListener(this);
+    showCurrentView();
+  }
+
+  /**
+   * Selects the row of the circuit being viewed. The tree's own selection used to stay on whatever
+   * was clicked last, so two rows looked highlighted once the view changed from the canvas.
+   */
+  private void showCurrentView() {
+    final var path = model.mapToPath(project.getCircuitState());
+    if (path == null) {
+      tree.clearSelection();
+    } else {
+      tree.setSelectionPath(path);
+      tree.scrollPathToVisible(path);
+    }
+  }
+
+  JTree getTree() {
+    return tree;
   }
 
   private void checkForPopup(MouseEvent e) {
@@ -84,10 +100,7 @@ class SimulationExplorer extends JPanel implements ProjectListener, BaseMouseLis
     if (action == ProjectEvent.ACTION_SET_STATE) {
       model.updateSimulationList(project.getRootCircuitStates());
       model.setCurrentView(project.getCircuitState());
-      TreePath path = model.mapToPath(project.getCircuitState());
-      if (path != null) {
-        tree.scrollPathToVisible(path);
-      }
+      showCurrentView();
     }
   }
 

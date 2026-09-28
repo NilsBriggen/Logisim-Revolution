@@ -11,6 +11,9 @@ import com.cburch.logisim.std.wiring.Clock;
 import com.cburch.logisim.std.wiring.Pin;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -189,6 +192,36 @@ public class TestVectorEvaluator {
       callback.accept(this);
     }
     return new int[] {numPass, numFails};
+  }
+
+  /**
+   * Lists the input pins of circuit that no column of vec drives. Such inputs keep their default
+   * value in every test, which is rarely what the author of the vector meant, so callers warn about
+   * them.
+   *
+   * @param vec the TestVector
+   * @param circuit the circuit the vector is run against
+   * @return the sorted labels of the undriven input pins, with unlabeled pins summarized
+   *     as one final entry; empty if every input is driven.
+   */
+  public static List<String> findUndrivenInputs(TestVector vec, Circuit circuit) {
+    final var columns = new HashSet<String>(Arrays.asList(vec.columnName));
+    final var undriven = new ArrayList<String>();
+    var unlabeled = 0;
+    for (final var comp : circuit.getNonWires()) {
+      if (!(comp.getFactory() instanceof Pin)) continue;
+      final var inst = Instance.getInstanceFor(comp);
+      if (inst == null || !Pin.FACTORY.isInputPin(inst)) continue;
+      final var label = comp.getAttributeSet().getValue(StdAttr.LABEL);
+      if (label == null || label.isEmpty()) {
+        unlabeled++;
+      } else if (!columns.contains(label)) {
+        undriven.add(label);
+      }
+    }
+    undriven.sort(null);
+    if (unlabeled > 0) undriven.add(S.get("tveUnlabeledInputs", Integer.toString(unlabeled)));
+    return undriven;
   }
 
   /**

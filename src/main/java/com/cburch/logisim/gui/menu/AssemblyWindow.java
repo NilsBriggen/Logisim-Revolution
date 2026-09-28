@@ -46,6 +46,7 @@ import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.DefaultHighlighter;
@@ -57,8 +58,10 @@ public class AssemblyWindow
         Simulator.Listener,
         BaseKeyListenerContract {
 
-  private static Circuit curCircuit;
-  private static CircuitState curCircuitState;
+  // Per window (and so per project); these were static and leaked between projects.
+  private Circuit curCircuit;
+  private CircuitState curCircuitState;
+  private boolean listening = false;
   private final Preferences prefs;
   private final LFrame windows;
   private final JMenuBar winMenuBar;
@@ -138,13 +141,19 @@ public class AssemblyWindow
     main.add(north, BorderLayout.NORTH);
     main.add(status, BorderLayout.SOUTH);
     windows.setContentPane(main);
-    proj.getSimulator().addSimulatorListener(this);
 
     windows.pack();
     prefs = Preferences.userRoot().node(this.getClass().getName());
-    windows.setLocation(prefs.getInt("X", 0), prefs.getInt("Y", 0));
     windows.setSize(
         prefs.getInt("W", windows.getSize().width), prefs.getInt("H", windows.getSize().height));
+    final var x = prefs.getInt("X", Integer.MIN_VALUE);
+    final var y = prefs.getInt("Y", Integer.MIN_VALUE);
+    if (x == Integer.MIN_VALUE || y == Integer.MIN_VALUE) {
+      // Never placed before: open next to the project window, not at the screen's corner.
+      windows.setLocationRelativeTo(proj.getFrame());
+    } else {
+      windows.setLocation(x, y);
+    }
     localeChanged();
   }
 
@@ -253,7 +262,26 @@ public class AssemblyWindow
 
   public void setVisible(boolean bool) {
     fillCombo();
+    setListening(bool);
     windows.setVisible(bool);
+  }
+
+  /** Follows the simulator only while shown, so a hidden or closed window is not kept alive. */
+  private void setListening(boolean listen) {
+    if (listen == listening) return;
+    listening = listen;
+    if (listen) proj.getSimulator().addSimulatorListener(this);
+    else proj.getSimulator().removeSimulatorListener(this);
+  }
+
+  @Override
+  public void windowClosing(WindowEvent e) {
+    setListening(false);
+  }
+
+  @Override
+  public void windowClosed(WindowEvent e) {
+    setListening(false);
   }
 
   public void localeChanged() {
@@ -291,8 +319,9 @@ public class AssemblyWindow
 
   @Override
   public void propagationCompleted(Simulator.Event e) {
+    // Called on the simulation thread; the document and combo belong to the EDT.
     if (e.getSource().isAutoTicking()) {
-      updateHighlightLine();
+      SwingUtilities.invokeLater(this::updateHighlightLine);
     }
   }
 
@@ -323,7 +352,7 @@ public class AssemblyWindow
 
   private void updateHighlightLine() {
     String where;
-    if (combo.getSelectedItem() != null) {
+    if (combo.getSelectedItem() != null && curCircuitState != null) {
       selReg = entry.get(combo.getSelectedItem().toString());
       final var val = curCircuitState.getInstanceState(selReg).getPortValue(Register.OUT);
       if (val.isFullyDefined()) {

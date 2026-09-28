@@ -50,7 +50,6 @@ import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
-import javax.swing.JCheckBox;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -236,6 +235,7 @@ public class HexFile {
       Frame parent, // for window positioning
       Project proj,
       Instance instance) { // for recent file access
+    if (!dst.isWritable()) return;
     final var mem = (instance == null) ? null : (Mem) instance.getFactory();
     final var recent = getRecent(proj, mem, instance);
 
@@ -245,8 +245,7 @@ public class HexFile {
     if (choice == JFileChooser.APPROVE_OPTION) {
       final var f = chooser.getSelectedFile();
       try {
-        open(dst, f);
-        mem.setCurrentImage(instance, f);
+        if (open(dst, f) && mem != null) mem.setCurrentImage(instance, f);
       } catch (IOException e) {
         OptionPane.showMessageDialog(parent, e.getMessage(), S.get("ramLoadErrorTitle"), OptionPane.ERROR_MESSAGE);
       }
@@ -258,6 +257,7 @@ public class HexFile {
   }
 
   protected static boolean open(MemContents dst, File src, String desc) throws IOException {
+    if (!dst.isWritable()) return false;
     final var in = BufferedLineReader.forFile(src);
     try {
       final var r = new HexReader(in, dst.getLogLength(), dst.getValueWidth());
@@ -269,6 +269,7 @@ public class HexFile {
         loaded = r.decodeOrWarn();
       }
       if (loaded == null) return false;
+      if (!dst.isWritable()) return false;
       dst.copyFrom(0, loaded, 0, (int) (loaded.getLastOffset() + 1));
       return true;
     } finally {
@@ -294,7 +295,7 @@ public class HexFile {
       final var r = new HexReader(in, addrSize, wordSize);
       r.parseFormat(desc);
       final var loaded = interactive ? r.decodeOrWarn() : r.decode();
-      if (loaded == null) throw new IOException("Could not parse memory image data.");
+      if (loaded == null) throw new IOException(S.get("hexFileParseError"));
       return new ParseResult(loaded, (int) (r.memMaxAddr + 1));
     } finally {
       try {
@@ -485,17 +486,17 @@ public class HexFile {
     JRadioButton bin;
     JRadioButton asc;
 
-    JCheckBox hexWords;
-    JCheckBox hexBytes;
-    JCheckBox hexAddr;
-    JCheckBox hexPlain;
-    JCheckBox hexAuto;
-    JCheckBox hexBig;
-    JCheckBox hexLittle;
-    JCheckBox binBig;
-    JCheckBox binLittle;
-    JCheckBox ascBig;
-    JCheckBox ascLittle;
+    JRadioButton hexWords;
+    JRadioButton hexBytes;
+    JRadioButton hexAddr;
+    JRadioButton hexPlain;
+    JRadioButton hexAuto;
+    JRadioButton hexBig;
+    JRadioButton hexLittle;
+    JRadioButton binBig;
+    JRadioButton binLittle;
+    JRadioButton ascBig;
+    JRadioButton ascLittle;
 
     JTextArea warnings;
     JTextArea previewMem;
@@ -519,13 +520,17 @@ public class HexFile {
       p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
       final var scaledTen = scaled(10);
       p.setBorder(BorderFactory.createEmptyBorder(scaledTen, scaledTen, 0, scaledTen));
+      // A fixed wrapping width: the message can quote a (long) line of the file, and an
+      // unconstrained HTML label would make the dialog as wide as that line.
       var m =
           new JLabel(
-              "<html>"
-                  + msg
+              "<html><body style='width: "
+                  + scaled(560)
+                  + "px'>"
+                  + escapeHtml(msg)
                   + "<br><br>"
-                  + S.get("hexFormatSelectPrompt")
-                  + "</html>");
+                  + escapeHtml(S.get("hexFormatSelectPrompt"))
+                  + "</body></html>");
       final var f = m.getFont();
       m.setFont(f.deriveFont(f.getStyle() & ~Font.BOLD));
       m.setAlignmentX(CENTER_ALIGNMENT);
@@ -564,37 +569,37 @@ public class HexFile {
 
       pos.gridx = 1;
       hexWords =
-          new JCheckBox(S.get("hexFormatOptionWords"), this.reader.taggedOrUnset("size", "words"));
+          new JRadioButton(S.get("hexFormatOptionWords"), this.reader.taggedOrUnset("size", "words"));
       grid.setConstraints(hexWords, pos);
       opts.add(hexWords);
 
       pos.gridx = 2;
-      hexBytes = new JCheckBox(S.get("hexFormatOptionBytes"), this.reader.tagged("size", "bytes"));
+      hexBytes = new JRadioButton(S.get("hexFormatOptionBytes"), this.reader.tagged("size", "bytes"));
       grid.setConstraints(hexBytes, pos);
       opts.add(hexBytes);
 
       pos.gridy = 3;
       pos.gridx = 1;
-      hexAuto = new JCheckBox(S.get("hexFormatOptionAuto"), !this.reader.tags.containsKey("style"));
+      hexAuto = new JRadioButton(S.get("hexFormatOptionAuto"), !this.reader.tags.containsKey("style"));
       grid.setConstraints(hexAuto, pos);
       opts.add(hexAuto);
       pos.gridx = 2;
       hexAddr =
-          new JCheckBox(S.get("hexFormatOptionAddressed"), this.reader.tagged("style", "addressed"));
+          new JRadioButton(S.get("hexFormatOptionAddressed"), this.reader.tagged("style", "addressed"));
       grid.setConstraints(hexAddr, pos);
       opts.add(hexAddr);
       pos.gridx = 3;
-      hexPlain = new JCheckBox(S.get("hexFormatOptionPlain"), this.reader.tagged("style", "plain"));
+      hexPlain = new JRadioButton(S.get("hexFormatOptionPlain"), this.reader.tagged("style", "plain"));
       grid.setConstraints(hexPlain, pos);
       opts.add(hexPlain);
 
       pos.gridy = 4;
       pos.gridx = 1;
-      hexBig = new JCheckBox(S.get("hexFormatOptionBigEndian"), this.reader.bigEndian());
+      hexBig = new JRadioButton(S.get("hexFormatOptionBigEndian"), this.reader.bigEndian());
       grid.setConstraints(hexBig, pos);
       opts.add(hexBig);
       pos.gridx = 2;
-      hexLittle = new JCheckBox(S.get("hexFormatOptionLittleEndian"), !this.reader.bigEndian());
+      hexLittle = new JRadioButton(S.get("hexFormatOptionLittleEndian"), !this.reader.bigEndian());
       grid.setConstraints(hexLittle, pos);
       opts.add(hexLittle);
 
@@ -609,11 +614,11 @@ public class HexFile {
       pos.gridy = 6;
       pos.gridx = 1;
       pos.gridwidth = 1;
-      binBig = new JCheckBox(S.get("hexFormatOptionBigEndian"), this.reader.bigEndian());
+      binBig = new JRadioButton(S.get("hexFormatOptionBigEndian"), this.reader.bigEndian());
       grid.setConstraints(binBig, pos);
       opts.add(binBig);
       pos.gridx = 2;
-      binLittle = new JCheckBox(S.get("hexFormatOptionLittleEndian"), !this.reader.bigEndian());
+      binLittle = new JRadioButton(S.get("hexFormatOptionLittleEndian"), !this.reader.bigEndian());
       grid.setConstraints(binLittle, pos);
       opts.add(binLittle);
 
@@ -627,11 +632,11 @@ public class HexFile {
       pos.gridy = 8;
       pos.gridx = 1;
       pos.gridwidth = 1;
-      ascBig = new JCheckBox(S.get("hexFormatOptionBigEndian"), this.reader.bigEndian());
+      ascBig = new JRadioButton(S.get("hexFormatOptionBigEndian"), this.reader.bigEndian());
       grid.setConstraints(ascBig, pos);
       opts.add(ascBig);
       pos.gridx = 2;
-      ascLittle = new JCheckBox(S.get("hexFormatOptionLittleEndian"), !this.reader.bigEndian());
+      ascLittle = new JRadioButton(S.get("hexFormatOptionLittleEndian"), !this.reader.bigEndian());
       grid.setConstraints(ascLittle, pos);
       opts.add(ascLittle);
 
@@ -801,6 +806,10 @@ public class HexFile {
       pack();
     }
 
+    private static String escapeHtml(String text) {
+      return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br>");
+    }
+
     void setWarnings() {
       final var s = new StringWriter();
       if (reader.numWarnings == 0) {
@@ -879,7 +888,7 @@ public class HexFile {
         try {
           reader.decode();
         } catch (IOException e) {
-          reader.warn(e.getMessage());
+          reader.warnText(e.getMessage());
         }
         setPreview();
         setWarnings();
@@ -931,8 +940,8 @@ public class HexFile {
     String parseHeader(String hdr) {
       tags.clear();
       final var t = hdr.split("\\s+");
-      if (t.length < 1) return "File does not contain any header, and appears to contain only whitespace.";
-      if (!t[0].equalsIgnoreCase("v2.0") && !t[0].equalsIgnoreCase("v3.0")) return "Hex file header not recognized";
+      if (t.length < 1) return S.get("hexFileNoHeader");
+      if (!t[0].equalsIgnoreCase("v2.0") && !t[0].equalsIgnoreCase("v3.0")) return S.get("hexFileHeaderUnknown");
 
       // plausible header line with version number
       tags.put("version", t[0]);
@@ -950,14 +959,14 @@ public class HexFile {
         };
 
         if (key == null)
-          err = (err != null) ? (err) : ("File header tag '" + tag + "' not recognized.");
+          err = (err != null) ? (err) : S.get("hexFileTagUnknown", tag);
         else if (tags.containsKey(key) && tags.get(key).equalsIgnoreCase(tag))
-          err = (err != null) ? (err) : ("File header tag '" + tag + "' appears more than once.");
+          err = (err != null) ? (err) : S.get("hexFileTagRepeated", tag);
         else if (tags.containsKey(key))
           err =
               err != null
                   ? err
-                  : ("File header tag '" + tag + "' conflicts with '" + tags.get(key) + "'.");
+                  : S.get("hexFileTagConflict", tag, tags.get(key));
         else tags.put(key, tag);
       }
       return err;
@@ -993,7 +1002,7 @@ public class HexFile {
     }
   }
 
-  private static class HexReader extends FormatOptions {
+  static class HexReader extends FormatOptions {
 
     private final long[] data = new long[4096];
     final BufferedLineReader in;
@@ -1042,17 +1051,22 @@ public class HexFile {
       return val;
     }
 
-    void warn(String msg, Object... args) {
+    /** Records a warning whose text is the localized string {@code key} formatted with args. */
+    void warn(String key, Object... args) {
+      warnText(S.get(key, args));
+    }
+
+    /** Records an already formatted (and localized) warning text. */
+    void warnText(String msg) {
       if (numWarnings > 0) warnings.write("\n");
-      if (curLineNo > 0) warnings.write("Line " + curLineNo + ": ");
-      warnings.write(String.format(msg, args));
+      warnings.write(curLineNo > 0 ? S.get("hexFileLineWarning", curLineNo, msg) : msg);
       numWarnings++;
     }
 
     protected MemContents warnAndAsk(String errmsg) {
       if (Main.headless) {
-        System.out.println(errmsg);
-        System.out.println("Warnings:\n" + warnings.toString());
+        System.err.println(errmsg);
+        System.err.println("Warnings:\n" + warnings.toString());
         return null;
       }
       final var d = new HexFormatDialog(errmsg, this);
@@ -1062,20 +1076,20 @@ public class HexFile {
     }
 
     protected MemContents detectFormatAndDecode() throws IOException {
-      if (in.byteLength() == 0) throw new IOException("File contains no data.");
+      if (in.byteLength() == 0) throw new IOException(S.get("hexFileEmptyError"));
 
       var hdr = in.readLine();
       while (hdr != null && (hdr = hdr.trim()).length() == 0) hdr = in.readLine();
 
-      if (hdr == null) return warnAndAsk("File does not contain any header, and appears to contain only whitespace.");
+      if (hdr == null) return warnAndAsk(S.get("hexFileNoHeader"));
 
       final var err = parseHeader(hdr);
       if (err != null) return warnAndAsk(err);
 
-      if (!tags.containsKey("radix")) return warnAndAsk("Incomplete file header.");
+      if (!tags.containsKey("radix")) return warnAndAsk(S.get("hexFileIncompleteHeader"));
 
       if (tagged("radix", "hex") && !tags.containsKey("size"))
-        return warnAndAsk("File header should specify either 'bytes' or 'words'.");
+        return warnAndAsk(S.get("hexFileNeedsSize"));
 
       return decodeOrWarn();
     }
@@ -1088,7 +1102,17 @@ public class HexFile {
       else if (tagged("style", "plain")) decodeHexPlain();
       else if (tagged("style", "addressed")) decodeHexAddressed();
       else decodeHexAuto();
+      // Part of decoding, so the format dialog (which decodes again) lists it too, instead of
+      // saying "no errors" under a message about a warning.
+      warnAboutTruncation();
       return dst;
+    }
+
+    private void warnAboutTruncation() {
+      if (tagged("size", "bytes") && (memMaxAddr - memEnd) * memWidth >= 8)
+        warn("hexFileExtraBytes", (memMaxAddr - memEnd) * memWidth / 8);
+      else if (!tagged("size", "bytes") && (memMaxAddr - memEnd) > 0)
+        warn("hexFileExtraWords", memMaxAddr - memEnd);
     }
 
     ////////////////////////////////////////////////////////
@@ -1096,18 +1120,11 @@ public class HexFile {
 
     protected MemContents decodeOrWarn() throws IOException {
       decode();
-      if (tagged("size", "bytes") && (memMaxAddr - memEnd) * memWidth >= 8)
-        warn("File contained %f extra bytes.", (memMaxAddr - memEnd) * memWidth / 8.0);
-      else if (!tagged("size", "bytes") && (memMaxAddr - memEnd) > 0)
-        warn("File contained %d extra words.", memMaxAddr - memEnd);
       if (numWarnings > 0) {
         return warnAndAsk(
-            "Decoding with format '"
-                + headerToString()
-                + "'"
-                + " produced "
-                + numWarnings
-                + " warnings.");
+            numWarnings == 1
+                ? S.get("hexFormatDecodedOneWarning", headerToString())
+                : S.get("hexFormatDecodedManyWarnings", headerToString(), numWarnings));
       }
       return dst;
     }
@@ -1219,11 +1236,11 @@ public class HexFile {
       for (String word = nextWord(); word != null; word = nextWord()) {
         int star = word.indexOf("*");
         if (star == 0) {
-          warn("Run-length encoded token \"%s\" missing count, use \"count*data\" instead.", word);
+          warn("hexFileRleMissingCount", word);
           continue;
         } else if (star == word.length() - 1) {
           warn(
-              "Run-length encoded token \"%s\" missing hex data, use \"count*data\" instead.",
+              "hexFileRleMissingData",
               word);
           continue;
         }
@@ -1234,7 +1251,7 @@ public class HexFile {
           try {
             rleValue = Long.parseLong(hexWord, 16);
           } catch (NumberFormatException f) {
-            warn("\"%s\" is not valid hex data.", hexWord);
+            warn("hexFileBadHexData", hexWord);
             continue;
           }
         }
@@ -1244,7 +1261,7 @@ public class HexFile {
           try {
             rleCount = Long.parseUnsignedLong(word.substring(0, star));
           } catch (NumberFormatException e) {
-            warn("\"%s\" is not valid (base-10 decimal) count.", word.substring(0, star));
+            warn("hexFileBadCount", word.substring(0, star));
             continue;
           }
         }
@@ -1323,7 +1340,7 @@ public class HexFile {
       }
       bLen = 0; // all bytes consumed and put into dst
       if (memAddr > memEnd + 100) {
-        warn("Halting decoding early, since plenty of words have been decoded.");
+        warn("hexFileHaltedEarly");
         return false;
       }
       return true;
@@ -1363,7 +1380,7 @@ public class HexFile {
           try {
             d = hex2int(word.charAt(i));
           } catch (NumberFormatException e) {
-            warn("Character '%s' is not a hex digit.", OutputStreamEscaper.escape(word.charAt(i)));
+            warn("hexFileBadHexChar", OutputStreamEscaper.escape(word.charAt(i)));
             continue;
           }
           if (left) {
@@ -1375,7 +1392,7 @@ public class HexFile {
           if (left && bLen >= 4096 && !deliver()) return;
         }
       }
-      if (!left) warn("Odd number of hex digits found in file.");
+      if (!left) warn("hexFileOddDigitsInFile");
       if (bLen > 0) deliver();
     }
 
@@ -1393,7 +1410,7 @@ public class HexFile {
           try {
             d = hex2int(word.charAt(i));
           } catch (NumberFormatException e) {
-            warn("Character '%s' is not a hex digit.", OutputStreamEscaper.escape(word.charAt(i)));
+            warn("hexFileBadHexChar", OutputStreamEscaper.escape(word.charAt(i)));
             continue;
           }
           v = (v << 4) | d;
@@ -1427,7 +1444,7 @@ public class HexFile {
           memAddr = (boffs * 8) / memWidth;
           memAddrFrac = (boffs * 8) % memWidth;
         } catch (Exception e) {
-          warn("\"%s\" is not a valid hex address.", addr);
+          warn("hexFileBadAddress", addr);
           // Continue on with previous address, I guess?
         }
         int i = 1;
@@ -1444,7 +1461,7 @@ public class HexFile {
             try {
               d = hex2int(word.charAt(j));
             } catch (NumberFormatException e) {
-              warn("Character '%s' is not a hex digit.", OutputStreamEscaper.escape(word.charAt(i)));
+              warn("hexFileBadHexChar", OutputStreamEscaper.escape(word.charAt(j)));
               continue;
             }
             if (left) bytes[bLen++] = (byte) (d << 4);
@@ -1452,7 +1469,7 @@ public class HexFile {
             left = !left;
             if (left && bLen >= 4096 && !deliver()) return;
           }
-          if (!left) warn("Odd number of hex digits found in line.");
+          if (!left) warn("hexFileOddDigitsInLine");
         }
         if (bLen > 0 && !deliver()) return;
         findNonemptyLine(false);
@@ -1475,7 +1492,7 @@ public class HexFile {
         try {
           offs = hex2ulong(addr);
         } catch (Exception e) {
-          warn("\"%s\" is not a valid hex address.", curWords[0]);
+          warn("hexFileBadAddress", curWords[0]);
           // Continue on with previous address, I guess?
         }
         int i = 1;
@@ -1488,7 +1505,7 @@ public class HexFile {
           try {
             val = hex2ulong(word);
           } catch (Exception e) {
-            warn("Data word \"%s\" contains non-hex characters.", OutputStreamEscaper.escape(word));
+            warn("hexFileNonHexWord", OutputStreamEscaper.escape(word));
             continue;
           }
           set(offs++, val);
@@ -1526,7 +1543,7 @@ public class HexFile {
               d = hex2int(c);
               bytes[bLen++] = (byte) (16 * ehex + d);
             } catch (NumberFormatException e) {
-              warn("Invalid hex escape sequence.");
+              warn("hexFileBadHexEscape");
             }
             esc = 0;
           } else if (esc == 2) { // backslash "x" __ __
@@ -1536,7 +1553,7 @@ public class HexFile {
               ehex = d;
               esc++;
             } catch (NumberFormatException e) {
-              warn("Invalid hex escape sequence.");
+              warn("hexFileBadHexEscape");
               esc = 0;
             }
           } else if (esc == 1 && c == 'x') {
@@ -1555,7 +1572,7 @@ public class HexFile {
             else if (c == 'v') bytes[bLen++] = 0x0b;
             else if (c == 'f') bytes[bLen++] = 0x0c;
             else if (c == '?') bytes[bLen++] = 0x3f;
-            else warn("Invalid ascii escape sequence.");
+            else warn("hexFileBadAsciiEscape");
           } else if (c == '\\') {
             esc = 1;
           } else if (c >= 0x20 && c <= 0x7E) {
@@ -1567,7 +1584,7 @@ public class HexFile {
         // get more data, but not too much that bytes[] might overflow
         n = in.readBytes(buf, 0, 4096 - bLen);
       }
-      if (esc != 0) warn("Truncated escape sequence at end of file.");
+      if (esc != 0) warn("hexFileTruncatedEscape");
     }
   }
 

@@ -13,6 +13,7 @@ import static com.cburch.logisim.fpga.Strings.S;
 
 import com.cburch.contracts.BaseWindowListenerContract;
 import com.cburch.logisim.Main;
+import com.cburch.logisim.circuit.EditLockedException;
 import com.cburch.logisim.fpga.data.BoardInformation;
 import com.cburch.logisim.fpga.data.ComponentMapParser;
 import com.cburch.logisim.fpga.gui.ComponentMapDialog;
@@ -274,7 +275,12 @@ public class Download extends DownloadBase implements Runnable, BaseWindowListen
     if (!configurationValid) return false;
     final var root = myProject.getLogisimFile().getCircuit(topLevelSheet);
     if (root != null) {
-      root.annotate(myProject, false, false);
+      try {
+        root.annotate(myProject, false, false);
+      } catch (EditLockedException refused) {
+        Reporter.report.addFatalError(refused.getMessage());
+        return false;
+      }
     } else {
       Reporter.report.addFatalError(S.get("FPGAToplevelSheetNotFound", topLevelSheet));
       return false;
@@ -418,18 +424,21 @@ public class Download extends DownloadBase implements Runnable, BaseWindowListen
       /* Stage 2 Map design on board */
       progressBar.setValue(2);
       progressBar.setString(S.get("FPGAState3"));
-      ComponentMapDialog mapPanel;
-      if (myProject.getLogisimFile().getLoader().getMainFile() != null) {
-        mapPanel = new ComponentMapDialog(parent,
-                myProject.getLogisimFile().getLoader().getMainFile().getAbsolutePath(),
-                myBoardInformation, myMappableResources);
-      } else {
-        mapPanel = new ComponentMapDialog(parent, "", myBoardInformation, myMappableResources);
-      }
-      if (!mapPanel.run()) {
-        Reporter.report.addError(S.get("FPGADownloadAborted"));
-        return false;
-      }
+      // "No" on the incomplete-mapping question returns to the mapping dialog, it does not abort.
+      do {
+        ComponentMapDialog mapPanel;
+        if (myProject.getLogisimFile().getLoader().getMainFile() != null) {
+          mapPanel = new ComponentMapDialog(parent,
+                  myProject.getLogisimFile().getLoader().getMainFile().getAbsolutePath(),
+                  myBoardInformation, myMappableResources);
+        } else {
+          mapPanel = new ComponentMapDialog(parent, "", myBoardInformation, myMappableResources);
+        }
+        if (!mapPanel.run()) {
+          Reporter.report.addError(S.get("FPGADownloadAborted"));
+          return false;
+        }
+      } while (!mapDesignCheckIOs());
     } else {
       if (mapFileName != null) {
         var mapFile = new File(mapFileName);
@@ -437,10 +446,10 @@ public class Download extends DownloadBase implements Runnable, BaseWindowListen
         var cmp = new ComponentMapParser(mapFile, myMappableResources, myBoardInformation);
         cmp.parseFile();
       }
-    }
-    if (!mapDesignCheckIOs()) {
-      Reporter.report.addError(S.get("FPGAMapNotComplete", myBoardInformation.getBoardName()));
-      return false;
+      if (!mapDesignCheckIOs()) {
+        Reporter.report.addError(S.get("FPGAMapNotComplete", myBoardInformation.getBoardName()));
+        return false;
+      }
     }
     /* Stage 3 HDL generation */
     if (useGui) {

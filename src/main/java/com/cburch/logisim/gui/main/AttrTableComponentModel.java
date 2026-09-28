@@ -54,6 +54,17 @@ class AttrTableComponentModel extends AttributeSetTableModel {
   }
 
   @Override
+  protected boolean isEditLocked() {
+    return circ.isEditLockedFor(comp);
+  }
+
+  @Override
+  public String getEditLockNote() {
+    if (circ.isEditLocked()) return S.get("attrLockedCircuitNote", circ.getName());
+    return circ.isComponentEditLocked(comp) ? S.get("attrLockedComponentNote") : null;
+  }
+
+  @Override
   public void setValueRequested(final Attribute<Object> attr, final Object value)
       throws AttrTableSetException {
     setValuesRequested(Map.of(attr, value));
@@ -76,7 +87,8 @@ class AttrTableComponentModel extends AttributeSetTableModel {
           return;
         }
       }
-      final var act = new SetAttributeAction(circ, S.getter("changeAttributeAction"));
+      final var act = new SetAttributeAction(
+          circ, AttributeActionNames.forAttributes(values.keySet(), "changeAttributeAction"));
       final var compAttrSet = comp.getAttributeSet();
       for (final var entry : values.entrySet()) {
         final var attr = entry.getKey();

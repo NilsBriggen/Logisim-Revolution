@@ -13,6 +13,7 @@ import static com.cburch.logisim.fpga.Strings.S;
 
 import com.cburch.contracts.BaseWindowListenerContract;
 import com.cburch.logisim.circuit.Circuit;
+import com.cburch.logisim.circuit.EditLockedException;
 import com.cburch.logisim.circuit.CircuitEvent;
 import com.cburch.logisim.circuit.CircuitListener;
 import com.cburch.logisim.file.LibraryEvent;
@@ -56,6 +57,8 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.SwingUtilities;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class FpgaCommander
     implements ActionListener,
@@ -66,6 +69,7 @@ public class FpgaCommander
         LocaleListener,
         PreferenceChangeListener {
 
+  private static final Logger logger = LoggerFactory.getLogger(FpgaCommander.class);
   public static final int FONT_SIZE = 12;
   private final JFrame panel;
   private final JLabel textMainCircuit = new JLabel();
@@ -125,16 +129,23 @@ public class FpgaCommander
     if (event.getAction() == LibraryEvent.ADD_TOOL
         || event.getAction() == LibraryEvent.REMOVE_TOOL) {
       rebuildCircuitSelection();
+    } else if (event.getAction() == LibraryEvent.SET_NAME) {
+      // Save As renames the file; the title names it.
+      updateTitle();
     }
+  }
+
+  private void updateTitle() {
+    panel.setTitle(S.get("FpgaGuiTitle") + " " + MyProject.getLogisimFile().getName());
   }
 
   @Override
   public void projectChanged(ProjectEvent event) {
-    if (event.getAction() == ProjectEvent.ACTION_SET_CURRENT) {
-      Circuit circ = event.getCircuit();
-      if (circ != null) setCurrentSheet(circ.getName());
-    } else if (event.getAction() == ProjectEvent.ACTION_SET_FILE) {
+    // The Toplevel is what gets synthesized, so it does not silently follow the circuit being
+    // viewed: it is taken from the current circuit only when the window is opened (see showGui).
+    if (event.getAction() == ProjectEvent.ACTION_SET_FILE) {
       rebuildCircuitSelection();
+      updateTitle();
     }
   }
 
@@ -273,6 +284,7 @@ public class FpgaCommander
   }
 
   private void reportDownloadFailure(RuntimeException error) {
+    logger.error("FPGA commander execution failed", error);
     Reporter.report.addFatalError(S.get("FpgaGuiExecute") + ": " + error);
   }
 
@@ -354,6 +366,10 @@ public class FpgaCommander
     // FPGAReporter GUI
     ReporterGui = new FpgaReportTabbedPane(MyProject);
     gbc.gridy = 4;
+    // The report is what grows with the window; long messages need the room.
+    gbc.fill = GridBagConstraints.BOTH;
+    gbc.weightx = 1.0;
+    gbc.weighty = 1.0;
     panel.add(ReporterGui, gbc);
     panel.setLocationRelativeTo(null);
     panel.setVisible(false);
@@ -390,7 +406,7 @@ public class FpgaCommander
     if (!DownloadBase.isHdlGenerationEnabled(hdlType)) {
       actionCommands.addItem(S.getter("FpgaGuiSelectHdl"));
       actionCommands.setSelectedIndex(0);
-      panel.pack();
+      packKeepingSize();
       return;
     }
     actionCommands.addItem(S.getter("FpgaGuiHdlOnly"));
@@ -398,10 +414,19 @@ public class FpgaCommander
         S.get(
             "FpgaGuiToolpath",
             VendorSoftware.getVendorString(MyBoardInformation.fpga.getVendor())));
-    if (MyBoardInformation != null
-        && VendorSoftware.toolsPresent(
-            MyBoardInformation.fpga.getVendor(),
-            VendorSoftware.getToolPath(MyBoardInformation.fpga.getVendor()))) {
+    final var toolsPresent =
+        MyBoardInformation != null
+            && VendorSoftware.toolsPresent(
+                MyBoardInformation.fpga.getVendor(),
+                VendorSoftware.getToolPath(MyBoardInformation.fpga.getVendor()));
+    // Without a toolchain only "Generate HDL only" is offered; say why instead of hiding it.
+    actionCommands.setToolTipText(
+        toolsPresent || MyBoardInformation == null
+            ? null
+            : S.get(
+                "FpgaGuiToolsMissingTip",
+                VendorSoftware.getVendorString(MyBoardInformation.fpga.getVendor())));
+    if (toolsPresent) {
       actionCommands.addItem(S.getter("FpgaGuiSyntAndD"));
       nrItems++;
       actionCommands.addItem(S.getter("FpgaGuiDownload"));
@@ -413,7 +438,20 @@ public class FpgaCommander
     if (sel == 0 && nrItems > 1) sel = 1;
     if (sel < nrItems) actionCommands.setSelectedIndex(sel);
     else actionCommands.setSelectedIndex(0);
-    panel.pack();
+    packKeepingSize();
+  }
+
+  /** Packs a hidden window; an open one only grows to fit, so a user's resize is kept. */
+  private void packKeepingSize() {
+    if (!panel.isVisible()) {
+      panel.pack();
+      return;
+    }
+    final var current = panel.getSize();
+    final var preferred = panel.getPreferredSize();
+    panel.setSize(
+        Math.max(current.width, preferred.width), Math.max(current.height, preferred.height));
+    panel.validate();
   }
 
   @Override
@@ -476,26 +514,30 @@ public class FpgaCommander
       if (ClearExistingLabels) {
         root.clearAnnotationLevel();
       }
-      root.annotate(ClearExistingLabels, false);
+      try {
+        root.annotate(MyProject, ClearExistingLabels, false);
+      } catch (EditLockedException refused) {
+        MyProject.reportRefusedEdit(refused);
+        return;
+      }
       Reporter.report.addInfo(S.get("FpgaGuiAnnotationDone"));
-      MyProject.setForcedDirty();
       MyProject.repaintCanvas();
     }
   }
 
   private void rebuildCircuitSelection() {
+    // Keep the chosen Toplevel when the list is rebuilt (circuit added, removed or renamed).
+    final var previous = circuitsList.getSelectedItem();
     circuitsList.removeAllItems();
     localeChanged();
-    int i = 0;
     for (Circuit thisone : MyProject.getLogisimFile().getCircuits()) {
       circuitsList.addItem(thisone.getName());
       thisone.removeCircuitListener(this);
       thisone.addCircuitListener(this);
-      if (MyProject.getCurrentCircuit() != null
-          && thisone.getName().equals(MyProject.getCurrentCircuit().getName())) {
-        circuitsList.setSelectedIndex(i);
-      }
-      i++;
+    }
+    if (previous == null || !setCurrentSheet(previous.toString())) {
+      final var current = MyProject.getCurrentCircuit();
+      if (current != null) setCurrentSheet(current.getName());
     }
   }
 
@@ -532,18 +574,22 @@ public class FpgaCommander
     } while (!ok);
   }
 
-  private void setCurrentSheet(String Name) {
+  private boolean setCurrentSheet(String Name) {
     for (int i = 0; i < circuitsList.getItemCount(); i++) {
       if (circuitsList.getItemAt(i).equals(Name)) {
         circuitsList.setSelectedIndex(i);
         circuitsList.repaint();
-        return;
+        return true;
       }
     }
+    return false;
   }
 
   public void showGui() {
     if (!panel.isVisible()) {
+      // Opening the window is the explicit moment to take the circuit being viewed as Toplevel.
+      final var current = MyProject.getCurrentCircuit();
+      if (current != null && downloader == null) setCurrentSheet(current.getName());
       panel.setVisible(true);
     } else {
       panel.setVisible(false);
@@ -562,7 +608,7 @@ public class FpgaCommander
   @Override
   public void localeChanged() {
     textMainCircuit.setText(S.get("FpgaGuiMainCircuit"));
-    panel.setTitle(S.get("FpgaGuiTitle") + " " + MyProject.getLogisimFile().getName());
+    updateTitle();
     annotationList.repaint();
     validateButton.setText(S.get("FpgaGuiExecute"));
     annotateButton.setText(S.get("FpgaGuiAnnotate"));

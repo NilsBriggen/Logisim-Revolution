@@ -61,6 +61,7 @@ class RomContentsListener implements HexModelListener {
     @Override
     public void doIt(Project proj) {
       if (!completed) {
+        contents.checkWritable();
         completed = true;
         try {
           source.setEnabled(false);

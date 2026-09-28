@@ -48,6 +48,11 @@ class MenuEdit extends Menu {
   private final MenuItemImpl lowerBottom = new MenuItemImpl(this, LogisimMenuBar.LOWER_BOTTOM);
   private final MenuItemImpl addCtrl = new MenuItemImpl(this, LogisimMenuBar.ADD_CONTROL);
   private final MenuItemImpl remCtrl = new MenuItemImpl(this, LogisimMenuBar.REMOVE_CONTROL);
+  private final JMenu arrange = new JMenu();
+  private final MenuItemImpl[] arrangeItems = new MenuItemImpl[LogisimMenuBar.ARRANGE_ITEMS.length];
+  // Undo/Redo of a window with no project but a history of its own (such as the hex editor).
+  private final MenuItemImpl windowUndo = new MenuItemImpl(this, LogisimMenuBar.UNDO);
+  private final MenuItemImpl windowRedo = new MenuItemImpl(this, LogisimMenuBar.REDO);
   private final MyListener myListener = new MyListener();
 
   public MenuEdit(LogisimMenuBar menubar) {
@@ -58,11 +63,19 @@ class MenuEdit extends Menu {
     /* add myself to hotkey sync */
     AppPreferences.gui_sync_objects.add(this);
 
-    add(undo);
-    add(undoHistory);
-    add(redo);
-    add(redoHistory);
-    add(clearHistory);
+    final var hasProject = menubar.getSaveProject() != null;
+    if (hasProject) {
+      add(undo);
+      add(undoHistory);
+      add(redo);
+      add(redoHistory);
+      add(clearHistory);
+    } else {
+      add(windowUndo);
+      add(windowRedo);
+      menubar.registerItem(LogisimMenuBar.UNDO, windowUndo);
+      menubar.registerItem(LogisimMenuBar.REDO, windowRedo);
+    }
     addSeparator();
     add(cut);
     add(copy);
@@ -76,6 +89,15 @@ class MenuEdit extends Menu {
     add(lower);
     add(raiseTop);
     add(lowerBottom);
+    add(arrange);
+    for (var i = 0; i < arrangeItems.length; i++) {
+      final var which = LogisimMenuBar.ARRANGE_ITEMS[i];
+      arrangeItems[i] = new MenuItemImpl(this, which);
+      // Align and distribute are separate groups inside the submenu.
+      if (which == LogisimMenuBar.DISTRIBUTE_HORIZONTAL) arrange.addSeparator();
+      arrange.add(arrangeItems[i]);
+      menubar.registerItem(which, arrangeItems[i]);
+    }
     addSeparator();
     add(addCtrl);
     add(remCtrl);
@@ -140,6 +162,8 @@ class MenuEdit extends Menu {
   public void hotkeyUpdate() {
     undo.setAccelerator(accelerator(AppPreferences.HOTKEY_EDIT_UNDO));
     redo.setAccelerator(accelerator(AppPreferences.HOTKEY_EDIT_REDO));
+    windowUndo.setAccelerator(accelerator(AppPreferences.HOTKEY_EDIT_UNDO));
+    windowRedo.setAccelerator(accelerator(AppPreferences.HOTKEY_EDIT_REDO));
     cut.setAccelerator(accelerator(AppPreferences.HOTKEY_EDIT_CUT));
     copy.setAccelerator(accelerator(AppPreferences.HOTKEY_EDIT_COPY));
     paste.setAccelerator(accelerator(AppPreferences.HOTKEY_EDIT_PASTE));
@@ -158,8 +182,11 @@ class MenuEdit extends Menu {
 
   @Override
   protected void computeEnabled() {
+    if (menubar.getSaveProject() == null) showOnlyHandledItems();
     setEnabled(
         menubar.getSaveProject() != null
+            || windowUndo.hasListeners()
+            || windowRedo.hasListeners()
             || cut.hasListeners()
             || copy.hasListeners()
             || paste.hasListeners()
@@ -171,11 +198,48 @@ class MenuEdit extends Menu {
             || raiseTop.hasListeners()
             || lowerBottom.hasListeners()
             || addCtrl.hasListeners()
-            || remCtrl.hasListeners());
+            || remCtrl.hasListeners()
+            || arrangeHasListeners());
+  }
+
+  private boolean arrangeHasListeners() {
+    for (final var item : arrangeItems) {
+      if (item != null && item.hasListeners()) return true;
+    }
+    return false;
+  }
+
+  /**
+   * A window without a project shows only the edit commands it handles, instead of the circuit
+   * editor's full menu with most of it permanently greyed out.
+   */
+  private void showOnlyHandledItems() {
+    javax.swing.JSeparator pendingSeparator = null;
+    var itemSinceSeparator = false;
+    for (final var component : getMenuComponents()) {
+      if (component instanceof javax.swing.JSeparator separator) {
+        separator.setVisible(false);
+        if (itemSinceSeparator) {
+          pendingSeparator = separator;
+          itemSinceSeparator = false;
+        }
+      } else if (component instanceof MenuItemImpl || component == arrange) {
+        final var handled =
+            component == arrange ? arrangeHasListeners() : ((MenuItemImpl) component).hasListeners();
+        ((JMenuItem) component).setVisible(handled);
+        if (handled) {
+          if (pendingSeparator != null) pendingSeparator.setVisible(true);
+          pendingSeparator = null;
+          itemSinceSeparator = true;
+        }
+      }
+    }
   }
 
   public void localeChanged() {
     this.setText(S.get("editMenu"));
+    windowUndo.setText(S.get("editUndoPlainItem"));
+    windowRedo.setText(S.get("editRedoPlainItem"));
     myListener.projectChanged(null);
     undoHistory.setText(S.get("editUndoHistoryMenu"));
     redoHistory.setText(S.get("editRedoHistoryMenu"));
@@ -192,6 +256,10 @@ class MenuEdit extends Menu {
     lowerBottom.setText(S.get("editLowerBottomItem"));
     addCtrl.setText(S.get("editAddControlItem"));
     remCtrl.setText(S.get("editRemoveControlItem"));
+    arrange.setText(S.get("editArrangeMenu"));
+    for (var i = 0; i < arrangeItems.length; i++) {
+      arrangeItems[i].setText(LogisimMenuBar.arrangeItemText(LogisimMenuBar.ARRANGE_ITEMS[i]));
+    }
   }
 
   void refreshUndoRedoItems() {

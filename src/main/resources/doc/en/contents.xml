@@ -22,6 +22,8 @@
 			<tocitem target="gui_toolsbar" text="The tools bars"/>
 			<tocitem target="gui-attribut" text="The attribute table" />
 			<tocitem target="gui-attrcomp" text="Tool and component attributes" />
+			<tocitem target="gui_search" text="Find Action" />
+			<tocitem target="gui-lock" text="Locking circuits and components" />
 		</tocitem>
 		<tocitem target="subcirc" text="Subcircuits">
 			<tocitem target="subcirc_creating" text="Creating circuits" />
@@ -38,10 +40,12 @@
 			<tocitem target="features_colors" text="Wire colors" />
 			<tocitem target="features_autolabel" text="Self-numbered labels " />
 			<tocitem target="features_matrix" text="Placing components in a matrix" />
+			<tocitem target="features_arrange" text="Aligning and distributing components" />
+			<tocitem target="hdl-ip_verilog" text="Verilog modules" />
 		</tocitem>
 		<tocitem target="mem_guide" text="Memory components">
             <tocitem target="mem_poke" text="Memory poke" />
-			<tocitem target="mem_hex" text="Editeur hexadécimal" />			
+			<tocitem target="mem_hex" text="Editeur hexadécimal" />
 			<tocitem target="mem_menu" text="Pop-up menus and files" />
 			<tocitem target="mem_filetabel" text="Memory file panel"/>
 			<tocitem target="mem_v2raw" text="File v2raw" />
@@ -99,6 +103,7 @@
 		</tocitem>
 		<tocitem target="opts" text="Project options">
 			<tocitem target="opts_simulate" text="The Simulation tab" />
+			<tocitem target="opts_style" text="The Style page" />
 			<tocitem target="opts_toolbar" text="The Toolbar tab" />
 			<tocitem target="opts_mouse" text="The Mouse tab" />
 		</tocitem>
@@ -125,7 +130,7 @@
 			<!-- <tocitem target="about_gpl_en" text="GNU General Public License (en)"/> -->
 		</tocitem>
 	</tocitem>
-	
+
 	<tocitem target="libs" text="Library Reference">
 		<tocitem target="wiring" text="Wiring library">
 			<tocitem target="wiring_splitter" text="Splitter" image="icon_splitter" />
@@ -211,11 +216,11 @@
 			<tocitem target="io_telnet" text="Telnet" image="icon_telnet" />
 			<tocitem target="io_realtimeclock" text="Real-Time Clock" image="icon_realtimeclock" />
 			<tocitem target="io_matrixkeypad" text="Matrix Keypad" image="icon_matrixkeypad" />
-<!-- not documented 
+<!-- not documented
      		<tocitem target="io_Port_IO" text="Port I/O" image="icon_Port_IO" />
 			<tocitem target="io_Repetar" text="Reptar Local Bus" image="icon_repetar" />
 			<tocitem target="io_videorgb" text="Video RGB" image="icon_videorgb" />
--->	
+-->
 		</tocitem>
 		<tocitem target="ioex" text="Input/Output-Extra">
 			<tocitem target="ioex_switch" text="Switch" image="icon_switch" />
@@ -227,7 +232,7 @@
 			<tocitem target="ioex_twopinled" text="2-Pin LED" image="icon_twopinled" />
 		</tocitem>
 		<tocitem target="ttl" text="TTL library" image="icon_ttl" />
-<!-- not documented 
+<!-- not documented
 		<tocitem target="tcl" text="TCL library">
 			<tocitem target="tcl_reds_console" text="REDS console" image="icon_reds_console" />
 			<tocitem target="tcl_generic" text="Generic" image="icon_generic" />
@@ -243,7 +248,8 @@
 		<tocitem target="hdl" text="HDL-IP">
 			<tocitem target="hdl_vhdlentity" text="VHDL Entity" image="icon_vhdl" />
 		</tocitem>
-		
+
+-->
 
 		<tocitem target="base" text="Base library">
 			<tocitem target="base_poke" text="Poke Tool" image="icon_poke" />
@@ -254,11 +260,6 @@
 			<tocitem target="base_menu" text="Menu Tool" image="icon_menu" />
 			<tocitem target="base_label" text="Text" image="icon_label" />
 		</tocitem>
--->
-	<tocitem target="Tests_for_doc" text="Tests for documentation">
-		<tocitem target="test_hmlcss" text="test_hml_css" />
-		<tocitem target="Translation_status" text="Translation status" />
-	</tocitem>
   </tocitem>
 </tocitem>
 </toc>

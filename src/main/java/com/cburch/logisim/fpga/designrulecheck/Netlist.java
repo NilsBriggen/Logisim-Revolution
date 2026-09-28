@@ -25,10 +25,13 @@ import com.cburch.logisim.fpga.gui.Reporter;
 import com.cburch.logisim.fpga.hdlgenerator.Hdl;
 import com.cburch.logisim.instance.StdAttr;
 import com.cburch.logisim.prefs.AppPreferences;
+import com.cburch.logisim.std.hdl.VhdlEntityComponent;
 import com.cburch.logisim.std.wiring.Clock;
 import com.cburch.logisim.std.wiring.Pin;
 import com.cburch.logisim.std.wiring.Probe;
 import com.cburch.logisim.std.wiring.Tunnel;
+import com.cburch.logisim.vhdl.base.VerilogModule;
+import com.cburch.logisim.vhdl.base.VhdlEntity;
 import java.awt.Color;
 import java.io.File;
 import java.util.ArrayList;
@@ -336,11 +339,32 @@ public class Netlist {
             S.get("HDL_unsupported"),
             SimpleDrcContainer.LEVEL_FATAL,
             SimpleDrcContainer.MARK_INSTANCE));
+    drc.add(
+        new SimpleDrcContainer(
+            myCircuit,
+            S.get("HDL_VhdlEntityInVerilog"),
+            SimpleDrcContainer.LEVEL_FATAL,
+            SimpleDrcContainer.MARK_INSTANCE));
+    drc.add(
+        new SimpleDrcContainer(
+            myCircuit,
+            S.get("HDL_VerilogModuleInVhdl"),
+            SimpleDrcContainer.LEVEL_FATAL,
+            SimpleDrcContainer.MARK_INSTANCE));
 
     for (final var comp : myCircuit.getNonWires()) {
       // Here we check if the components are supported for the HDL generation
       if (!comp.getFactory().isHDLSupportedComponent(comp.getAttributeSet())) {
-        drc.get(5).addMarkComponent(comp);
+        // An HDL component in the other language is only unsupported because of the selected
+        // HDL: say so specifically.
+        final var factory = comp.getFactory();
+        final var verilogModule = factory instanceof VerilogModule;
+        final var vhdlEntity =
+            !verilogModule
+                && (factory instanceof VhdlEntity || factory instanceof VhdlEntityComponent);
+        final var index =
+            vhdlEntity && Hdl.isVerilog() ? 6 : verilogModule && Hdl.isVhdl() ? 7 : 5;
+        drc.get(index).addMarkComponent(comp);
         drcStatus |= DRC_ERROR;
       }
       // we check that all components that require a non zero label (annotation) have a label set

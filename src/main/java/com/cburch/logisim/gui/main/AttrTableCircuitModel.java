@@ -12,7 +12,9 @@ package com.cburch.logisim.gui.main;
 import static com.cburch.logisim.gui.Strings.S;
 
 import com.cburch.logisim.circuit.Circuit;
+import com.cburch.logisim.circuit.CircuitAttributes;
 import com.cburch.logisim.circuit.CircuitMutation;
+import com.cburch.logisim.circuit.CircuitNameValidator;
 import com.cburch.logisim.data.Attribute;
 import com.cburch.logisim.gui.generic.AttrTableSetException;
 import com.cburch.logisim.gui.generic.AttributeSetTableModel;
@@ -36,6 +38,16 @@ public class AttrTableCircuitModel extends AttributeSetTableModel {
   }
 
   @Override
+  protected boolean isEditLocked() {
+    return circ.isEditLocked();
+  }
+
+  @Override
+  public String getEditLockNote() {
+    return circ.isEditLocked() ? S.get("attrLockedCircuitNote", circ.getName()) : null;
+  }
+
+  @Override
   public void setValueRequested(final Attribute<Object> attr, Object value)
       throws AttrTableSetException {
     setValuesRequested(Map.of(attr, value));
@@ -53,6 +65,13 @@ public class AttrTableCircuitModel extends AttributeSetTableModel {
       final var msg = S.get("cannotModifyCircuitError");
       throw new AttrTableSetException(msg);
     } else {
+      final var name = values.get((Attribute<?>) CircuitAttributes.NAME_ATTR);
+      if (name instanceof String newName && !newName.equals(circ.getName())) {
+        // Refused here, the table keeps the typed name for correction instead of reverting it.
+        final var problem =
+            CircuitNameValidator.problemWith(proj.getLogisimFile(), newName, circ);
+        if (problem != null) throw new AttrTableSetException(problem);
+      }
       final var xn = new CircuitMutation(circ);
       for (final var entry : values.entrySet()) {
         if (!Objects.equals(
@@ -60,7 +79,8 @@ public class AttrTableCircuitModel extends AttributeSetTableModel {
           xn.setForCircuit(entry.getKey(), entry.getValue());
         }
       }
-      if (!xn.isEmpty()) proj.doAction(xn.toAction(S.getter("changeCircuitAttrAction")));
+      if (!xn.isEmpty()) proj.doAction(xn.toAction(
+          AttributeActionNames.forAttributes(values.keySet(), "changeCircuitAttrAction")));
     }
   }
 }

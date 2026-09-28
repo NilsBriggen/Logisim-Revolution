@@ -14,6 +14,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.StringTokenizer;
 import javax.swing.filechooser.FileFilter;
@@ -79,6 +80,10 @@ public class TestVector {
       while (curLine != null) {
         parseData(localDontCareFlags, localFloatingFlags, localSetNumbers, localSeqNumbers);
         curLine = findNonemptyLine();
+      }
+      // A header without rows would "pass" without testing anything.
+      if (TestVector.this.data.isEmpty()) {
+        throw new IOException("TestVector format error: no test rows after the header");
       }
 
       // Verify set and sequence order.
@@ -222,10 +227,16 @@ public class TestVector {
 
         // Check for special columns
         if ("<SET>".equals(tUpper)) {
+          if (setColumnIndex >= 0) {
+            throw new IOException("Test Vector header format error: duplicate column: " + t);
+          }
           setColumnIndex = i;
           continue;
         }
         if ("<SEQ>".equals(tUpper)) {
+          if (seqColumnIndex >= 0) {
+            throw new IOException("Test Vector header format error: duplicate column: " + t);
+          }
           seqColumnIndex = i;
           continue;
         }
@@ -253,6 +264,17 @@ public class TestVector {
             throw new IOException("Test Vector header format error: bad width: " + t);
           tempColumnWidth.add(BitWidth.create(w));
           tempColumnRadix.add(2);
+        }
+      }
+
+      if (tempColumnName.isEmpty()) {
+        throw new IOException("Test Vector header format error: no pin columns");
+      }
+      // A pin named twice would be driven or checked twice with possibly different values.
+      final var seen = new HashSet<String>();
+      for (final var name : tempColumnName) {
+        if (!seen.add(name)) {
+          throw new IOException("Test Vector header format error: duplicate column: " + name);
         }
       }
 

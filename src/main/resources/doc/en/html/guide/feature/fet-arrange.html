@@ -1,0 +1,90 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html lang="en">
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="content-type" content="text/html; charset=utf-8">
+    <meta http-equiv="Content-Language" content="en">
+    <title>
+      Aligning and distributing components
+    </title>
+    <link rel="stylesheet" type="text/css" href="../../style.css">
+  </head>
+  <body>
+    <div class="maindiv">
+      <h1>
+        Aligning and distributing components
+      </h1>
+      <p>
+        To line components up or space them evenly, select them with the Edit or Select tool and
+        choose a command from <b>Edit &rarr; Arrange</b>. The same commands are in the menu that
+        opens when you right-click a selection of several components, and you can find them by
+        name in the search (double-press <b class="tkeybd">Shift</b>).
+      </p>
+      <dl>
+        <dt><strong>Align Left</strong>, <strong>Align Right</strong></dt>
+        <dd>
+          <p>
+            Moves the components sideways so that their left (or right) edges line up with the
+            leftmost left edge (or rightmost right edge) of the selection.
+          </p>
+        </dd>
+        <dt><strong>Align Center</strong></dt>
+        <dd>
+          <p>
+            Moves the components sideways so that they are centered on the middle of the
+            selection, one above the other.
+          </p>
+        </dd>
+        <dt><strong>Align Top</strong>, <strong>Align Bottom</strong></dt>
+        <dd>
+          <p>
+            Moves the components up or down so that their top (or bottom) edges line up with the
+            topmost top edge (or lowest bottom edge) of the selection.
+          </p>
+        </dd>
+        <dt><strong>Align Middle</strong></dt>
+        <dd>
+          <p>
+            Moves the components up or down so that they are centered on the middle of the
+            selection, side by side in one row.
+          </p>
+        </dd>
+        <dt><strong>Distribute Horizontally</strong>, <strong>Distribute Vertically</strong></dt>
+        <dd>
+          <p>
+            Leaves the two outermost components where they are and moves the others in between
+            so that the gaps between neighbouring components are equal.
+          </p>
+        </dd>
+      </dl>
+      <h2>How it works</h2>
+      <ul>
+        <li>
+          The commands use the outline of each component, not its label, and they only move
+          components: selected wires stay where they are. Aligning needs at least two selected
+          components and distributing at least three; otherwise the commands are greyed out.
+        </li>
+        <li>
+          Every component still lands on the grid, so a result can be off by up to half a grid
+          step when component sizes do not fit the grid evenly. Nothing is moved to the left of
+          or above the origin of the canvas.
+        </li>
+        <li>
+          Wires attached to a component follow it, just as when you drag the selection. If you
+          have turned off <i>Keep connections while moving</i> in the
+          <a href="../prefs/pref-layout.html">Layout preferences</a>, the wires stay put instead.
+        </li>
+        <li>
+          If the result would put two components exactly on top of each other, or join two
+          outputs, nothing is moved and a message says so.
+        </li>
+        <li>
+          Each command is a single step that <b>Edit &rarr; Undo</b> reverses in one go.
+        </li>
+      </ul>
+      <p>
+        <b>Next:</b> <a href="../index.html">Logisim User Guide</a>.
+      </p>
+    </div>
+  </body>
+</html>

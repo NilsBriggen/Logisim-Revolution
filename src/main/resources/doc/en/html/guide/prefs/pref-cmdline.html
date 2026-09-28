@@ -101,6 +101,11 @@
             <tt>binary</tt>, <tt>hex</tt>, <tt>csv</tt>, and <tt>tabs</tt>. See
             <a href="../verify/other.html">Other verification options</a>.
           </p>
+          <p>
+            Without an output pin labelled <tt>halt</tt>, <tt>table</tt> prints a truth table
+            (at most 30 input bits). Any other simulation needs that pin to end, except
+            <tt>tty</tt>, which runs until it is interrupted.
+          </p>
         </dd>
 
         <dt><tt>-l, --load <i>FILE [LABEL]</i></tt></dt>
@@ -108,7 +113,10 @@
           <p>
             Loads a memory image before a TTY simulation. With a label, it applies to matching RAM
             and ROM components; without one, it supplies the fallback image. The option may be
-            repeated for different labels and works only with <tt>--tty</tt>.
+            repeated for different labels and works only with <tt>--tty</tt>. A project file
+            (<tt>.circ</tt>) written straight after the option is opened as the project, not taken
+            as a label. If the image cannot be read or loaded completely, the run stops with an
+            error instead of simulating an empty memory.
           </p>
         </dd>
 
@@ -167,6 +175,45 @@
           </p>
         </dd>
       </dl>
+
+      <h2>Exit codes</h2>
+      <p>
+        The command-line modes (<tt>--tty</tt>, <tt>--test-vector</tt>, <tt>--test-circuit</tt>,
+        <tt>--new-file-format</tt> and <tt>--test-fpga</tt>) never open a window or wait for an
+        answer, so they also work without a display. They report the cause of any problem on
+        standard error and end with one of these exit codes, which scripts can test:
+      </p>
+      <table>
+        <tbody>
+          <tr><td><tt>0</tt></td><td>Success: everything requested was done and every check passed.</td></tr>
+          <tr>
+            <td><tt>1</tt></td>
+            <td>
+              The circuit did not behave: it oscillated (also when printing a truth table), a
+              test vector failed, or the test bench failed.
+            </td>
+          </tr>
+          <tr>
+            <td><tt>2</tt></td>
+            <td>
+              The project could not be loaded, or loading it reported errors (for example an
+              unknown component or a missing library). Nothing is simulated, because parts of the
+              circuit may be missing.
+            </td>
+          </tr>
+          <tr>
+            <td><tt>3</tt></td>
+            <td>
+              Another run-time error, for example a memory image that could not be read or loaded
+              completely, no RAM for <tt>--save</tt>, a missing <tt>halt</tt> output pin for a
+              simulation that must end on its own, a truth table with more than 30 input bits, an
+              unknown circuit name, or a failed FPGA flow.
+            </td>
+          </tr>
+          <tr><td><tt>10</tt></td><td>The command line was invalid.</td></tr>
+          <tr><td><tt>100</tt></td><td>An unexpected internal error occurred.</td></tr>
+        </tbody>
+      </table>
 
       <p><b>Next:</b> <a href="../index.html">User's Guide</a>.</p>
     </div>

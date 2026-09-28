@@ -20,8 +20,14 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import javax.accessibility.AccessibleContext;
 import javax.swing.JButton;
 
+/**
+ * An icon-only swatch button. Its accessible name comes from the caption that labels it (via
+ * {@link javax.swing.JLabel#setLabelFor}) and its tooltip and accessible description give the
+ * current colour as a hex value.
+ */
 public class ColorChooserButton extends JButton implements PropertyChangeListener, ActionListener {
 
   private static final long serialVersionUID = 1L;
@@ -36,11 +42,41 @@ public class ColorChooserButton extends JButton implements PropertyChangeListene
     setIcon(new ColorIcon());
     pref.addPropertyChangeListener(this);
     addActionListener(this);
+    setToolTipText(hexValue());
+  }
+
+  /** The current colour as {@code #RRGGBB}. */
+  String hexValue() {
+    return String.format("#%06X", myMonitor.get() & 0xFFFFFF);
   }
 
   @Override
   public void propertyChange(PropertyChangeEvent evt) {
+    setToolTipText(hexValue());
     repaint();
+  }
+
+  @Override
+  public AccessibleContext getAccessibleContext() {
+    if (accessibleContext == null) {
+      accessibleContext =
+          new AccessibleJButton() {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public String getAccessibleName() {
+              // Falls back to the labelling caption; with no caption the value is all there is.
+              final var name = super.getAccessibleName();
+              return name == null || name.isBlank() ? hexValue() : name;
+            }
+
+            @Override
+            public String getAccessibleDescription() {
+              return hexValue();
+            }
+          };
+    }
+    return accessibleContext;
   }
 
   @Override

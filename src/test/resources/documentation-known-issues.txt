@@ -9,15 +9,9 @@ de/contents.xml: target 'hdl_vhdlentity' has no mapID in map_de.jhm
 de/contents.xml: target 'io_DIP' has no mapID in map_de.jhm
 de/contents.xml: target 'io_ledRGB' has no mapID in map_de.jhm
 de/contents.xml: target 'io_videorgb' has no mapID in map_de.jhm
-en/contents.xml: target 'Tests_for_doc' has no mapID in map_en.jhm
-en/contents.xml: target 'Tests_for_doc' has no mapID in map_pt.jhm
-en/contents.xml: target 'Translation_status' has no mapID in map_pt.jhm
 en/contents.xml: target 'dynamic_components' has no mapID in map_pt.jhm
-en/contents.xml: target 'io_DIP' has no mapID in map_en.jhm
 en/contents.xml: target 'io_DIP' has no mapID in map_pt.jhm
-en/contents.xml: target 'io_ledRGB' has no mapID in map_en.jhm
 en/contents.xml: target 'io_ledRGB' has no mapID in map_pt.jhm
-en/contents.xml: target 'test_hmlcss' has no mapID in map_pt.jhm
 fr/contents.xml: image target 'icon_DIP' has no mapID in map_fr.jhm
 fr/contents.xml: image target 'icon_led RGB' has no mapID in map_fr.jhm
 fr/contents.xml: target 'Tests_for_doc' has no mapID in map_fr.jhm

@@ -32,6 +32,7 @@ public class PrefOptionList implements ActionListener, PropertyChangeListener {
 
     label = new JLabel(labelStr.toString() + " ");
     combo = new JComboBox<>();
+    label.setLabelFor(combo);
     for (final var opt : options) {
       combo.addItem(opt);
     }

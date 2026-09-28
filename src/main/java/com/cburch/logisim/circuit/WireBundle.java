@@ -81,10 +81,7 @@ class WireBundle {
       return;
     }
     if (this.width != BitWidth.UNKNOWN) {
-      if (width.equals(this.width)) {
-        isBus_ = width.getWidth() > 1;
-        // nothing to do
-      } else { // the widths are broken: Create incompatibilityData
+      if (!width.equals(this.width)) { // the widths are broken: Create incompatibilityData
         // holding this info
         incompatibilityData = new WidthIncompatibilityData();
         incompatibilityData.add(widthDeterminant, this.width);
@@ -95,6 +92,7 @@ class WireBundle {
     }
     this.width = width;
     this.widthDeterminant = det;
+    isBus_ = width.getWidth() > 1;
   }
 
   void unite(WireBundle other) {

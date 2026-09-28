@@ -24,6 +24,7 @@ import com.cburch.logisim.data.Bounds;
 import com.cburch.logisim.data.Location;
 import com.cburch.logisim.fpga.designrulecheck.Netlist;
 import com.cburch.logisim.tools.CustomHandles;
+import com.cburch.logisim.tools.ToolTipMaker;
 import com.cburch.logisim.util.Cache;
 import com.cburch.logisim.util.GraphicsUtil;
 import java.awt.BasicStroke;
@@ -244,6 +245,15 @@ public final class Wire implements Component, AttributeSet, CustomHandles, Itera
   @Override
   public Object getFeature(Object key) {
     if (key == CustomHandles.class) return this;
+    if (key == ToolTipMaker.class) {
+      // Hovering says what the colour only hints at: the width, the value, or which widths clash.
+      return (ToolTipMaker) event -> {
+        final var circuit = event.getCanvas().getCircuit();
+        return circuit == null || !circuit.contains(this)
+            ? null
+            : WireInfo.toolTip(circuit, event.getCircuitState(), this);
+      };
+    }
     return null;
   }
 

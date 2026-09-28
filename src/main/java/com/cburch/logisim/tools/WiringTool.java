@@ -11,11 +11,16 @@ package com.cburch.logisim.tools;
 
 import static com.cburch.logisim.tools.Strings.S;
 
+import com.cburch.logisim.circuit.Circuit;
 import com.cburch.logisim.circuit.CircuitMutation;
+import com.cburch.logisim.circuit.EditLockedException;
 import com.cburch.logisim.circuit.Wire;
+import com.cburch.logisim.circuit.WireInfo;
 import com.cburch.logisim.comp.Component;
 import com.cburch.logisim.comp.ComponentDrawContext;
+import com.cburch.logisim.data.BitWidth;
 import com.cburch.logisim.data.Location;
+import com.cburch.logisim.data.Value;
 import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.gui.main.Canvas;
 import com.cburch.logisim.gui.theme.AppIcons;
@@ -31,6 +36,7 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 
 public class WiringTool extends Tool {
@@ -56,6 +62,8 @@ public class WiringTool extends Tool {
   private Wire shortening = null;
   private Action lastAction = null;
   private int direction = 0;
+  /** The widths the wire being drawn would join, when they differ; empty otherwise. */
+  private List<Integer> widthConflict = List.of();
 
   public WiringTool() {
     super.select(null);
@@ -124,7 +132,8 @@ public class WiringTool extends Tool {
       final var x1 = e1.getX();
       final var y1 = e1.getY();
 
-      g.setColor(CanvasStyle.componentColor());
+      final var conflict = shortenBefore == null ? widthConflict : List.<Integer>of();
+      g.setColor(conflict.isEmpty() ? CanvasStyle.componentColor() : Value.widthErrorColor());
       GraphicsUtil.switchToWidth(g, 3);
       if (direction == HORIZONTAL) {
         if (x0 != x1) g.drawLine(x0, y0, x1, y0);
@@ -133,10 +142,37 @@ public class WiringTool extends Tool {
         if (y0 != y1) g.drawLine(x0, y0, x0, y1);
         if (x0 != x1) g.drawLine(x0, y1, x1, y1);
       }
+      if (!conflict.isEmpty()) {
+        // Warn before the wire is dropped, not after it turns orange.
+        GraphicsUtil.outlineText(
+            g,
+            WireInfo.joinWidths(conflict),
+            x1 + 6,
+            y1 - 6,
+            Value.widthErrorCaptionColor(),
+            Value.widthErrorCaptionBgcolor());
+      }
+      GraphicsUtil.switchToWidth(g, 1);
     } else if (AppPreferences.ADD_SHOW_GHOSTS.getBoolean() && inCanvas) {
       g.setColor(CanvasStyle.marker(false));
       g.fillOval(cur.getX() - 2, cur.getY() - 2, 5, 5);
     }
+  }
+
+  /**
+   * The two widths a wire from {@code from} to {@code to} would join, when both are known and they
+   * differ.
+   */
+  public static List<Integer> widthConflict(Circuit circuit, Location from, Location to) {
+    if (circuit == null || from.equals(to)) return List.of();
+    final var first = circuit.getWidth(from);
+    final var second = circuit.getWidth(to);
+    if (first == BitWidth.UNKNOWN || second == BitWidth.UNKNOWN || first.equals(second)) {
+      return List.of();
+    }
+    return List.of(
+        Math.min(first.getWidth(), second.getWidth()),
+        Math.max(first.getWidth(), second.getWidth()));
   }
 
   @Override
@@ -210,6 +246,7 @@ public class WiringTool extends Tool {
       rect.add(start.getX(), start.getY());
       rect.add(cur.getX(), cur.getY());
       rect.add(curX, curY);
+      rect.add(cur.getX() + 60, cur.getY() - 30);
       rect.grow(3, 3);
 
       cur = Location.create(curX, curY, true);
@@ -233,6 +270,9 @@ public class WiringTool extends Tool {
         }
       }
       shortening = shorten;
+      widthConflict = widthConflict(canvas.getCircuit(), start, cur);
+      // The warning is drawn beside the end of the wire; make room for it in the repaint.
+      rect.add(curX + 60, curY - 30);
 
       canvas.repaint(rect);
     }
@@ -273,11 +313,18 @@ public class WiringTool extends Tool {
       canvas.setErrorMessage(S.getter("cannotModifyError"));
       return;
     }
+    if (canvas.getCircuit().isEditLocked()) {
+      // Refused now, rather than after a whole wire has been dragged out.
+      exists = false;
+      canvas.getProject().reportRefusedEdit(new EditLockedException(canvas.getCircuit(), null));
+      return;
+    }
 
     Canvas.snapToGrid(e);
     start = Location.create(e.getX(), e.getY(), true);
     cur = start;
     exists = true;
+    widthConflict = List.of();
 
     startShortening = !canvas.getCircuit().getWires(start).isEmpty();
     shortening = null;

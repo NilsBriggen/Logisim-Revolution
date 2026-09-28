@@ -778,8 +778,8 @@ public class AppPreferences {
   public static final int DEFAULT_FPGA_SELECTABLE_MAPPED_COLOR = 0x00A000;
   public static final int DEFAULT_FPGA_SELECT_COLOR = 0x0000FF;
   // dark mode default signal colors
-  public static final int DARK_TRUE_COLOR = 0xFF3FD68C;
-  public static final int DARK_FALSE_COLOR = 0xFF33705A;
+  public static final int DARK_TRUE_COLOR = 0xFF5BE8A2;
+  public static final int DARK_FALSE_COLOR = 0xFF377860;
   public static final int DARK_UNKNOWN_COLOR = 0xFF9B8CFF;
   public static final int DARK_ERROR_COLOR = 0xFFF2555A;
   public static final int DARK_NIL_COLOR = 0xFF6B7280;
@@ -803,7 +803,7 @@ public class AppPreferences {
   public static final int PRINT_STROKE_COLOR = 0x001F2430;
 
   public static final int DEFAULT_TRUE_COLOR = 0x0018A05B;
-  public static final int DEFAULT_FALSE_COLOR = 0x001F5F43;
+  public static final int DEFAULT_FALSE_COLOR = 0x000B4A2E;
   public static final int DEFAULT_UNKNOWN_COLOR = 0x006C5CE7;
   public static final int DEFAULT_ERROR_COLOR = 0x00D1373C;
   public static final int DEFAULT_NIL_COLOR = 0x009AA0A6;
@@ -1300,6 +1300,9 @@ public class AppPreferences {
     WINDOW_MAIN_SPLIT.set(0.251);
     WINDOW_LEFT_SPLIT.set(0.51);
     WINDOW_RIGHT_SPLIT.set(0.751);
+    // Without a saved size a new window opens at its default size (see Frame).
+    getPrefs().remove("windowWidth");
+    getPrefs().remove("windowHeight");
   }
 
   public static final PrefMonitor<String> WINDOW_LOCATION =

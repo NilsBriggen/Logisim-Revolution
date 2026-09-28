@@ -152,65 +152,69 @@ public abstract class Expression {
     protected final int[] opLvl;
     protected final String[] opSym;
 
-    // Notes on precedence:
-    // all forms of NOT are the highest precedence level
+    // The single precedence table shared by the parser and by every notation, highest first.
+    // It is the table documented on the "Creating expressions" help page (ana-expr.html); every
+    // spelling of an operator (ASCII, Unicode, C-style or spelled-out word) has the same level.
+    // NOT: ~ ! ' - ¬ ˜ NOT
     public static final int NOT_PRECEDENCE = 14;
-    // times and implicit and are next
-    public static final int IMPLICIT_AND_PRECEDENCE = 13;
-    public static final int TIMES_PRECEDENCE = 13;
-    // oplus is next
-    public static final int OPLUS_PRECEDENCE = 12;
-    // plus is next
-    public static final int PLUS_PRECEDENCE = 11;
-    // otimes is next
-    public static final int OTIMES_PRECEDENCE = 10;
-    // not-equals, not-equiv, equiv, vee, vee-underbar, and cap are next
-    public static final int LOGIC_PRECEDENCE = 9;
-    // & is next
-    public static final int BITAND_PRECEDENCE = 8;
-    // ^ is next
-    public static final int BITXOR_PRECEDENCE = 7;
-    // | is next
-    public static final int BITOR_PRECEDENCE = 6;
-    // && is next
-    public static final int AND_PRECEDENCE = 5;
-    // || is next
-    public static final int OR_PRECEDENCE = 4;
-    // "and" is next
-    public static final int PYTHON_AND_PRECEDENCE = 3;
-    // "xor" is next
-    public static final int PYTHON_XOR_PRECEDENCE = 2;
-    // "or" is next
-    public static final int PYTHON_OR_PRECEDENCE = 1;
-    // all forms of equals are level 0
+    // AND: juxtaposition, * & && · ⋅ ∙ ∧ ⋀ AND
+    public static final int AND_PRECEDENCE = 13;
+    public static final int IMPLICIT_AND_PRECEDENCE = AND_PRECEDENCE;
+    // XOR: ^ != ⊕ ⊻ ≠ ≢ XOR
+    public static final int XOR_PRECEDENCE = 12;
+    // OR: + | || ∨ ⋁ ∥ OR
+    public static final int OR_PRECEDENCE = 11;
+    // XNOR: == = ⊙ ≡ ⇔ ↔ EQUALS
+    public static final int XNOR_PRECEDENCE = 10;
+    // output assignment ("x := ...", "x = ...") binds loosest
     public static final int EQ_PRECEDENCE = 0;
+    // level shared by all binary operators in the logic notations, which therefore always
+    // parenthesize mixed operators
+    private static final int SHARED_PRECEDENCE = 9;
 
     Notation(int id) {
       this.id = id;
-      // Precendence level and symbol for each of { EQ, XNOR, OR, XOR, AND, NOT }
+      // Precedence level and symbol for each of { EQ, XNOR, OR, XOR, AND, NOT }.
+      // The levels must agree with the parser's table above, so that every rendered expression
+      // parses back to the same expression: a notation may merge levels (adding parentheses)
+      // but never reorder them.
+      final int[] standard = {
+        EQ_PRECEDENCE, XNOR_PRECEDENCE, OR_PRECEDENCE, XOR_PRECEDENCE, AND_PRECEDENCE,
+        NOT_PRECEDENCE
+      };
+      final int[] shared = {
+        EQ_PRECEDENCE, SHARED_PRECEDENCE, SHARED_PRECEDENCE, SHARED_PRECEDENCE,
+        SHARED_PRECEDENCE, NOT_PRECEDENCE
+      };
       switch (id) {
         case 1 -> { // Logic notation: equiv, vee, vee-underbar, cap, tilde
-          opLvl = new int[]{0, 9, 9, 9, 9, 14};
+          opLvl = shared;
           opSym = new String[]{" = ", "≡", "∨", "⊻", "∧", "¬"};
         }
         case 2 -> { // Alternative Logic notation: equiv, vee, not-equiv, cap, ell
-          opLvl = new int[]{0, 9, 9, 9, 9, 14};
+          opLvl = shared;
           opSym = new String[]{" = ", "≡", "∨", "≢", "∧", "~"};
         }
         case 3 -> { // Programming with booleans notation: ==, ||, !=, &&, !
-          opLvl = new int[]{0, 9, 4, 9, 5, 14};
+          opLvl = standard;
           opSym = new String[]{" = ", "==", "||", "!=", "&&", "!"};
         }
         case 4 -> { // Programming with bits notation: ^ ~, |, ^, &, ~
-          opLvl = new int[]{0, 9, 6, 7, 8, 14};
+          // "a ^~ b" reads back as "a ^ (~b)": the XNOR is really an XOR whose right operand
+          // gets a NOT. Printing it at the AND level parenthesizes its binary operands (other
+          // than XNOR chains) and parenthesizes it inside an AND, which keeps that reading right.
+          opLvl = new int[]{
+            EQ_PRECEDENCE, AND_PRECEDENCE, OR_PRECEDENCE, XOR_PRECEDENCE, AND_PRECEDENCE,
+            NOT_PRECEDENCE
+          };
           opSym = new String[]{" = ", "^~", "|", "^", "&", "~"};
         }
         case 5 -> { // LaTeX
-          opLvl = new int[]{0, 10, 11, 12, 13, 14};
+          opLvl = standard;
           opSym = new String[]{" = ", " \\oplus ", "+", " \\oplus ", " \\cdot ", " \\overline{"};
         }
         default -> { // Mathematical notation: otimes, plus, oplus, times, and overbar
-          opLvl = new int[]{0, 10, 11, 12, 13, 14};
+          opLvl = standard;
           opSym = new String[]{" = ", "⊙", "+", "⊕", "⋅", "~"};
         }
       }

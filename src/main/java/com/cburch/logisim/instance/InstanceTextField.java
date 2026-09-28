@@ -24,6 +24,7 @@ import com.cburch.logisim.data.AttributeListener;
 import com.cburch.logisim.data.AttributeSet;
 import com.cburch.logisim.data.Bounds;
 import com.cburch.logisim.data.Direction;
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.gui.main.Canvas;
 import com.cburch.logisim.proj.Action;
 import com.cburch.logisim.tools.Caret;
@@ -86,7 +87,7 @@ public class InstanceTextField implements AttributeListener, TextFieldListener, 
       resolveLayout(gfx);
       final var currentColor = gfx.getColor();
       if (!context.isPrintView())
-        gfx.setColor(fontColor == null ? StdAttr.getDefaultLabelColor() : fontColor);
+        gfx.setColor(CanvasStyle.labelColor(fontColor));
       field.draw(gfx);
       gfx.setColor(currentColor);
       gfx.dispose();

@@ -790,6 +790,21 @@ public class FpgaIoInformationContainer implements Cloneable {
     return true;
   }
 
+  /** Whether nothing is mapped to any pin of this board component. */
+  public boolean isFree() {
+    return getNrOfMaps() == 0;
+  }
+
+  /** Whether this board component can take the component selected in the mapping list. */
+  public boolean isSelectable() {
+    return selectable;
+  }
+
+  /** The component (or single bit of it) selected in the mapping list, or null. */
+  public MapListModel.MapInfo getSelectedMapInfo() {
+    return selComp;
+  }
+
   private int getNrOfMaps() {
     int res = 0;
     for (var i = 0; i < nrOfPins; i++)

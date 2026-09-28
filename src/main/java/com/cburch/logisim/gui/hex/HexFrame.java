@@ -22,6 +22,7 @@ import com.cburch.logisim.gui.theme.AppIcons;
 import com.cburch.logisim.gui.theme.Theme;
 import com.cburch.logisim.gui.theme.Tokens;
 import com.cburch.logisim.instance.Instance;
+import com.cburch.logisim.instance.StdAttr;
 import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.std.memory.MemContents;
 import com.cburch.logisim.util.LocaleListener;
@@ -111,7 +112,7 @@ public class HexFrame extends LFrame.SubWindow {
     contents.add(header, BorderLayout.NORTH);
     contents.add(scroll, BorderLayout.CENTER);
 
-    LocaleManager.addLocaleListener(myListener);
+    LocaleManager.addLocaleListener(this, myListener);
     myListener.localeChanged();
     ScrollableForm.sizeWindow(this, new Dimension(900, 560), new Dimension(680, 360), true);
     Theme.addListener(getRootPane(), () -> {
@@ -123,6 +124,7 @@ public class HexFrame extends LFrame.SubWindow {
     addressField.setFont(UiFonts.mono());
 
     editor.getCaret().addChangeListener(editListener);
+    editor.addHistoryListener(editListener);
     editor.getCaret().setDot(0, false);
     editListener.register(menubar);
     setLocationRelativeTo(project.getFrame());
@@ -156,9 +158,43 @@ public class HexFrame extends LFrame.SubWindow {
   @Override
   public void setVisible(boolean value) {
     if (value && !isVisible()) {
+      updateTitle(); // the label may have changed since the window was last shown
       windowManager.frameOpened(this);
     }
     super.setVisible(value);
+  }
+
+  /**
+   * Names the memory being edited, so that several hex editor windows can be told apart (in the
+   * title bar and the Window menu).
+   */
+  private void updateTitle() {
+    final var title = titleFor(instance, project);
+    setTitle(title);
+    header.setTitle(title);
+    windowManager.setText(title);
+  }
+
+  static String titleFor(Instance instance, Project project) {
+    if (instance == null) return S.get("hexFrameTitle");
+    final var label = instance.getAttributeValue(StdAttr.LABEL);
+    final var name = instance.getFactory().getDisplayName();
+    final var what =
+        (label == null || label.isBlank())
+            ? S.get("hexFrameTargetAt", name, instance.getLocation().toString())
+            : S.get("hexFrameTargetLabel", name, label);
+    String circuitName = null;
+    if (project != null && project.getLogisimFile() != null) {
+      for (final var circuit : project.getLogisimFile().getCircuits()) {
+        if (circuit.contains(instance.getComponent())) {
+          circuitName = circuit.getName();
+          break;
+        }
+      }
+    }
+    return circuitName == null
+        ? S.get("hexFrameTitleFor", what)
+        : S.get("hexFrameTitleForIn", what, circuitName);
   }
 
   private class EditListener implements ActionListener, ChangeListener {
@@ -167,7 +203,11 @@ public class HexFrame extends LFrame.SubWindow {
     @Override
     public void actionPerformed(ActionEvent e) {
       Object src = e.getSource();
-      if (src == LogisimMenuBar.CUT) {
+      if (src == LogisimMenuBar.UNDO) {
+        editor.undo();
+      } else if (src == LogisimMenuBar.REDO) {
+        editor.redo();
+      } else if (src == LogisimMenuBar.CUT) {
         getClip().copy();
         editor.delete();
       } else if (src == LogisimMenuBar.COPY) {
@@ -189,6 +229,8 @@ public class HexFrame extends LFrame.SubWindow {
       menubar.setEnabled(LogisimMenuBar.PASTE, clip);
       menubar.setEnabled(LogisimMenuBar.DELETE, sel);
       menubar.setEnabled(LogisimMenuBar.SELECT_ALL, true);
+      menubar.setEnabled(LogisimMenuBar.UNDO, editor.canUndo());
+      menubar.setEnabled(LogisimMenuBar.REDO, editor.canRedo());
     }
 
     private Clip getClip() {
@@ -197,6 +239,10 @@ public class HexFrame extends LFrame.SubWindow {
     }
 
     private void register(LogisimMenuBar menubar) {
+      // The hex editor keeps its own history: its edits are not project actions, so the
+      // project's undo (which the main window offers) would revert something else entirely.
+      menubar.addActionListener(LogisimMenuBar.UNDO, this);
+      menubar.addActionListener(LogisimMenuBar.REDO, this);
       menubar.addActionListener(LogisimMenuBar.CUT, this);
       menubar.addActionListener(LogisimMenuBar.COPY, this);
       menubar.addActionListener(LogisimMenuBar.PASTE, this);
@@ -238,8 +284,8 @@ public class HexFrame extends LFrame.SubWindow {
 
     @Override
     public void localeChanged() {
-      setTitle(S.get("hexFrameTitle"));
-      header.setTitle(S.get("hexFrameTitle"));
+      updateTitle();
+      header.setSubtitle(S.get("hexEditorHint"));
       open.setToolTipText(S.get("openButton"));
       save.setToolTipText(S.get("saveButton"));
       open.getAccessibleContext().setAccessibleName(S.get("openButton"));
@@ -253,7 +299,7 @@ public class HexFrame extends LFrame.SubWindow {
   private class WindowMenuManager extends WindowMenuItemManager implements LocaleListener {
     WindowMenuManager() {
       super(S.get("hexFrameMenuItem"), false);
-      LocaleManager.addLocaleListener(this);
+      LocaleManager.addLocaleListener(HexFrame.this, this);
     }
 
     @Override
@@ -263,7 +309,7 @@ public class HexFrame extends LFrame.SubWindow {
 
     @Override
     public void localeChanged() {
-      setText(S.get("hexFrameMenuItem"));
+      setText(titleFor(instance, project));
     }
   }
 }

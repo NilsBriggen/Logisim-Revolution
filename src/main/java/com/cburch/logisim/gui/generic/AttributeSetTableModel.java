@@ -56,6 +56,14 @@ public abstract class AttributeSetTableModel implements AttrTableModel, Attribut
     }
   }
 
+  /**
+   * Whether what the table shows is locked against edits, so that no row can be edited. The
+   * values stay readable; the action layer refuses the change regardless.
+   */
+  protected boolean isEditLocked() {
+    return false;
+  }
+
   public void setInstance(ComponentFactory fact) {
     compInst = fact;
   }
@@ -288,7 +296,7 @@ public abstract class AttributeSetTableModel implements AttrTableModel, Attribut
     @Override
     public Component getEditor(Window parent) {
       final var value = attrs.getValue(attr);
-      return attr.getCellEditor(parent, value);
+      return attr.getCellEditor(parent, value, attrs);
     }
 
     @Override
@@ -296,7 +304,7 @@ public abstract class AttributeSetTableModel implements AttrTableModel, Attribut
       if (((Object) attr) instanceof SplitterAttributes.BitOutAttribute) {
         return value.toString();
       }
-      return attr.toDisplayString(value);
+      return attr.toDisplayString(value, attrs);
     }
 
     @Override
@@ -314,13 +322,13 @@ public abstract class AttributeSetTableModel implements AttrTableModel, Attribut
       final var value = attrs.getValue(attr);
       if (value == null) {
         try {
-          return attr.toDisplayString(value);
+          return attr.toDisplayString(value, attrs);
         } catch (NullPointerException e) {
           return "";
         }
       } else {
         try {
-          final var str = attr.toDisplayString(value);
+          final var str = attr.toDisplayString(value, attrs);
           if (str.isEmpty() && "label".equals(attr.getName()) && compInst != null
               && compInst.requiresNonZeroLabel())
             return HdlColorRenderer.REQUIRED_FIELD_STRING;
@@ -333,7 +341,7 @@ public abstract class AttributeSetTableModel implements AttrTableModel, Attribut
 
     @Override
     public boolean isValueEditable() {
-      return !attrs.isReadOnly(attr);
+      return !isEditLocked() && !attrs.isReadOnly(attr);
     }
 
     @Override

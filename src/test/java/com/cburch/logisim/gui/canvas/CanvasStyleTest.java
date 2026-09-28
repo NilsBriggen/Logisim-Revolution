@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.cburch.logisim.circuit.Wire;
 import java.awt.BasicStroke;
+import java.awt.Color;
 import org.junit.jupiter.api.Test;
 
 /** The drawing style, and in particular the promise it makes about printing. */
@@ -95,5 +96,23 @@ class CanvasStyleTest {
   @Test
   void busIsClearlyHeavierThanWire() {
     assertTrue(Wire.WIDTH_BUS - Wire.WIDTH >= 2, "bus " + Wire.WIDTH_BUS + " vs " + Wire.WIDTH);
+  }
+
+  /**
+   * Appearance-editor shapes and their text (drawn with {@code com.cburch.draw}'s generic
+   * primitives) are shipped in plain black, same as document text: it is a placeholder, not a
+   * choice, so it resolves to the same theme- and print-aware ink rather than staying invisible
+   * on a dark canvas.
+   */
+  @Test
+  void shippedBlackShapeInkResolvesToComponentColor() {
+    assertEquals(CanvasStyle.componentColor(), CanvasStyle.textColor(Color.BLACK));
+  }
+
+  /** A colour the user actually picked for a shape or its label is never second-guessed. */
+  @Test
+  void customShapeInkIsPaintedAsChosen() {
+    final var chosen = new Color(0x00FF7F);
+    assertEquals(chosen, CanvasStyle.textColor(chosen));
   }
 }

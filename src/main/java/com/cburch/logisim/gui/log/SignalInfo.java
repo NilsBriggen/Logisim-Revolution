@@ -92,6 +92,7 @@ public class SignalInfo implements AttributeListener, CircuitListener, Location.
       circ[i] = f.getSubcircuit();
     }
     computeName();
+    radix = initialRadix(path[n - 1], width);
 
     // Listen to the top-level circuit, because either (a) this comp might
     // reside in the top-level, i.e., when path has only one Component, and
@@ -299,6 +300,22 @@ public class SignalInfo implements AttributeListener, CircuitListener, Location.
 
   public int getWidth() {
     return width;
+  }
+
+  /** Starts in the radix the component itself displays, such as a pin set to hexadecimal. */
+  static RadixOption initialRadix(Component comp, int width) {
+    final var attrs = comp.getAttributeSet();
+    if (attrs != null && attrs.containsAttribute(RadixOption.ATTRIBUTE)) {
+      final var r = attrs.getValue(RadixOption.ATTRIBUTE);
+      if (r != null && radixFits(r, width)) return r;
+    }
+    return RadixOption.RADIX_2;
+  }
+
+  /** Floating point is defined only for 8-, 16-, 32- and 64-bit values; others show NaN. */
+  public static boolean radixFits(RadixOption radix, int width) {
+    if (radix != RadixOption.RADIX_FLOAT) return true;
+    return width == 8 || width == 16 || width == 32 || width == 64;
   }
 
   public Object getOption() {

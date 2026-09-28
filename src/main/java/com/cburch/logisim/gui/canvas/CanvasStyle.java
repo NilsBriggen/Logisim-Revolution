@@ -10,6 +10,7 @@
 package com.cburch.logisim.gui.canvas;
 
 import com.cburch.logisim.gui.theme.Tokens;
+import com.cburch.logisim.instance.StdAttr;
 import com.cburch.logisim.prefs.AppPreferences;
 import java.awt.BasicStroke;
 import java.awt.Color;
@@ -115,6 +116,68 @@ public final class CanvasStyle {
     return new Color(AppPreferences.COMPONENT_COLOR.get());
   }
 
+  /**
+   * The colour document text is given when nobody chose one: the Text tool's and the TTY's black.
+   *
+   * <p>It is a placeholder rather than a choice. A file never records it (it is the attribute's
+   * default), and painting resolves it with {@link #textColor} to the ink of the canvas it lands
+   * on, so the same unedited text reads on a light canvas, a dark one and paper alike.
+   */
+  public static final Color SHIPPED_TEXT_COLOR = Color.BLACK;
+
+  /**
+   * The colour to paint document text whose colour attribute holds {@code value}.
+   *
+   * <p>The shipped placeholder becomes the component ink, which follows the theme and the print
+   * palette; any other colour is the user's own and is painted exactly as saved.
+   */
+  public static Color textColor(Color value) {
+    return textColor(value, componentColor());
+  }
+
+  /** {@link #textColor(Color)} with the ink given explicitly, for text on its own background. */
+  public static Color textColor(Color value, Color ink) {
+    return isShipped(value, SHIPPED_TEXT_COLOR) ? ink : value;
+  }
+
+  /**
+   * The colour to paint a component label whose colour attribute holds {@code value}.
+   *
+   * <p>The shipped label blue ({@link StdAttr#DEFAULT_LABEL_COLOR}), or no colour at all, is a
+   * placeholder resolved for the canvas; any other colour is the user's and is painted as saved.
+   */
+  public static Color labelColor(Color value) {
+    return labelColor(value, AppPreferences.isDarkTheme(), AppPreferences.inPrintView());
+  }
+
+  /** {@link #labelColor(Color)} for an explicit canvas, so the resolution can be tested. */
+  public static Color labelColor(Color value, boolean dark, boolean printView) {
+    if (!isShipped(value, StdAttr.DEFAULT_LABEL_COLOR)) return value;
+    return dark && !printView ? StdAttr.DARK_DEFAULT_LABEL_COLOR : StdAttr.DEFAULT_LABEL_COLOR;
+  }
+
+  private static boolean isShipped(Color value, Color shipped) {
+    return value == null || value.getRGB() == shipped.getRGB();
+  }
+
+  /**
+   * The colour a newly placed text is given.
+   *
+   * <p>The shipped placeholder while the text tool colour for the theme showing is still the
+   * shipped one, so that text placed in a dark window does not carry that window's light ink into
+   * the file (where it would vanish on paper or in a light window). A colour the user picked for
+   * the text tool is used as it is.
+   */
+  public static Color newTextColor() {
+    final var chosen = AppPreferences.TEXT_TOOL_COLOR.get() & 0xFFFFFF;
+    final var shipped =
+        (AppPreferences.isDarkTheme()
+                ? AppPreferences.DARK_TEXT_TOOL_COLOR
+                : AppPreferences.DEFAULT_TEXT_TOOL_COLOR)
+            & 0xFFFFFF;
+    return chosen == shipped ? SHIPPED_TEXT_COLOR : new Color(chosen);
+  }
+
   /** Black or white ink with the higher WCAG contrast against an opaque signal fill. */
   public static Color contrastInk(Color fill) {
     final var luminance = 0.2126 * linearChannel(fill.getRed())
@@ -187,6 +250,11 @@ public final class CanvasStyle {
   /** An input the simulator has not carried through yet. */
   public static Color pendingInputMarker(boolean printView) {
     return printView ? componentColor() : Tokens.warning();
+  }
+
+  /** The padlock marking a component that is locked against edits: quiet, like other chrome. */
+  public static Color lockBadge() {
+    return Tokens.mutedForeground();
   }
 
   /** The colour of a component being dragged or about to be placed. */

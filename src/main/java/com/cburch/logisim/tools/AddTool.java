@@ -14,6 +14,7 @@ import static com.cburch.logisim.tools.Strings.S;
 import com.cburch.logisim.LogisimVersion;
 import com.cburch.logisim.circuit.CircuitException;
 import com.cburch.logisim.circuit.CircuitMutation;
+import com.cburch.logisim.circuit.EditLockedException;
 import com.cburch.logisim.circuit.SubcircuitFactory;
 import com.cburch.logisim.comp.Component;
 import com.cburch.logisim.comp.ComponentDrawContext;
@@ -25,13 +26,14 @@ import com.cburch.logisim.data.AttributeSet;
 import com.cburch.logisim.data.Bounds;
 import com.cburch.logisim.data.Direction;
 import com.cburch.logisim.data.Location;
+import com.cburch.logisim.file.ProjectStyle;
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.gui.generic.OptionPane;
 import com.cburch.logisim.gui.icons.ComponentIcons;
 import com.cburch.logisim.gui.main.Canvas;
 import com.cburch.logisim.gui.main.SelectionActions;
 import com.cburch.logisim.gui.main.ToolAttributeAction;
 import com.cburch.logisim.instance.StdAttr;
-import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.prefs.PrefMonitorKeyStroke;
 import com.cburch.logisim.proj.Action;
@@ -55,6 +57,7 @@ import java.awt.event.MouseEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
+import java.util.List;
 
 public class AddTool extends Tool implements Transferable, PropertyChangeListener {
   private class MyAttributeListener implements AttributeListener {
@@ -136,7 +139,7 @@ public class AddTool extends Tool implements Transferable, PropertyChangeListene
     } else if (AppPreferences.NEW_INPUT_OUTPUT_SHAPES.isSource(evt)) {
       attrs.setValue(ProbeAttributes.PROBEAPPEARANCE, ProbeAttributes.getDefaultProbeAppearance());
     } else if (AppPreferences.TEXT_TOOL_COLOR.isSource(evt)) {
-      attrs.setValue(Text.ATTR_COLOR, new Color(AppPreferences.TEXT_TOOL_COLOR.get()));
+      attrs.setValue(Text.ATTR_COLOR, CanvasStyle.newTextColor());
     }
   }
 
@@ -150,7 +153,7 @@ public class AddTool extends Tool implements Transferable, PropertyChangeListene
     if (this.attrs.containsAttribute(Text.ATTR_COLOR)) {
       AppPreferences.TEXT_TOOL_COLOR.addPropertyChangeListener(this);
       if (applyTextToolColor) {
-        attrs.setValue(Text.ATTR_COLOR, new Color(AppPreferences.TEXT_TOOL_COLOR.get()));
+        attrs.setValue(Text.ATTR_COLOR, CanvasStyle.newTextColor());
       }
     }
   }
@@ -382,7 +385,10 @@ public class AddTool extends Tool implements Transferable, PropertyChangeListene
         } else {
           int code = event.getKeyCode();
           int modifier = event.getModifiersEx();
-          if (code == KeyEvent.VK_X) {
+          if (code == KeyEvent.VK_ENTER && modifier == 0) {
+            placeFromKeyboard(canvas);
+            event.consume();
+          } else if (code == KeyEvent.VK_X) {
             matrixPlace = !matrixPlace;
             canvas.repaint();
           } else if (((PrefMonitorKeyStroke) AppPreferences.HOTKEY_DIR_NORTH)
@@ -513,7 +519,7 @@ public class AddTool extends Tool implements Transferable, PropertyChangeListene
 
   @Override
   public void mouseReleased(Canvas canvas, Graphics gfx, MouseEvent event) {
-    final var added = new ArrayList<Component>();
+    var added = new ArrayList<Component>();
     if (state == SHOW_ADD) {
       final var circ = canvas.getCircuit();
       if (!canvas.getProject().getLogisimFile().contains(circ)) {
@@ -523,112 +529,181 @@ public class AddTool extends Tool implements Transferable, PropertyChangeListene
         Canvas.snapToGrid(event);
       }
       moveTo(canvas, gfx, event.getX(), event.getY());
-
-      final var source = getFactory();
-      if (source == null) {
+      added = addAt(canvas, gfx, event.getX(), event.getY());
+      if (added == null) {
         return;
       }
-      String label = null;
-      if (attrs.containsAttribute(StdAttr.LABEL)) {
-        label = attrs.getValue(StdAttr.LABEL);
-        /* Here we make sure to not overrride labels that have default value */
-        if (autoLabeler.isActive(canvas.getCircuit()) && ((label == null) || label.isEmpty())) {
-          label = autoLabeler.getCurrent(canvas.getCircuit(), source);
-          if (autoLabeler.hasNext(canvas.getCircuit())) {
-            autoLabeler.getNext(canvas.getCircuit(), source);
-          } else {
-            autoLabeler.stop(canvas.getCircuit());
-          }
-        }
-        if (!autoLabeler.isActive(canvas.getCircuit())) {
-          autoLabeler.setLabel("", canvas.getCircuit(), source);
-        }
-      }
-
-      final var matrix = new MatrixPlacerInfo(label);
-      if (matrixPlace) {
-        final var base = getBaseAttributes();
-        final var bds = source.getOffsetBounds(base).expand(5);
-        matrix.setBounds(bds);
-        final var dialog = new MatrixPlacerDialog(matrix,
-            source.getName(), autoLabeler.isActive(canvas.getCircuit()));
-        var okay = false;
-        while (!okay) {
-          if (!dialog.execute()) {
-            return;
-          }
-          if (SyntaxChecker.isVariableNameAcceptableForCurrentHdl(matrix.getLabel(), true)) {
-            autoLabeler.setLabel(matrix.getLabel(), canvas.getCircuit(), source);
-            okay =
-                autoLabeler.correctMatrixBaseLabel(
-                    canvas.getCircuit(),
-                    source,
-                    matrix.getLabel(),
-                    matrix.getCopiesCountX(),
-                    matrix.getCopiesCountY());
-            autoLabeler.setLabel(label, canvas.getCircuit(), source);
-            if (!okay) {
-              OptionPane.showMessageDialog(
-                  null,
-                  S.get("MatrixPlacerException"),
-                  "Matrixplacer",
-                  OptionPane.ERROR_MESSAGE);
-              matrix.undoLabel();
-            }
-          } else {
-            matrix.undoLabel();
-          }
-        }
-      }
-
-      try {
-        final var mutation = new CircuitMutation(circ);
-
-        for (var x = 0; x < matrix.getCopiesCountX(); x++) {
-          for (var y = 0; y < matrix.getCopiesCountY(); y++) {
-            final var loc = Location.create(event.getX() + (matrix.getDeltaX() * x),
-                event.getY() + (matrix.getDeltaY() * y), true);
-            final var attrsCopy = (AttributeSet) attrs.clone();
-            if (matrix.getLabel() != null) {
-              if (matrixPlace) {
-                attrsCopy.setValue(StdAttr.LABEL, autoLabeler.getMatrixLabel(canvas.getCircuit(),
-                    source, matrix.getLabel(), x, y));
-              } else {
-                attrsCopy.setValue(StdAttr.LABEL, matrix.getLabel());
-              }
-            }
-            final var comp = source.createComponent(loc, attrsCopy);
-
-            if (circ.hasConflict(comp)) {
-              canvas.setErrorMessage(S.getter("exclusiveError"));
-              return;
-            }
-
-            final var bds = comp.getBounds(gfx);
-            if (bds.getX() < 0 || bds.getY() < 0) {
-              canvas.setErrorMessage(S.getter("negativeCoordError"));
-              return;
-            }
-
-            mutation.add(comp);
-            added.add(comp);
-          }
-        }
-        final var action = mutation.toAction(
-            S.getter("addComponentAction", factory.getDisplayGetter()));
-        canvas.getProject().doAction(action);
-        lastAddition = action;
-        canvas.repaint();
-      } catch (CircuitException ex) {
-        OptionPane.showMessageDialog(canvas.getProject().getFrame(), ex.getMessage());
-        added.clear();
-      }
-      setState(canvas, SHOW_GHOST);
-      matrixPlace = false;
     } else if (state == SHOW_ADD_NO) {
       setState(canvas, SHOW_NONE);
     }
+    finishAddition(canvas, added);
+  }
 
+  /**
+   * Places the component from the keyboard: where the ghost is when the pointer is over the
+   * canvas, otherwise in the middle of the visible part of the circuit.
+   */
+  void placeFromKeyboard(Canvas canvas) {
+    canvas.stopAutoPan();
+    final var circ = canvas.getCircuit();
+    if (circ == null) {
+      return;
+    }
+    if (!canvas.getProject().getLogisimFile().contains(circ)) {
+      canvas.setErrorMessage(S.getter("cannotModifyError"));
+      return;
+    }
+    if (factory instanceof SubcircuitFactory circFact
+        && !canvas.getProject().getDependencies().canAdd(circ, circFact.getSubcircuit())) {
+      canvas.setErrorMessage(S.getter("circularError"));
+      return;
+    }
+    int x;
+    int y;
+    if (lastX != INVALID_COORD && lastY != INVALID_COORD) {
+      x = lastX;
+      y = lastY;
+    } else {
+      final var center = canvas.getVisibleCircuitCenter();
+      x = center.x;
+      y = center.y;
+      if (shouldSnap) {
+        x = Canvas.snapXToGrid(x);
+        y = Canvas.snapYToGrid(y);
+      }
+    }
+    final var gfx = canvas.getGraphics();
+    final var previousState = state;
+    state = SHOW_ADD;
+    final var added = addAt(canvas, gfx, x, y);
+    if (added == null) {
+      state = previousState;
+      return;
+    }
+    finishAddition(canvas, added);
+  }
+
+  /**
+   * Adds the component (or the matrix of copies) at {@code x}, {@code y}. Returns the added
+   * components, an empty list when adding failed with an error already reported, or null when
+   * the addition was abandoned before anything changed.
+   */
+  private ArrayList<Component> addAt(Canvas canvas, Graphics gfx, int x0, int y0) {
+    final var added = new ArrayList<Component>();
+    final var circ = canvas.getCircuit();
+    final var source = getFactory();
+    if (source == null) {
+      return null;
+    }
+    if (circ.isEditLocked()) {
+      // Said before the label prompt or the matrix dialog, not after them.
+      canvas.getProject().reportRefusedEdit(new EditLockedException(circ, null));
+      return null;
+    }
+    String label = null;
+    if (attrs.containsAttribute(StdAttr.LABEL)) {
+      label = attrs.getValue(StdAttr.LABEL);
+      /* Here we make sure to not overrride labels that have default value */
+      if (autoLabeler.isActive(canvas.getCircuit()) && ((label == null) || label.isEmpty())) {
+        label = autoLabeler.getCurrent(canvas.getCircuit(), source);
+        if (autoLabeler.hasNext(canvas.getCircuit())) {
+          autoLabeler.getNext(canvas.getCircuit(), source);
+        } else {
+          autoLabeler.stop(canvas.getCircuit());
+        }
+      }
+      if (!autoLabeler.isActive(canvas.getCircuit())) {
+        autoLabeler.setLabel("", canvas.getCircuit(), source);
+      }
+    }
+
+    final var matrix = new MatrixPlacerInfo(label);
+    if (matrixPlace) {
+      final var base = getBaseAttributes();
+      final var bds = source.getOffsetBounds(base).expand(5);
+      matrix.setBounds(bds);
+      final var dialog = new MatrixPlacerDialog(matrix,
+          source.getName(), autoLabeler.isActive(canvas.getCircuit()));
+      var okay = false;
+      while (!okay) {
+        if (!dialog.execute()) {
+          return null;
+        }
+        if (SyntaxChecker.isVariableNameAcceptableForCurrentHdl(matrix.getLabel(), true)) {
+          autoLabeler.setLabel(matrix.getLabel(), canvas.getCircuit(), source);
+          okay =
+              autoLabeler.correctMatrixBaseLabel(
+                  canvas.getCircuit(),
+                  source,
+                  matrix.getLabel(),
+                  matrix.getCopiesCountX(),
+                  matrix.getCopiesCountY());
+          autoLabeler.setLabel(label, canvas.getCircuit(), source);
+          if (!okay) {
+            OptionPane.showMessageDialog(
+                null,
+                S.get("MatrixPlacerException"),
+                "Matrixplacer",
+                OptionPane.ERROR_MESSAGE);
+            matrix.undoLabel();
+          }
+        } else {
+          matrix.undoLabel();
+        }
+      }
+    }
+
+    try {
+      final var mutation = new CircuitMutation(circ);
+
+      for (var x = 0; x < matrix.getCopiesCountX(); x++) {
+        for (var y = 0; y < matrix.getCopiesCountY(); y++) {
+          final var loc = Location.create(x0 + (matrix.getDeltaX() * x),
+              y0 + (matrix.getDeltaY() * y), true);
+          final var attrsCopy = (AttributeSet) attrs.clone();
+          ProjectStyle.applyToNewComponent(
+              canvas.getProject().getOptions(), source, attrsCopy);
+          if (matrix.getLabel() != null) {
+            if (matrixPlace) {
+              attrsCopy.setValue(StdAttr.LABEL, autoLabeler.getMatrixLabel(canvas.getCircuit(),
+                  source, matrix.getLabel(), x, y));
+            } else {
+              attrsCopy.setValue(StdAttr.LABEL, matrix.getLabel());
+            }
+          }
+          final var comp = source.createComponent(loc, attrsCopy);
+
+          if (circ.hasConflict(comp)) {
+            canvas.setErrorMessage(S.getter("exclusiveError"));
+            return null;
+          }
+
+          final var bds = comp.getBounds(gfx);
+          if (bds.getX() < 0 || bds.getY() < 0) {
+            canvas.setErrorMessage(S.getter("negativeCoordError"));
+            return null;
+          }
+
+          mutation.add(comp);
+          added.add(comp);
+        }
+      }
+      final var action = mutation.toAction(
+          S.getter("addComponentAction", factory.getDisplayGetter()));
+      canvas.getProject().doAction(action);
+      lastAddition = action;
+      canvas.repaint();
+    } catch (CircuitException ex) {
+      OptionPane.showMessageDialog(canvas.getProject().getFrame(), ex.getMessage());
+      added.clear();
+    }
+    setState(canvas, SHOW_GHOST);
+    matrixPlace = false;
+    return added;
+  }
+
+  /** Switches tool after an addition if the preferences ask for it, selecting what was added. */
+  private void finishAddition(Canvas canvas, List<Component> added) {
     final var proj = canvas.getProject();
     final var next = determineNext(proj);
     if (next != null) {

@@ -33,6 +33,7 @@ import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.proj.ProjectActions;
 import com.cburch.logisim.std.base.BaseLibrary;
 import com.cburch.logisim.std.gates.GatesLibrary;
+import com.cburch.logisim.tools.Library;
 import com.cburch.logisim.util.JFileChoosers;
 import com.cburch.logisim.util.LineBuffer;
 import com.cburch.logisim.util.LocaleManager;
@@ -44,10 +45,15 @@ import java.awt.event.AWTEventListener;
 import java.awt.event.ContainerEvent;
 import java.io.File;
 import java.io.FilenameFilter;
+import java.io.IOException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
+import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -72,6 +78,8 @@ public class Startup implements AWTEventListener {
   static final Logger logger = LoggerFactory.getLogger(Startup.class);
   private static Startup startupTemp = null;
   private final ArrayList<File> filesToOpen = new ArrayList<>();
+  // Recovery files of unsaved projects the user chose to restore at startup.
+  private final ArrayList<File> recoveredToOpen = new ArrayList<>();
   private final HashMap<File, File> substitutions = new HashMap<>();
   private final ArrayList<File> filesToPrint = new ArrayList<>();
   // based on command line
@@ -91,7 +99,8 @@ public class Startup implements AWTEventListener {
 
   private File saveFile;
   private int ttyFormat = 0;
-  // from other sources
+  // from other sources; guarded by filesToOpen, since macOS open-file events arrive on another
+  // thread while run() is still starting up
   private boolean initialized = false;
   private SplashScreen monitor = null;
   /* Testing Circuit Variable */
@@ -204,6 +213,8 @@ public class Startup implements AWTEventListener {
     } catch (Exception ex) {
       System.out.println("Print help failed: " + ex.getMessage());
     }
+    System.out.println();
+    System.out.println(S.get("argExitCodes"));
     return RC.QUIT;
   }
 
@@ -346,8 +357,14 @@ public class Startup implements AWTEventListener {
     } else {
       shallClearPreferences = cmd.hasOption(ARG_CLEAR_PREFS_LONG);
     }
+    // The batch modes run, report and exit: they must work without a display and never prompt.
+    final var isBatch =
+        cmd.hasOption(ARG_TEST_VECTOR_LONG)
+            || cmd.hasOption(ARG_TEST_CIRCUIT_LONG)
+            || cmd.hasOption(ARG_TEST_CIRC_GEN_LONG);
+    if (isBatch) Main.headless = true;
 
-    if (!isTty) {
+    if (!isTty && !isBatch) {
       // we're using the GUI: Set up the Look&Feel to match the platform
       System.setProperty("apple.laf.useScreenMenuBar", "true");
       // Initialize graphics acceleration if appropriate
@@ -357,7 +374,7 @@ public class Startup implements AWTEventListener {
     // Initialize startup object.
     final var startup = new Startup(isTty);
     startupTemp = startup;
-    if (!isTty) {
+    if (!isTty && !isBatch) {
       MacOsAdapter.addListeners();
     }
 
@@ -523,18 +540,28 @@ public class Startup implements AWTEventListener {
       return RC.ERROR;
     }
 
-    final var argsCnt = optArgs.length;
+    // The option takes one or two values, but the parser hands it every following word, so a
+    // project file written after "--load FILE" would be taken for a label. Give it back.
+    final var values = new ArrayList<String>();
+    for (final var value : optArgs) {
+      if (values.size() >= 1 && Loader.LOGISIM_FILTER.accept(new File(value))) {
+        startup.filesToOpen.add(new File(value));
+      } else {
+        values.add(value);
+      }
+    }
+    final var argsCnt = values.size();
     if (argsCnt < 1 || argsCnt > 2) {
       logger.error(S.get("argLoadInvalidArguments"));
       return RC.ERROR;
     }
 
-    final var label = argsCnt == 1 ? "" : optArgs[1];
+    final var label = argsCnt == 1 ? "" : values.get(1);
     if (startup.memoryLoadFiles.containsKey(label)) {
       logger.error(S.get("argLoadDuplicateLabel", label));
       return RC.ERROR;
     }
-    startup.memoryLoadFiles.put(label, new File(optArgs[0]));
+    startup.memoryLoadFiles.put(label, new File(values.get(0)));
 
     return RC.OK;
   }
@@ -807,21 +834,110 @@ public class Startup implements AWTEventListener {
   }
 
   private void doOpenFile(File file) {
-    if (initialized) {
-      ProjectActions.doOpen(null, null, file);
-    } else {
-      filesToOpen.add(file);
+    synchronized (filesToOpen) {
+      if (!initialized) {
+        filesToOpen.add(file);
+        return;
+      }
+    }
+    ProjectActions.doOpen(null, null, file);
+  }
+
+  private enum RecoveryChoice {
+    RESTORE,
+    SAVED,
+    DISCARD,
+    LATER
+  }
+
+  /**
+   * Asks what to do with the unsaved work of a previous session in {@code autosave}. The recovery
+   * file is named by a random identifier, so the question describes it by date and circuits.
+   */
+  private RecoveryChoice askAboutRecoveredWork(File autosave) {
+    final var changed =
+        DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
+            .format(new Date(autosave.lastModified()));
+    final var circuits = Loader.circuitNamesIn(autosave);
+    final var maxNames = 8;
+    var names = String.join(", ", circuits.subList(0, Math.min(circuits.size(), maxNames)));
+    if (circuits.size() > maxNames) names += ", …";
+    final var message =
+        circuits.isEmpty()
+            ? S.get("recoverUnsavedMessage", changed)
+            : S.get("recoverUnsavedCircuitsMessage", changed, names);
+    final var options =
+        new String[] {
+          S.get("recoverRestoreOption"), S.get("recoverSaveAsOption"), S.get("discardOption")
+        };
+    while (true) {
+      final var option =
+          OptionPane.showOptionDialog(
+              monitor,
+              message,
+              S.get("recoverUnsavedTitle"),
+              JOptionPane.DEFAULT_OPTION,
+              JOptionPane.QUESTION_MESSAGE,
+              null,
+              options,
+              options[0]);
+      switch (option) {
+        case 0:
+          return RecoveryChoice.RESTORE;
+        case 1:
+          if (saveRecoveredWorkAs(autosave)) return RecoveryChoice.SAVED;
+          break; // chooser cancelled: ask again
+        case 2:
+          return RecoveryChoice.DISCARD;
+        default:
+          return RecoveryChoice.LATER; // closed: keep the file and ask again next time
+      }
     }
   }
 
-  private void doPrintFile(File file) {
-    if (initialized) {
-      final var toPrint = ProjectActions.doOpen(null, null, file);
-      Print.doPrint(toPrint);
-      toPrint.getFrame().dispose();
-    } else {
-      filesToPrint.add(file);
+  /** Moves the recovery file to a .circ file the user chooses. */
+  private boolean saveRecoveredWorkAs(File autosave) {
+    final var chooser = JFileChoosers.createAt(new File(System.getProperty("user.home")));
+    chooser.setFileFilter(Loader.LOGISIM_FILTER);
+    final var suggested = S.get("recoverDefaultName") + Loader.LOGISIM_EXTENSION;
+    chooser.setSelectedFile(new File(chooser.getCurrentDirectory(), suggested));
+    while (chooser.showSaveDialog(monitor) == JFileChooser.APPROVE_OPTION) {
+      var file = chooser.getSelectedFile();
+      // Like Save As: a project file without the extension could not be opened by double-click.
+      if (!file.getName().endsWith(Loader.LOGISIM_EXTENSION)) {
+        file = new File(file.getParentFile(), file.getName() + Loader.LOGISIM_EXTENSION);
+      }
+      if (file.isDirectory()) continue;
+      if (file.exists()) {
+        final var confirm =
+            OptionPane.showConfirmDialog(
+                monitor,
+                S.get("confirmOverwriteMessage"),
+                S.get("confirmOverwriteTitle"),
+                OptionPane.YES_NO_OPTION);
+        if (confirm != OptionPane.YES_OPTION) continue;
+      }
+      try {
+        Files.move(autosave.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        return true;
+      } catch (IOException e) {
+        OptionPane.showError(
+            monitor, S.get("recoverUnsavedTitle"), S.get("recoverSaveFailed", file.getName()), e);
+      }
     }
+    return false;
+  }
+
+  private void doPrintFile(File file) {
+    synchronized (filesToOpen) {
+      if (!initialized) {
+        filesToPrint.add(file);
+        return;
+      }
+    }
+    final var toPrint = ProjectActions.doOpen(null, null, file);
+    Print.doPrint(toPrint);
+    toPrint.getFrame().dispose();
   }
 
   List<File> getFilesToOpen() {
@@ -896,10 +1012,10 @@ public class Startup implements AWTEventListener {
   }
 
   public void run() {
-    if (isTty) {
-      var exitCode = TtyInterface.EXIT_FAILURE;
+    if (isTty || exitAfterStartup) {
+      var exitCode = ExitCode.INTERNAL_ERROR;
       try {
-        exitCode = TtyInterface.run(this);
+        exitCode = isTty ? TtyInterface.run(this) : runBatch();
       } catch (Exception t) {
         t.printStackTrace();
       }
@@ -951,6 +1067,47 @@ public class Startup implements AWTEventListener {
     if (showSplash) {
       monitor.setProgress(SplashScreen.GUI_INIT);
     }
+    // Everything from here on builds Swing components or touches the Project, which the GUI
+    // listens to: do each step on the event thread. Each step is its own invokeAndWait, so the
+    // splash screen can repaint (and show the next stage) between them.
+    onEdt(this::initializeInterface);
+
+    // if user has double-clicked a file to open, we'll
+    // use that as the file to open now.
+    synchronized (filesToOpen) {
+      initialized = true;
+    }
+
+    if (testVector == null && testCircPathInput == null) onEdt(this::handleUnnamedAutosaves);
+
+    onEdt(() -> openStartupProjects(defaultLibraries));
+
+    for (final var fileToPrint : filesToPrint) {
+      onEdt(() -> doPrintFile(fileToPrint));
+    }
+  }
+
+  /** Runs {@code step} on the event dispatch thread and waits for it, rethrowing its failure. */
+  private static void onEdt(Runnable step) {
+    if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+      step.run();
+      return;
+    }
+    try {
+      javax.swing.SwingUtilities.invokeAndWait(step);
+    } catch (InterruptedException ex) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException(ex);
+    } catch (java.lang.reflect.InvocationTargetException ex) {
+      final var cause = ex.getCause();
+      if (cause instanceof RuntimeException runtime) throw runtime;
+      if (cause instanceof Error error) throw error;
+      throw new IllegalStateException(cause);
+    }
+  }
+
+  /** Last-minute interface initialization, on the event thread. */
+  private void initializeInterface() {
     WindowManagers.initialize();
     DoubleShiftTrigger.install();
     if (MacCompatibility.isSwingUsingScreenMenuBar()) {
@@ -973,88 +1130,37 @@ public class Startup implements AWTEventListener {
                   "SPACE", "pressed",
                   "released SPACE", "released"
                 }));
+  }
 
-    // if user has double-clicked a file to open, we'll
-    // use that as the file to open now.
-    initialized = true;
-
-    // Check for unnamed autosaves here and allow to save them and/or open them again
-    if (testVector == null && testCircPathInput == null) {
-      // get list of all unnamed autosave files
-      final var autosaves = Loader.getUnnamedAutosaveDirectory().listFiles(
-            new FilenameFilter() {
-              @Override
-              public boolean accept(File dir, String name) {
-                return name.startsWith(Loader.LOGISIM_UNNAMED_AUTOSAVE_PREFIX)
-                    && name.endsWith(Loader.LOGISIM_UNNAMED_AUTOSAVE_SUFFIX);
-              }
-            }
-          );
-
-      // Go over all autosaves to select what to do with each
-      for (final var autosave : autosaves == null ? new File[0] : autosaves) {
-        boolean retry = false;
-        do {
-          retry = false;
-          // Create a option dialog to decide what to do with the autosave
-          final var options = new String[] {
-              S.get("saveOption"),
-              S.get("saveAndLoadOption"),
-              S.get("discardOption")};
-          final var option = OptionPane.showOptionDialog(monitor,
-              String.format(S.get("contentHandleAutosave"), autosave.getName()),
-              S.get("titleHandleAutosave"),
-              JOptionPane.DEFAULT_OPTION,
-              JOptionPane.QUESTION_MESSAGE,
-              null,
-              options,
-              options[0]);
-          // If the dialog is closed, ignore this file this time
-          if (option == JOptionPane.CLOSED_OPTION) {
-            continue;
-          }
-          if (option == 2) { // If delete was selected, delete it
-            autosave.delete();
-          } else { // Else first open a JFileChooser to select the save location
-            final var chooser = JFileChoosers.createAt(new File(System.getProperty("user.home")));
-            chooser.setFileFilter(Loader.LOGISIM_FILTER);
-            final var fileRes = chooser.showSaveDialog(monitor);
-            // If file selection is aborted prompt again
-            if (fileRes != JFileChooser.APPROVE_OPTION) {
-              retry = true;
-              continue;
-            }
-            // get the selected File, and check if it exists
-            final var file = chooser.getSelectedFile();
-            if (file.exists()) { // If it exists, ask if it should be overwritten
-              var confirm = OptionPane.showConfirmDialog(
-                  monitor,
-                  S.get("confirmOverwriteMessage"),
-                  S.get("confirmOverwriteTitle"),
-                  OptionPane.YES_NO_OPTION);
-              // If file shouldn't be overwritten prompt again
-              if (confirm != OptionPane.YES_OPTION) {
-                retry = true;
-                continue;
-              }
-              // If file should be overwritten, delete it to make sure moving works on all systems
-              file.delete();
-            }
-            if (!autosave.renameTo(file)) { // Check if rename works, if not prompt again
-              retry = true; // This should only fail on windows when moving to a different drive
-              continue;
-            }
-            if (option == 1) { // If save and load add the file to the loading queue after saving
-              filesToOpen.add(file);
+  /** Offers to save or discard each autosave of an unnamed project, on the event thread. */
+  private void handleUnnamedAutosaves() {
+    // get list of all unnamed autosave files
+    final var autosaves = Loader.getUnnamedAutosaveDirectory().listFiles(
+          new FilenameFilter() {
+            @Override
+            public boolean accept(File dir, String name) {
+              return name.startsWith(Loader.LOGISIM_UNNAMED_AUTOSAVE_PREFIX)
+                  && name.endsWith(Loader.LOGISIM_UNNAMED_AUTOSAVE_SUFFIX);
             }
           }
-        } while (retry);
+        );
+
+    // Go over all autosaves to select what to do with each
+    for (final var autosave : autosaves == null ? new File[0] : autosaves) {
+      final var choice = askAboutRecoveredWork(autosave);
+      if (choice == RecoveryChoice.RESTORE) {
+        recoveredToOpen.add(autosave);
+      } else if (choice == RecoveryChoice.DISCARD) {
+        autosave.delete();
       }
     }
+  }
 
-    // load file
+  /** Opens the files given at startup, or else a new project, on the event thread. */
+  private void openStartupProjects(Library[] defaultLibraries) {
     Project proj = null;
-    if (filesToOpen.isEmpty()) {
+    var openedNothing = false;
+    if (filesToOpen.isEmpty() && recoveredToOpen.isEmpty()) {
       proj = ProjectActions.doNew(monitor);
       proj.setStartupScreen(true);
       if (showSplash) {
@@ -1063,37 +1169,22 @@ public class Startup implements AWTEventListener {
     } else {
       var numOpened = 0;
       var first = true;
-      for (final var fileToOpen : filesToOpen) {
+      final var toOpen = new ArrayList<File>(filesToOpen);
+      toOpen.addAll(recoveredToOpen);
+      for (final var fileToOpen : toOpen) {
         try {
-          if (testVector != null) {
-            proj = ProjectActions.doOpenNoWindow(monitor, fileToOpen);
-            proj.doTestVector(testVector, circuitToTest);
-          } else if (testCircPathInput != null && testCircPathOutput != null) {
-            /* This part of the function will create a new circuit file (
-             * XML) which will be open and saved again using the  */
-            proj = ProjectActions.doOpen(monitor, fileToOpen, substitutions);
-
-            ProjectActions.doSave(proj, new File(testCircPathOutput));
-          } else if (testCircuitPathInput != null) {
-            /* Testing test bench*/
-            final var testB = new TestBench(testCircuitPathInput, monitor, substitutions);
-
-            if (testB.startTestBench()) {
-              // FIXME: hardcoded string
-              System.out.println("Test bench pass\n");
-              System.exit(0);
-            } else {
-              // FIXME: hardcoded string
-              // FIXME: I'd capitalize FAIL to make it stand out.
-              System.out.println("Test bench fail\n");
-              System.exit(-1);
-            }
+          if (recoveredToOpen.contains(fileToOpen)) {
+            ProjectActions.doOpenRecovered(monitor, fileToOpen);
           } else {
             ProjectActions.doOpen(monitor, fileToOpen, substitutions);
           }
           numOpened++;
         } catch (LoadFailedException ex) {
           logger.error("{} : {}", fileToOpen.getName(), ex.getMessage());
+          if (!ex.isShown() && Main.hasGui() && testVector == null && testCircPathInput == null) {
+            OptionPane.showError(
+                null, S.get("startupOpenFailedTitle"), ex.getMessage(), ex.getCause());
+          }
         }
         if (first) {
           first = false;
@@ -1103,7 +1194,15 @@ public class Startup implements AWTEventListener {
           monitor = null;
         }
       }
-      if (numOpened == 0) System.exit(-1);
+      if (numOpened == 0) {
+        // Command-line checks must report failure; an interactive user should get a window.
+        if (testVector != null || testCircPathInput != null || !Main.hasGui()) {
+          System.exit(ExitCode.LOAD_ERROR);
+        }
+        proj = ProjectActions.doNew(monitor);
+        proj.setStartupScreen(true);
+        openedNothing = true;
+      }
     }
 
     if (proj != null)
@@ -1111,7 +1210,7 @@ public class Startup implements AWTEventListener {
 
     // Started without a file: offer the welcome screen rather than an empty grid. Done here,
     // after the libraries are loaded, because loading them counts as an action on the project.
-    if (proj != null && filesToOpen.isEmpty()) {
+    if (proj != null && (filesToOpen.isEmpty() || openedNothing)) {
       final var startupProject = proj;
       javax.swing.SwingUtilities.invokeLater(
           () -> {
@@ -1119,13 +1218,56 @@ public class Startup implements AWTEventListener {
             if (frame != null) frame.showWelcomeScreen();
           });
     }
+  }
 
-    for (final var fileToPrint : filesToPrint) {
-      doPrintFile(fileToPrint);
+  /**
+   * Runs the batch modes ({@code --test-vector}, {@code --test-circuit} and {@code
+   * --new-file-format}) without any window, on every project file given.
+   *
+   * @return The most severe {@link ExitCode} over all files.
+   */
+  int runBatch() {
+    if (filesToOpen.isEmpty()) {
+      logger.error(S.get("ttyNeedsFileError"));
+      return ExitCode.USAGE;
     }
+    var exitCode = ExitCode.SUCCESS;
+    for (final var fileToOpen : filesToOpen) {
+      exitCode = ExitCode.worst(exitCode, runBatch(fileToOpen));
+    }
+    return exitCode;
+  }
 
-    if (exitAfterStartup) {
-      System.exit(0);
+  private int runBatch(File fileToOpen) {
+    final var proj = new CliLoader().openProject(fileToOpen, substitutions);
+    if (proj == null) return ExitCode.LOAD_ERROR;
+    try {
+      if (testVector != null) {
+        final var failures = proj.doTestVector(testVector, circuitToTest);
+        if (failures < 0) return ExitCode.FAILURE;
+        return failures == 0 ? ExitCode.SUCCESS : ExitCode.SIMULATION_FAILED;
+      }
+      if (testCircPathInput != null && testCircPathOutput != null) {
+        // Rewrite the project in the current file format.
+        final var output = new File(testCircPathOutput);
+        final var loader = proj.getLogisimFile().getLoader();
+        if (!loader.save(proj.getLogisimFile(), output)) {
+          logger.error(S.get("cliSaveFailedError", output.getPath()));
+          return ExitCode.FAILURE;
+        }
+        return ExitCode.SUCCESS;
+      }
+      if (testCircuitPathInput != null) {
+        if (new TestBench(proj).startTestBench()) {
+          System.out.println(S.get("cliTestBenchPassed"));
+          return ExitCode.SUCCESS;
+        }
+        System.err.println(S.get("cliTestBenchFailed"));
+        return ExitCode.SIMULATION_FAILED;
+      }
+      return ExitCode.SUCCESS;
+    } finally {
+      proj.getSimulator().shutDown();
     }
   }
 

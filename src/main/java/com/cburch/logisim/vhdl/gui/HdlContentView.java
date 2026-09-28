@@ -16,6 +16,7 @@ import com.cburch.draw.toolbar.ToolbarModel;
 import com.cburch.logisim.gui.generic.EditorTheme;
 import com.cburch.logisim.gui.generic.OptionPane;
 import com.cburch.logisim.gui.theme.Theme;
+import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.proj.Action;
 import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.util.FileUtil;
@@ -23,6 +24,7 @@ import com.cburch.logisim.util.JFileChoosers;
 import com.cburch.logisim.util.UiFonts;
 import com.cburch.logisim.vhdl.base.HdlModel;
 import com.cburch.logisim.vhdl.base.HdlModelListener;
+import com.cburch.logisim.vhdl.base.VhdlContent;
 import com.cburch.logisim.vhdl.file.HdlFile;
 import java.awt.BorderLayout;
 import java.awt.Component;
@@ -32,9 +34,10 @@ import javax.swing.JFileChooser;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 import javax.swing.event.DocumentEvent;
-import org.fife.ui.rsyntaxtextarea.RSyntaxDocument;
+import org.fife.ui.rsyntaxtextarea.AbstractTokenMakerFactory;
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
+import org.fife.ui.rsyntaxtextarea.TokenMakerFactory;
 import org.fife.ui.rtextarea.RTextScrollPane;
 
 public class HdlContentView extends JPanel
@@ -56,7 +59,7 @@ public class HdlContentView extends JPanel
 
     @Override
     public String getName() {
-      return S.get("hdlEditAction");
+      return S.get(isVerilog(model) ? "verilogEditAction" : "hdlEditAction");
     }
 
     @Override
@@ -105,7 +108,7 @@ public class HdlContentView extends JPanel
 
   void doExport() {
     JFileChooser chooser = JFileChoosers.createSelected(getDefaultExportFile(null));
-    chooser.setDialogTitle(S.get("hdlSaveDialog"));
+    chooser.setDialogTitle(S.get(isVerilog() ? "verilogSaveDialog" : "hdlSaveDialog"));
     int choice = chooser.showSaveDialog(HdlContentView.this);
     if (choice == JFileChooser.APPROVE_OPTION) {
       File f = chooser.getSelectedFile();
@@ -124,7 +127,11 @@ public class HdlContentView extends JPanel
   void doImport() {
     if (!editor.getText().equals(model.getContent()))
       if (!confirmImport(HdlContentView.this)) return;
-    String vhdl = project.getLogisimFile().getLoader().vhdlImportChooser(HdlContentView.this);
+    final var loader = project.getLogisimFile().getLoader();
+    final var vhdl =
+        isVerilog()
+            ? loader.verilogImportChooser(HdlContentView.this)
+            : loader.vhdlImportChooser(HdlContentView.this);
     if (vhdl != null) setText(vhdl);
   }
 
@@ -132,7 +139,26 @@ public class HdlContentView extends JPanel
     model.setContent(editor.getText());
     dirty = false;
     toolbar.setDirty(!model.isValid());
-    if (!model.isValid()) model.showErrors();
+    if (!model.isValid()) {
+      model.showErrors();
+    } else if (isVerilog()) {
+      // Only the module header is read; the body is left to the synthesis tools.
+      OptionPane.showMessageDialog(
+          HdlContentView.this,
+          S.get("verilogValidationSuccess"),
+          S.get("verilogValidationSuccessTitle"),
+          OptionPane.INFORMATION_MESSAGE);
+    } else {
+      // Say what "valid" covers: without QuestaSim only the entity declaration is parsed.
+      OptionPane.showMessageDialog(
+          HdlContentView.this,
+          S.get(
+              AppPreferences.QUESTA_VALIDATION.get()
+                  ? "validationSuccessQuesta"
+                  : "validationSuccessEntityOnly"),
+          S.get("validationSuccessTitle"),
+          OptionPane.INFORMATION_MESSAGE);
+    }
   }
 
   public static boolean confirmImport(Component parent) {
@@ -152,6 +178,34 @@ public class HdlContentView extends JPanel
   private static final long serialVersionUID = 1L;
   private static final int ROWS = 40;
 
+  static {
+    // RSyntaxTextArea has no Verilog support of its own.
+    final var factory = (AbstractTokenMakerFactory) TokenMakerFactory.getDefaultInstance();
+    factory.putMapping(
+        VerilogTokenMaker.SYNTAX_STYLE,
+        VerilogTokenMaker.class.getName(),
+        VerilogTokenMaker.class.getClassLoader());
+  }
+
+  /** True when {@code model} is a Verilog module rather than VHDL. */
+  static boolean isVerilog(HdlModel model) {
+    return model instanceof VhdlContent content && content.isVerilog();
+  }
+
+  /** True when the edited model is a Verilog module rather than VHDL. */
+  public boolean isVerilog() {
+    return isVerilog(model);
+  }
+
+  /** The syntax style the editor uses for {@code model}. */
+  static String syntaxStyleFor(HdlModel model) {
+    return isVerilog(model) ? VerilogTokenMaker.SYNTAX_STYLE : SyntaxConstants.SYNTAX_STYLE_VHDL;
+  }
+
+  String getSyntaxStyle() {
+    return editor.getSyntaxEditingStyle();
+  }
+
   private static final int COLUMNS = 100;
 
   private static final String EXPORT_DIR = "hdl_export";
@@ -170,7 +224,7 @@ public class HdlContentView extends JPanel
     this.model = null;
     this.toolbar = new HdlToolbarModel(proj, this);
     configure();
-    EditorTheme.install(editor);
+    EditorTheme.install(editor, true);
     refreshEditorMetrics();
     editor.addPropertyChangeListener("font", event -> queueMetricsRefresh());
     editor.addPropertyChangeListener(RSyntaxTextArea.SYNTAX_SCHEME_PROPERTY,
@@ -218,7 +272,7 @@ public class HdlContentView extends JPanel
 
   private void configure() {
     editor = new RSyntaxTextArea(ROWS, COLUMNS);
-    ((RSyntaxDocument) editor.getDocument()).setSyntaxStyle(SyntaxConstants.SYNTAX_STYLE_VHDL);
+    editor.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_VHDL);
     editor.setCodeFoldingEnabled(true);
     editor.setAntiAliasingEnabled(true);
     editor.getDocument().addDocumentListener(this);
@@ -235,7 +289,7 @@ public class HdlContentView extends JPanel
   private File getDefaultExportFile(File defaultFile) {
     File projectFile = project.getLogisimFile().getLoader().getMainFile();
     if (projectFile == null) {
-      if (defaultFile == null) return new File(model.getName() + ".vhd");
+      if (defaultFile == null) return new File(model.getName() + exportExtension());
       return defaultFile;
     }
 
@@ -247,10 +301,14 @@ public class HdlContentView extends JPanel
       if (!compFolder.exists() || (compFolder.exists() && !compFolder.isDirectory()))
         compFolder.mkdir();
       return new File(
-          FileUtil.correctPath(compFolder.getCanonicalPath()) + model.getName() + ".vhd");
+          FileUtil.correctPath(compFolder.getCanonicalPath()) + model.getName() + exportExtension());
     } catch (IOException ex) {
       return defaultFile;
     }
+  }
+
+  private String exportExtension() {
+    return isVerilog() ? ".v" : ".vhd";
   }
 
   public HdlModel getHdlModel() {
@@ -304,6 +362,9 @@ public class HdlContentView extends JPanel
     if (this.model != null) {
       this.model.addHdlModelListener(toolbar);
       this.model.addHdlModelListener(this);
+      final var style = syntaxStyleFor(model);
+      if (!style.equals(editor.getSyntaxEditingStyle())) editor.setSyntaxEditingStyle(style);
+      toolbar.languageChanged();
       setText(model.getContent());
       toolbar.setDirty(!model.isValid());
     }

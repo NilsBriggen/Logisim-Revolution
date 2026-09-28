@@ -116,7 +116,9 @@ public final class AppIcons {
     DRAW_RECTANGLE("draw-rectangle"),
     DRAW_ROUNDED_RECTANGLE("draw-rounded-rectangle"),
     DRAW_ELLIPSE("draw-ellipse"),
-    WIRE("wire");
+    WIRE("wire"),
+    LOCK("lock"),
+    UNLOCK("lock-open");
 
     private final String fileName;
 

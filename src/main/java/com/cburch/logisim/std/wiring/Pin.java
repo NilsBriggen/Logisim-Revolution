@@ -47,6 +47,7 @@ import com.cburch.logisim.tools.key.JoinedConfigurator;
 import com.cburch.logisim.util.GraphicsUtil;
 import com.cburch.logisim.util.LocaleListener;
 
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Frame;
@@ -64,6 +65,7 @@ import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JFormattedTextField;
+import javax.swing.JLabel;
 import javax.swing.SwingUtilities;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
@@ -82,6 +84,23 @@ public class Pin extends InstanceFactory {
     return project == null ? null : project.getFrame();
   }
 
+  /** The smallest and largest decimal value a pin of this width accepts. */
+  static BigInteger[] decimalRange(int bitWidth, boolean signed) {
+    if (signed) {
+      return new BigInteger[] {
+        BigInteger.ONE.negate().shiftLeft(bitWidth - 1),
+        BigInteger.ONE.shiftLeft(bitWidth - 1).subtract(BigInteger.ONE)
+      };
+    }
+    return new BigInteger[] {BigInteger.ZERO, BigInteger.ONE.shiftLeft(bitWidth).subtract(BigInteger.ONE)};
+  }
+
+  static String decimalRangeHint(int bitWidth, boolean signed, boolean tristate) {
+    final var range = decimalRange(bitWidth, signed);
+    final var hint = S.get("PinDecimalRange", range[0].toString(), range[1].toString());
+    return tristate ? hint + " " + S.get("PinDecimalRangeFloating", Character.toString(Value.UNKNOWNCHAR)) : hint;
+  }
+
   @SuppressWarnings("serial")
   private static class EditDecimal extends JDialog implements BaseKeyListenerContract, LocaleListener {
 
@@ -95,12 +114,14 @@ public class Pin extends InstanceFactory {
     private static final Color INVALID_COLOR = new Color(0xff, 0x66, 0x66);
     final JButton ok;
     final JButton cancel;
+    private final JLabel rangeHint = new JLabel();
 
     @Override
     public void localeChanged() {
       setTitle(S.get("PinEnterDecimal"));
       ok.setText(S.get("PinOkay"));
       cancel.setText(S.get("PinCancel"));
+      rangeHint.setText(decimalRangeHint(bitWidth, radix == RadixOption.RADIX_10_SIGNED, tristate));
     }
 
     public EditDecimal(InstanceState state) {
@@ -158,11 +179,20 @@ public class Pin extends InstanceFactory {
               });
 
       gbc.gridx = 0;
-      gbc.gridy = 1;
+      gbc.gridy = 2;
       add(cancel, gbc);
       gbc.gridx = 1;
-      gbc.gridy = 1;
+      gbc.gridy = 2;
       add(ok, gbc);
+      // Say what is accepted, so a rejected (red) entry is not a guessing game.
+      final var hintConstraints = new GridBagConstraints();
+      hintConstraints.gridx = 0;
+      hintConstraints.gridy = 1;
+      hintConstraints.gridwidth = GridBagConstraints.REMAINDER;
+      hintConstraints.anchor = GridBagConstraints.WEST;
+      hintConstraints.insets = new Insets(0, 4, 4, 4);
+      rangeHint.setText(decimalRangeHint(bitWidth, radix == RadixOption.RADIX_10_SIGNED, tristate));
+      add(rangeHint, hintConstraints);
       gbc.gridx = 0;
       gbc.gridy = 0;
       gbc.gridwidth = GridBagConstraints.REMAINDER;
@@ -501,12 +531,15 @@ public class Pin extends InstanceFactory {
         CircuitState circState = canvas.getCircuitState();
         java.awt.Component frame = SwingUtilities.getRoot(canvas);
         int choice =
-            OptionPane.showConfirmDialog(
+            OptionPane.showOptionDialog(
                 frame,
                 S.get("pinFrozenQuestion"),
                 S.get("pinFrozenTitle"),
                 OptionPane.OK_CANCEL_OPTION,
-                OptionPane.WARNING_MESSAGE);
+                OptionPane.WARNING_MESSAGE,
+                null,
+                new Object[] {S.get("pinFrozenNewStateOption"), S.get("pinFrozenCancelOption")},
+                S.get("pinFrozenNewStateOption"));
         if (choice == OptionPane.OK_OPTION) {
           circState = circState.cloneAsNewRootState();
           canvas.getProject().setCircuitState(circState);
@@ -731,7 +764,7 @@ public class Pin extends InstanceFactory {
       Attributes.forOption("behavior", S.getter("pinBehaviorAttr"),
           new AttributeOption[] { SIMPLE, TRISTATE, PULL_DOWN, PULL_UP });
   public static final Attribute<Long> ATTR_INITIAL =
-      Attributes.forHexLong("initial", S.getter("pinResetValue"));;
+      new PinResetValueAttribute("initial", S.getter("pinResetValue"));
 
   public static final Pin FACTORY = new Pin();
   private static final Font ICON_WIDTH_FONT = new Font("SansSerif", Font.BOLD, 9);
@@ -750,7 +783,8 @@ public class Pin extends InstanceFactory {
     setInstancePoker(PinPoker.class);
   }
 
-  private static Direction pinLabelLoc(Direction PinDir) {
+  /** The natural label side of a pin: opposite the side its port is on. */
+  static Direction pinLabelLoc(Direction PinDir) {
     if (PinDir == Direction.EAST) return Direction.WEST;
     else if (PinDir == Direction.WEST) return Direction.EAST;
     else if (PinDir == Direction.NORTH) return Direction.SOUTH;
@@ -763,12 +797,12 @@ public class Pin extends InstanceFactory {
     instance.addAttributeListener();
     ((PrefMonitorBooleanConvert) AppPreferences.NEW_INPUT_OUTPUT_SHAPES).addConvertListener(attrs);
     configurePorts(instance);
-    instance.computeLabelTextField(
-        Instance.AVOID_LEFT, pinLabelLoc(attrs.getValue(StdAttr.FACING)));
+    instance.computeLabelTextField(Instance.AVOID_LEFT, attrs.getValue(StdAttr.LABEL_LOC));
   }
 
   @Override
   public Object getDefaultAttributeValue(Attribute<?> attr, LogisimVersion ver) {
+    if (attr.equals(StdAttr.LABEL_LOC)) return PinAttributes.LABEL_LOC_AUTO;
     return attr.equals(ProbeAttributes.PROBEAPPEARANCE)
         ? ProbeAttributes.getDefaultProbeAppearance()
         : super.getDefaultAttributeValue(attr, ver);
@@ -779,9 +813,9 @@ public class Pin extends InstanceFactory {
     String endType = attrs.isOutput() ? Port.INPUT : Port.OUTPUT;
     Port port = new Port(0, 0, endType, StdAttr.WIDTH);
     if (attrs.isOutput()) {
-      port.setToolTip(S.getter("pinOutputToolTip"));
+      port.setToolTip(S.getter("pinOutputPortToolTip"));
     } else {
-      port.setToolTip(S.getter("pinInputToolTip"));
+      port.setToolTip(S.getter("pinInputPortToolTip"));
     }
     instance.setPorts(new Port[] {port});
   }
@@ -828,10 +862,11 @@ public class Pin extends InstanceFactory {
     } else if (attr == StdAttr.WIDTH
         || attr == StdAttr.FACING
         || attr == RadixOption.ATTRIBUTE
+        || attr == StdAttr.LABEL_LOC
         || attr == ProbeAttributes.PROBEAPPEARANCE) {
       instance.recomputeBounds();
       PinAttributes attrs = (PinAttributes) instance.getAttributeSet();
-      instance.computeLabelTextField(Instance.AVOID_LEFT, pinLabelLoc(attrs.facing));
+      instance.computeLabelTextField(Instance.AVOID_LEFT, attrs.getValue(StdAttr.LABEL_LOC));
     } else if (attr == Pin.ATTR_BEHAVIOR) {
       instance.fireInvalidated();
     }
@@ -1127,27 +1162,7 @@ public class Pin extends InstanceFactory {
     int pinSize = iconSize >> 2;
     final var baseColor = g.getColor();
     if (attrs.getValue(ProbeAttributes.PROBEAPPEARANCE) == ProbeAttributes.APPEAR_EVOLUTION_NEW) {
-      int arrowHeight = (10 * iconSize) >> 4;
-      int yoff = (3 * iconSize) >> 4;
-      int xoff = output ? pinSize : 0;
-      int[] yPoints =
-          new int[] {yoff, yoff, yoff + (arrowHeight >> 1), yoff + arrowHeight, yoff + arrowHeight};
-      int[] xPoints =
-          new int[] {
-            xoff,
-            xoff + iconSize - (pinSize << 1),
-            xoff + iconSize - pinSize,
-            xoff + iconSize - (pinSize << 1),
-            xoff
-          };
-      g.setColor(baseColor);
-      g.drawPolygon(xPoints, yPoints, xPoints.length);
-      g.setColor(Value.TRUE.getColor());
-      GraphicsUtil.switchToWidth(g, AppPreferences.getScaled(2));
-      if (output)
-        g.drawLine(0, yoff + (arrowHeight >> 1), pinSize, yoff + (arrowHeight >> 1));
-      else
-        g.drawLine(iconSize - pinSize, yoff + (arrowHeight >> 1), iconSize, yoff + (arrowHeight >> 1));
+      paintNewStyleIcon(g, iconSize, output, w.equals(BitWidth.ONE), baseColor);
     } else {
       int iconOffset = AppPreferences.getScaled(4);
       int boxWidth = iconSize - (iconOffset << 1);
@@ -1187,6 +1202,49 @@ public class Pin extends InstanceFactory {
       bw.draw(g, xpos, ypos);
       g.setColor(baseColor);
     }
+  }
+
+  /**
+   * The toolbar and explorer icon of a pin in the "evolution" appearance: the canvas tag, drawn
+   * with sharp corners so its point does not read as the rounded back of an AND gate, with the
+   * pin's value inside as on the canvas, and the connection stub on the side the wire attaches
+   * (after the point for an input, before the flat end for an output).
+   */
+  private static void paintNewStyleIcon(
+      Graphics2D g, int size, boolean output, boolean oneBit, Color outline) {
+    final var oldStroke = g.getStroke();
+    final var stub = size >> 2;
+    final var margin = AppPreferences.getScaled(1);
+    final var top = (3 * size) >> 4;
+    final var height = (10 * size) >> 4;
+    final var mid = top + (height >> 1);
+    final var tip = height >> 1;
+    final var left = output ? stub : margin;
+    final var right = output ? size - margin : size - stub;
+    final int[] xs = {left, right - tip, right, right - tip, left};
+    final int[] ys = {top, top, mid, top + height, top + height};
+    g.setColor(outline);
+    g.setStroke(
+        new BasicStroke(
+            AppPreferences.getScaled(1), BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER));
+    g.drawPolygon(xs, ys, xs.length);
+    g.setColor(Value.TRUE.getColor());
+    g.setStroke(
+        new BasicStroke(
+            AppPreferences.getScaled(2), BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER));
+    if (output) g.drawLine(0, mid, left, mid);
+    else g.drawLine(right, mid, size, mid);
+    if (oneBit) {
+      // The value, as the canvas shows it; wider pins show their width here instead.
+      final var font = ICON_WIDTH_FONT.deriveFont((float) Math.max(6, (height * 9) / 10));
+      final var digit = new TextLayout("1", font, g.getFontRenderContext());
+      final var bodyCenter = (left + right - tip / 2) / 2f;
+      digit.draw(
+          g,
+          bodyCenter - (float) digit.getBounds().getCenterX(),
+          mid - (float) digit.getBounds().getCenterY());
+    }
+    g.setStroke(oldStroke);
   }
 
   @Override

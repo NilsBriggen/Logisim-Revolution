@@ -36,6 +36,40 @@ class TikZWriterTest {
   @TempDir Path tempDir;
 
   @Test
+  void renderingHintsAreKeptSilently() throws Exception {
+    final var stdout = System.out;
+    final var captured = new java.io.ByteArrayOutputStream();
+    System.setOut(new java.io.PrintStream(captured, true, java.nio.charset.StandardCharsets.UTF_8));
+    try {
+      final var writer = new TikZWriter();
+      writer.setRenderingHint(
+          java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+      assertEquals(
+          java.awt.RenderingHints.VALUE_ANTIALIAS_ON,
+          writer.getRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING));
+      final var copy = (TikZWriter) writer.create();
+      assertEquals(
+          java.awt.RenderingHints.VALUE_ANTIALIAS_ON,
+          copy.getRenderingHints().get(java.awt.RenderingHints.KEY_ANTIALIASING));
+    } finally {
+      System.setOut(stdout);
+    }
+    assertEquals("", captured.toString(java.nio.charset.StandardCharsets.UTF_8));
+  }
+
+  @Test
+  void tikzHeaderGivesCurrentLatexAdvice() throws Exception {
+    final var writer = new TikZWriter();
+    writer.fillRect(0, 0, 1, 1);
+    final var output = tempDir.resolve("header.tex");
+    writer.writeFile(output.toFile());
+    final var text = Files.readString(output);
+    assertFalse(text.contains("utf8x"), text);
+    assertFalse(text.contains("recomended"), text);
+    assertTrue(text.contains("\\begin{tikzpicture}"), text);
+  }
+
+  @Test
   void svgEmbedsImagesWithTheCurrentTransformAndDrawingOrder() throws Exception {
     final var source = new BufferedImage(2, 2, BufferedImage.TYPE_INT_ARGB);
     source.setRGB(0, 0, new Color(255, 0, 0, 128).getRGB());

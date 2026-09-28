@@ -24,6 +24,7 @@ import com.cburch.logisim.fpga.hdlgenerator.HdlGeneratorFactory;
 import com.cburch.logisim.gui.hex.HexFrame;
 import com.cburch.logisim.instance.Instance;
 import com.cburch.logisim.instance.InstanceFactory;
+import com.cburch.logisim.instance.InstancePainter;
 import com.cburch.logisim.instance.InstanceState;
 import com.cburch.logisim.instance.StdAttr;
 import com.cburch.logisim.proj.Project;
@@ -181,6 +182,37 @@ public abstract class Mem extends InstanceFactory {
   }
 
   abstract MemState getState(Instance instance, CircuitState state);
+
+  /**
+   * Font size, in circuit units, of the IEC dependency notation ("A,1,3") and bit numbers drawn on
+   * memory symbols. It was 7 for the bit numbers, about 7 px at 100% zoom.
+   */
+  static final float ANNOTATION_FONT_SIZE = 9f;
+
+  /** Smallest on-screen size, in device pixels, at which that notation is still drawn. */
+  private static final double MIN_ANNOTATION_PIXELS = 6.0;
+
+  /**
+   * Whether the memory symbol's small annotations are legible at the current zoom. Below that they
+   * only blur into the symbol, so they are left out; zooming in brings them back.
+   */
+  static boolean annotationsLegible(java.awt.Graphics g) {
+    if (!(g instanceof java.awt.Graphics2D g2)) return true;
+    final var scale = Math.sqrt(Math.abs(g2.getTransform().getDeterminant()));
+    return ANNOTATION_FONT_SIZE * scale >= MIN_ANNOTATION_PIXELS;
+  }
+
+  /**
+   * Returns the memory state to draw, creating it if needed. A memory added without propagating
+   * (for example by Undo while Auto-Propagate is off) has no state yet and would otherwise be drawn
+   * as an empty box.
+   */
+  static MemState getStateForPainting(InstancePainter painter) {
+    final var circState = painter.getCircuitState();
+    final var inst = painter.getInstance();
+    if (circState == null || inst == null || !(inst.getFactory() instanceof Mem mem)) return null;
+    return mem.getState(inst, circState);
+  }
 
   abstract MemState getState(InstanceState state);
 

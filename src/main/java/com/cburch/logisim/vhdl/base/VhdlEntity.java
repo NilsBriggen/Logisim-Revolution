@@ -21,6 +21,8 @@ import com.cburch.logisim.data.Bounds;
 import com.cburch.logisim.data.Direction;
 import com.cburch.logisim.data.Location;
 import com.cburch.logisim.data.Value;
+import com.cburch.logisim.fpga.hdlgenerator.HdlGeneratorFactory;
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.gui.icons.ArithmeticIcon;
 import com.cburch.logisim.instance.Instance;
 import com.cburch.logisim.instance.InstanceComponent;
@@ -29,6 +31,7 @@ import com.cburch.logisim.instance.InstancePainter;
 import com.cburch.logisim.instance.InstanceState;
 import com.cburch.logisim.instance.Port;
 import com.cburch.logisim.instance.StdAttr;
+import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.std.wiring.Pin;
 import com.cburch.logisim.util.GraphicsUtil;
 import com.cburch.logisim.util.StringGetter;
@@ -56,13 +59,20 @@ public class VhdlEntity extends InstanceFactory implements HdlModelListener {
 
   private final VhdlContent content;
   private final ArrayList<Instance> myInstances;
+  private final ArithmeticIcon typeIcon;
 
   public VhdlEntity(VhdlContent content) {
-    super("", null, new VhdlHdlGeneratorFactory(), true);
+    this(content, new VhdlHdlGeneratorFactory(), icon);
+  }
+
+  protected VhdlEntity(
+      VhdlContent content, HdlGeneratorFactory generator, ArithmeticIcon typeIcon) {
+    super("", null, generator, true);
     this.content = content;
+    this.typeIcon = typeIcon;
     this.content.addHdlModelListener(this);
-    this.setIcon(icon);
-    icon.setInvalid(!content.isValid());
+    this.setIcon(typeIcon);
+    typeIcon.setInvalid(!content.isValid());
     setFacingAttribute(StdAttr.FACING);
     appearance = VhdlAppearance.create(getPins(), getName(), StdAttr.APPEAR_EVOLUTION);
     myInstances = new ArrayList<>();
@@ -160,12 +170,13 @@ public class VhdlEntity extends InstanceFactory implements HdlModelListener {
       final var oldFont = gfx.getFont();
       final var color = gfx.getColor();
       gfx.setFont(painter.getAttributeValue(StdAttr.LABEL_FONT));
-      gfx.setColor(StdAttr.DEFAULT_LABEL_COLOR);
+      gfx.setColor(CanvasStyle.labelColor(null));
       GraphicsUtil.drawCenteredText(gfx, label, bds.getX() + bds.getWidth() / 2, bds.getY() - gfx.getFont().getSize());
       gfx.setFont(oldFont);
       gfx.setColor(color);
     }
     painter.drawPorts();
+    VhdlSimulationFallback.paintBadge(painter, isSimulatedExternally(painter.getProject()));
   }
 
   /**
@@ -180,8 +191,7 @@ public class VhdlEntity extends InstanceFactory implements HdlModelListener {
   @Override
   public void propagate(InstanceState state) {
 
-    if (state.getProject().getVhdlSimulator().isEnabled()
-        && state.getProject().getVhdlSimulator().isRunning()) {
+    if (isSimulatedExternally(state.getProject())) {
 
       final var vhdlSimulator = state.getProject().getVhdlSimulator();
 
@@ -234,22 +244,17 @@ public class VhdlEntity extends InstanceFactory implements HdlModelListener {
 
       /* VhdlSimulation stopped/disabled */
     } else {
-      for (final var port : state.getInstance().getPorts()) {
-        final var index = state.getPortIndex(port);
-
-        /* If it is an output */
-        if (port.getType() == 2) {
-          final var vectorValues = new Value[port.getFixedBitWidth().getWidth()];
-          for (var k = 0; k < port.getFixedBitWidth().getWidth(); k++) {
-            vectorValues[k] = Value.UNKNOWN;
-          }
-
-          state.setPort(index, Value.create(vectorValues), 1);
-        }
-      }
-
-      throw new UnsupportedOperationException(S.get("vhdlSimulationNotEnabled"));
+      // Not an error of the circuit: keep the rest of it simulating (see VhdlSimulationFallback).
+      VhdlSimulationFallback.driveOutputsUnknown(state);
     }
+  }
+
+  /**
+   * True when the external simulator computes this component's outputs; otherwise they are
+   * unknown and the component shows the fallback badge.
+   */
+  protected boolean isSimulatedExternally(Project project) {
+    return VhdlSimulationFallback.isSimulatorActive(project);
   }
 
   /**
@@ -301,29 +306,56 @@ public class VhdlEntity extends InstanceFactory implements HdlModelListener {
     final var facing = instance.getAttributeValue(StdAttr.FACING);
     final var portLocs = appearance.getPortOffsets(facing);
 
+    // Port i is always the content's port i, whatever the facing: the appearance returns the pins
+    // sorted by location, which puts outputs first when the component faces west, while the HDL
+    // generators (and the external simulator) address the ports in declaration order.
+    final var declared = content.getPorts();
     final var ports = new Port[portLocs.size()];
-    var idx = 0;
+    var extra = declared.size();
     for (final var portLoc : portLocs.entrySet()) {
       final var loc = portLoc.getKey();
       final var pin = portLoc.getValue();
-      final var type = Pin.FACTORY.isInputPin(pin) ? Port.INPUT : Port.OUTPUT;
+      final var label = pin.getAttributeValue(StdAttr.LABEL);
+      var idx = -1;
+      for (var i = 0; i < declared.size(); i++) {
+        if (declared.get(i).getName().equals(label) && ports[i] == null) {
+          idx = i;
+          break;
+        }
+      }
+      var type = Pin.FACTORY.isInputPin(pin) ? Port.INPUT : Port.OUTPUT;
+      if (idx >= 0) {
+        type = declared.get(idx).getType();
+      } else {
+        idx = extra < ports.length ? extra++ : firstFree(ports);
+      }
       final var width = pin.getAttributeValue(StdAttr.WIDTH);
       ports[idx] = new Port(loc.getX(), loc.getY(), type, width);
 
-      final var label = pin.getAttributeValue(StdAttr.LABEL);
       if (label != null && label.length() > 0) {
         ports[idx].setToolTip(StringUtil.constantGetter(label));
       }
-
-      idx++;
     }
     instance.setPorts(ports);
     instance.recomputeBounds();
   }
 
+  private static int firstFree(Port[] ports) {
+    for (var i = 0; i < ports.length; i++) {
+      if (ports[i] == null) return i;
+    }
+    throw new IllegalStateException("more pins than ports");
+  }
+
   @Override
   public void contentSet(HdlModel source) {
-    icon.setInvalid(!content.isValid());
+    typeIcon.setInvalid(!content.isValid());
+    // The entity header may have gained, lost or resized ports: placed instances must follow now,
+    // not only after the project is reloaded.
+    for (final var instance : myInstances) {
+      updatePorts(instance);
+      instance.fireInvalidated();
+    }
   }
 
   @Override

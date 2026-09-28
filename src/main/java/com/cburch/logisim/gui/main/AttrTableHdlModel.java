@@ -44,7 +44,7 @@ class AttrTableHdlModel extends AttributeSetTableModel implements HdlModelListen
 
   @Override
   public String getTitle() {
-    return S.get("hdlAttrTitle", hdl.getName());
+    return S.get(hdl.isVerilog() ? "verilogAttrTitle" : "hdlAttrTitle", hdl.getName());
   }
 
   @Override

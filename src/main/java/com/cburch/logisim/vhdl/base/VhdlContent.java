@@ -94,7 +94,7 @@ public class VhdlContent extends HdlContent {
   protected AttributeOption appearance = StdAttr.APPEAR_EVOLUTION;
   protected String libraries;
   protected String architecture;
-  private final LogisimFile logiFile;
+  protected final LogisimFile logiFile;
 
   protected VhdlContent(String name, LogisimFile file) {
     logiFile = file;
@@ -190,6 +190,21 @@ public class VhdlContent extends HdlContent {
     return staticAttrs;
   }
 
+  /** True when the content is a Verilog module rather than a VHDL entity. */
+  public boolean isVerilog() {
+    return false;
+  }
+
+  /** The attribute holding this content's name, in the attribute tables and saved components. */
+  public Attribute<String> getNameAttribute() {
+    return VhdlEntity.nameAttr;
+  }
+
+  /** Creates the component factory that places this content in circuits. */
+  public VhdlEntity createFactory() {
+    return new VhdlEntity(this);
+  }
+
   public void aboutToSave() {
     fireAboutToSave();
   }
@@ -240,15 +255,13 @@ public class VhdlContent extends HdlContent {
     return setContent(str);
   }
 
-  private final StringBuilder errTitle = new StringBuilder();
-  private final StringBuilder errMessage = new StringBuilder();
-  private int errCode = 0;
-  private Exception errException;
+  protected final StringBuilder errTitle = new StringBuilder();
+  protected final StringBuilder errMessage = new StringBuilder();
+  protected int errCode = 0;
 
   @Override
   public void showErrors() {
     if (valid && errTitle.length() == 0 && errMessage.length() == 0) return;
-    if (errException != null) errException.printStackTrace();
     if (errCode == Softwares.ERROR) {
       final var message = new JTextArea();
       message.setText(errMessage.toString());
@@ -304,7 +317,6 @@ public class VhdlContent extends HdlContent {
         if (msg == null || msg.length() == 0) msg = ex.toString();
         errTitle.append(S.get("validationParseError"));
         errMessage.append(msg);
-        errException = ex;
         return false;
       }
       if (!parser.getName().equals(name)) {

@@ -9,6 +9,8 @@
 
 package com.cburch.logisim.gui.menu;
 
+import static com.cburch.logisim.gui.Strings.S;
+
 import com.cburch.logisim.circuit.CircuitState;
 import com.cburch.logisim.circuit.Simulator;
 import com.cburch.logisim.fpga.menu.MenuFpga;
@@ -42,6 +44,13 @@ public class LogisimMenuBar extends JMenuBar {
   public static final LogisimMenuItem LOWER_BOTTOM = new LogisimMenuItem("LowerBottom");
   public static final LogisimMenuItem ADD_CONTROL = new LogisimMenuItem("AddControl");
   public static final LogisimMenuItem REMOVE_CONTROL = new LogisimMenuItem("RemoveControl");
+  /**
+   * Undo and Redo in a window that has no project but keeps its own history; windows with a
+   * project undo through the project instead.
+   */
+  public static final LogisimMenuItem UNDO = new LogisimMenuItem("Undo");
+
+  public static final LogisimMenuItem REDO = new LogisimMenuItem("Redo");
   public static final LogisimMenuItem[] EDIT_ITEMS = {
     // UNDO, REDO,
     CUT,
@@ -57,8 +66,49 @@ public class LogisimMenuBar extends JMenuBar {
     ADD_CONTROL,
     REMOVE_CONTROL,
   };
+  public static final LogisimMenuItem ALIGN_LEFT = new LogisimMenuItem("AlignLeft");
+  public static final LogisimMenuItem ALIGN_CENTER = new LogisimMenuItem("AlignCenter");
+  public static final LogisimMenuItem ALIGN_RIGHT = new LogisimMenuItem("AlignRight");
+  public static final LogisimMenuItem ALIGN_TOP = new LogisimMenuItem("AlignTop");
+  public static final LogisimMenuItem ALIGN_MIDDLE = new LogisimMenuItem("AlignMiddle");
+  public static final LogisimMenuItem ALIGN_BOTTOM = new LogisimMenuItem("AlignBottom");
+  public static final LogisimMenuItem DISTRIBUTE_HORIZONTAL =
+      new LogisimMenuItem("DistributeHorizontal");
+  public static final LogisimMenuItem DISTRIBUTE_VERTICAL =
+      new LogisimMenuItem("DistributeVertical");
+
+  /**
+   * The Edit &gt; Arrange commands, in menu order. They are edit commands like {@link #EDIT_ITEMS}
+   * but only the circuit layout editor handles them, so they are kept apart from the list that
+   * other windows (such as the analyzer) bind keys for.
+   */
+  public static final LogisimMenuItem[] ARRANGE_ITEMS = {
+    ALIGN_LEFT,
+    ALIGN_CENTER,
+    ALIGN_RIGHT,
+    ALIGN_TOP,
+    ALIGN_MIDDLE,
+    ALIGN_BOTTOM,
+    DISTRIBUTE_HORIZONTAL,
+    DISTRIBUTE_VERTICAL,
+  };
+
+  /** The label of an Edit &gt; Arrange command, shared with the canvas context menu. */
+  public static String arrangeItemText(LogisimMenuItem item) {
+    if (item == ALIGN_LEFT) return S.get("editAlignLeftItem");
+    if (item == ALIGN_CENTER) return S.get("editAlignCenterItem");
+    if (item == ALIGN_RIGHT) return S.get("editAlignRightItem");
+    if (item == ALIGN_TOP) return S.get("editAlignTopItem");
+    if (item == ALIGN_MIDDLE) return S.get("editAlignMiddleItem");
+    if (item == ALIGN_BOTTOM) return S.get("editAlignBottomItem");
+    if (item == DISTRIBUTE_HORIZONTAL) return S.get("editDistributeHorizontalItem");
+    if (item == DISTRIBUTE_VERTICAL) return S.get("editDistributeVerticalItem");
+    throw new IllegalArgumentException("not an arrange item: " + item);
+  }
   public static final LogisimMenuItem ADD_VHDL = new LogisimMenuItem("AddVhdl");
   public static final LogisimMenuItem IMPORT_VHDL = new LogisimMenuItem("ImportVhdl");
+  public static final LogisimMenuItem ADD_VERILOG = new LogisimMenuItem("AddVerilog");
+  public static final LogisimMenuItem IMPORT_VERILOG = new LogisimMenuItem("ImportVerilog");
   public static final LogisimMenuItem ADD_CIRCUIT = new LogisimMenuItem("AddCircuit");
   public static final LogisimMenuItem MOVE_CIRCUIT_UP = new LogisimMenuItem("MoveCircuitUp");
   public static final LogisimMenuItem MOVE_CIRCUIT_DOWN = new LogisimMenuItem("MoveCircuitDown");
@@ -71,10 +121,13 @@ public class LogisimMenuBar extends JMenuBar {
   public static final LogisimMenuItem REVERT_APPEARANCE = new LogisimMenuItem("RevertAppearance");
   public static final LogisimMenuItem ANALYZE_CIRCUIT = new LogisimMenuItem("AnalyzeCircuit");
   public static final LogisimMenuItem CIRCUIT_STATS = new LogisimMenuItem("GetCircuitStatistics");
+  public static final LogisimMenuItem LOCK_CIRCUIT = new LogisimMenuItem("LockCircuit");
+  public static final LogisimMenuItem LOCK_SELECTION = new LogisimMenuItem("LockSelection");
   public static final LogisimMenuItem SIMULATE_STOP = new LogisimMenuItem("SimulateStop");
   public static final LogisimMenuItem SIMULATE_RUN = new LogisimMenuItem("SimulateRun");
   public static final LogisimMenuItem SIMULATE_RUN_TOGGLE = new LogisimMenuItem("SimulateRun");
   public static final LogisimMenuItem SIMULATE_STEP = new LogisimMenuItem("SimulateStep");
+  public static final LogisimMenuItem SIMULATE_RESET = new LogisimMenuItem("SimulateReset");
   public static final LogisimMenuItem SIMULATE_VHDL_ENABLE =
       new LogisimMenuItem("SimulateVhdlEnable");
   public static final LogisimMenuItem GENERATE_VHDL_SIM_FILES =
@@ -112,8 +165,17 @@ public class LogisimMenuBar extends JMenuBar {
     add(new WindowMenu(parent));
     add(help = new MenuHelp(this));
 
-    LocaleManager.addLocaleListener(listener);
+    LocaleManager.addLocaleListener(this, listener);
     listener.localeChanged();
+  }
+
+  /**
+   * Opens the help window at a topic, by its map id, such as {@code "features_colors"}.
+   *
+   * <p>Lets a message about a problem link to the page that explains it.
+   */
+  public void showHelp(String target) {
+    help.showHelp(target);
   }
 
   public void disableFile() {

@@ -16,20 +16,23 @@ import com.cburch.logisim.circuit.Circuit;
 import com.cburch.logisim.circuit.CircuitEvent;
 import com.cburch.logisim.circuit.CircuitListener;
 import com.cburch.logisim.circuit.CircuitMutation;
+import com.cburch.logisim.circuit.EditLockedException;
 import com.cburch.logisim.comp.Component;
 import com.cburch.logisim.comp.ComponentDrawContext;
 import com.cburch.logisim.comp.ComponentUserEvent;
 import com.cburch.logisim.data.Attribute;
 import com.cburch.logisim.data.AttributeSet;
 import com.cburch.logisim.data.Location;
+import com.cburch.logisim.file.ProjectStyle;
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.gui.main.Canvas;
 import com.cburch.logisim.gui.main.SelectionActions;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.proj.Action;
 import com.cburch.logisim.proj.JoinedAction;
+import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.std.base.Text;
 import com.cburch.logisim.util.StringUtil;
-import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Graphics;
 import java.awt.event.KeyEvent;
@@ -152,7 +155,7 @@ public class TextTool extends Tool implements PropertyChangeListener {
   public TextTool() {
     attrs = Text.FACTORY.createAttributeSet();
     AppPreferences.TEXT_TOOL_COLOR.addPropertyChangeListener(this);
-    attrs.setValue(Text.ATTR_COLOR, new Color(AppPreferences.TEXT_TOOL_COLOR.get()));
+    attrs.setValue(Text.ATTR_COLOR, CanvasStyle.newTextColor());
   }
 
   @Override
@@ -253,6 +256,18 @@ public class TextTool extends Tool implements PropertyChangeListener {
     }
   }
 
+  /**
+   * Reports and returns whether editing text would change something locked: {@code comp}'s label,
+   * or, with {@code comp} null, the circuit by adding new text to it.
+   */
+  private static boolean refuseLocked(Project proj, Circuit circ, Component comp) {
+    final var locked = comp == null ? circ.isEditLocked() : circ.isEditLockedFor(comp);
+    if (!locked) return false;
+    final var lockedComp = comp != null && !circ.isEditLocked() ? comp : null;
+    proj.reportRefusedEdit(new EditLockedException(circ, lockedComp));
+    return true;
+  }
+
   @Override
   public void mousePressed(Canvas canvas, Graphics g, MouseEvent e) {
     final var proj = canvas.getProject();
@@ -295,6 +310,10 @@ public class TextTool extends Tool implements PropertyChangeListener {
       final var editable = (TextEditable) comp.getFeature(TextEditable.class);
       if (editable != null) {
         caret = editable.getTextCaret(event);
+        if (caret != null && refuseLocked(proj, circ, comp)) {
+          caret = null;
+          return;
+        }
         if (caret != null) {
           proj.getFrame().viewComponentAttributes(circ, comp);
           caretComponent = comp;
@@ -310,6 +329,10 @@ public class TextTool extends Tool implements PropertyChangeListener {
         final var editable = (TextEditable) comp.getFeature(TextEditable.class);
         if (editable != null) {
           caret = editable.getTextCaret(event);
+          if (caret != null && refuseLocked(proj, circ, comp)) {
+            caret = null;
+            return;
+          }
           if (caret != null) {
             proj.getFrame().viewComponentAttributes(circ, comp);
             caretComponent = comp;
@@ -323,7 +346,9 @@ public class TextTool extends Tool implements PropertyChangeListener {
     // if nothing found, create a new label
     if (caret == null) {
       if (loc.getX() < 0 || loc.getY() < 0) return;
+      if (refuseLocked(proj, circ, null)) return;
       final var copy = (AttributeSet) attrs.clone();
+      ProjectStyle.applyToNewText(proj.getOptions(), copy);
       caretComponent = Text.FACTORY.createComponent(loc, copy);
       caretCreatingText = true;
       final var editable = (TextEditable) caretComponent.getFeature(TextEditable.class);
@@ -369,7 +394,7 @@ public class TextTool extends Tool implements PropertyChangeListener {
   @Override
   public void propertyChange(PropertyChangeEvent event) {
     if (AppPreferences.TEXT_TOOL_COLOR.isSource(event)) {
-      attrs.setValue(Text.ATTR_COLOR, new Color(AppPreferences.TEXT_TOOL_COLOR.get()));
+      attrs.setValue(Text.ATTR_COLOR, CanvasStyle.newTextColor());
     }
   }
 

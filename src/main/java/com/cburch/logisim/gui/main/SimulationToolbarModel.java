@@ -16,6 +16,7 @@ import com.cburch.draw.toolbar.ToolbarItem;
 import com.cburch.logisim.gui.icons.SimulationIcon;
 import com.cburch.logisim.gui.menu.LogisimMenuBar;
 import com.cburch.logisim.gui.menu.MenuListener;
+import com.cburch.logisim.gui.theme.AppIcons;
 import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.util.UnmodifiableList;
 import java.util.List;
@@ -23,10 +24,12 @@ import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
 public class SimulationToolbarModel extends AbstractToolbarModel implements ChangeListener {
-  private static final SimulationIcon RunToggleIcon = new SimulationIcon(SimulationIcon.SIM_PLAY);
-  private static final SimulationIcon EnableDisableIcon = new SimulationIcon(SimulationIcon.SIM_ENABLE);
+  // One per toolbar: each window shows the state of its own project's simulator.
+  private final SimulationIcon runToggleIcon = new SimulationIcon(SimulationIcon.SIM_PLAY);
+  private final SimulationIcon enableDisableIcon = new SimulationIcon(SimulationIcon.SIM_ENABLE);
   private final Project project;
   private final LogisimToolbarItem simRunToggle;
+  private final LogisimToolbarItem simReset;
   private final LogisimToolbarItem simStep;
   private final LogisimToolbarItem tickEnable;
   private final LogisimToolbarItem tickHalf;
@@ -38,7 +41,13 @@ public class SimulationToolbarModel extends AbstractToolbarModel implements Chan
 
     simRunToggle =
         new LogisimToolbarItem(
-            menu, RunToggleIcon, LogisimMenuBar.SIMULATE_RUN_TOGGLE, S.getter("simulateRunTip"));
+            menu, runToggleIcon, LogisimMenuBar.SIMULATE_RUN_TOGGLE, S.getter("simulateRunTip"));
+    simReset =
+        new LogisimToolbarItem(
+            menu,
+            AppIcons.get(AppIcons.Id.RESET),
+            LogisimMenuBar.SIMULATE_RESET,
+            S.getter("simulateResetTip"));
     simStep =
         new LogisimToolbarItem(
             menu,
@@ -48,7 +57,7 @@ public class SimulationToolbarModel extends AbstractToolbarModel implements Chan
     tickEnable =
         new LogisimToolbarItem(
             menu,
-            EnableDisableIcon,
+            enableDisableIcon,
             LogisimMenuBar.TICK_ENABLE,
             S.getter("simulateEnableTicksTip"));
     tickHalf =
@@ -67,7 +76,7 @@ public class SimulationToolbarModel extends AbstractToolbarModel implements Chan
     items =
         UnmodifiableList.create(
             new ToolbarItem[] {
-              simRunToggle, simStep, tickEnable, tickHalf, tickFull,
+              simRunToggle, simReset, simStep, tickEnable, tickHalf, tickFull,
             });
 
     menu.getMenuBar().addEnableListener(this);
@@ -81,7 +90,10 @@ public class SimulationToolbarModel extends AbstractToolbarModel implements Chan
 
   @Override
   public boolean isSelected(ToolbarItem item) {
-    return false;
+    // Auto-tick is a switch: show it held down while the clock is running.
+    if (item != tickEnable) return false;
+    final var sim = project.getSimulator();
+    return sim != null && sim.isAutoTicking();
   }
 
   @Override
@@ -97,17 +109,17 @@ public class SimulationToolbarModel extends AbstractToolbarModel implements Chan
     final var running = sim != null && sim.isAutoPropagating();
     final var ticking = sim != null && sim.isAutoTicking();
     if (running) {
-      RunToggleIcon.setType(SimulationIcon.SIM_PAUSE);
+      runToggleIcon.setType(SimulationIcon.SIM_PAUSE);
       simRunToggle.setToolTip(S.getter("simulateStopTip"));
     } else {
-      RunToggleIcon.setType(SimulationIcon.SIM_PLAY);
+      runToggleIcon.setType(SimulationIcon.SIM_PLAY);
       simRunToggle.setToolTip(S.getter("simulateRunTip"));
     }
     if (ticking) {
-      EnableDisableIcon.setType(SimulationIcon.SIM_DISABLE);
+      enableDisableIcon.setType(SimulationIcon.SIM_DISABLE);
       tickEnable.setToolTip(S.getter("simulateDisableTicksTip"));
     } else {
-      EnableDisableIcon.setType(SimulationIcon.SIM_ENABLE);
+      enableDisableIcon.setType(SimulationIcon.SIM_ENABLE);
       tickEnable.setToolTip(S.getter("simulateEnableTicksTip"));
     }
     fireToolbarAppearanceChanged();

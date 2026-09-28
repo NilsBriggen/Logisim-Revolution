@@ -80,7 +80,7 @@ public class FuzzyMatcherTest {
   public void testRanksTightMatchesHigher() {
     // The second candidate is an accidental acronym of the query; reading it literally must win.
     assertTrue(score("save", "Save") > score("save", "Save Appearance View Export"));
-    assertTrue(score("ei", "Export Image") > score("ei", "Revert Circuit"));
+    assertTrue(score("ei", "Export Image") > score("ei", "Edit Circuit"));
     assertTrue(score("print", "Print") > score("print", "Printer Setup Options"));
   }
 
@@ -101,6 +101,21 @@ public class FuzzyMatcherTest {
     // The deeper path costs something, but the capped penalty keeps the two close together.
     assertTrue(deep > 0);
     assertTrue(shallow - deep <= 15);
+  }
+
+  /** Letters picked up here and there inside words are not a match at all. */
+  @Test
+  public void testRejectsScatteredLetters() {
+    assertNull(FuzzyMatcher.match("xor", "Export Image"));
+    assertNull(FuzzyMatcher.match("xor", "Exponentiator"));
+    assertNull(FuzzyMatcher.match("dark", "Input/Output › Matrix Keypad"));
+    assertNull(FuzzyMatcher.match("ei", "Revert Circuit"));
+    // Still found: word starts, abbreviations and substrings.
+    assertNotNull(FuzzyMatcher.match("xor", "Gates › XOR Gate"));
+    assertNotNull(FuzzyMatcher.match("stats", "Get Circuit Statistics"));
+    assertNotNull(FuzzyMatcher.match("dmux", "Plexers › Demultiplexer"));
+    assertNotNull(FuzzyMatcher.match("plex", "Plexers › Multiplexer"));
+    assertNotNull(FuzzyMatcher.match("mux", "Plexers › Multiplexer"));
   }
 
   /** Adjacent matches score better than the same characters spread out over the candidate. */

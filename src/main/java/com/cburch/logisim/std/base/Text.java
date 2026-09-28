@@ -18,6 +18,7 @@ import com.cburch.logisim.data.AttributeSet;
 import com.cburch.logisim.data.Attributes;
 import com.cburch.logisim.data.Bounds;
 import com.cburch.logisim.data.Location;
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.gui.icons.TextIcon;
 import com.cburch.logisim.instance.Instance;
 import com.cburch.logisim.instance.InstanceFactory;
@@ -172,7 +173,7 @@ public class Text extends InstanceFactory {
     final var y = loc.getY();
     final var gfx = painter.getGraphics();
     gfx.translate(x, y);
-    gfx.setColor(painter.getAttributeValue(ATTR_COLOR));
+    gfx.setColor(CanvasStyle.textColor(painter.getAttributeValue(ATTR_COLOR)));
     paintGhost(painter);
     gfx.translate(-x, -y);
   }

@@ -13,6 +13,7 @@ import com.cburch.logisim.data.AbstractAttributeSet;
 import com.cburch.logisim.data.Attribute;
 import com.cburch.logisim.data.AttributeOption;
 import com.cburch.logisim.data.Bounds;
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.instance.StdAttr;
 
 import java.awt.Color;
@@ -36,7 +37,7 @@ public class TextAttributes extends AbstractAttributeSet {
   public TextAttributes() {
     text = "";
     font = StdAttr.DEFAULT_LABEL_FONT;
-    color = Color.BLACK;
+    color = CanvasStyle.SHIPPED_TEXT_COLOR;
     halign = Text.ATTR_HALIGN.parse("center");
     valign = Text.ATTR_VALIGN.parse("base");
     offsetBounds = null;

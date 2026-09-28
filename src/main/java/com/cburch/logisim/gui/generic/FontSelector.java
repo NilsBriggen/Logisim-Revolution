@@ -16,6 +16,7 @@ import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.util.JInputComponent;
 import com.cburch.logisim.util.LocaleListener;
 import com.cburch.logisim.util.LocaleManager;
+import com.cburch.logisim.util.Spacing;
 
 import java.awt.GraphicsEnvironment;
 import java.awt.Font;
@@ -61,6 +62,9 @@ public class FontSelector extends JPanel implements JInputComponent, ActionListe
     }
     setLayout(new BorderLayout());
     preview.setEditable(false);
+    // Wrapped, so the sample is read whole rather than cut off behind a horizontal scroll bar.
+    preview.setLineWrap(true);
+    preview.setWrapStyleWord(true);
     add(new JScrollPane(preview), BorderLayout.SOUTH);
     selectableFontFamilies = new JList(fontNames.toArray());
     selectableFontFamilies.addListSelectionListener(this);
@@ -73,8 +77,11 @@ public class FontSelector extends JPanel implements JInputComponent, ActionListe
     selectableFontSize.addListSelectionListener(this);
     add(new JScrollPane(selectableFontFamilies), BorderLayout.WEST);
     add(new JScrollPane(selectableFontSize), BorderLayout.CENTER);
-    add(new JScrollPane(getStyle()), BorderLayout.EAST);
-    LocaleManager.addLocaleListener(this);
+    // Two check boxes need no scroll pane; inside one, their column was clipped to its narrowest.
+    final var style = getStyle();
+    style.setBorder(Spacing.innerBorder());
+    add(style, BorderLayout.EAST);
+    LocaleManager.addLocaleListener(this, this);
     localeChanged();
   }
 

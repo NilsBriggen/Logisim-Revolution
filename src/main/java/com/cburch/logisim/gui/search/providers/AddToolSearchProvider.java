@@ -13,6 +13,7 @@ import static com.cburch.logisim.gui.Strings.S;
 
 import com.cburch.logisim.circuit.SubcircuitFactory;
 import com.cburch.logisim.comp.ComponentDrawContext;
+import com.cburch.logisim.file.LogisimFileActions;
 import com.cburch.logisim.gui.search.IndexedSearchProvider;
 import com.cburch.logisim.gui.search.SearchCandidate;
 import com.cburch.logisim.gui.search.SearchContext;
@@ -30,7 +31,10 @@ import java.util.List;
 import java.util.Set;
 import javax.swing.Icon;
 
-/** Offers the components in the current project's visible, open library hierarchy. */
+/**
+ * Offers the components in the current project's visible, open library hierarchy, and those of the
+ * built-in libraries it has not loaded yet.
+ */
 public class AddToolSearchProvider extends IndexedSearchProvider {
 
   @Override
@@ -57,7 +61,43 @@ public class AddToolSearchProvider extends IndexedSearchProvider {
         candidates,
         ancestors,
         true);
+    collectUnloadedBuiltins(project, getDisplayName(), candidates);
     return candidates;
+  }
+
+  /**
+   * Offers the components of built-in libraries the project has not loaded yet (such as System On a
+   * Chip), so they can be found before the user knows which library to load. Choosing one loads its
+   * library (an undoable action, like Project › Load Library) and selects the component.
+   */
+  private static void collectUnloadedBuiltins(
+      Project project, String parentPath, List<SearchCandidate> candidates) {
+    final var file = project.getLogisimFile();
+    final var loader = file.getLoader();
+    final var builtin = loader == null ? null : loader.getBuiltin();
+    if (builtin == null) return;
+    final var loaded = file.getLibraries();
+    for (final var library : builtin.getLibraries()) {
+      if (library.isHidden() || loaded.contains(library)) continue;
+      final var path = appendPath(parentPath, displayNameOf(library));
+      for (final var tool : library.getTools()) {
+        if (!(tool instanceof AddTool addTool)) continue;
+        candidates.add(
+            new SearchCandidate(
+                addTool.getDisplayName(),
+                path,
+                new ToolIcon(addTool),
+                S.get("searchLoadsLibraryHint"),
+                true,
+                () -> {
+                  final var current = project.getLogisimFile();
+                  if (!current.getLibraries().contains(library)) {
+                    project.doAction(LogisimFileActions.loadLibrary(library, current));
+                  }
+                  project.setTool(addTool);
+                }));
+      }
+    }
   }
 
   private static void collectFrom(
@@ -69,7 +109,9 @@ public class AddToolSearchProvider extends IndexedSearchProvider {
       boolean projectRoot) {
     if ((!projectRoot && library.isHidden()) || !ancestors.add(library)) return;
     try {
-      final var path = appendPath(parentPath, displayNameOf(library));
+      // The project's own name is on every one of its circuits, so matching it would make a search
+      // for a word in the file name return every circuit; it adds nothing to the breadcrumb.
+      final var path = projectRoot ? parentPath : appendPath(parentPath, displayNameOf(library));
       for (final var tool : library.getTools()) {
         if (tool instanceof AddTool addTool && isPlaceable(addTool, project)) {
           candidates.add(

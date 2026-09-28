@@ -311,6 +311,19 @@ public class CircuitState implements InstanceData {
     }
   }
 
+  /**
+   * Stops this state and its substates from listening to circuit changes. Only for temporary
+   * states (such as a clone made for one export) that are discarded afterwards.
+   */
+  public void detachFromCircuits() {
+    circuit.removeCircuitListener(myCircuitListener);
+    final CircuitState[] subs;
+    synchronized (dirtyLock) {
+      subs = substates.toArray(new CircuitState[0]);
+    }
+    for (final var sub : subs) sub.detachFromCircuits();
+  }
+
   public void drawOscillatingPoints(ComponentDrawContext context) {
     base.drawOscillatingPoints(context);
   }

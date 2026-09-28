@@ -145,8 +145,16 @@ public class KarnaughMapPanel extends JPanel implements BaseMouseMotionListenerC
   private int provisionalX;
   private int provisionalY;
   private Entry provisionalValue = null;
-  private final Font headerFont;
-  private final Font entryFont;
+  private Font headerFont;
+  private Font entryFont;
+  /** How much the map is enlarged to fill the room it has, and where it then starts. */
+  private double zoom = 1.0;
+  private int zoomX;
+  private int zoomY;
+  /** False while the panel shows a message (no output, too few inputs...) instead of a map. */
+  private boolean mapShown;
+  /** The map never grows beyond this factor of its natural size. */
+  static final double MAX_ZOOM = 4.0;
   private boolean isKMapLined;
   private Bounds kMapArea;
   private KMapInfo linedKMapInfo;
@@ -166,8 +174,7 @@ public class KarnaughMapPanel extends JPanel implements BaseMouseMotionListenerC
     super(new GridLayout(1, 1));
     completeExpression = expr;
     this.model = model;
-    entryFont = AppPreferences.getScaledFont(getFont());
-    headerFont = entryFont.deriveFont(Font.BOLD);
+    updateFonts();
     model.getOutputExpressions().addOutputExpressionsListener(myListener);
     model.getTruthTable().addTruthTableListener(myListener);
     setToolTipText(" ");
@@ -198,6 +205,41 @@ public class KarnaughMapPanel extends JPanel implements BaseMouseMotionListenerC
     Entry.DONT_CARE.addListener(this);
   }
 
+  private void updateFonts() {
+    entryFont = AppPreferences.getScaledFont(getFont());
+    headerFont = entryFont.deriveFont(Font.BOLD);
+  }
+
+  /** A new look and feel or interface scale: take the new fonts and measure again. */
+  @Override
+  public void updateUI() {
+    super.updateUI();
+    if (model == null) return; // called by the super constructor, before this one ran
+    updateFonts();
+    computePreferredSize();
+  }
+
+  /**
+   * The factor by which a map of natural size {@code natural} is enlarged to fill {@code room}:
+   * at least 1, at most {@link #MAX_ZOOM}, and the same in both directions.
+   */
+  static double zoomFor(Dimension natural, Dimension room) {
+    if (natural == null || natural.width <= 0 || natural.height <= 0) return 1.0;
+    final var fit =
+        Math.min(
+            (double) room.width / natural.width, (double) room.height / natural.height);
+    return Math.max(1.0, Math.min(MAX_ZOOM, fit));
+  }
+
+  /** The event's position in the map's own (unzoomed) coordinates. */
+  private int mapX(MouseEvent event) {
+    return (int) Math.floor((event.getX() - zoomX) / zoom);
+  }
+
+  private int mapY(MouseEvent event) {
+    return (int) Math.floor((event.getY() - zoomY) / zoom);
+  }
+
   private void computePreferredSize() {
     selInfo = null;
     final var g = (Graphics2D) getGraphics();
@@ -207,13 +249,14 @@ public class KarnaughMapPanel extends JPanel implements BaseMouseMotionListenerC
     if (output == null) {
       message = S.get("karnaughNoOutputError");
     } else if (table.getInputColumnCount() > MAX_VARS) {
-      message = S.get("karnaughTooManyInputsError");
+      message = S.get("karnaughTooManyInputsError", Integer.toString(MAX_VARS));
     } else if (table.getInputColumnCount() == 0) {
       message = S.get("karnaughNoInputsError");
     } else if (table.getInputColumnCount() == 1) {
       message = S.get("karnaughTooFewInputsError");
     }
 
+    mapShown = message == null;
     if (message != null) {
       if (g == null) {
         setPreferredSize(
@@ -422,8 +465,8 @@ public class KarnaughMapPanel extends JPanel implements BaseMouseMotionListenerC
     final var table = model.getTruthTable();
     final var inputs = table.getInputColumnCount();
     if (inputs >= ROW_VARS.length) return -1;
-    final var x = event.getX() - kMapArea.getX();
-    final var y = event.getY() - kMapArea.getY();
+    final var x = mapX(event) - kMapArea.getX();
+    final var y = mapY(event) - kMapArea.getY();
     if (x < 0 || y < 0) return -1;
     final var row = y / cellHeight;
     final var col = x / cellWidth;
@@ -451,12 +494,15 @@ public class KarnaughMapPanel extends JPanel implements BaseMouseMotionListenerC
             : entry.getErrorMessage() + "<br>");
     s.append(output).append(" = ").append(entry.getDescription());
     final var inputs = model.getInputs().bits;
-    if (inputs.isEmpty()) return "<html>" + s + "</html>";
-    s.append("<br>When:");
-    final var n = inputs.size();
-    for (var i = 0; i < MAX_VARS && i < inputs.size(); i++) {
-      s.append("<br/>&nbsp;&nbsp;&nbsp;&nbsp;").append(inputs.get(i)).append(" = ").append((row >> (n - i - 1)) & 1);
+    if (!inputs.isEmpty()) {
+      s.append("<br>When:");
+      final var n = inputs.size();
+      for (var i = 0; i < MAX_VARS && i < inputs.size(); i++) {
+        s.append("<br/>&nbsp;&nbsp;&nbsp;&nbsp;").append(inputs.get(i)).append(" = ").append((row >> (n - i - 1)) & 1);
+      }
     }
+    // A click edits the truth table itself, which is easy to do by accident.
+    s.append("<br><i>").append(S.get("kmapClickToChange")).append("</i>");
     return "<html>" + s + "</html>";
   }
 
@@ -471,7 +517,28 @@ public class KarnaughMapPanel extends JPanel implements BaseMouseMotionListenerC
 
   @Override
   public void paintComponent(Graphics gfx) {
-    paintKmap(gfx, true);
+    final var natural = getPreferredSize();
+    final var size = getSize();
+    // Only a map is enlarged; a message stays at text size, centred by paintKmap itself.
+    zoom = mapShown ? zoomFor(natural, size) : 1.0;
+    zoomX = mapShown ? Math.max(0, (int) ((size.width - natural.width * zoom) / 2)) : 0;
+    zoomY = mapShown ? Math.max(0, (int) ((size.height - natural.height * zoom) / 2)) : 0;
+    if (zoom == 1.0 && zoomX == 0 && zoomY == 0) {
+      paintKmap(gfx, true);
+      return;
+    }
+    final var g2 = (Graphics2D) gfx.create();
+    try {
+      final var ink = g2.getColor();
+      g2.setColor(getBackground());
+      g2.fillRect(0, 0, size.width, size.height);
+      g2.setColor(ink);
+      g2.translate(zoomX, zoomY);
+      g2.scale(zoom, zoom);
+      paintKmap(g2, true);
+    } finally {
+      g2.dispose();
+    }
   }
 
   public void paintKmap(Graphics gfx, boolean selectionBlock) {
@@ -495,7 +562,7 @@ public class KarnaughMapPanel extends JPanel implements BaseMouseMotionListenerC
     if (output == null) {
       message = S.get("karnaughNoOutputError");
     } else if (inputCount > MAX_VARS) {
-      message = S.get("karnaughTooManyInputsError");
+      message = S.get("karnaughTooManyInputsError", Integer.toString(MAX_VARS));
     } else if (inputCount == 0) {
       message = S.get("karnaughNoInputsError");
     } else if (inputCount == 1) {
@@ -1000,8 +1067,8 @@ public class KarnaughMapPanel extends JPanel implements BaseMouseMotionListenerC
   @Override
   public void mouseMoved(MouseEvent e) {
     if (kMapArea == null) return;
-    final var posX = e.getX();
-    final var posY = e.getY();
+    final var posX = mapX(e);
+    final var posY = mapY(e);
     if ((posX >= kMapArea.getX())
         && (posX <= kMapArea.getX() + kMapArea.getWidth())
         && (posY >= kMapArea.getY())

@@ -16,7 +16,10 @@ import com.cburch.logisim.circuit.SubcircuitFactory;
 import com.cburch.logisim.comp.ComponentDrawContext;
 import com.cburch.logisim.gui.icons.TreeIcon;
 import com.cburch.logisim.gui.main.Canvas;
+import com.cburch.logisim.gui.menu.ComponentHelp;
+import com.cburch.logisim.gui.menu.LogisimMenuBar;
 import com.cburch.logisim.gui.theme.Theme;
+import com.cburch.logisim.gui.theme.Tokens;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.proj.ProjectEvent;
@@ -75,6 +78,7 @@ public class ProjectExplorer extends JTree implements LocaleListener {
   private final MyListener myListener = new MyListener();
   private final MyCellRenderer renderer = new MyCellRenderer();
   private final DeleteAction deleteAction = new DeleteAction();
+  private final HelpAction helpAction = new HelpAction();
   private Listener listener = null;
   private Tool haloedTool = null;
 
@@ -100,13 +104,15 @@ public class ProjectExplorer extends JTree implements LocaleListener {
     InputMap imap = getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
     imap.put(KeyStroke.getKeyStroke(KeyEvent.VK_BACK_SPACE, 0), deleteAction);
     imap.put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), deleteAction);
+    imap.put(KeyStroke.getKeyStroke(KeyEvent.VK_F1, 0), helpAction);
     ActionMap amap = getActionMap();
     amap.put(deleteAction, deleteAction);
+    amap.put(helpAction, helpAction);
 
     proj.addProjectListener(myListener);
     AppPreferences.GATE_SHAPE.addPropertyChangeListener(myListener);
     AppPreferences.UI_ANTIALIASING.addPropertyChangeListener(myListener);
-    LocaleManager.addLocaleListener(this);
+    LocaleManager.addLocaleListener(this, this);
     refreshUiMetrics();
     Theme.addListener(this, this::refreshUiMetrics);
   }
@@ -126,7 +132,7 @@ public class ProjectExplorer extends JTree implements LocaleListener {
     renderer.setFont(font);
     renderer.setClosedIcon(new TreeIcon(true));
     renderer.setOpenIcon(new TreeIcon(false));
-    renderer.setIconTextGap(Spacing.xs());
+    renderer.setIconTextGap(Tokens.iconTextGap());
     final var textHeight = Math.max(getFontMetrics(font).getHeight(),
         getFontMetrics(UiFonts.bodyBold()).getHeight());
     final var iconHeight = Math.max(UiScale.scaled(AppPreferences.BOX_SIZE),
@@ -296,6 +302,35 @@ public class ProjectExplorer extends JTree implements LocaleListener {
         listener.deleteRequested(new Event(path));
       }
       ProjectExplorer.this.requestFocus();
+    }
+  }
+
+  /**
+   * F1 on the toolbox tree: prefers the selected component/tool's own help page, then falls back to
+   * the selected library's index page, and otherwise the Library Reference index.
+   */
+  private class HelpAction extends AbstractAction {
+
+    private static final long serialVersionUID = 1L;
+
+    @Override
+    public void actionPerformed(ActionEvent event) {
+      final var frame = proj.getFrame();
+      if (frame == null || !(frame.getJMenuBar() instanceof LogisimMenuBar menuBar)) return;
+      menuBar.help.showHelp(resolveTarget());
+    }
+
+    private String resolveTarget() {
+      final var tool = getSelectedTool();
+      if (tool != null) {
+        return ComponentHelp.getHelpTarget(tool, proj.getLogisimFile());
+      }
+      final var path = getSelectionPath();
+      final var last = path == null ? null : path.getLastPathComponent();
+      if (last instanceof ProjectExplorerLibraryNode libNode) {
+        return ComponentHelp.getHelpTarget(libNode.getValue());
+      }
+      return ComponentHelp.LIBRARY_REFERENCE_TARGET;
     }
   }
 

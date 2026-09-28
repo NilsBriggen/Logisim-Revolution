@@ -376,8 +376,10 @@ public class VariableTab extends AnalyzerTab {
         err = DUP_NAME;
       }
     }
-    if (err == OK || err == EMPTY) {
-      if (data.bits.size() + w > data.getMaximumSize()) {
+    if (err == OK || err == EMPTY || err == RESIZED) {
+      // Count bits, and do not count the bits of the variable being replaced.
+      final var otherBits = data.bits.size() - (oldVar == null ? 0 : oldVar.width);
+      if (otherBits + w > data.getMaximumSize()) {
         error.setText(S.get("variableMaximumError", "" + data.getMaximumSize()));
         err = TOO_WIDE;
       } else {
@@ -621,9 +623,14 @@ public class VariableTab extends AnalyzerTab {
           }
           w = (Integer) width.getSelectedItem();
           return false;
+        } else if (w > width.getItemCount()) {
+          // The width list stops at the smaller of the list's capacity and 32 bits.
+          error.setText(w > 32
+              ? S.get("variableTooMuchBits")
+              : S.get("variableMaximumError", "" + data.getMaximumSize()));
+          return false;
         } else {
           width.setSelectedIndex(w - 1);
-          w -= 1;
           field.setText(name);
         }
       } else {

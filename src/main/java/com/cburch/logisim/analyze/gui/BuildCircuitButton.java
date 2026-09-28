@@ -25,8 +25,11 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.TreeSet;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
@@ -220,10 +223,15 @@ class BuildCircuitButton extends JButton {
 
         if (dest != null && dest.getLogisimFile().getCircuit(name) != null) {
           final String[] choices = {S.get("buildReplaceNamedCircuit", name), S.get("buildCancel")};
+          var message = S.get("buildConfirmReplaceMessage", name);
+          final var users = circuitsUsing(dest.getLogisimFile().getCircuit(name));
+          if (!users.isEmpty()) {
+            message += "\n" + S.get("buildConfirmReplaceUsedBy", String.join(", ", users));
+          }
           final var choice =
               OptionPane.showOptionDialog(
                   parent,
-                  S.get("buildConfirmReplaceMessage", name),
+                  message,
                   S.get("buildConfirmReplaceTitle"),
                   OptionPane.YES_NO_OPTION,
                   OptionPane.WARNING_MESSAGE,
@@ -264,6 +272,15 @@ class BuildCircuitButton extends JButton {
   private final MyListener myListener = new MyListener();
   private final JFrame parent;
   private final AnalyzerModel model;
+
+  /** Names of the circuits that place circuit as a subcircuit, sorted, without repeats. */
+  static List<String> circuitsUsing(Circuit circuit) {
+    final var names = new TreeSet<String>();
+    for (final var user : circuit.getCircuitsUsingThis()) {
+      if (user != null && user != circuit) names.add(user.getName());
+    }
+    return new ArrayList<>(names);
+  }
 
   static String uniqueCircuitName(String base, Set<String> reserved) {
     final var names = new HashSet<String>();

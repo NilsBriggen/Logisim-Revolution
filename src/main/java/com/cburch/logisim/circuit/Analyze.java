@@ -103,6 +103,37 @@ public class Analyze {
     return null;
   }
 
+  /**
+   * Refuses to analyze a circuit, or any circuit it uses, that has a wire joining ends of different
+   * widths: the simulator leaves such nets at an error value, so the truth table would silently come
+   * out as all don't-cares.
+   *
+   * @throws AnalyzeException.WidthMismatch naming the circuit, the place and the widths involved.
+   */
+  public static void checkWidths(Circuit circuit) throws AnalyzeException {
+    checkWidths(circuit, new HashSet<>());
+  }
+
+  private static void checkWidths(Circuit circuit, Set<Circuit> visited) throws AnalyzeException {
+    if (!visited.add(circuit)) return;
+    final var problems = circuit.getWidthIncompatibilityData();
+    for (final var problem : problems == null ? Set.<WidthIncompatibilityData>of() : problems) {
+      if (problem.size() == 0) continue;
+      final var widths = new ArrayList<String>();
+      for (var i = 0; i < problem.size(); i++) {
+        final var width = Integer.toString(problem.getBitWidth(i).getWidth());
+        if (!widths.contains(width)) widths.add(width);
+      }
+      throw new AnalyzeException.WidthMismatch(
+          circuit.getName(), problem.getPoint(0).toString(), String.join(", ", widths));
+    }
+    for (final var comp : circuit.getNonWires()) {
+      if (comp.getFactory() instanceof SubcircuitFactory sub) {
+        checkWidths(sub.getSubcircuit(), visited);
+      }
+    }
+  }
+
   //
   // computeExpression
   //

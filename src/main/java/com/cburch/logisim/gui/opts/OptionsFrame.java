@@ -19,6 +19,7 @@ import com.cburch.logisim.gui.generic.LFrame;
 import com.cburch.logisim.gui.generic.OptionPane;
 import com.cburch.logisim.gui.generic.ScrollableForm;
 import com.cburch.logisim.gui.shell.PanelHeader;
+import com.cburch.logisim.gui.shell.SettingsIndex;
 import com.cburch.logisim.gui.shell.SettingsNav;
 import com.cburch.logisim.gui.theme.AppIcons;
 import com.cburch.logisim.gui.theme.Theme;
@@ -34,6 +35,7 @@ import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Dimension;
 import java.util.Arrays;
+import java.util.List;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
@@ -71,7 +73,10 @@ public class OptionsFrame extends LFrame.Dialog {
     // held a single button, in a window fixed at 450x300 whose tab names did not fit.
     panels =
         new OptionsPanel[] {
-          new SimulateOptions(this), new ToolbarOptions(this), new MouseOptions(this)
+          new SimulateOptions(this),
+          new StyleOptions(this),
+          new ToolbarOptions(this),
+          new MouseOptions(this)
         };
     forms = new ScrollableForm[panels.length];
     for (var index = 0; index < panels.length; index++) {
@@ -94,7 +99,7 @@ public class OptionsFrame extends LFrame.Dialog {
     split.setResizeWeight(0.0);
 
     getContentPane().add(split, BorderLayout.CENTER);
-    LocaleManager.addLocaleListener(myListener);
+    LocaleManager.addLocaleListener(this, myListener);
     myListener.localeChanged();
     showPage(0);
     updateWindowSize(true);
@@ -106,7 +111,10 @@ public class OptionsFrame extends LFrame.Dialog {
     nav.setPreferredSize(new Dimension(UiScale.scaled(NAV_WIDTH), 0));
     nav.setMinimumSize(new Dimension(UiScale.scaled(120), 0));
     ScrollableForm.sizeWindow(
-        this, new Dimension(720, 460), new Dimension(560, 340), initial);
+        this,
+        ScrollableForm.windowSizeFor(panels, NAV_WIDTH, new Dimension(720, 460), 1000),
+        new Dimension(560, 340),
+        initial);
     if (initial || layoutScale != UiScale.factor()) {
       split.setDividerLocation(Math.min(UiScale.scaled(NAV_WIDTH), getWidth() / 3));
     }
@@ -152,6 +160,42 @@ public class OptionsFrame extends LFrame.Dialog {
     pageHeader.setSubtitle("");
     nav.setSelectedIndex(index);
     nav.revealMatch(panels[index]);
+  }
+
+  /** Opens a page by position, for the development snapshot tool. */
+  public void showPageForSnapshot(int index) {
+    nav.clearFilter();
+    showPage(index);
+  }
+
+  /** The number of pages, for the development snapshot tool. */
+  public int getPageCount() {
+    return panels.length;
+  }
+
+  /**
+   * The search index of every page, in page order: each page's search text and its individual
+   * controls with their current values.
+   */
+  public List<SettingsIndex.Page> indexSettings() {
+    return Arrays.stream(panels)
+        .map(
+            panel ->
+                new SettingsIndex.Page(
+                    panel.getTitle(), searchPage(panel).text(), SettingsIndex.collect(panel)))
+        .toList();
+  }
+
+  /**
+   * Shows this window at the page at {@code index}. A {@code control} that is not null, one of
+   * those {@link #indexSettings()} listed for the page, is scrolled into view and focused.
+   */
+  public void showSetting(int index, JComponent control) {
+    nav.clearFilter();
+    showPage(index);
+    setVisible(true);
+    toFront();
+    if (control != null) SettingsIndex.reveal(control);
   }
 
   static SettingsNav.SearchPage searchPage(OptionsPanel panel) {

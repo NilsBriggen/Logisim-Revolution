@@ -49,6 +49,14 @@ public abstract class Attribute<V> {
     return getCellEditor(value);
   }
 
+  /**
+   * The editor for a value that belongs to {@code context}, for attributes whose text depends on
+   * other attributes of the same set (see {@link #toDisplayString(Object, AttributeSet)}).
+   */
+  public java.awt.Component getCellEditor(Window source, V value, AttributeSet context) {
+    return getCellEditor(source, value);
+  }
+
   public String getDisplayName() {
     return (displayName != null) ? displayName.toString() : name;
   }
@@ -80,6 +88,15 @@ public abstract class Attribute<V> {
   }
 
   public abstract V parse(String value);
+
+  /**
+   * The text shown for a value that belongs to {@code context}. Most attributes do not care; one
+   * whose presentation follows another attribute of the same set (a pin's reset value follows the
+   * pin's radix) overrides this. {@link #parse(String)} must accept what this returns.
+   */
+  public String toDisplayString(V value, AttributeSet context) {
+    return toDisplayString(value);
+  }
 
   public String toDisplayString(V value) {
     return value == null ? "" : value.toString();

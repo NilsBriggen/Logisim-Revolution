@@ -17,10 +17,8 @@ import com.cburch.logisim.file.LogisimFileActions;
 import com.cburch.logisim.gui.generic.OptionPane;
 import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.tools.Library;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.jar.JarFile;
 import javax.swing.JFileChooser;
 import javax.swing.JList;
 import javax.swing.JMenu;
@@ -100,29 +98,10 @@ public class ProjectLibraryActions {
     int check = chooser.showOpenDialog(proj.getFrame());
     if (check == JFileChooser.APPROVE_OPTION) {
       final var f = chooser.getSelectedFile();
-      String className = null;
-
-      // try to retrieve the class name from the "Library-Class"
-      // attribute in the manifest. This section of code was contributed
-      // by Christophe Jacquet (Request Tracker #2024431).
-      try (final var jarFile = new JarFile(f)) {
-        final var manifest = jarFile.getManifest();
-        className = manifest.getMainAttributes().getValue("Library-Class");
-      } catch (IOException e) {
-        // if opening the JAR file failed, do nothing
-      }
-
-      // if the class name was not found, go back to the good old dialog
-      if (className == null) {
-        className =
-            OptionPane.showInputDialog(
-                proj.getFrame(),
-                S.get("jarClassNamePrompt"),
-                S.get("jarClassNameTitle"),
-                OptionPane.QUESTION_MESSAGE);
-        // if user canceled selection, abort
-        if (className == null) return;
-      }
+      // The manifest's "Library-Class" attribute (contributed by Christophe Jacquet, Request
+      // Tracker #2024431), or else the user's pick among the classes in the JAR.
+      final var className = loader.askJarLibraryClass(f);
+      if (className == null) return;
 
       final var lib = loader.loadJarLibrary(f, className);
       if (lib != null) {

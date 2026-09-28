@@ -307,8 +307,11 @@ public class LeftPanel extends JTable {
   }
 
   public void changeSpotlight(Signal oldSignal, Signal newSignal) {
-    if (oldSignal != null) tableModel.fireTableRowsUpdated(oldSignal.idx, oldSignal.idx);
-    if (newSignal != null) tableModel.fireTableRowsUpdated(newSignal.idx, newSignal.idx);
+    final var n = model.getSignalCount();
+    for (final var signal : new Signal[] {oldSignal, newSignal}) {
+      if (signal == null || signal.idx >= n || model.getSignal(signal.idx) != signal) continue;
+      tableModel.fireTableRowsUpdated(signal.idx, signal.idx);
+    }
   }
 
   public void updateSignals() {

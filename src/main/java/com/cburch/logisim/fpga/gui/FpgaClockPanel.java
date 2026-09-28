@@ -191,23 +191,36 @@ public class FpgaClockPanel extends JPanel implements ActionListener, LocaleList
   }
 
   public double getPreMultiplierValue() {
-    double preMultiplierVal = 1.0;
-    try {
-      preMultiplierVal = Double.parseDouble(this.preMultiplier.getText());
-    } catch (NumberFormatException e) {
-      this.preMultiplier.setText("1.0");
-    }
-    return preMultiplierVal;
+    return readScalingFactor(preMultiplier);
   }
 
   public double getPreDividerValue() {
-    double preDividerVal = 1.0;
-    try {
-      preDividerVal = Double.parseDouble(this.preDivider.getText());
-    } catch (NumberFormatException e) {
-      this.preDivider.setText("1.0");
+    return readScalingFactor(preDivider);
+  }
+
+  private static double readScalingFactor(JTextField field) {
+    final var value = parseScalingFactor(field.getText());
+    if (Double.isNaN(value)) {
+      field.setText("1.0");
+      return 1.0;
     }
-    return preDividerVal;
+    return value;
+  }
+
+  /**
+   * Parses a clock pre-multiplier or pre-divider. Only finite values above zero make sense (a zero
+   * multiplier scales the clock to 0 Hz, a zero divider divides by zero).
+   *
+   * @return the factor, or {@code NaN} when the text is not a usable factor
+   */
+  static double parseScalingFactor(String text) {
+    if (text == null) return Double.NaN;
+    try {
+      final var value = Double.parseDouble(text.trim());
+      return (Double.isFinite(value) && value > 0) ? value : Double.NaN;
+    } catch (NumberFormatException e) {
+      return Double.NaN;
+    }
   }
 
   public double getSynthesizedFrequency() {

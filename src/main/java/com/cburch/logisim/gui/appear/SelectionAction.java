@@ -12,6 +12,8 @@ package com.cburch.logisim.gui.appear;
 import com.cburch.draw.model.CanvasModel;
 import com.cburch.draw.model.CanvasObject;
 import com.cburch.draw.util.ZOrder;
+import com.cburch.logisim.circuit.Circuit;
+import com.cburch.logisim.circuit.EditLockedException;
 import com.cburch.logisim.circuit.appear.AppearanceAnchor;
 import com.cburch.logisim.data.Direction;
 import com.cburch.logisim.data.Location;
@@ -25,6 +27,7 @@ import java.util.Map;
 class SelectionAction extends Action {
   private final StringGetter displayName;
   private final AppearanceCanvas canvas;
+  private final Circuit circuit;
   private final CanvasModel canvasModel;
   private final Map<CanvasObject, Integer> toRemove;
   private final Collection<CanvasObject> toAdd;
@@ -44,6 +47,7 @@ class SelectionAction extends Action {
       Location anchorLocation,
       Direction anchorFacing) {
     this.canvas = canvas;
+    this.circuit = canvas.getCircuit();
     this.canvasModel = canvas.getModel();
     this.displayName = displayName;
     this.toRemove = toRemove == null ? null : ZOrder.getZIndex(toRemove, canvasModel);
@@ -56,6 +60,7 @@ class SelectionAction extends Action {
 
   @Override
   public void doIt(Project proj) {
+    if (circuit.isEditLocked()) throw new EditLockedException(circuit, null);
     final var sel = canvas.getSelection();
     sel.clearSelected();
     if (toRemove != null) canvasModel.removeObjects(toRemove.keySet());

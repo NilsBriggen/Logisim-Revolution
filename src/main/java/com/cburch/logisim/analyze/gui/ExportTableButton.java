@@ -12,6 +12,7 @@ package com.cburch.logisim.analyze.gui;
 import static com.cburch.logisim.analyze.Strings.S;
 
 import com.cburch.logisim.analyze.file.TruthtableCsvFile;
+import com.cburch.logisim.analyze.file.TruthtableFileFilter;
 import com.cburch.logisim.analyze.file.TruthtableTextFile;
 import com.cburch.logisim.analyze.model.AnalyzerModel;
 import com.cburch.logisim.circuit.Circuit;
@@ -42,6 +43,12 @@ public class ExportTableButton extends JButton {
 
   private File lastFile = null;
 
+  /** Appends {@code extension} to {@code file}'s name if it isn't already present. */
+  static File withExtension(File file, String extension) {
+    if (file.getName().toLowerCase().endsWith(extension.toLowerCase())) return file;
+    return new File(file.getParentFile(), file.getName() + extension);
+  }
+
   void doSave() {
     if (lastFile == null) {
       Circuit c = model.getCurrentCircuit();
@@ -55,7 +62,10 @@ public class ExportTableButton extends JButton {
     chooser.setFileFilter(TruthtableTextFile.FILE_FILTER);
     final var choice = chooser.showSaveDialog(parent);
     if (choice == JFileChooser.APPROVE_OPTION) {
-      final var file = chooser.getSelectedFile();
+      var file = chooser.getSelectedFile();
+      if (chooser.getFileFilter() instanceof TruthtableFileFilter fileFilter) {
+        file = withExtension(file, fileFilter.getExtension());
+      }
       if (file.isDirectory()) {
         OptionPane.showMessageDialog(
             parent,
@@ -93,7 +103,7 @@ public class ExportTableButton extends JButton {
           OptionPane.showMessageDialog(
               parent,
               S.get("DoNotKnowHowto", fileName),
-              S.get("openErrorTitle"),
+              S.get("saveErrorTitle"),
               OptionPane.ERROR_MESSAGE);
           return;
         }

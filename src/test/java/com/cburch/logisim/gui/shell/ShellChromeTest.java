@@ -28,12 +28,12 @@ import java.awt.event.KeyEvent;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import javax.accessibility.AccessibleState;
 import javax.swing.AbstractButton;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JSeparator;
-import javax.swing.JToggleButton;
 import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
@@ -46,16 +46,22 @@ class ShellChromeTest {
     SwingUtilities.invokeAndWait(() -> {
       final var content = new JPanel();
       final var section = new SectionPanel("Register state", content, false);
-      final var heading = components(section, JToggleButton.class).get(0);
+      final var heading = components(section, AbstractButton.class).get(0);
       assertEquals("Register state", heading.getAccessibleContext().getAccessibleName());
       assertFalse(content.isVisible());
       activate(heading, KeyEvent.VK_SPACE);
       assertTrue(section.isExpanded());
       assertTrue(content.isVisible());
-      assertTrue(heading.isSelected());
+      // Expansion is not shown as "selected", which the look and feel fills grey behind muted
+      // heading text; it is reported as an accessible state instead.
+      assertFalse(heading.isSelected());
+      final var states = heading.getAccessibleContext().getAccessibleStateSet();
+      assertTrue(states.contains(AccessibleState.EXPANDABLE));
+      assertTrue(states.contains(AccessibleState.EXPANDED));
       activate(heading, KeyEvent.VK_ENTER);
       assertFalse(section.isExpanded());
-      assertFalse(heading.isSelected());
+      assertTrue(
+          heading.getAccessibleContext().getAccessibleStateSet().contains(AccessibleState.COLLAPSED));
 
       final var invoked = new AtomicInteger();
       final var activity = new ActivityBar();
@@ -87,7 +93,9 @@ class ShellChromeTest {
   @Test
   void existingChromeRemeasuresFontsPaddingAndBoundsAcrossLiveScaleChanges() throws Exception {
     SwingUtilities.invokeAndWait(() -> {
-      final var originalScale = UiScale.factor();
+      // Restore FlatLaf's zoom itself: re-deriving it from a factor after the font changed back
+      // leaves the next test at a slightly different scale.
+      final var originalZoom = com.formdev.flatlaf.util.UIScale.getZoomFactor();
       final var originalFont = UIManager.get("Label.font");
       final var root = new JPanel();
       final var activity = new ActivityBar();
@@ -115,7 +123,7 @@ class ShellChromeTest {
           assertEquals(UiScale.scaled(44), activityButton.getPreferredSize().width);
           assertEquals(activityButton.getPreferredSize(), activityButton.getMaximumSize());
           assertEquals(activityButton.getPreferredSize(), activityButton.getMinimumSize());
-          final var heading = components(section, JToggleButton.class).get(0);
+          final var heading = components(section, AbstractButton.class).get(0);
           assertEquals(UiFonts.small(), heading.getFont());
           assertEquals(Spacing.XS / 2, heading.getMargin().top,
               "native button margins must stay logical");
@@ -145,7 +153,7 @@ class ShellChromeTest {
       } finally {
         root.removeNotify();
         UIManager.put("Label.font", originalFont);
-        UiScale.setFactor(originalScale);
+        com.formdev.flatlaf.util.UIScale.setZoomFactor(originalZoom);
       }
     });
   }

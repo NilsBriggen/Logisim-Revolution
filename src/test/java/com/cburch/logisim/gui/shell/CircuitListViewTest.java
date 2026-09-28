@@ -9,7 +9,9 @@
 
 package com.cburch.logisim.gui.shell;
 
+import static com.cburch.logisim.gui.Strings.S;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -20,8 +22,10 @@ import com.cburch.logisim.file.LogisimFile;
 import com.cburch.logisim.proj.Project;
 import java.awt.Component;
 import java.awt.Container;
+import java.util.ArrayList;
 import javax.swing.JLabel;
 import javax.swing.JList;
+import javax.swing.JMenuItem;
 import javax.swing.SwingUtilities;
 import org.junit.jupiter.api.Test;
 
@@ -82,6 +86,55 @@ class CircuitListViewTest {
         assertEquals(0, list.getSelectedIndex());
         file.addCircuit(second);
         assertEquals(2, list.getModel().getSize(), "reattached view did not resume listening");
+      } finally {
+        view.removeNotify();
+        project.getSimulator().shutDown();
+      }
+    });
+  }
+
+  @Test
+  void contextMenuOffersAppearanceAndDoesNotSwitchTheOpenCircuit() throws Exception {
+    SwingUtilities.invokeAndWait(() -> {
+      final var file = LogisimFile.createNew(new Loader(null), null);
+      file.stopAutosaveThread(false);
+      final var project = new Project(file);
+      final var view = new CircuitListView(project);
+      try {
+        final var main = project.getCurrentCircuit();
+        final var second = new Circuit("second", file, project);
+        file.addCircuit(second);
+        final var list = findList(view);
+
+        final var menu = view.buildPopup(1);
+        assertSame(main, project.getCurrentCircuit(), "right-click must not open the circuit");
+        assertEquals(1, list.getSelectedIndex());
+        final var labels = new ArrayList<String>();
+        JMenuItem remove = null;
+        for (final var child : menu.getComponents()) {
+          if (child instanceof JMenuItem item) {
+            labels.add(item.getText());
+            if (item.getText().equals(S.get("projectRemoveCircuitItem"))) remove = item;
+          }
+        }
+        assertTrue(labels.contains(S.get("projectEditCircuitLayoutItem")));
+        assertTrue(labels.contains(S.get("projectEditCircuitAppearanceItem")));
+        assertTrue(remove != null && remove.isEnabled());
+
+        final var mainMenu = view.buildPopup(0);
+        for (final var child : mainMenu.getComponents()) {
+          if (child instanceof JMenuItem item
+              && item.getText().equals(S.get("projectRemoveCircuitItem"))) {
+            assertTrue(item.isEnabled(), "two circuits: either may be removed");
+          }
+        }
+        file.removeCircuit(second);
+        for (final var child : view.buildPopup(0).getComponents()) {
+          if (child instanceof JMenuItem item
+              && item.getText().equals(S.get("projectRemoveCircuitItem"))) {
+            assertFalse(item.isEnabled(), "the last circuit cannot be removed");
+          }
+        }
       } finally {
         view.removeNotify();
         project.getSimulator().shutDown();

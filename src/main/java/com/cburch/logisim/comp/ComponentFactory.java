@@ -37,6 +37,15 @@ public interface ComponentFactory extends AttributeDefaultProvider {
 
   AttributeSet createAttributeSet();
 
+  /**
+   * The attributes a new tool for this factory starts with, so the ones newly placed components
+   * get. Unlike {@link #createAttributeSet()} it is never used when reading a file, so it can
+   * differ from the defaults that attributes missing from a saved file fall back to.
+   */
+  default AttributeSet createToolAttributeSet() {
+    return createAttributeSet();
+  }
+
   Component createComponent(Location loc, AttributeSet attrs);
 
   void removeComponent(Circuit circ, Component c, CircuitState state);

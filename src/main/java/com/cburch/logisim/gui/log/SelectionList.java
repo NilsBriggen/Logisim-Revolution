@@ -9,10 +9,14 @@
 
 package com.cburch.logisim.gui.log;
 
+import static com.cburch.logisim.gui.Strings.S;
+
 import com.cburch.logisim.circuit.RadixOption;
 import com.cburch.logisim.gui.theme.AppIcons;
+import com.cburch.logisim.gui.theme.Tokens;
 import com.cburch.logisim.util.CollectionUtil;
-import java.awt.Color;
+import com.cburch.logisim.util.UiFonts;
+import com.cburch.logisim.util.UiScale;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
@@ -112,7 +116,7 @@ public class SelectionList extends JTable {
     final JPanel panel = new JPanel();
     final JLabel label = new JLabel();
     final JButton button = new JButton(AppIcons.get(AppIcons.Id.CHEVRON_DOWN));
-    final JPopupMenu popup = new JPopupMenu("Options");
+    final JPopupMenu popup = new JPopupMenu(S.get("logSelectionOptions"));
     SignalInfo item;
     SignalInfo.List items;
     final Map<RadixOption, JRadioButtonMenuItem> radixMenuItems = new HashMap<>();
@@ -139,7 +143,7 @@ public class SelectionList extends JTable {
       }
 
       popup.addSeparator();
-      final var m = new JMenuItem("Delete");
+      final var m = new JMenuItem(S.get("logSelectionDelete"));
       popup.add(m);
       m.addActionListener(
           e -> {
@@ -149,7 +153,7 @@ public class SelectionList extends JTable {
 
       button.setMargin(new Insets(0, 0, 0, 0));
       button.setHorizontalTextPosition(SwingConstants.LEFT);
-      button.setText("Options");
+      button.setText(S.get("logSelectionOptions"));
       button.addActionListener(e -> popup.show(panel, button.getX(), button.getY() + button.getHeight()));
       button.setMinimumSize(button.getPreferredSize());
 
@@ -183,6 +187,11 @@ public class SelectionList extends JTable {
       if (!items.contains(item)) {
         items.clear();
         items.add(item);
+      }
+      for (final var entry : radixMenuItems.entrySet()) {
+        var fits = true;
+        for (final var s : items) fits &= SignalInfo.radixFits(entry.getKey(), s.getWidth());
+        entry.getValue().setVisible(fits);
       }
       radixMenuItems.get(item.getRadix()).setSelected(true);
       label.setIcon(item.icon);
@@ -333,8 +342,6 @@ public class SelectionList extends JTable {
     addOrMove(items, logModel.getSignalCount());
   }
 
-  private static final Font MSG_FONT = new Font(Font.SANS_SERIF, Font.ITALIC, 12);
-
   @Override
   public void paintComponent(Graphics g) {
     super.paintComponent(g);
@@ -346,9 +353,12 @@ public class SelectionList extends JTable {
 
     final var f = g.getFont();
     final var c = g.getColor();
-    g.setColor(Color.GRAY);
-    g.setFont(MSG_FONT);
-    g.drawString("drag here to add", 10, getRowHeight() * getRowCount() + 20);
+    g.setColor(Tokens.mutedForeground());
+    // Scaled with the interface, like every other piece of text in the window.
+    final var font = UiFonts.small().deriveFont(Font.ITALIC);
+    g.setFont(font);
+    g.drawString(S.get("selectionDropHint"), UiScale.scaled(10),
+        getRowHeight() * getRowCount() + g.getFontMetrics(font).getHeight() + UiScale.scaled(4));
     g.setFont(f);
     g.setColor(c);
   }

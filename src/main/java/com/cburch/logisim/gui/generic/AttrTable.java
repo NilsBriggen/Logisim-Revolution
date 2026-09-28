@@ -48,6 +48,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.KeyStroke;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
@@ -75,6 +76,7 @@ public class AttrTable extends JPanel implements LocaleListener {
   private final TableModelAdapter tableModel;
   private final CellEditor editor = new CellEditor();
   private boolean titleEnabled;
+  private Runnable titleListener = () -> {};
 
   public AttrTable(Window parent) {
     super(new BorderLayout());
@@ -94,12 +96,21 @@ public class AttrTable extends JPanel implements LocaleListener {
       }
 
       @Override
+      public void doLayout() {
+        fitLabelColumn(this);
+        super.doLayout();
+      }
+
+      @Override
       public void editingStopped(ChangeEvent event) {
         // CellEditor commits its captured transaction before notifying JTable.
         removeEditor();
       }
     };
     table.setDefaultEditor(Object.class, editor);
+    // Enter edits the selected property, as F2 does, rather than silently moving down a row.
+    table.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
+        .put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "startEditing");
     table.setTableHeader(null);
     table.setDefaultRenderer(String.class, new HdlColorRenderer());
     table.addMouseWheelListener(this::handleMouseWheel);
@@ -119,7 +130,7 @@ public class AttrTable extends JPanel implements LocaleListener {
 
     this.add(propPanel, BorderLayout.CENTER);
 
-    LocaleManager.addLocaleListener(this);
+    LocaleManager.addLocaleListener(this, this);
     localeChanged();
     refreshUiMetrics();
     Theme.addListener(this, this::refreshUiMetrics);
@@ -306,7 +317,17 @@ public class AttrTable extends JPanel implements LocaleListener {
     tableModel.fireTableChanged();
   }
 
+  /**
+   * Runs {@code listener} whenever the shown model or its title changes, for a heading kept
+   * outside the table. The appearance editor swaps models without going through the frame, so
+   * such a heading cannot rely on its own calls to {@link #setAttrTableModel}.
+   */
+  public void setTitleListener(Runnable listener) {
+    titleListener = listener == null ? () -> {} : listener;
+  }
+
   private void updateTitle() {
+    titleListener.run();
     if (titleEnabled) {
       final var text = tableModel.attrModel.getTitle();
       if (text == null) {
@@ -320,12 +341,24 @@ public class AttrTable extends JPanel implements LocaleListener {
     }
   }
 
+  /**
+   * The title of the picker for an attribute: the attribute's name.
+   *
+   * <p>Every picker, font and colour alike, used to be titled "Select Value", which did not say
+   * what was being chosen.
+   */
+  static String pickerTitle(String attributeName) {
+    final var name = attributeName == null ? "" : attributeName.strip();
+    final var trimmed = name.endsWith(":") ? name.substring(0, name.length() - 1).strip() : name;
+    return trimmed.isEmpty() ? S.get("attributeDialogTitle") : trimmed;
+  }
+
   private static class MyDialog extends JDialogOk {
     JInputComponent input;
     Object value;
 
-    public MyDialog(JInputComponent input) {
-      super(S.get("attributeDialogTitle"));
+    public MyDialog(JInputComponent input, String attributeName) {
+      super(pickerTitle(attributeName));
       configure(input);
     }
 
@@ -341,10 +374,16 @@ public class AttrTable extends JPanel implements LocaleListener {
       // Hide the JFileChooser buttons, since we already have the
       // MyDialog ones
       if (input instanceof JFileChooser chooser) chooser.setControlButtonsAreShown(false);
+      // Shared pickers (the font selector is a single instance) are built once and may have missed
+      // a theme or scale change while not on screen; measure them in the current look.
+      SwingUtilities.updateComponentTreeUI((JComponent) input);
       p.add((JComponent) input, BorderLayout.CENTER);
       getContentPane().add(p, BorderLayout.CENTER);
 
       pack();
+      // Never smaller than its content, which it used to clip; larger if the user wants.
+      setMinimumSize(getSize());
+      setResizable(true);
     }
 
     public Object getValue() {
@@ -355,6 +394,37 @@ public class AttrTable extends JPanel implements LocaleListener {
     public void okClicked() {
       value = input.getValue();
     }
+  }
+
+  /** Least share of the width the attribute names get, however short they are. */
+  static final double MIN_LABEL_SHARE = 0.35;
+
+  /** Most of the width the attribute names may take, so every value stays usable. */
+  static final double MAX_LABEL_SHARE = 0.6;
+
+  /**
+   * Gives the name column the width of the longest attribute name, within limits, instead of half
+   * the table.
+   *
+   * <p>An even split elided names such as "Data bus implementation" at the inspector's default
+   * width while short values left half their column empty. Whatever is still cut off is offered
+   * in full as a tooltip by {@link #elidedCellText}.
+   */
+  static void fitLabelColumn(JTable table) {
+    if (table.getColumnCount() != 2 || table.getWidth() <= 0) return;
+    var widest = 0;
+    for (var row = 0; row < table.getRowCount(); row++) {
+      final var renderer = table.prepareRenderer(table.getCellRenderer(row, 0), row, 0);
+      widest = Math.max(widest, renderer.getPreferredSize().width);
+    }
+    final var total = table.getWidth();
+    final var label =
+        Math.max(
+            (int) (total * MIN_LABEL_SHARE),
+            Math.min((int) (total * MAX_LABEL_SHARE), widest + table.getIntercellSpacing().width));
+    final var columns = table.getColumnModel();
+    columns.getColumn(0).setPreferredWidth(label);
+    columns.getColumn(1).setPreferredWidth(total - label);
   }
 
   /**
@@ -419,6 +489,8 @@ public class AttrTable extends JPanel implements LocaleListener {
     boolean choiceChanged;
     boolean multiEditActive = false;
     boolean stoppedCellEditing = false;
+    /** Whether the edit being started should drop a list of choices open straight away. */
+    boolean openChoices = false;
 
     //
     // ActionListener methods
@@ -540,6 +612,13 @@ public class AttrTable extends JPanel implements LocaleListener {
       if (editor instanceof JComboBox box) {
         box.addActionListener(this);
         editor.addFocusListener(this);
+        // A click or Enter on a choice means "choose": without this the list needed one click
+        // to start editing, a second to open and a third to pick.
+        if (openChoices) {
+          SwingUtilities.invokeLater(() -> {
+            if (currentEditor == box && box.isShowing()) box.showPopup();
+          });
+        }
         rowIndexes = table.getSelectedRows();
         if (isSelected && row.supportsMultiEdit() && rowIndexes.length > 1) {
           multiEditActive = true;
@@ -570,7 +649,7 @@ public class AttrTable extends JPanel implements LocaleListener {
         }
         editor = null;
       } else if (editor instanceof JInputComponent input) {
-        final var dialog = new MyDialog(input);
+        final var dialog = new MyDialog(input, row.getLabel());
         dialog.setVisible(true);
         final var retVal = dialog.getValue();
         try {
@@ -604,6 +683,11 @@ public class AttrTable extends JPanel implements LocaleListener {
 
     @Override
     public boolean isCellEditable(EventObject anEvent) {
+      // Typing a character edits by typing; a click, Enter, F2 or Space means "show me".
+      openChoices = !(anEvent instanceof KeyEvent started)
+          || started.getKeyCode() == KeyEvent.VK_F2
+          || started.getKeyCode() == KeyEvent.VK_SPACE
+          || started.getKeyCode() == KeyEvent.VK_ENTER;
       if (anEvent instanceof KeyEvent key) {
         if (key.isMetaDown() || ((key.isControlDown() || key.isAltDown())
             && !key.isAltGraphDown())) return false;

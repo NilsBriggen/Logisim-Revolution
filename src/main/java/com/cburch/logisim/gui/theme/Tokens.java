@@ -11,6 +11,7 @@ package com.cburch.logisim.gui.theme;
 
 import com.cburch.logisim.util.Spacing;
 import com.cburch.logisim.util.UiFonts;
+import com.cburch.logisim.util.UiScale;
 import java.awt.Color;
 import javax.swing.UIManager;
 
@@ -33,7 +34,7 @@ public final class Tokens {
 
   /** The colour that marks the active thing: selection, current circuit, focus. */
   public static Color accent() {
-    return color("Logisim.accent", fallback(0x4C8DFF, 0x2F6FED));
+    return color("Logisim.accent", fallback(0x4C8DFF, 0x2463D1));
   }
 
   public static Color accentText() {
@@ -42,17 +43,17 @@ public final class Tokens {
 
   /** Something needs attention but still works. */
   public static Color warning() {
-    return color("Logisim.warning", fallback(0xF0B429, 0xB7791F));
+    return color("Logisim.warning", fallback(0xF0B429, 0x8A5A0C));
   }
 
   /** Something failed. */
   public static Color error() {
-    return color("Logisim.error", fallback(0xF87171, 0xDC2626));
+    return color("Logisim.error", fallback(0xF87171, 0xB42D2D));
   }
 
   /** Something succeeded. */
   public static Color success() {
-    return color("Logisim.success", fallback(0x4ADE80, 0x15803D));
+    return color("Logisim.success", fallback(0x4ADE80, 0x17703F));
   }
 
   public static Color activityBarBackground() {
@@ -102,9 +103,32 @@ public final class Tokens {
     return color("Logisim.icon.disabled", fallback(0x6E6E6E, 0xA6A6A6));
   }
 
+  /** The recessed well behind a print or export preview, which the white page stands out on. */
+  public static Color previewBackground() {
+    return color("Logisim.preview.background", fallback(0x181A1E, 0xE2E4E8));
+  }
+
   /** The ring drawn around a component the pointer is about to act on. */
   public static Color canvasHalo() {
     return color("Logisim.canvas.halo", accent());
+  }
+
+  /** Design-time gap, in logical pixels, between an icon and its text in a list or tree row. */
+  public static final int ICON_TEXT_GAP = 6;
+
+  /**
+   * The gap between an icon and its label in list and tree rows, scaled.
+   *
+   * <p>Every custom cell renderer uses this, so the toolbar editor's list no longer draws its tool
+   * icons touching their names while the explorer tree beside it leaves a gap.
+   */
+  public static int iconTextGap() {
+    return UiScale.scaled(ICON_TEXT_GAP);
+  }
+
+  /** Vertical padding, scaled, above and below the content of a list or tree row. */
+  public static int rowPadding() {
+    return Spacing.xs() / 2;
   }
 
   /** Reads {@code key}, or returns {@code fallback} when no theme is installed. */

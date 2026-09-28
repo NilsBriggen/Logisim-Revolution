@@ -9,6 +9,7 @@
 
 package com.cburch.logisim.circuit.appear;
 
+import java.awt.Font;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -28,7 +29,27 @@ public class DefaultCustomAppearance {
 
   private static final int OFFS = 50;
 
+  /** Font of the pin names in a labelled default; small enough for the 10-unit port pitch. */
+  private static final Font LABEL_FONT = new Font(Font.MONOSPACED, Font.PLAIN, 10);
+
+  /** Longest pin name, in characters, that fits on one side of the box. */
+  private static final int MAX_LABEL_LENGTH = 14;
+
+  /**
+   * The default custom appearance as it was before pin names were added: a plain box with the
+   * anchor on the first east port. Circuits read from a file keep it, so a file whose unedited
+   * custom appearance was never saved (it is regenerated on load) looks exactly as before.
+   */
   public static List<CanvasObject> build(Collection<Instance> pins) {
+    return build(pins, false);
+  }
+
+  /**
+   * Builds the default custom appearance. A labelled one names every port inside the box and puts
+   * the anchor on the box's top-left corner, where it covers no port and so cannot steal a click
+   * meant for the first output.
+   */
+  public static List<CanvasObject> build(Collection<Instance> pins, boolean labelled) {
     final var edge = new HashMap<Direction, List<Instance>>();
     edge.put(Direction.EAST, new ArrayList<>());
     edge.put(Direction.WEST, new ArrayList<>());
@@ -67,7 +88,10 @@ public class DefaultCustomAppearance {
     // compute position of anchor relative to top left corner of box
     int ax = 0;
     int ay = 0;
-    if (numEast > 0) { // anchor is on east side
+    if (labelled) { // anchor is the top left corner
+      ax = 0;
+      ay = 0;
+    } else if (numEast > 0) { // anchor is on east side
       ax = width;
       ay = 10;
     } else if (numWest > 0) { // anchor is on west side
@@ -82,11 +106,30 @@ public class DefaultCustomAppearance {
     final var ret = new ArrayList<CanvasObject>();
     placePins(ret, edge.get(Direction.WEST), rx, ry + 10, 0, 10);
     placePins(ret, edge.get(Direction.EAST), rx + width, ry + 10, 0, 10);
+    if (labelled) {
+      placeLabels(ret, edge.get(Direction.WEST), rx + 4, ry + 10, true);
+      placeLabels(ret, edge.get(Direction.EAST), rx + width - 4, ry + 10, false);
+    }
     final var rect = new Rectangle(rx, ry, width, height);
     rect.setValue(DrawAttr.STROKE_WIDTH, 1);
     ret.add(rect);
     ret.add(new AppearanceAnchor(Location.create(rx + ax, ry + ay, true)));
     return ret;
+  }
+
+  private static void placeLabels(List<CanvasObject> dest, List<Instance> pins, int x, int y, boolean left) {
+    for (final var pin : pins) {
+      var name = pin.getAttributeValue(StdAttr.LABEL);
+      if (name != null && !name.isEmpty()) {
+        if (name.length() > MAX_LABEL_LENGTH) name = name.substring(0, MAX_LABEL_LENGTH - 1) + "\u2026";
+        final var text = new Text(x, y, name);
+        text.setValue(DrawAttr.FONT, LABEL_FONT);
+        text.setValue(DrawAttr.HALIGNMENT, left ? DrawAttr.HALIGN_LEFT : DrawAttr.HALIGN_RIGHT);
+        text.setValue(DrawAttr.VALIGNMENT, DrawAttr.VALIGN_MIDDLE);
+        dest.add(text);
+      }
+      y += 10;
+    }
   }
 
   private static void placePins(

@@ -43,12 +43,12 @@ import com.cburch.logisim.std.memory.Rom;
 import com.cburch.logisim.std.wiring.Clock;
 import com.cburch.logisim.std.wiring.Pin;
 import com.cburch.logisim.std.wiring.Tunnel;
-import com.cburch.logisim.tools.LibraryTools;
 import com.cburch.logisim.tools.SetAttributeAction;
 import com.cburch.logisim.util.AutoLabel;
 import com.cburch.logisim.util.CollectionUtil;
 import com.cburch.logisim.util.EventSourceWeakSupport;
 import com.cburch.logisim.util.StringUtil;
+import com.cburch.logisim.util.SyntaxChecker;
 import com.cburch.logisim.vhdl.base.VhdlEntity;
 import java.awt.Graphics;
 import java.util.ArrayList;
@@ -64,8 +64,12 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.TreeSet;
 import java.util.WeakHashMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Circuit {
+  private static final Logger logger = LoggerFactory.getLogger(Circuit.class);
+
   private class EndChangedTransaction extends CircuitTransaction {
     private final Component comp;
     private final Map<Location, EndData> toRemove;
@@ -278,6 +282,7 @@ public class Circuit {
   }
 
   private static final int maxTimeoutTestBenchSec = 60000;
+  private static final int MAX_LABEL_SUFFIX = 100_000;
   private final MyComponentListener myComponentListener = new MyComponentListener();
   private final CircuitAppearance appearance;
   private final AttributeSet staticAttrs;
@@ -293,8 +298,14 @@ public class Circuit {
   private final Map<String, MappableResourcesContainer> myMappableResources;
   private final Map<String, Map<String, CircuitMapInfo>> loadedMaps;
   private boolean isAnnotated;
+  private boolean labelChecksDeferred;
   private Project proj;
   private final SocSimulationManager socSim = new SocSimulationManager();
+  /** Whether the circuit is locked against edits; see {@link #isEditLocked}. */
+  private volatile boolean editLocked;
+  /** The components locked against edits, by identity; they keep no component alive. */
+  private final Set<Component> editLockedComponents =
+      Collections.synchronizedSet(Collections.newSetFromMap(new WeakHashMap<>()));
 
   private final LogisimFile logiFile;
 
@@ -373,6 +384,38 @@ public class Circuit {
   }
 
   public void annotate(boolean clearExistingLabels, boolean insideLibrary) {
+    checkAnnotationEditLocks(clearExistingLabels, new HashSet<>());
+    annotateUnchecked(clearExistingLabels, insideLibrary);
+  }
+
+  // Check the entire hierarchy before the first label action, so refusal cannot leave half an
+  // annotation in the project or mark a circuit annotated when its labels were refused.
+  private void checkAnnotationEditLocks(boolean clearExistingLabels, Set<Circuit> visited) {
+    if (isAnnotated || !visited.add(this)) return;
+    final var labels = new HashSet<String>();
+    final var identity = labelIdentity();
+    for (final var comp : getNonWires()) {
+      if (comp.getFactory() instanceof Tunnel) continue;
+      final var attrs = comp.getAttributeSet();
+      if (attrs.containsAttribute(StdAttr.LABEL)) {
+        final var label = attrs.getValue(StdAttr.LABEL);
+        final var remove =
+            !label.isEmpty()
+                && (!CorrectLabel.isCorrectLabel(label)
+                    || !labels.add(CircuitLabelValidator.labelKey(label, identity)));
+        final var assign =
+            comp.getFactory().requiresNonZeroLabel() && (clearExistingLabels || label.isEmpty());
+        if ((remove || assign) && isEditLockedFor(comp)) {
+          throw new EditLockedException(this, isEditLocked() ? null : comp);
+        }
+      }
+      if (comp.getFactory() instanceof SubcircuitFactory sub) {
+        sub.getSubcircuit().checkAnnotationEditLocks(clearExistingLabels, visited);
+      }
+    }
+  }
+
+  private void annotateUnchecked(boolean clearExistingLabels, boolean insideLibrary) {
     /* If I am already completely annotated, return */
     if (isAnnotated) {
       Reporter.report.addInfo(S.get("annotateNoAction"));
@@ -382,7 +425,7 @@ public class Circuit {
     final var labelers = new HashMap<String, AutoLabel>();
     final var labelNames = new LinkedHashSet<String>();
     final var labelIdentity = labelIdentity();
-    final var subCircuits = new LinkedHashSet<String>();
+    final var subCircuits = new LinkedHashSet<Circuit>();
     for (final var comp : getNonWires()) {
       if (comp.getFactory() instanceof Tunnel) continue;
       /* we are directly going to remove duplicated labels */
@@ -426,7 +469,7 @@ public class Circuit {
       }
       /* if the current component is a sub-circuit, recurse into it */
       if (comp.getFactory() instanceof SubcircuitFactory sub) {
-        subCircuits.add(sub.getName());
+        subCircuits.add(sub.getSubcircuit());
       }
     }
     /* Now Annotate */
@@ -455,10 +498,10 @@ public class Circuit {
       Reporter.report.addSevereWarning(S.fmt("annotateSizeChange", this.getName()));
     isAnnotated = true;
     /* Now annotate all circuits below me */
-    for (final var subs : subCircuits) {
-      final var circ = LibraryTools.getCircuitFromLibs(proj.getLogisimFile(), subs.toUpperCase());
+    for (final var circ : subCircuits) {
       final var inLibrary = !proj.getLogisimFile().getCircuits().contains(circ);
-      circ.annotate(proj, clearExistingLabels, inLibrary);
+      if (circ.proj == null) circ.proj = proj;
+      circ.annotateUnchecked(clearExistingLabels, inLibrary);
     }
   }
 
@@ -476,6 +519,61 @@ public class Circuit {
 
   public boolean contains(Component c) {
     return comps.contains(c) || wires.getWires().contains(c);
+  }
+
+  /**
+   * Whether the whole circuit is locked: nothing in it can be added, removed, moved or changed,
+   * though its inputs can still be poked while simulating.
+   *
+   * <p>A lock guards against accidental edits, for instance in a circuit an instructor hands out.
+   * It is not a security feature: anyone can unlock the circuit again.
+   */
+  public boolean isEditLocked() {
+    return editLocked;
+  }
+
+  /**
+   * Locks or unlocks the whole circuit. This is not an undoable edit; use {@link EditLockAction}
+   * for a change the user makes.
+   */
+  public void setEditLocked(boolean locked) {
+    if (editLocked == locked) return;
+    editLocked = locked;
+    fireEvent(CircuitEvent.ACTION_SET_EDIT_LOCK, null);
+  }
+
+  /** Whether {@code comp} itself is locked, regardless of whether the circuit is. */
+  public boolean isComponentEditLocked(Component comp) {
+    return comp != null && editLockedComponents.contains(comp);
+  }
+
+  /** Whether {@code comp} may not be edited: it is locked, or the whole circuit is. */
+  public boolean isEditLockedFor(Component comp) {
+    return editLocked || isComponentEditLocked(comp);
+  }
+
+  /**
+   * Locks or unlocks single components. This is not an undoable edit; use {@link EditLockAction}
+   * for a change the user makes.
+   */
+  public void setComponentsEditLocked(Collection<? extends Component> components, boolean locked) {
+    var changed = false;
+    for (final var comp : components) {
+      if (comp == null || comp instanceof Wire) continue;
+      changed |= locked ? editLockedComponents.add(comp) : editLockedComponents.remove(comp);
+    }
+    if (changed) fireEvent(CircuitEvent.ACTION_SET_EDIT_LOCK, components);
+  }
+
+  /** The locked components currently in the circuit, in no particular order. */
+  public Set<Component> getEditLockedComponents() {
+    final var ret = new HashSet<Component>();
+    synchronized (editLockedComponents) {
+      for (final var comp : editLockedComponents) {
+        if (contains(comp)) ret.add(comp);
+      }
+    }
+    return ret;
   }
 
   /* The function will tick. Then once the tick was propagated
@@ -852,8 +950,10 @@ public class Circuit {
       if (!added) return;
       socSim.registerComponent(c);
       // Here we check for duplicated labels and clear the label
-      // if it already exists in the circuit
-      if (c.getAttributeSet().containsAttribute(StdAttr.LABEL)
+      // if it already exists in the circuit. A circuit being read keeps its labels as stored
+      // until it is complete, see resolveLabelConflicts().
+      if (!labelChecksDeferred
+          && c.getAttributeSet().containsAttribute(StdAttr.LABEL)
           && !(c.getFactory() instanceof Tunnel)) {
         final var labels = new HashSet<String>();
         final var labelIdentity = labelIdentity();
@@ -883,6 +983,7 @@ public class Circuit {
       if (factory instanceof Clock) {
         clocks.add(c);
       } else if (factory instanceof Rom) {
+        Rom.setContentsOwner(this, c);
         Rom.closeHexFrame(c);
       } else if (factory instanceof SubcircuitFactory subFactory) {
         final var subcirc = subFactory;
@@ -893,7 +994,7 @@ public class Circuit {
       }
       c.addComponentListener(myComponentListener);
     }
-    removeWrongLabels(c.getFactory().getName());
+    if (!labelChecksDeferred) removeWrongLabels(c.getFactory().getName());
     fireEvent(CircuitEvent.ACTION_ADD, c);
   }
 
@@ -906,10 +1007,10 @@ public class Circuit {
     clocks.clear();
     myNetList.clear();
     isAnnotated = false;
+    final var state = proj == null ? null : proj.getCircuitState(this);
     for (final var comp : oldComps) {
       socSim.removeComponent(comp);
-      final var factory = comp.getFactory();
-      factory.removeComponent(this, comp, proj.getCircuitState(this));
+      notifyFactoryOfRemoval(comp, state);
     }
     fireEvent(CircuitEvent.ACTION_CLEAR, oldComps);
   }
@@ -926,7 +1027,7 @@ public class Circuit {
       comps.remove(c);
       socSim.removeComponent(c);
       final var factory = c.getFactory();
-      factory.removeComponent(this, c, proj.getCircuitState(this));
+      notifyFactoryOfRemoval(c, proj == null ? null : proj.getCircuitState(this));
       if (factory instanceof Clock) {
         clocks.remove(c);
       } else if (factory instanceof DynamicElementProvider) {
@@ -937,10 +1038,25 @@ public class Circuit {
     fireEvent(CircuitEvent.ACTION_REMOVE, c);
   }
 
+  /**
+   * Lets the factory release per-instance resources (hex editors, sound threads, ...). The
+   * component has already left the netlist at this point, so a failing hook must not abort the
+   * mutation half-way: that would leave the circuit, its listeners and the undo log disagreeing.
+   */
+  private void notifyFactoryOfRemoval(Component c, CircuitState state) {
+    try {
+      c.getFactory().removeComponent(this, c, state);
+    } catch (RuntimeException e) {
+      logger.error("Component factory failed while removing {}", c, e);
+    }
+  }
+
   private void removeWrongLabels(String label) {
     var changed = false;
     final var labelIdentity = labelIdentity();
     for (final var comp : comps) {
+      // A tunnel's label is its connection; clearing it would silently rewire the circuit.
+      if (comp.getFactory() instanceof Tunnel) continue;
       final var attrs = comp.getAttributeSet();
       if (attrs.containsAttribute(StdAttr.LABEL)) {
         final var compLabel = attrs.getValue(StdAttr.LABEL);
@@ -954,7 +1070,109 @@ public class Circuit {
     // and (2) they cannot have a label
     if (changed)
       OptionPane.showMessageDialog(
-          null, "\"" + label + "\" : " + S.get("ComponentLabelCollisionError"));
+          null,
+          "\"" + label + "\" : " + S.get("ComponentLabelCollisionError"),
+          S.get("ComponentLabelCollisionTitle"),
+          OptionPane.WARNING_MESSAGE);
+  }
+
+  /**
+   * Suspends the label checks {@link #mutatorAdd} makes for every added component. While a file is
+   * read its labels must stay exactly as stored: checked one component at a time, a label would be
+   * cleared (with a dialog each time) depending on which component happened to be read first, and
+   * every check scans the whole circuit. Call {@link #resolveLabelConflicts()} once the circuit is
+   * complete.
+   */
+  public void setLabelChecksDeferred(boolean deferred) {
+    labelChecksDeferred = deferred;
+  }
+
+  /** A label {@link #resolveLabelConflicts()} had to change. */
+  public record LabelRename(String oldLabel, String newLabel) {}
+
+  /**
+   * Renames the labels that the checks made while editing would not allow: a label used twice, or
+   * equal to the name of a component type in this circuit or to the circuit's own name. The first
+   * component, in circuit order, keeps a duplicated label; the others get the lowest free {@code
+   * label_N}. Nothing is deleted and no dialog is shown: the caller reports the returned renames.
+   * Tunnel labels are left alone, as sharing one is what connects tunnels.
+   *
+   * @return the renamed labels, in circuit order
+   */
+  public List<LabelRename> resolveLabelConflicts() {
+    final var identity = labelIdentity();
+    final var hdlType = AppPreferences.HdlType.get();
+    final var circuitName = getName();
+    final var reserved = new HashSet<String>();
+    for (final var comp : comps) {
+      reserved.add(CircuitLabelValidator.labelKey(comp.getFactory().getName(), identity));
+    }
+    final var used = new HashSet<String>();
+    final var clashing = new ArrayList<Component>();
+    for (final var comp : comps) {
+      final var label = labelOf(comp);
+      if (label == null) continue;
+      final var key = CircuitLabelValidator.labelKey(label, identity);
+      final var clashesWithCircuit =
+          StringUtil.isNotEmpty(circuitName)
+              && CircuitLabelValidator.labelsMatch(circuitName, label, identity);
+      if (reserved.contains(key) || clashesWithCircuit || used.contains(key)) {
+        clashing.add(comp);
+      }
+      used.add(key);
+    }
+    final var renames = new ArrayList<LabelRename>();
+    for (final var comp : clashing) {
+      final var label = labelOf(comp);
+      final var factoryName = comp.getFactory().getName();
+      // A stored label that breaks the current naming rules cannot be fixed by a suffix alone.
+      final var base =
+          isAcceptableLabel(label + "_1", factoryName, hdlType) ? label : hdlSafeLabel(label);
+      var candidate = "";
+      for (var n = 1; candidate.isEmpty() && n <= MAX_LABEL_SUFFIX; n++) {
+        final var option = base + "_" + n;
+        final var key = CircuitLabelValidator.labelKey(option, identity);
+        final var clashesWithCircuit =
+            StringUtil.isNotEmpty(circuitName)
+                && CircuitLabelValidator.labelsMatch(circuitName, option, identity);
+        if (!used.contains(key)
+            && !reserved.contains(key)
+            && !clashesWithCircuit
+            && isAcceptableLabel(option, factoryName, hdlType)) {
+          candidate = option;
+          used.add(key);
+        }
+      }
+      if (candidate.isEmpty()) continue;
+      comp.getAttributeSet().setValue(StdAttr.LABEL, candidate);
+      renames.add(new LabelRename(label, candidate));
+    }
+    return renames;
+  }
+
+  /** The label of {@code comp} that the label rules apply to, or null if there is none. */
+  private static String labelOf(Component comp) {
+    if (comp.getFactory() instanceof Tunnel) return null;
+    final var attrs = comp.getAttributeSet();
+    if (!attrs.containsAttribute(StdAttr.LABEL)) return null;
+    final var label = attrs.getValue(StdAttr.LABEL);
+    return StringUtil.isNotEmpty(label) ? label : null;
+  }
+
+  /** Whether the label editor would accept {@code label} on a component of {@code factoryName}. */
+  private static boolean isAcceptableLabel(String label, String factoryName, String hdlType) {
+    return SyntaxChecker.isVariableNameAcceptable(label, hdlType, false)
+        && !SyntaxChecker.namesEqual(factoryName, label, hdlType)
+        && !CorrectLabel.isKeyword(label, hdlType, false);
+  }
+
+  /** {@code label} reduced to letters, digits and single underscores, starting with a letter. */
+  static String hdlSafeLabel(String label) {
+    var safe = label.replaceAll("[^A-Za-z0-9]", "_");
+    if (!safe.matches("^[A-Za-z].*")) safe = "L_" + safe;
+    safe = safe.replaceAll("_+", "_");
+    while (safe.endsWith("_")) safe = safe.substring(0, safe.length() - 1);
+    return safe;
   }
 
   public void removeCircuitListener(CircuitListener what) {
@@ -999,8 +1217,8 @@ public class Circuit {
   public void setTickFrequency(double value) {
     final var currentTickFrequency = staticAttrs.getValue(CircuitAttributes.SIMULATION_FREQUENCY);
     if (value != currentTickFrequency) {
+      // Not marked dirty here: a user's change arrives as an undoable action, which does that.
       staticAttrs.setValue(CircuitAttributes.SIMULATION_FREQUENCY, value);
-      if ((proj != null) && (currentTickFrequency > 0)) proj.setForcedDirty();
     }
   }
 

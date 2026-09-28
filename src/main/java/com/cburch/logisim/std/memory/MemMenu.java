@@ -81,6 +81,7 @@ class MemMenu implements ActionListener, MenuExtender {
 
   private void doClear() {
     final var s = factory.getState(instance, circState);
+    if (!s.getContents().isWritable()) return;
     final var isAllZero = s.getContents().isClear();
     if (isAllZero) return;
 

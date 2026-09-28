@@ -11,6 +11,7 @@ package com.cburch.draw.toolbar;
 
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.util.UiScale;
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
@@ -18,7 +19,13 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Insets;
 import java.awt.RenderingHints;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
 import java.awt.event.MouseEvent;
+import javax.accessibility.AccessibleContext;
+import javax.accessibility.AccessibleRole;
+import javax.accessibility.AccessibleState;
+import javax.accessibility.AccessibleStateSet;
 import javax.swing.BorderFactory;
 import javax.swing.Icon;
 import javax.swing.JButton;
@@ -45,7 +52,7 @@ class ToolbarButton extends JButton {
   private static final int ARC = 6;
 
   /** Opacity of the selected background, which sits under the glyph. */
-  private static final int SELECTED_ALPHA = 80;
+  private static final int SELECTED_ALPHA = 120;
 
   /** Opacity of the hover background. */
   private static final int HOVER_ALPHA = 40;
@@ -64,8 +71,6 @@ class ToolbarButton extends JButton {
 
     setIcon(new ItemIcon());
     setToolTipText("");
-    // Icon-only, so a screen reader would otherwise have nothing to announce.
-    getAccessibleContext().setAccessibleName(item == null ? null : item.getToolTip());
     // Deliberately left enabled: disabling would make Swing substitute an automatically derived
     // disabled icon, which would change how decorations such as separators are drawn.
     setFocusable(interactive);
@@ -73,6 +78,63 @@ class ToolbarButton extends JButton {
     // button decoration on top of, or underneath, the item's glyph.
     applyFlatStyling();
     addActionListener(event -> activate());
+    // The focus ring is painted by this class, so it must be redrawn when focus moves.
+    addFocusListener(
+        new FocusAdapter() {
+          @Override
+          public void focusGained(FocusEvent event) {
+            repaint();
+          }
+
+          @Override
+          public void focusLost(FocusEvent event) {
+            repaint();
+          }
+        });
+  }
+
+  /** Whether the toolbar model currently has this button's item selected. */
+  boolean isItemSelected() {
+    final var model = toolbar == null ? null : toolbar.getToolbarModel();
+    return item != null && model != null && model.isSelected(item);
+  }
+
+  @Override
+  public AccessibleContext getAccessibleContext() {
+    if (accessibleContext == null) accessibleContext = new AccessibleToolbarButton();
+    return accessibleContext;
+  }
+
+  /**
+   * Icon-only, so the name is the item's tooltip, read live so it follows locale and item
+   * changes; selectable items are exposed as toggle buttons with their selected state.
+   */
+  private final class AccessibleToolbarButton extends AccessibleJButton {
+    private static final long serialVersionUID = 1L;
+
+    @Override
+    public String getAccessibleName() {
+      if (accessibleName != null) return accessibleName;
+      return item == null ? super.getAccessibleName() : item.getToolTip();
+    }
+
+    @Override
+    public AccessibleRole getAccessibleRole() {
+      return item != null && item.isSelectable()
+          ? AccessibleRole.TOGGLE_BUTTON : super.getAccessibleRole();
+    }
+
+    @Override
+    public AccessibleStateSet getAccessibleStateSet() {
+      final var states = super.getAccessibleStateSet();
+      if (item != null && item.isSelectable()) {
+        if (isItemSelected()) {
+          states.add(AccessibleState.SELECTED);
+          states.add(AccessibleState.CHECKED);
+        }
+      }
+      return states;
+    }
   }
 
   @Override
@@ -157,11 +219,9 @@ class ToolbarButton extends JButton {
     final var g2 = (Graphics2D) g.create();
     applyRenderingHints(g2);
 
-    final var model = toolbar.getToolbarModel();
-    final var selected = (model != null) && model.isSelected(item);
-    final var background = stateBackground(selected);
+    final var background = stateBackground(isItemSelected());
+    final var arc = UiScale.scaled(ARC);
     if (background != null) {
-      final var arc = UiScale.scaled(ARC);
       g2.setColor(background);
       g2.fillRoundRect(0, 0, getWidth(), getHeight(), arc, arc);
     }
@@ -169,6 +229,19 @@ class ToolbarButton extends JButton {
 
     // Paints the icon, which delegates to the item.
     super.paintComponent(g);
+
+    // The look and feel's focus painting is off (it would frame the glyph), so draw a ring like
+    // the activity bar's: without it keyboard users cannot see which tool Tab has reached.
+    if (interactive && isFocusOwner()) {
+      final var ring = (Graphics2D) g.create();
+      applyRenderingHints(ring);
+      ring.setColor(accentColor());
+      ring.setStroke(new BasicStroke(UiScale.scaled(1.5f)));
+      final var inset = UiScale.scaled(1);
+      ring.drawRoundRect(inset, inset, getWidth() - 2 * inset - 1, getHeight() - 2 * inset - 1,
+          arc, arc);
+      ring.dispose();
+    }
   }
 
   /** Returns the background for the current state, or null when the button is at rest. */

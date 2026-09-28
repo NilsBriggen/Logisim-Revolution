@@ -16,6 +16,8 @@ import com.cburch.logisim.data.AttributeOption;
 import com.cburch.logisim.data.AttributeSet;
 import com.cburch.logisim.data.AttributeSets;
 import com.cburch.logisim.data.Attributes;
+import java.awt.Color;
+import java.awt.Font;
 
 public class Options {
   public static final AttributeOption GATE_UNDEFINED_IGNORE =
@@ -33,12 +35,32 @@ public class Options {
           S.getter("gateUndefinedOption"),
           new AttributeOption[] {GATE_UNDEFINED_IGNORE, GATE_UNDEFINED_ERROR});
 
+  /**
+   * The label font new components get in this project, or {@code null} (the default, and never
+   * saved) to keep the component's own. See {@link ProjectStyle}.
+   */
+  public static final Attribute<Font> ATTR_LABEL_FONT =
+      Attributes.forFont("styleLabelFont", S.getter("styleLabelFontOption"));
+  /** The label colour new components get in this project, or {@code null} for their own. */
+  public static final Attribute<Color> ATTR_LABEL_COLOR =
+      Attributes.forColor("styleLabelColor", S.getter("styleLabelColorOption"));
+  /** The font new text from the Text tool gets in this project, or {@code null} for the usual. */
+  public static final Attribute<Font> ATTR_TEXT_FONT =
+      Attributes.forFont("styleTextFont", S.getter("styleTextFontOption"));
+
   public static final Integer SIM_RAND_DFLT = 32;
 
   private static final Attribute<?>[] ATTRIBUTES = {
-    ATTR_GATE_UNDEFINED, ATTR_SIM_LIMIT, ATTR_SIM_RAND
+    ATTR_GATE_UNDEFINED,
+    ATTR_SIM_LIMIT,
+    ATTR_SIM_RAND,
+    ATTR_LABEL_FONT,
+    ATTR_LABEL_COLOR,
+    ATTR_TEXT_FONT
   };
-  private static final Object[] DEFAULTS = {GATE_UNDEFINED_IGNORE, 1000, 0};
+  // The style settings default to "not set": an unset value is not written to the file, and a
+  // file without them - every file older than them - reads as it always did.
+  private static final Object[] DEFAULTS = {GATE_UNDEFINED_IGNORE, 1000, 0, null, null, null};
 
   private final AttributeSet attrs;
   private final MouseMappings mmappings;

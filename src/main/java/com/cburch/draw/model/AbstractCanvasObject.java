@@ -16,6 +16,7 @@ import com.cburch.logisim.data.AttributeListener;
 import com.cburch.logisim.data.AttributeSet;
 import com.cburch.logisim.data.Bounds;
 import com.cburch.logisim.data.Location;
+import com.cburch.logisim.gui.canvas.CanvasStyle;
 import com.cburch.logisim.util.EventSourceWeakSupport;
 import com.cburch.logisim.util.GraphicsUtil;
 import java.awt.Graphics;
@@ -201,7 +202,11 @@ public abstract class AbstractCanvasObject implements AttributeSet, CanvasObject
         return false;
       } else {
         GraphicsUtil.switchToWidth(g, width);
-        if (color != null) g.setColor(color);
+        // The shipped black stroke is a placeholder, not a choice: resolve it to the canvas ink
+        // (theme-aware on screen, print palette when exporting or printing) so an appearance
+        // shape drawn without an explicit colour stays visible on a dark canvas. A colour the
+        // user actually picked is painted exactly as stored.
+        if (color != null) g.setColor(CanvasStyle.textColor(color));
         return true;
       }
     } else {

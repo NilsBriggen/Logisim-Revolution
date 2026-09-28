@@ -11,6 +11,8 @@ package com.cburch.logisim.gui.menu;
 
 import static com.cburch.logisim.gui.Strings.S;
 
+import com.cburch.logisim.circuit.EditLockAction;
+import com.cburch.logisim.circuit.Wire;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.prefs.PrefMonitor;
 import com.cburch.logisim.prefs.PrefMonitorKeyStroke;
@@ -30,6 +32,9 @@ class MenuProject extends Menu {
   private final MenuItemImpl addCircuit = new MenuItemImpl(this, LogisimMenuBar.ADD_CIRCUIT);
   private final MenuItemImpl addVhdl = new MenuItemImpl(this, LogisimMenuBar.ADD_VHDL);
   private final MenuItemImpl importVhdl = new MenuItemImpl(this, LogisimMenuBar.IMPORT_VHDL);
+  private final MenuItemImpl addVerilog = new MenuItemImpl(this, LogisimMenuBar.ADD_VERILOG);
+  private final MenuItemImpl importVerilog =
+      new MenuItemImpl(this, LogisimMenuBar.IMPORT_VERILOG);
   private final JMenu loadLibrary = new JMenu();
   private final JMenu loadBuiltin = new JMenu();
   private final JMenuItem loadLogisim = new JMenuItem();
@@ -47,6 +52,10 @@ class MenuProject extends Menu {
       new MenuItemImpl(this, LogisimMenuBar.TOGGLE_APPEARANCE);
   private final MenuItemImpl analyze = new MenuItemImpl(this, LogisimMenuBar.ANALYZE_CIRCUIT);
   private final MenuItemImpl stats = new MenuItemImpl(this, LogisimMenuBar.CIRCUIT_STATS);
+  private final MenuItemCheckImpl lockCircuit =
+      new MenuItemCheckImpl(this, LogisimMenuBar.LOCK_CIRCUIT);
+  private final MenuItemCheckImpl lockSelection =
+      new MenuItemCheckImpl(this, LogisimMenuBar.LOCK_SELECTION);
   private final JMenuItem options = new JMenuItem();
 
   MenuProject(LogisimMenuBar menubar) {
@@ -57,6 +66,8 @@ class MenuProject extends Menu {
     menubar.registerItem(LogisimMenuBar.ADD_CIRCUIT, addCircuit);
     menubar.registerItem(LogisimMenuBar.ADD_VHDL, addVhdl);
     menubar.registerItem(LogisimMenuBar.IMPORT_VHDL, importVhdl);
+    menubar.registerItem(LogisimMenuBar.ADD_VERILOG, addVerilog);
+    menubar.registerItem(LogisimMenuBar.IMPORT_VERILOG, importVerilog);
     loadBuiltin.addMenuListener(myMenuListener);
     loadLogisim.addActionListener(myListener);
     loadJar.addActionListener(myListener);
@@ -71,6 +82,10 @@ class MenuProject extends Menu {
     menubar.registerItem(LogisimMenuBar.TOGGLE_APPEARANCE, toggleLayoutAppearance);
     menubar.registerItem(LogisimMenuBar.ANALYZE_CIRCUIT, analyze);
     menubar.registerItem(LogisimMenuBar.CIRCUIT_STATS, stats);
+    menubar.registerItem(LogisimMenuBar.LOCK_CIRCUIT, lockCircuit);
+    menubar.registerItem(LogisimMenuBar.LOCK_SELECTION, lockSelection);
+    // The check marks follow the circuit and selection on screen, read as the menu opens.
+    addMenuListener(myMenuListener);
     options.addActionListener(myListener);
 
     loadLibrary.add(loadBuiltin);
@@ -83,6 +98,8 @@ class MenuProject extends Menu {
     add(addCircuit);
     add(addVhdl);
     add(importVhdl);
+    add(addVerilog);
+    add(importVerilog);
     add(loadLibrary);
     add(unload);
     addSeparator();
@@ -97,6 +114,9 @@ class MenuProject extends Menu {
     addSeparator();
     add(analyze);
     add(stats);
+    addSeparator();
+    add(lockCircuit);
+    add(lockSelection);
     addSeparator();
     add(options);
 
@@ -130,6 +150,8 @@ class MenuProject extends Menu {
             || addCircuit.hasListeners()
             || addVhdl.hasListeners()
             || importVhdl.hasListeners()
+            || addVerilog.hasListeners()
+            || importVerilog.hasListeners()
             || moveUp.hasListeners()
             || moveDown.hasListeners()
             || setAsMain.hasListeners()
@@ -138,7 +160,9 @@ class MenuProject extends Menu {
             || revertAppearance.hasListeners()
             || appearance.hasListeners()
             || analyze.hasListeners()
-            || stats.hasListeners());
+            || stats.hasListeners()
+            || lockCircuit.hasListeners()
+            || lockSelection.hasListeners());
     menubar.fireEnableChanged();
   }
 
@@ -147,6 +171,8 @@ class MenuProject extends Menu {
     addCircuit.setText(S.get("projectAddCircuitItem"));
     addVhdl.setText(S.get("projectAddVhdlItem"));
     importVhdl.setText(S.get("projectImportVhdlItem"));
+    addVerilog.setText(S.get("projectAddVerilogItem"));
+    importVerilog.setText(S.get("projectImportVerilogItem"));
     loadLibrary.setText(S.get("projectLoadLibraryItem"));
     loadBuiltin.setText(S.get("projectLoadBuiltinItem"));
     loadLogisim.setText(S.get("projectLoadLogisimItem"));
@@ -162,7 +188,23 @@ class MenuProject extends Menu {
     toggleLayoutAppearance.setText(S.get("projectToggleCircuitAppearanceItem"));
     analyze.setText(S.get("projectAnalyzeCircuitItem"));
     stats.setText(S.get("projectGetCircuitStatisticsItem"));
+    lockCircuit.setText(S.get("projectLockCircuitItem"));
+    lockSelection.setText(S.get("projectLockSelectionItem"));
     options.setText(S.get("projectOptionsItem"));
+  }
+
+  /** Ticks the lock items for the circuit on screen and what is selected in it. */
+  private void refreshLockItems() {
+    final var proj = menubar.getSaveProject();
+    final var circuit = proj == null ? null : proj.getCurrentCircuit();
+    final var inFile = circuit != null && proj.getLogisimFile().contains(circuit);
+    lockCircuit.setSelected(inFile && circuit.isEditLocked());
+    final var selected =
+        inFile && proj.getSelection() != null ? proj.getSelection().getComponents() : null;
+    final var anyLockable =
+        selected != null && selected.stream().anyMatch(comp -> !(comp instanceof Wire));
+    lockSelection.setSelected(anyLockable && EditLockAction.allLocked(circuit, selected));
+    lockSelection.setEnabled(anyLockable);
   }
 
   private class MyListener implements ActionListener {
@@ -190,6 +232,8 @@ class MenuProject extends Menu {
     public void menuSelected(MenuEvent event) {
       if (event.getSource() == loadBuiltin) {
         ProjectLibraryActions.populateBuiltinLibraryMenu(loadBuiltin, menubar.getSaveProject());
+      } else if (event.getSource() == MenuProject.this) {
+        refreshLockItems();
       }
     }
 

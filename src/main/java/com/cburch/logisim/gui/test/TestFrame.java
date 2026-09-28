@@ -12,6 +12,7 @@ package com.cburch.logisim.gui.test;
 import static com.cburch.logisim.gui.Strings.S;
 
 import com.cburch.logisim.circuit.Circuit;
+import com.cburch.logisim.circuit.TestVectorEvaluator;
 import com.cburch.logisim.data.TestException;
 import com.cburch.logisim.data.TestVector;
 import com.cburch.logisim.gui.generic.LFrame;
@@ -110,7 +111,7 @@ public class TestFrame extends LFrame.SubWindowWithSimulation {
     body.add(buttonPanel, BorderLayout.SOUTH);
     getContentPane().add(body, BorderLayout.CENTER);
 
-    LocaleManager.addLocaleListener(myListener);
+    LocaleManager.addLocaleListener(this, myListener);
     myListener.localeChanged();
     pack();
   }
@@ -188,6 +189,7 @@ public class TestFrame extends LFrame.SubWindowWithSimulation {
       final var model = getModel();
       if (model == null) return;
       if (src == load) {
+        chooser.setCurrentDirectory(defaultVectorDirectory(curFile, project));
         int result = chooser.showOpenDialog(TestFrame.this);
         if (result != JFileChooser.APPROVE_OPTION) return;
         if (getModel() != model) return;
@@ -206,6 +208,14 @@ public class TestFrame extends LFrame.SubWindowWithSimulation {
           curFile = file;
           model.setPaused(true);
           model.start();
+          final var undriven = TestVectorEvaluator.findUndrivenInputs(vec, model.getCircuit());
+          if (!undriven.isEmpty()) {
+            OptionPane.showMessageDialog(
+                TestFrame.this,
+                S.get("testUndrivenInputsMessage", file.getName(), String.join(", ", undriven)),
+                S.get("testUndrivenInputsTitle"),
+                OptionPane.WARNING_MESSAGE);
+          }
         } catch (IOException e) {
           OptionPane.showMessageDialog(
               TestFrame.this,
@@ -282,6 +292,19 @@ public class TestFrame extends LFrame.SubWindowWithSimulation {
     public void vectorChanged() {
       // do nothing
     }
+  }
+
+  /**
+   * Where the Load Vector chooser opens: the folder of the last vector loaded here, else the
+   * project's folder, since vectors usually sit next to the circuit they test. Null means the
+   * chooser's own default (the home folder), for an unsaved project.
+   */
+  static File defaultVectorDirectory(File lastVector, Project project) {
+    if (lastVector != null && lastVector.getParentFile() != null) {
+      return lastVector.getParentFile();
+    }
+    final var mainFile = project.getLogisimFile().getLoader().getMainFile();
+    return mainFile == null ? null : mainFile.getAbsoluteFile().getParentFile();
   }
 
   static void updateControls(Model model, JButton load, JButton run, JButton stop, JButton reset) {

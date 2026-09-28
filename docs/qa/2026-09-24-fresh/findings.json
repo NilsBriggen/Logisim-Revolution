@@ -1,0 +1,5736 @@
+{
+ "audit": "2026-09-24-fresh",
+ "revisionChecked": "098cbf48f",
+ "clusters": 221,
+ "notes": "judgeSeverity is the original cluster severity from the judges; reviewVerdict/reviewSeverity are from the skeptical reviewer; priority is this report’s final P0-P3 (null for dropped/refuted). reproStatus is the independent verifier’s result (yes/partial/not-applicable). Member IDs refer to the raw tester findings F1-F261 in the audit handoff. visualSweepMembers (added 2026-09-25) record findings from the visual-QA sweep: inspectorSeverity is the inspector's, adjustedSeverity the screenshot skeptic's; priorRef maps to docs/qa/2026-09-24/findings.json.",
+ "priorAuditTags": {
+  "new": "not in docs/qa/2026-09-24/findings.json",
+  "still-open": "present in the prior register and still observed",
+  "regressed": "introduced or worsened by a prior-audit fix or the drawer rework"
+ },
+ "findings": [
+  {
+   "cid": "C1",
+   "title": "NPE in Ram.removeComponent during Redo Delete leaves the circuit half-mutated and not dirty",
+   "kind": "data-loss",
+   "theme": "File integrity and state truthfulness",
+   "priority": "P0",
+   "status": "open",
+   "judgeSeverity": "critical",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "high",
+   "reproStatus": "partial",
+   "verification": "reproduced (crash); data loss tester-observed only",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Ram.java:395 passes null RamState to closeHexFrame (:162); Circuit.mutatorRemove (917-936) runs the factory hook after comps.remove with no rollback; Project.redoAction never sets dirty",
+   "recommendedFix": "Null-guard Ram.removeComponent/closeHexFrame; try/catch factory hooks in mutatorRemove; mark dirty or roll back on throw; JUnit regression",
+   "memberIds": [
+    "F169"
+   ],
+   "evidence": [
+    "evidence/ram-npe-half-deleted.png",
+    "evidence/ram-npe-verify-repro.png",
+    "evidence/ram-npe-verify.log"
+   ]
+  },
+  {
+   "cid": "C2",
+   "title": "Unknown or invalid components are dropped at load and silently deleted from disk on the next Save",
+   "kind": "data-loss",
+   "theme": "File integrity and state truthfulness",
+   "priority": "P1",
+   "status": "open",
+   "judgeSeverity": "critical",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "high",
+   "reproStatus": "partial",
+   "verification": "code-confirmed",
+   "effort": "M",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "XmlReader.initAttributeSet (182-193) throws on any NumberFormatException; XmlCircuitReader (75-117) skips unknown components; project not dirtied, raw XML not preserved",
+   "recommendedFix": "Default bad attributes with a warning; keep unknown elements as opaque XML re-emitted by XmlWriter; mark dirty and confirm before overwriting a file that loaded with errors",
+   "memberIds": [
+    "F146"
+   ],
+   "evidence": [
+    "evidence/load-error-dialog.png"
+   ]
+  },
+  {
+   "cid": "C3",
+   "title": "Recovered autosave is not marked dirty; closing without a prompt deletes the recovered edits",
+   "kind": "data-loss",
+   "theme": "File integrity and state truthfulness",
+   "priority": "P0",
+   "status": "open",
+   "judgeSeverity": "critical",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "high",
+   "reproStatus": "partial",
+   "verification": "code-confirmed + tester-observed on disk",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "LogisimFile.java:304 sets autosaveLoaded; isAutosaveLoaded() (:818) has no callers; Frame.dispose -> stopAutosaveThread(true) deletes the autosave",
+   "recommendedFix": "Mark the project dirty after an autosave load; keep the autosave until explicit Save/Discard; show a recovered banner",
+   "memberIds": [
+    "F81"
+   ],
+   "evidence": [
+    "evidence/autosave-recovered-clean.png"
+   ]
+  },
+  {
+   "cid": "C4",
+   "title": "Redo never updates the file dirty flag; tab dot and title disagree with the real state",
+   "kind": "bug",
+   "theme": "File integrity and state truthfulness",
+   "priority": "P2",
+   "status": "open",
+   "judgeSeverity": "critical",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "medium",
+   "reproStatus": "yes",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Project.redoAction (442-468) ++undoMods but never file.setDirty(isFileDirty()); no DIRTY_STATE event; autosave dirty flag never set",
+   "recommendedFix": "Call file.setDirty after redo; ++undoMods only when isModification(); derive tab dot and title from Project.isFileDirty(); regression tests for the four dirty paths",
+   "memberIds": [
+    "F207",
+    "F175",
+    "F252"
+   ],
+   "evidence": [
+    "evidence/redo-clean-title.png"
+   ]
+  },
+  {
+   "cid": "C5",
+   "title": "Opening the Timing diagram while the clock is ticking crashes the simulator (NPE, leftPanel null)",
+   "kind": "crash",
+   "theme": "Crashes and threading",
+   "priority": "P0",
+   "status": "open",
+   "judgeSeverity": "critical",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "high",
+   "reproStatus": "partial",
+   "verification": "tester-observed 3/3 with logs",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "ChronoPanel constructor calls setModel() -> addModelListener before configure() creates leftPanel/rightPanel; SimThread fires signalsExtended (:274) in that window; SimThread.run catch(Throwable) stops the simulation",
+   "recommendedFix": "Register the listener after configure(); null-guard; marshal callbacks to the EDT (see C20)",
+   "memberIds": [
+    "F178"
+   ],
+   "evidence": [
+    "evidence/timing-npe-canvas.png",
+    "evidence/timing-sim-stopped.png",
+    "evidence/timing-npe.log"
+   ]
+  },
+  {
+   "cid": "C6",
+   "title": "Save resets the file mode to 0600, replaces symlinks with regular files, and overwrites read-only files",
+   "kind": "data-loss",
+   "theme": "File integrity and state truthfulness",
+   "priority": "P2",
+   "status": "open",
+   "judgeSeverity": "high",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "medium",
+   "reproStatus": "yes",
+   "verification": "code-confirmed + tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Loader.java:553 Files.createTempFile (0600) then :567-575 Files.move(ATOMIC_MOVE, REPLACE_EXISTING) onto the path itself",
+   "recommendedFix": "toRealPath(); Files.isWritable check with Save As offer; copy PosixFilePermissions/owner onto the staged file",
+   "memberIds": [
+    "F87",
+    "F148",
+    "F163"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C7",
+   "title": "Save As can target a file already open in another window, which later clobbers the saved work",
+   "kind": "data-loss",
+   "theme": "File integrity and state truthfulness",
+   "priority": "P2",
+   "status": "open",
+   "judgeSeverity": "high",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "medium",
+   "reproStatus": "partial",
+   "verification": "code-confirmed + tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "ProjectActions.doSaveAs (:806) checks only exists(); no Projects.findProjectFor unlike doOpen",
+   "recommendedFix": "Refuse or warn when another open project owns the target file",
+   "memberIds": [
+    "F162"
+   ],
+   "evidence": [
+    "evidence/saveas-clobber-window.png"
+   ]
+  },
+  {
+   "cid": "C8",
+   "title": "Unsaved SoC assembler source is lost on quit or close; cancelling its save wipes it",
+   "kind": "data-loss",
+   "theme": "File integrity and state truthfulness",
+   "priority": "P2",
+   "status": "open",
+   "judgeSeverity": "high",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "medium",
+   "reproStatus": "partial",
+   "verification": "code-confirmed + tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "AssemblerPanel.java:356-372 prompts in windowClosed with Yes/No and clears unconditionally; :223 uses showOpenDialog; doQuit ignores assembler buffers",
+   "recommendedFix": "windowClosing with Save/Discard/Cancel; include buffers in quit/close checks; showSaveDialog",
+   "memberIds": [
+    "F164"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C9",
+   "title": "Loading strips labels that equal a component type name, with per-clash info-icon 'Message' modals (also in -tty)",
+   "kind": "data-loss",
+   "theme": "File integrity and state truthfulness",
+   "priority": "P2",
+   "status": "open",
+   "judgeSeverity": "high",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "medium",
+   "reproStatus": "partial",
+   "verification": "code-confirmed + tester-observed on disk",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Circuit.mutatorAdd -> removeWrongLabels (896, 940-960) runs on the XmlCircuitReader path; case-insensitive; parentless INFO dialog per clash",
+   "recommendedFix": "Skip removeWrongLabels during load; validate once; rename rather than delete; one warning dialog naming the labels",
+   "memberIds": [
+    "F67",
+    "F187",
+    "F249"
+   ],
+   "evidence": [
+    "evidence/label-strip-dialogs.png"
+   ]
+  },
+  {
+   "cid": "C10",
+   "title": "VHDL-invalid labels ('café', 'my out') are rewritten with a random UUID suffix on load",
+   "kind": "data-loss",
+   "theme": "File integrity and state truthfulness",
+   "priority": "P2",
+   "status": "open",
+   "judgeSeverity": "high",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "medium",
+   "reproStatus": "yes",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "still-open",
+    "ref": "components-13"
+   },
+   "rootCause": "XmlReader.ensureLogisimCompatibility (650-657, called :1152) runs for all versions; generateValidVHDLLabel (:739) appends UUID.randomUUID(); tunnels included",
+   "recommendedFix": "Limit to old file versions; skip Tunnel/Text; deterministic suffix; notify the user",
+   "memberIds": [
+    "F149"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C11",
+   "title": "Autosave serialises circuits off the EDT without locks; a RuntimeException silently kills autosave for the session",
+   "kind": "data-loss",
+   "theme": "File integrity and state truthfulness",
+   "priority": "P2",
+   "status": "open",
+   "judgeSeverity": "high",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "medium",
+   "reproStatus": "yes",
+   "verification": "code-confirmed, not reproduced",
+   "effort": "M",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "AutosaveThread -> XmlWriter iterates live getNonWires() (XmlWriter 280-296) while the EDT mutates; only IOException caught (LogisimFile 93-110); one failure sets run=false",
+   "recommendedFix": "Snapshot to bytes on the EDT or under locks; catch RuntimeException, report, keep retrying",
+   "memberIds": [
+    "F223"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C12",
+   "title": "-tty swallows load errors: dropped components give wrong results and exit code 0",
+   "kind": "bug",
+   "theme": "Silent wrong answers",
+   "priority": "P1",
+   "status": "open",
+   "judgeSeverity": "high",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "high",
+   "reproStatus": "partial",
+   "verification": "code-confirmed + CLI output",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "OptionPane.showOptionDialog (335-346) returns CLOSED_OPTION silently when !Main.hasGui(); Loader.showError goes through it; TtyInterface ignores load messages",
+   "recommendedFix": "Print messages to stderr when headless; exit non-zero when the load reported errors",
+   "memberIds": [
+    "F147",
+    "F171"
+   ],
+   "evidence": [
+    "evidence/tty-badattr.out"
+   ]
+  },
+  {
+   "cid": "C13",
+   "title": "A self- or mutually-recursive subcircuit file causes StackOverflowError, no window, and a lingering JVM",
+   "kind": "crash",
+   "theme": "File integrity and state truthfulness",
+   "priority": "P2",
+   "status": "open",
+   "judgeSeverity": "high",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "medium",
+   "reproStatus": "partial",
+   "verification": "tester-observed (logs)",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Loader has no subcircuit cycle check; SimulationTreeCircuitNode.<init>/computeChildren (45,110) recurse unbounded",
+   "recommendedFix": "DFS cycle check after load, reject with a message; make the tree cycle-safe",
+   "memberIds": [
+    "F152",
+    "F179"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C14",
+   "title": "Any placed VHDL entity without QuestaSim stops the whole circuit's simulation; -tty exits 255",
+   "kind": "bug",
+   "theme": "Crashes and threading",
+   "priority": "P2",
+   "status": "open",
+   "judgeSeverity": "high",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "medium",
+   "reproStatus": "yes",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "VhdlEntity.propagate (:251) and VhdlEntityComponent.propagate (:185) set outputs UNKNOWN then throw UnsupportedOperationException; SimThread treats it as fatal",
+   "recommendedFix": "Return without throwing; show a non-fatal badge; catch in TtyInterface",
+   "memberIds": [
+    "F97",
+    "F201"
+   ],
+   "evidence": [
+    "evidence/vhdl-entity-throws.log"
+   ]
+  },
+  {
+   "cid": "C15",
+   "title": "An unconnected ROM crashes HDL generation with a raw NPE that is not logged",
+   "kind": "crash",
+   "theme": "Crashes and threading",
+   "priority": "P2",
+   "status": "open",
+   "judgeSeverity": "high",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "medium",
+   "reproStatus": "partial",
+   "verification": "tester-observed (GUI + headless)",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Hdl.getBusName returns null; RomHdlGeneratorFactory -> WithSelectHdlGenerator -> LineBuffer.applyPairs; reportDownloadFailure logs only toString()",
+   "recommendedFix": "Null-check bus names; DRC error naming the component; log stack traces",
+   "memberIds": [
+    "F98"
+   ],
+   "evidence": [
+    "evidence/hdl-rom-npe.png"
+   ]
+  },
+  {
+   "cid": "C16",
+   "title": "Merging a file that uses a built-in library asks to locate a 'library file'; Cancel throws LoaderException",
+   "kind": "crash",
+   "theme": "Crashes and threading",
+   "priority": "P2",
+   "status": "open",
+   "judgeSeverity": "high",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "medium",
+   "reproStatus": "partial",
+   "verification": "tester-observed + log",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "LogisimFileActions.MergeFile (139-144) calls getFileFor for every descriptor incl. '#TTL'; doMerge does not catch LoaderException",
+   "recommendedFix": "Auto-add built-ins; prompt only for file/jar descriptors; catch in doMerge",
+   "memberIds": [
+    "F200"
+   ],
+   "evidence": [
+    "evidence/merge-loaderexception.log"
+   ]
+  },
+  {
+   "cid": "C17",
+   "title": "Export Image allocates a full raster even for SVG/TikZ and fails silently on large circuits",
+   "kind": "bug",
+   "theme": "Crashes and threading",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "high",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "partial",
+   "verification": "log-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "ExportThread.export (ExportImage 246-251) creates the BufferedImage before the format branch; IAE/OOM outside the try; monitor never closed",
+   "recommendedFix": "Allocate only for raster formats; bound size; catch and tell the user",
+   "memberIds": [
+    "F170"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C18",
+   "title": "Closed project windows are never garbage-collected (static LocaleManager listeners)",
+   "kind": "perf",
+   "theme": "Crashes and threading",
+   "priority": "P2",
+   "status": "open",
+   "judgeSeverity": "high",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "medium",
+   "reproStatus": "partial",
+   "verification": "reproduced (jcmd histogram)",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "LocaleManager (91-126) static strong listener list; removeLocaleListener never called; Frame/Canvas/Toolbox/AttrTable/LogFrame/HexFrame register",
+   "recommendedFix": "Unregister in dispose() or hold weakly / tie to displayability",
+   "memberIds": [
+    "F216"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C19",
+   "title": "A malformed user template is accepted, after which every File > New throws an NPE",
+   "kind": "bug",
+   "theme": "Crashes and threading",
+   "priority": "P2",
+   "status": "open",
+   "judgeSeverity": "high",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "medium",
+   "reproStatus": "yes",
+   "verification": "reproduced + code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "TemplateOptions (150-158) ignores LogisimFile.load returning null and sets CUSTOM; createNewFile falls back only on IOException",
+   "recommendedFix": "Commit the template only when it loads; treat null like IOException",
+   "memberIds": [
+    "F217"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C20",
+   "title": "Log Model and chronogram Swing components are mutated across SimThread and the EDT without synchronisation",
+   "kind": "crash",
+   "theme": "Crashes and threading",
+   "priority": "P2",
+   "status": "open",
+   "judgeSeverity": "high",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "medium",
+   "reproStatus": "partial",
+   "verification": "code-confirmed",
+   "effort": "M",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Model.signals plain ArrayList iterated on SimThread (636-655), edited on the EDT (250-300); ChronoPanel.signalsExtended (273-282) and RightPanel.updateSize (200-217) revalidate on SimThread",
+   "recommendedFix": "Sample on SimThread into an immutable batch; apply on the EDT with one coalesced invokeLater",
+   "memberIds": [
+    "F219",
+    "F220"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C21",
+   "title": "IndexOutOfBoundsException on a simulation-state switch leaves the timing diagram on the wrong circuit with mislabelled signals",
+   "kind": "crash",
+   "theme": "Crashes and threading",
+   "priority": "P2",
+   "status": "open",
+   "judgeSeverity": "high",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "medium",
+   "reproStatus": "partial",
+   "verification": "tester-observed + log",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "RightPanel.updateSelected (299-301) indexes a stale selection against the new model; exception aborts LogFrame.setSimulator/ChronoPanel.modelChanged",
+   "recommendedFix": "Clear the selection before swapping models; clamp indices",
+   "memberIds": [
+    "F43"
+   ],
+   "evidence": [
+    "evidence/timing-ioobe.log"
+   ]
+  },
+  {
+   "cid": "C22",
+   "title": "The expression parser gives AND and OR the same precedence (a+b*c becomes (a+b)c), contradicting the help page",
+   "kind": "bug",
+   "theme": "Silent wrong answers",
+   "priority": "P1",
+   "status": "open",
+   "judgeSeverity": "high",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "high",
+   "reproStatus": "yes",
+   "verification": "code-confirmed + tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Parser.java 188-196, 344-381: '+' and '*' both LOGIC_PRECEDENCE, '&' BITAND (below '+'), word forms PYTHON_*, '^' OPLUS; ana-expr.html documents NOT > AND > XOR > OR",
+   "recommendedFix": "One precedence table for all spellings; parser unit tests keyed to the help; update the page",
+   "memberIds": [
+    "F55",
+    "F259"
+   ],
+   "evidence": [
+    "evidence/parser-precedence.png"
+   ]
+  },
+  {
+   "cid": "C23",
+   "title": "Save As rejects hyphens and spaces, even the project's own current filename",
+   "kind": "ux",
+   "theme": "Copy, help and localisation",
+   "priority": "P2",
+   "status": "open",
+   "judgeSeverity": "high",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "medium",
+   "reproStatus": "yes",
+   "verification": "code-confirmed + tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "ProjectActions.java:115 pattern [^a-z\\d_.] applied only in Save As",
+   "recommendedFix": "Drop the restriction or make it a non-blocking HDL warning on every save path",
+   "memberIds": [
+    "F83"
+   ],
+   "evidence": [
+    "evidence/saveas-reject-own-name.png"
+   ]
+  },
+  {
+   "cid": "C24",
+   "title": "A restored bottom drawer up to 720px hides the canvas and forces 20% zoom",
+   "kind": "bug",
+   "theme": "Shell, windows and layout",
+   "priority": "P2",
+   "status": "open",
+   "judgeSeverity": "high",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "medium",
+   "reproStatus": "partial",
+   "verification": "tester-observed across restarts",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "regressed",
+    "ref": "W3-divider-persistence"
+   },
+   "rootCause": "ShellLayout 62-69: bottomSplit has no editor minimum; bottomHeight clamped only to MAX_PANEL; Frame.java:1067 initial zoom uses the squeezed viewport",
+   "recommendedFix": "Reserve a minimum editor height; clamp to the window; compute initial zoom after layout",
+   "memberIds": [
+    "F192"
+   ],
+   "evidence": [
+    "evidence/drawer-hides-canvas.png"
+   ]
+  },
+  {
+   "cid": "C25",
+   "title": "--test-vector always exits 0, even when vectors fail or loading fails",
+   "kind": "bug",
+   "theme": "Silent wrong answers",
+   "priority": "P1",
+   "status": "open",
+   "judgeSeverity": "high",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "high",
+   "reproStatus": "yes",
+   "verification": "code-confirmed + CLI",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Startup.java:1070 discards the doTestVector result; :1127 System.exit(0); -w also needs a display",
+   "recommendedFix": "Exit non-zero on failures or load errors; allow headless",
+   "memberIds": [
+    "F180"
+   ],
+   "evidence": [
+    "evidence/tv-exit0.out"
+   ]
+  },
+  {
+   "cid": "C26",
+   "title": "A large test-vector file freezes the UI for minutes (a full re-sort queued per result row)",
+   "kind": "perf",
+   "theme": "Crashes and threading",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "high",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "partial",
+   "verification": "jstack-confirmed, stress input",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "gui/test/Model.setResult posts invokeLater(updateSortedIndices) per row; O(N^2 log N) on the EDT",
+   "recommendedFix": "Coalesce updates on a timer; sort once at the end",
+   "memberIds": [
+    "F181"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C27",
+   "title": "The hotkey editor enters record mode on focus, blanks fields on Tab, keeps unapplied edits after close, loses focus after Apply",
+   "kind": "bug",
+   "theme": "Keyboard, focus and accessibility",
+   "priority": "P2",
+   "status": "open",
+   "judgeSeverity": "high",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "medium",
+   "reproStatus": "partial",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "JHotkeyInput 59-72: focusGained -> enterEditMode; focusLost -> exitEditModeWithoutRefresh; nothing cancels on hide; Apply moves focus to the filter",
+   "recommendedFix": "Record only on explicit activation; restore text on blur/hide; return focus after Apply",
+   "memberIds": [
+    "F114",
+    "F167",
+    "F124"
+   ],
+   "evidence": [
+    "evidence/hotkey-blanked.png"
+   ]
+  },
+  {
+   "cid": "C28",
+   "title": "No keyboard placement, selection or nudging on the canvas, and no AccessibleContext",
+   "kind": "a11y",
+   "theme": "Keyboard, focus and accessibility",
+   "priority": "P2",
+   "status": "open",
+   "judgeSeverity": "high",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "medium",
+   "reproStatus": "partial",
+   "verification": "code-confirmed",
+   "effort": "M",
+   "priorAudit": {
+    "tag": "still-open",
+    "ref": "canvas-08"
+   },
+   "rootCause": "AddTool.keyPressed (364-435) has no place action; EditTool (300-307) maps arrows to reface; Canvas has no AccessibleContext",
+   "recommendedFix": "Enter places at viewport centre; arrows nudge; rotate on R; add AccessibleContext",
+   "memberIds": [
+    "F113",
+    "F233"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C29",
+   "title": "Toolbar tool buttons take focus but show no focus indicator",
+   "kind": "a11y",
+   "theme": "Keyboard, focus and accessibility",
+   "priority": "P2",
+   "status": "open",
+   "judgeSeverity": "high",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "medium",
+   "reproStatus": "partial",
+   "verification": "reproduced (live tab walk)",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "still-open",
+    "ref": "codeaudit-19"
+   },
+   "rootCause": "ToolbarButton.java:71 focusable, :90 setFocusPainted(false), paintComponent (156-190) never checks isFocusOwner",
+   "recommendedFix": "Paint a focus ring like ActivityBar.Item",
+   "memberIds": [
+    "F230"
+   ],
+   "evidence": [
+    "evidence/toolbar-invisible-focus.png"
+   ]
+  },
+  {
+   "cid": "C30",
+   "title": "A global Ctrl+Tab dispatcher traps focus in JTables and switches circuits instead",
+   "kind": "a11y",
+   "theme": "Keyboard, focus and accessibility",
+   "priority": "P2",
+   "status": "open",
+   "judgeSeverity": "high",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "medium",
+   "reproStatus": "partial",
+   "verification": "reproduced (live)",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "regressed",
+    "ref": "remaining-keyboard-01"
+   },
+   "rootCause": "EditorTabs.dispatchTabKey (128-145) KeyEventDispatcher consumes every Ctrl+Tab in the root pane",
+   "recommendedFix": "Use Ctrl+PageUp/PageDown, or skip when the focus owner is a JTable/JTextComponent",
+   "memberIds": [
+    "F231"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C31",
+   "title": "The 'Color blind colors' preset makes logic-1 wires near-invisible (1.23:1 on light) and is not theme-aware",
+   "kind": "a11y",
+   "theme": "Keyboard, focus and accessibility",
+   "priority": "P2",
+   "status": "open",
+   "judgeSeverity": "high",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "medium",
+   "reproStatus": "partial",
+   "verification": "confirmed by pixel sampling",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "SimOptions.applyColorBlindPalette (142-178) hard-codes one value set into the current theme",
+   "recommendedFix": "Per-theme CVD-safe palettes with a contrast unit test",
+   "memberIds": [
+    "F232"
+   ],
+   "evidence": [
+    "evidence/colorblind-wire.png",
+    "evidence/contrast.txt"
+   ]
+  },
+  {
+   "cid": "C32",
+   "title": "A width mismatch through same-named tunnels shows consistent badges on each side, with no pointer to the conflict",
+   "kind": "ux",
+   "theme": "Error explanation and diagnosability",
+   "priority": "P2",
+   "status": "open",
+   "judgeSeverity": "high",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Width badges are per sub-net; tunnels are not badged with the partner width; same-label partners not highlighted",
+   "recommendedFix": "Badge tunnels with '8!=4'; highlight partner tunnels on select/hover",
+   "memberIds": [
+    "F30"
+   ],
+   "evidence": [
+    "evidence/tunnel-width-mismatch.png"
+   ]
+  },
+  {
+   "cid": "C33",
+   "title": "Error states (width banner, E/U wires) are not actionable: no locate, tooltip, legend or help link",
+   "kind": "ux",
+   "theme": "Error explanation and diagnosability",
+   "priority": "P2",
+   "status": "open",
+   "judgeSeverity": "high",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "M",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Canvas.java 313-325 paints the banner as inert text; wires have no ToolTipMaker; no link to the wire-colour help",
+   "recommendedFix": "Clickable problems chip cycling through errors; wire tooltips; legend with help link",
+   "memberIds": [
+    "F31",
+    "F250",
+    "F260"
+   ],
+   "evidence": [
+    "evidence/width-banner.png"
+   ]
+  },
+  {
+   "cid": "C34",
+   "title": "No way to export the timing diagram or log values to a file from the docked panel",
+   "kind": "missing-feature",
+   "theme": "Visual design and theming",
+   "priority": "P2",
+   "status": "open",
+   "judgeSeverity": "high",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "medium",
+   "reproStatus": "not-applicable",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "regressed",
+    "ref": "docked-log-drawer"
+   },
+   "rootCause": "LogFrame.java:356 wires ChronoPanel.getPrintHandler only to its own menubar, hidden in docked mode; FilePanel never instantiated",
+   "recommendedFix": "Add export and WaveDrom actions to the timing panel toolbar",
+   "memberIds": [
+    "F44"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C35",
+   "title": "Loading a JAR with no manifest throws an uncaught NPE on the EDT and the user sees nothing",
+   "kind": "crash",
+   "theme": "Crashes and threading",
+   "priority": "P2",
+   "status": "open",
+   "judgeSeverity": "high",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "medium",
+   "reproStatus": "yes",
+   "verification": "reproduced + code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "ProjectLibraryActions.java:110 and LogisimFileActions.java:281 dereference a null Manifest",
+   "recommendedFix": "Null-check the manifest so the class-name prompt appears; show an error when the JAR cannot be opened",
+   "memberIds": [
+    "F82",
+    "F218"
+   ],
+   "evidence": [
+    "evidence/jar-npe.log"
+   ]
+  },
+  {
+   "cid": "C36",
+   "title": "Any exception while creating a window calls System.exit(-1), killing other dirty projects",
+   "kind": "data-loss",
+   "theme": "File integrity and state truthfulness",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "yes",
+   "verification": "code-confirmed, no trigger shown",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "ProjectActions.CreateFrame.run (84-100) catches Exception, shows an error, System.exit(-1)",
+   "recommendedFix": "Exit only when no other project is open; otherwise dispose the failed frame",
+   "memberIds": [
+    "F225"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C37",
+   "title": "The Latin-1 fallback for old files uses UTF-8 on JDK 18+, so accented text becomes U+FFFD on save",
+   "kind": "data-loss",
+   "theme": "File integrity and state truthfulness",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "yes",
+   "verification": "code-confirmed + tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "LogisimFile.java:289 new FileReader(file) uses the platform default charset",
+   "recommendedFix": "Pass StandardCharsets.ISO_8859_1",
+   "memberIds": [
+    "F150"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C38",
+   "title": "Save silently overwrites changes made to the file outside the app",
+   "kind": "data-loss",
+   "theme": "File integrity and state truthfulness",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "partial",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Loader.save does not record or check the mtime",
+   "recommendedFix": "Store mtime at load/save; prompt when it changed",
+   "memberIds": [
+    "F151"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C39",
+   "title": "The analyzer has no undo: re-analysing or importing silently replaces a hand-made table, and one K-map click changes the table",
+   "kind": "data-loss",
+   "theme": "Editing, undo and inspector",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "weakly code-confirmed",
+   "effort": "M",
+   "priorAudit": {
+    "tag": "still-open",
+    "ref": "analyzer-07"
+   },
+   "rootCause": "Single reused analyzer model; no confirmation before replacing; no undo stack",
+   "recommendedFix": "Confirm before replacing a changed model; analyzer undo stack; K-map editing hint",
+   "memberIds": [
+    "F57",
+    "F58"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C40",
+   "title": "TikZ/SVG export stops part-way on an NPE from a null label colour (classic Register, Random, Telnet)",
+   "kind": "crash",
+   "theme": "Crashes and threading",
+   "priority": "P2",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "medium",
+   "reproStatus": "yes",
+   "verification": "log + code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Components paint with undeclared LABEL_COLOR (null); TikZInfo.getColorName (:136) dereferences null; export thread does not catch",
+   "recommendedFix": "setColor(null) no-op; default colour in those painters; catch per circuit and report",
+   "memberIds": [
+    "F202"
+   ],
+   "evidence": [
+    "evidence/tikz-npe.log"
+   ]
+  },
+  {
+   "cid": "C41",
+   "title": "Deleting timing signals leaves a stale spotlight, causing IndexOutOfBoundsException on mouse move",
+   "kind": "crash",
+   "theme": "Crashes and threading",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "yes",
+   "verification": "code-confirmed + log",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Model.remove (:262) items.contains(spotlight) compares SignalInfo with Signal (@SuppressWarnings unlikely-arg-type)",
+   "recommendedFix": "Fix the comparison; bounds-check the index",
+   "memberIds": [
+    "F203"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C42",
+   "title": "Adding a bus variable with range syntax throws IllegalArgumentExceptions in the analyzer",
+   "kind": "crash",
+   "theme": "Crashes and threading",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "partial",
+   "verification": "log-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "VariableTab.ok off by one (w -= 1, :626), combo index unbounded; VariableList.add counts variables not bits",
+   "recommendedFix": "Validate against the real bit width; show variableMaximumError",
+   "memberIds": [
+    "F204"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C43",
+   "title": "-tty cannot load any circuit with a SoC bus without a display (HeadlessException)",
+   "kind": "crash",
+   "theme": "Crashes and threading",
+   "priority": "P2",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "medium",
+   "reproStatus": "yes",
+   "verification": "confirmed (CLI + code)",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "SocBusStateInfo extends JDialog and is built in SocSimulationManager.registerComponent",
+   "recommendedFix": "Create the dialog lazily or skip when headless",
+   "memberIds": [
+    "F205"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C44",
+   "title": "Validating an edited VHDL entity does not update placed instances; their ports change only on reload",
+   "kind": "bug",
+   "theme": "Silent wrong answers",
+   "priority": "P2",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "medium",
+   "reproStatus": "yes",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "VhdlEntity.contentSet (324-326) only refreshes the icon; updatePorts runs only from appearanceChanged",
+   "recommendedFix": "Call updatePorts + fireInvalidated on all instances in contentSet",
+   "memberIds": [
+    "F206"
+   ],
+   "evidence": [
+    "evidence/vhdl-stale-ports.png"
+   ]
+  },
+  {
+   "cid": "C45",
+   "title": "Load time grows quadratically with circuit size (WireRepair.doSplits, removeWrongLabels)",
+   "kind": "perf",
+   "theme": "Shell, windows and layout",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "jstack-confirmed, synthetic input",
+   "effort": "L",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "WireRepair.doSplits checks every wire against every location; Circuit.removeWrongLabels scans all components on each add",
+   "recommendedFix": "Spatial index in doSplits; skip or index the label check during load",
+   "memberIds": [
+    "F153",
+    "F186"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C46",
+   "title": "A leftover autosave breaks -tty; a corrupt autosave blocks the GUI and blames the real file",
+   "kind": "bug",
+   "theme": "File integrity and state truthfulness",
+   "priority": "P2",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "medium",
+   "reproStatus": "not-applicable",
+   "verification": "code-confirmed + CLI output",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "LogisimFile.load (257-264) returns null on CLOSED_OPTION (headless prompt); no fallback when the autosave fails to parse",
+   "recommendedFix": "Skip the autosave check when headless; fall back to the original file",
+   "memberIds": [
+    "F154"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C47",
+   "title": "If the file passed at startup cannot be opened, the app exits after one error",
+   "kind": "ux",
+   "theme": "Shell, windows and layout",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "yes",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Startup.java:1106 System.exit(-1) when numOpened == 0",
+   "recommendedFix": "Fall back to the welcome screen",
+   "memberIds": [
+    "F155"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C48",
+   "title": "A missing library prompts twice and reports an 'XML formatting error'; -tty crashes with HeadlessException",
+   "kind": "bug",
+   "theme": "Error explanation and diagnosability",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "partial",
+   "verification": "CLI half confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "LogisimFile.load catches LoaderException and retries with the legacy reader; Loader.getFileFor (239-259) opens a chooser even when headless",
+   "recommendedFix": "Rethrow LoaderException; throw instead of prompting when headless",
+   "memberIds": [
+    "F157"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C49",
+   "title": "-tty --load discards the whole RAM image on any warning but reports success",
+   "kind": "data-loss",
+   "theme": "Silent wrong answers",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "TtyInterface.loadMemories (239-241) ignores HexFile.open returning false",
+   "recommendedFix": "Check the return value and fail, or load the valid prefix with a warning",
+   "memberIds": [
+    "F183"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C50",
+   "title": "-tty keyboard stdin: a flood causes OOM, and EOF makes the reader thread spin at 100% CPU",
+   "kind": "crash",
+   "theme": "Silent wrong answers",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "StdinThread.run (598-613) loops on read()==-1 and fills an unbounded queue",
+   "recommendedFix": "Stop on EOF; bounded queue with back-pressure",
+   "memberIds": [
+    "F184"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C51",
+   "title": "-tty halt with no halt pin runs forever silently",
+   "kind": "bug",
+   "theme": "Silent wrong answers",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "CLI-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "runSimulation while(true) with no missing-halt-pin check and no tick cap",
+   "recommendedFix": "Error when haltPin is null; add --max-ticks",
+   "memberIds": [
+    "F185"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C52",
+   "title": "The -tty truth table wraps at 31+ input bits (1<<n overflow), giving wrong output and exit 0",
+   "kind": "bug",
+   "theme": "Silent wrong answers",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "yes",
+   "verification": "code-confirmed + CLI",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "TtyInterface.java:440 rowCount = 1 << inputCount; TruthTable.isInputSet overflows the same way",
+   "recommendedFix": "Reject inputs above a cap; exit non-zero",
+   "memberIds": [
+    "F182"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C53",
+   "title": "Pin 'Label Location' is shown and saved but ignored when drawing",
+   "kind": "bug",
+   "theme": "Silent wrong answers",
+   "priority": "P2",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "medium",
+   "reproStatus": "partial",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Pin.java 753-767, 823-838 always use pinLabelLoc(facing); LABEL_LOC ignored though an Alt+arrow configurator is installed (:748)",
+   "recommendedFix": "Honour LABEL_LOC or hide the attribute for pins",
+   "memberIds": [
+    "F1",
+    "F20"
+   ],
+   "evidence": [
+    "evidence/pin-labelloc-ignored.png"
+   ]
+  },
+  {
+   "cid": "C54",
+   "title": "Welcome 'New project' opens a second window and leaves the blank Untitled window behind",
+   "kind": "ux",
+   "theme": "Shell, windows and layout",
+   "priority": "P2",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "medium",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed + code",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "still-open",
+    "ref": "canvas-25"
+   },
+   "rootCause": "Frame.java:303-307 calls doNew while Open uses doOpenReplacingBlank; ProjectActions 193-201 always creates a frame",
+   "recommendedFix": "Reuse the blank project",
+   "memberIds": [
+    "F2"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C55",
+   "title": "The welcome screen's recent list is not refreshed after a save in an already-showing welcome panel",
+   "kind": "bug",
+   "theme": "Shell, windows and layout",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "WelcomePanel has no RECENT_PROJECTS listener; refresh only runs when the panel is shown",
+   "recommendedFix": "Listen to the preference or refresh on window activation",
+   "memberIds": [
+    "F4"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C56",
+   "title": "Ctrl+W closes only the editor tab and the toolbar layout collapses when the palette hides",
+   "kind": "ux",
+   "theme": "Shell, windows and layout",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "EditorTabs.java:107 binds Ctrl+W to tab close; toolbar layout depends on palette visibility",
+   "recommendedFix": "Keep the toolbar layout stable; consider offering to close the project",
+   "memberIds": [
+    "F5"
+   ],
+   "evidence": [
+    "evidence/ctrlw-empty-shell.png"
+   ]
+  },
+  {
+   "cid": "C57",
+   "title": "The Properties header shows the last layout selection while editing the appearance",
+   "kind": "bug",
+   "theme": "Editing, undo and inspector",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed + code",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Frame.java:1150-1152 updates inspector.setTitle only on setAttrTableModel, not on appearance selection changes",
+   "recommendedFix": "Refresh the header from the appearance selection model",
+   "memberIds": [
+    "F14"
+   ],
+   "evidence": [
+    "evidence/appearance-stale-header.png"
+   ]
+  },
+  {
+   "cid": "C58",
+   "title": "The appearance editor is missing from the circuit popup, and layout/appearance tabs have identical titles with a hard-coded tooltip",
+   "kind": "ux",
+   "theme": "Shell, windows and layout",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "CircuitListView popup has no Edit Appearance entry; EditorTabs uses the same title for both kinds with a literal ' — appearance' tooltip (:255)",
+   "recommendedFix": "Add popup entries; localised, distinct tab names",
+   "memberIds": [
+    "F15",
+    "F239"
+   ],
+   "evidence": [
+    "evidence/circuit-popup.png"
+   ]
+  },
+  {
+   "cid": "C59",
+   "title": "The default custom appearance has no pin names, and the anchor overlaps the first output port",
+   "kind": "ux",
+   "theme": "Visual design and theming",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "M",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Custom-appearance template adds no text; anchor hit-test wins over ports",
+   "recommendedFix": "Generate labels; let ports win the hit test",
+   "memberIds": [
+    "F16"
+   ],
+   "evidence": [
+    "evidence/appearance-default.png"
+   ]
+  },
+  {
+   "cid": "C60",
+   "title": "Entering a subcircuit needs a double-click within about 7.7px of the magnifier",
+   "kind": "ux",
+   "theme": "Shell, windows and layout",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "yes",
+   "verification": "code-confirmed (intended design)",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "SubcircuitPoker.isWithin uses radius sqrt(60), matching the drawn magnifier",
+   "recommendedFix": "Accept a double-click anywhere in the instance bounds, or enlarge the target",
+   "memberIds": [
+    "F17"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C61",
+   "title": "Deleting the main circuit silently promotes the first circuit in the list",
+   "kind": "ux",
+   "theme": "Shell, windows and layout",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Main reassignment picks the first circuit and says nothing",
+   "recommendedFix": "Name the new main in the delete confirmation",
+   "memberIds": [
+    "F18"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C62",
+   "title": "A multi-bit net is drawn as a thin wire when only one port sets its width",
+   "kind": "bug",
+   "theme": "Silent wrong answers",
+   "priority": "P2",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "medium",
+   "reproStatus": "yes",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "WireBundle.setWidth (77-98) sets isBus_ only in the equal-width branch, never on first assignment; also suppresses the bus-width label",
+   "recommendedFix": "Set isBus_ on first assignment; unit test",
+   "memberIds": [
+    "F29"
+   ],
+   "evidence": [
+    "evidence/thin-bus-wire.png"
+   ]
+  },
+  {
+   "cid": "C63",
+   "title": "Only the last error's off-screen arrow is drawn",
+   "kind": "bug",
+   "theme": "Error explanation and diagnosability",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "yes",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Canvas.computeViewportContents calls setArrows per exception; setArrows starts with clearArrows() (320-324, 649-652)",
+   "recommendedFix": "Clear the arrows once before the loop",
+   "memberIds": [
+    "F32"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C64",
+   "title": "The wire inspector shows no width, value or error information",
+   "kind": "missing-feature",
+   "theme": "Error explanation and diagnosability",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Wire attribute set has no width/value rows; no ToolTipMaker",
+   "recommendedFix": "Read-only Width and Value rows plus a tooltip",
+   "memberIds": [
+    "F33"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C65",
+   "title": "Clicking a pin digit increments it, and typed digits overwrite from the caret toward the LSB",
+   "kind": "ux",
+   "theme": "Editing, undo and inspector",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "yes",
+   "verification": "code-confirmed (intended)",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Pin.mouseReleased increments the clicked digit; keyTyped bitCaret -= r with wrap (607-619)",
+   "recommendedFix": "Place the caret without changing the value; consider a value dialog for every radix",
+   "memberIds": [
+    "F34"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C66",
+   "title": "Content at negative coordinates is clipped and cannot be reached by scrolling or zoom-to-fit",
+   "kind": "bug",
+   "theme": "Shell, windows and layout",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "M",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Scrollable area and fit bounds exclude negative coordinates and label extents",
+   "recommendedFix": "Include negative painted bounds in the scroll area and fit calculation",
+   "memberIds": [
+    "F36",
+    "F77",
+    "F129",
+    "F174"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C67",
+   "title": "Single-clicking a partly off-canvas label moves it and marks the file dirty",
+   "kind": "bug",
+   "theme": "Editing, undo and inspector",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Non-negative clamp applied when a zero-distance move is committed",
+   "recommendedFix": "Create no move action for a click without a drag",
+   "memberIds": [
+    "F130"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C68",
+   "title": "Dark theme: hard-coded light defaults (Text black, TTY black, I/O labels #0000FF)",
+   "kind": "visual",
+   "theme": "Visual design and theming",
+   "priority": "P2",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "medium",
+   "reproStatus": "partial",
+   "verification": "code-confirmed + tester-observed",
+   "effort": "M",
+   "priorAudit": {
+    "tag": "still-open",
+    "ref": "components-08"
+   },
+   "rootCause": "TextAttributes.java:39 Color.BLACK; Tty.java 155-186 fixed colours; Led:89, DipSwitch:148, PortIo:234, TwoPinLed:107, Button:134, RgbLed:107, MatrixKeypad:209/364, DotMatrixBase:260 use StdAttr.DEFAULT_LABEL_COLOR instead of the theme-aware accessor (StdAttr 51-54)",
+   "recommendedFix": "Resolve default colours from CanvasStyle tokens at paint time; contrast unit test over Builtin defaults",
+   "memberIds": [
+    "F37",
+    "F73",
+    "F74",
+    "F254"
+   ],
+   "evidence": [
+    "evidence/dark-io-labels.png",
+    "evidence/dark-text-black.png"
+   ]
+  },
+  {
+   "cid": "C69",
+   "title": "Switching tabs with the Timing panel open shows a blocking clock-source modal while canvas and simulator disagree",
+   "kind": "ux",
+   "theme": "Visual design and theming",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "code-confirmed (scoped to >1 clock)",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Model.java 126-136, 403-407 call doClockMultipleObserverDialog when clocks.size() > 1",
+   "recommendedFix": "Default to the top-level clock; never block a tab switch",
+   "memberIds": [
+    "F45"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C70",
+   "title": "After an oscillation the status says 'no signals changed' and gives no next step; plural wrong",
+   "kind": "copy",
+   "theme": "Error explanation and diagnosability",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Status bar shows the generic singleStepMessage; the canvas message is separate",
+   "recommendedFix": "Show 'Stopped: oscillation' with a Reset action; fix the plural",
+   "memberIds": [
+    "F46"
+   ],
+   "evidence": [
+    "evidence/osc-status.png"
+   ]
+  },
+  {
+   "cid": "C71",
+   "title": "Two identical orange pause icons appear while auto-ticking",
+   "kind": "visual",
+   "theme": "Visual design and theming",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Run/Stop and tick-enable share the pause glyph",
+   "recommendedFix": "Distinct tick-enable glyph with a pressed state",
+   "memberIds": [
+    "F47"
+   ],
+   "evidence": [
+    "evidence/double-pause-icons.png"
+   ]
+  },
+  {
+   "cid": "C72",
+   "title": "A circuit with a width mismatch is analysed silently as all don't-care",
+   "kind": "bug",
+   "theme": "Silent wrong answers",
+   "priority": "P2",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "medium",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed + grep",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Neither Analyze.java nor ProjectCircuitActions checks getWidthIncompatibilityData",
+   "recommendedFix": "Raise the AnalyzeException and name the net",
+   "memberIds": [
+    "F56"
+   ],
+   "evidence": [
+    "evidence/analyzer-width-mismatch.png"
+   ]
+  },
+  {
+   "cid": "C73",
+   "title": "Test-vector panel: failed cells swap between expected and actual after Reset; columns and Show/Set explained only by tooltips",
+   "kind": "ux",
+   "theme": "Editing, undo and inspector",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "code-checked (tooltips exist)",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "One column reused for expected and actual; rows re-sorted; hover-only explanations (TestPanel 176-178)",
+   "recommendedFix": "Show 'exp->got'; keep file order; visible column labels",
+   "memberIds": [
+    "F59",
+    "F261"
+   ],
+   "evidence": [
+    "evidence/test-vectors-panel.png"
+   ]
+  },
+  {
+   "cid": "C74",
+   "title": "The analyzer opens tiny, does not scale when maximised, and does not relayout on a UI-scale change",
+   "kind": "visual",
+   "theme": "Shell, windows and layout",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "L",
+   "priorAudit": {
+    "tag": "still-open",
+    "ref": "analyzer-03,analyzer-06"
+   },
+   "rootCause": "Fixed pack size; K-map cells do not scale; no response to UiScale changes",
+   "recommendedFix": "Size relative to the parent; scale content; grow on scale change",
+   "memberIds": [
+    "F61",
+    "F195"
+   ],
+   "evidence": [
+    "evidence/analyzer-kmap-maximized.png"
+   ]
+  },
+  {
+   "cid": "C75",
+   "title": "The first click on an unselected DIP switch only selects it",
+   "kind": "bug",
+   "theme": "Silent wrong answers",
+   "priority": "P2",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "medium",
+   "reproStatus": "not-applicable",
+   "verification": "code-confirmed (double dispatch)",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "InstancePokerAdapter.getPokeCaret calls mousePressed (:92) and PokeTool.mousePressed calls it again (256-258); DipSwitch.Poker toggles in mousePressed so the first click toggles twice",
+   "recommendedFix": "Fix the double dispatch in PokeTool/InstancePokerAdapter",
+   "memberIds": [
+    "F68"
+   ],
+   "evidence": [
+    "evidence/dip-first-click.png"
+   ]
+  },
+  {
+   "cid": "C76",
+   "title": "The hex editor's own undo does nothing, and its Edit menu is the full circuit menu",
+   "kind": "ux",
+   "theme": "Editing, undo and inspector",
+   "priority": "P2",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "medium",
+   "reproStatus": "not-applicable",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "HexFrame.EditListener.register (199-205) wires only cut/copy/paste/delete/select-all",
+   "recommendedFix": "Route undo/redo to the project; trim the menu",
+   "memberIds": [
+    "F69"
+   ],
+   "evidence": [
+    "evidence/hex-editor.png"
+   ]
+  },
+  {
+   "cid": "C77",
+   "title": "Typing hex digits does not advance to the next byte",
+   "kind": "ux",
+   "theme": "Editing, undo and inspector",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "yes",
+   "verification": "code-confirmed (designed)",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Caret.keyTyped (267-307) shifts digits in; only Space/Enter/arrows move",
+   "recommendedFix": "Auto-advance after a full cell; show a hint",
+   "memberIds": [
+    "F70"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C78",
+   "title": "An oversized memory image is truncated with a self-contradicting message and an unbounded dialog width",
+   "kind": "bug",
+   "theme": "Editing, undo and inspector",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Warnings not listed in the details box; wrong plural; dialog sized to the longest line",
+   "recommendedFix": "List the warnings; fix the plural; cap the width",
+   "memberIds": [
+    "F72"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C79",
+   "title": "The recovery prompt names the file by UUID and forces a Save; the saved file has no .circ extension",
+   "kind": "ux",
+   "theme": "File integrity and state truthfulness",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "still-open",
+    "ref": "canvas-33,components-32"
+   },
+   "rootCause": "Startup recovery path bypasses doSaveAs validation and extension logic",
+   "recommendedFix": "Show time and circuits; offer Restore; reuse doSaveAs",
+   "memberIds": [
+    "F84"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C80",
+   "title": "Reload Library does not refresh the library tree view",
+   "kind": "bug",
+   "theme": "Shell, windows and layout",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "No structure-changed event after LibraryManager.reload",
+   "recommendedFix": "Fire treeStructureChanged after reload",
+   "memberIds": [
+    "F85"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C81",
+   "title": "Rejected library loads leave undo entries, and one merge takes 11 mislabelled undo steps",
+   "kind": "bug",
+   "theme": "Editing, undo and inspector",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "partial",
+   "verification": "partly code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "LoadLibraries (393-450) still builds an Action when every library is rejected; merge is not a compound action",
+   "recommendedFix": "Skip empty actions; wrap the merge in one action",
+   "memberIds": [
+    "F86"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C82",
+   "title": "A non-JAR file leads to a bare class-name prompt and a misleading 'class not found'",
+   "kind": "ux",
+   "theme": "Copy, help and localisation",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "File not validated as a JAR before the prompt",
+   "recommendedFix": "Validate the JAR; list the Library classes it contains",
+   "memberIds": [
+    "F88"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C83",
+   "title": "HDL Validate checks only the entity header; broken architecture code passes silently",
+   "kind": "bug",
+   "theme": "Silent wrong answers",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "yes",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "HdlContentView.doValidate (131-136) only parses the ports",
+   "recommendedFix": "State what was checked; optionally run GHDL",
+   "memberIds": [
+    "F99"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C84",
+   "title": "The FPGA commander's Toplevel silently follows the current circuit",
+   "kind": "ux",
+   "theme": "Shell, windows and layout",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "yes",
+   "verification": "code-confirmed (intended)",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "FpgaCommander.projectChanged on ACTION_SET_CURRENT calls setCurrentSheet",
+   "recommendedFix": "Decouple Toplevel from the current circuit, or make the follow explicit",
+   "memberIds": [
+    "F101"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C85",
+   "title": "The commander layout does not grow, and errors are cut off",
+   "kind": "ux",
+   "theme": "Shell, windows and layout",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "M",
+   "priorAudit": {
+    "tag": "still-open",
+    "ref": "codeaudit-21"
+   },
+   "rootCause": "Fixed layout weights; no line wrap",
+   "recommendedFix": "Let the report pane fill the window and wrap text",
+   "memberIds": [
+    "F102"
+   ],
+   "evidence": [
+    "evidence/fpga-commander.png"
+   ]
+  },
+  {
+   "cid": "C86",
+   "title": "FPGA mapping needs one dialog per bit and has tiny hit targets",
+   "kind": "ux",
+   "theme": "Editing, undo and inspector",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "M",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Partial-map dialog maps one bit at a time",
+   "recommendedFix": "Bus-to-group mapping; larger targets",
+   "memberIds": [
+    "F104"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C87",
+   "title": "The language list applies the language on every arrow key and does not preselect the current one",
+   "kind": "a11y",
+   "theme": "Keyboard, focus and accessibility",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "LocaleSelector.valueChanged applies via invokeLater on every selection change; exact Locale equality misses preselect",
+   "recommendedFix": "Apply on Enter/double-click; preselect the active locale",
+   "memberIds": [
+    "F115"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C88",
+   "title": "Switching language while the settings filter has text strands the user on 'No settings match'",
+   "kind": "bug",
+   "theme": "Keyboard, focus and accessibility",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "plausible from code",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "SettingsNav re-runs the filter against the new locale's labels",
+   "recommendedFix": "Clear the filter on locale change",
+   "memberIds": [
+    "F116"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C89",
+   "title": "New shell strings are untranslated in every locale, and there is a large German backlog",
+   "kind": "i18n",
+   "theme": "Copy, help and localisation",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "partial",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "explorerTab, explorerFilterHint, propertiesEmptyHint exist only in gui.properties; gui_de 105 and std_de 129 '# ==>' keys; typo gui_de.properties:647 'Internationalierung'",
+   "recommendedFix": "Run trans-tool for the new keys; fix the typo",
+   "memberIds": [
+    "F117",
+    "F198",
+    "F247"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C90",
+   "title": "A pin added from the search palette looks different from the toolbar Pin",
+   "kind": "consistency",
+   "theme": "Shell, windows and layout",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "root cause refuted",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "AddToolSearchProvider reuses the library AddTool; the toolbar holds a separate preconfigured AddTool (pre-existing design)",
+   "recommendedFix": "Share or sync default attributes between toolbar and library tools",
+   "memberIds": [
+    "F118"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C91",
+   "title": "Editing a property from the keyboard takes many hidden steps",
+   "kind": "ux",
+   "theme": "Editing, undo and inspector",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Enter moves to the next row; no focus-inspector shortcut",
+   "recommendedFix": "Enter or F2 starts editing; add an edit-label shortcut",
+   "memberIds": [
+    "F120"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C92",
+   "title": "Omni-search matches project names in breadcrumbs, gives junk fuzzy results, and does not index settings or labels",
+   "kind": "bug",
+   "theme": "Shell, windows and layout",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "partly code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Match text includes the breadcrumb; uncapped subsequence gaps; PreferenceSearchProvider indexes page names only",
+   "recommendedFix": "Exclude the project name; cap fuzzy gaps; index settings and labels",
+   "memberIds": [
+    "F9",
+    "F122"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C93",
+   "title": "The Library Reference hides the Base library and shows a developer test node",
+   "kind": "copy",
+   "theme": "Copy, help and localisation",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "yes",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "contents.xml 230-257 comments out Base/TCL/BFH/SOC/HDL; 258-261 shows 'Tests for documentation'",
+   "recommendedFix": "Un-comment Base; drop the test node",
+   "memberIds": [
+    "F131"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C94",
+   "title": "Print has no preview, never scales up, and shows unexplained header tokens and a decorative '?' icon",
+   "kind": "ux",
+   "theme": "Copy, help and localisation",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "partly refuted (rotate-to-fit is a visible checkbox)",
+   "effort": "M",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Print.java scales only when scale < 1 (:191); QUESTION_MESSAGE icon (:62)",
+   "recommendedFix": "Preview; fit-to-page; explain the tokens; PLAIN_MESSAGE",
+   "memberIds": [
+    "F95",
+    "F134",
+    "F135"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C95",
+   "title": "No align or distribute commands",
+   "kind": "missing-feature",
+   "theme": "Editing, undo and inspector",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "feature gap",
+   "effort": "L",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Not implemented",
+   "recommendedFix": "Add Align and Distribute",
+   "memberIds": [
+    "F136"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C96",
+   "title": "No way to lock a scaffold circuit, and styling is not saved per project",
+   "kind": "missing-feature",
+   "theme": "Editing, undo and inspector",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "feature gap",
+   "effort": "L",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Not implemented; colours are global preferences",
+   "recommendedFix": "Locked attribute; project-level styling",
+   "memberIds": [
+    "F138"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C97",
+   "title": "No minimum window size; a 1x1 window is saved and restored, and Reset window layout ignores size",
+   "kind": "bug",
+   "theme": "Shell, windows and layout",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "yes",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Frame.java 423-428 Math.max(1, ...); resetWindow (1297-1302) ignores size keys",
+   "recommendedFix": "Minimum size; clamp restored size; reset the size keys",
+   "memberIds": [
+    "F193"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C98",
+   "title": "At 2x/3x scale, activity-bar and panel-header actions are cut off with no overflow",
+   "kind": "a11y",
+   "theme": "Shell, windows and layout",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "M",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "ActivityBar BoxLayout of fixed buttons; PanelHeader FlowLayout",
+   "recommendedFix": "Overflow menus; ellipsis; word-wrap",
+   "memberIds": [
+    "F194"
+   ],
+   "evidence": [
+    "evidence/scale3-canvas.png",
+    "evidence/vis-title-trunc-2x.png"
+   ],
+   "visualSweepMembers": [
+    {
+     "sweepArea": "scale-matrix",
+     "title": "Window title and circuit-tree names truncate at 2.0x in a 1280x800 window",
+     "inspectorSeverity": "medium",
+     "adjustedSeverity": "low",
+     "reviewVerdict": "downgraded",
+     "note": "'main of...' and 'main (ma'. Expected at a 640x400 logical window; the title ellipsizes correctly and the tree scrolls. Cosmetic.",
+     "evidence": [
+      "evidence/vis-title-trunc-2x.png"
+     ],
+     "priorRef": "scaling-16"
+    }
+   ]
+  },
+  {
+   "cid": "C99",
+   "title": "The Assembly window leaks its simulator listener, updates Swing from SimThread, and shares static state across projects",
+   "kind": "bug",
+   "theme": "Crashes and threading",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "yes",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "curCircuit/curCircuitState static (60-61); addSimulatorListener (:141) never removed; updateHighlightLine on SimThread",
+   "recommendedFix": "Instance fields; remove listener on close; invokeLater",
+   "memberIds": [
+    "F221"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C100",
+   "title": "Colour swatch buttons have no accessible name",
+   "kind": "a11y",
+   "theme": "Keyboard, focus and accessibility",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "yes",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "ColorChooserButton (32-39) icon-only; captions do not call setLabelFor",
+   "recommendedFix": "setLabelFor; name and tooltip with the hex value",
+   "memberIds": [
+    "F234"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C101",
+   "title": "Several theme token pairs fail WCAG contrast (dark white-on-accent 3.20, light error 3.91, warning 3.00)",
+   "kind": "a11y",
+   "theme": "Keyboard, focus and accessibility",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "computed (contrast.txt)",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "still-open",
+    "ref": "codeaudit-16"
+   },
+   "rootCause": "Token values in the LAF properties files",
+   "recommendedFix": "Adjust the tokens; add a contrast test",
+   "memberIds": [
+    "F235"
+   ],
+   "evidence": [
+    "evidence/contrast.txt"
+   ]
+  },
+  {
+   "cid": "C102",
+   "title": "Expanded section headers draw muted text on FlatLaf's grey selected fill (3.82:1)",
+   "kind": "a11y",
+   "theme": "Keyboard, focus and accessibility",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "sampled",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "SectionPanel uses setSelected to show the expanded state",
+   "recommendedFix": "Stop using selected for expansion; expose AccessibleState",
+   "memberIds": [
+    "F236"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C103",
+   "title": "Toolbar accessible names never update, the selected state is not exposed, and the selected tint is faint",
+   "kind": "a11y",
+   "theme": "Keyboard, focus and accessibility",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "partial",
+   "verification": "partly verified",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "ToolbarButton.java:68 sets the accessible name once; setSelected never called; SELECTED_ALPHA=80",
+   "recommendedFix": "Read the name live; set selected state; stronger tint",
+   "memberIds": [
+    "F237"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C104",
+   "title": "Hard-coded English literals bypass S.get (log selection list, hex parser); TestBench part refuted (debug println)",
+   "kind": "i18n",
+   "theme": "Copy, help and localisation",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "partial",
+   "verification": "partly confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "SelectionList 'Options'/'Delete' literals; HexFile English exception text",
+   "recommendedFix": "Move them to resource keys",
+   "memberIds": [
+    "F244",
+    "F245",
+    "F246"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C105",
+   "title": "Canvas content does not follow the UI scale",
+   "kind": "visual",
+   "theme": "Shell, windows and layout",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "still-open",
+    "ref": "canvas-01"
+   },
+   "rootCause": "Canvas zoom ignores UiScale (document zoom is separate by design)",
+   "recommendedFix": "Set the initial zoom to UiScale; show zoom relative to it",
+   "memberIds": [
+    "F253"
+   ],
+   "evidence": [
+    "evidence/scale3-canvas.png"
+   ]
+  },
+  {
+   "cid": "C106",
+   "title": "The welcome screen has no route to the tutorial or examples",
+   "kind": "missing-feature",
+   "theme": "Shell, windows and layout",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "WelcomePanel offers only New, Open and Recent",
+   "recommendedFix": "Add Tutorial and Examples entries",
+   "memberIds": [
+    "F258"
+   ],
+   "evidence": [
+    "evidence/welcome-first-window.png"
+   ]
+  },
+  {
+   "cid": "C107",
+   "title": "Repeated paste or duplicate stacks copies at the same offset, creating hidden conflicting drivers",
+   "kind": "ux",
+   "theme": "Editing, undo and inspector",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Fixed offset with no cascading; Duplicate uses a 10px offset",
+   "recommendedFix": "Cascade the offset past the selection bounds",
+   "memberIds": [
+    "F172",
+    "F125"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C108",
+   "title": "The Preferences 'Colors' sidebar click did not switch pages (possibly the harness)",
+   "kind": "bug",
+   "theme": "Shell, windows and layout",
+   "priority": null,
+   "status": "dropped",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "refuted",
+   "reviewSeverity": "none",
+   "reproStatus": "not-applicable",
+   "verification": "refuted (harness artefact)",
+   "effort": null,
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Unverified; no defect found in the sidebar selection handling",
+   "recommendedFix": "Retest with a real mouse",
+   "memberIds": [
+    "F214"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C109",
+   "title": "Cancelling the export-bundle README dialog leaves no active tool",
+   "kind": "bug",
+   "theme": "Editing, undo and inspector",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "medium",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "yes",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "ProjectActions.java:721 returns early without proj.setTool(oldTool)",
+   "recommendedFix": "Restore the tool in a finally block",
+   "memberIds": [
+    "F165"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C110",
+   "title": "The welcome screen sits over a live Untitled project with full chrome; call to action off-centre",
+   "kind": "ux",
+   "theme": "Shell, windows and layout",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "The welcome panel overlays the startup blank project",
+   "recommendedFix": "Dim/hide the chrome or reword; centre the call to action",
+   "memberIds": [
+    "F3",
+    "F251"
+   ],
+   "evidence": [
+    "evidence/welcome-first-window.png",
+    "evidence/vis-welcome-dark.png"
+   ],
+   "visualSweepMembers": [
+    {
+     "sweepArea": "design-critique",
+     "title": "Welcome screen is visually thin: a small text block in a large empty canvas",
+     "inspectorSeverity": "low",
+     "adjustedSeverity": "low",
+     "reviewVerdict": "confirmed",
+     "note": "Block is roughly vertically centred but pushed to the left edge. Correction to the inspector: WelcomePanel does have a Recent list, hidden when the recent list is empty (WelcomePanel.java:122), which it was in the fresh harness profile.",
+     "evidence": [
+      "evidence/vis-welcome-dark.png"
+     ],
+     "priorRef": "shell-09"
+    }
+   ]
+  },
+  {
+   "cid": "C111",
+   "title": "Add tools revert to Select after one placement",
+   "kind": "ux",
+   "theme": "Editing, undo and inspector",
+   "priority": null,
+   "status": "dropped",
+   "judgeSeverity": "low",
+   "reviewVerdict": "refuted",
+   "reviewSeverity": "none",
+   "reproStatus": "yes",
+   "verification": "refuted (preference exists)",
+   "effort": null,
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "ADD_AFTER default 'edit' (AppPreferences 1060-1063); Preferences > Layout offers 'unchanged'",
+   "recommendedFix": "No change needed; consider a first-run hint",
+   "memberIds": [
+    "F6",
+    "F25"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C112",
+   "title": "Property rows shift between component types, and typing into a combo row changes it",
+   "kind": "ux",
+   "theme": "Editing, undo and inspector",
+   "priority": null,
+   "status": "dropped",
+   "judgeSeverity": "low",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "none",
+   "reproStatus": "not-applicable",
+   "verification": "expected Swing behaviour",
+   "effort": null,
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Input-only attributes appear/disappear; JComboBox type-ahead in a JTable cell editor",
+   "recommendedFix": "Optional: pin the Label row",
+   "memberIds": [
+    "F7"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C113",
+   "title": "Inspector and dialog copy: 'Required for HDL' warning, coordinate headers, 'Reset value:' colon/hex, 'Input Circuit Name'",
+   "kind": "copy",
+   "theme": "Copy, help and localisation",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "strings confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Assorted string and format choices (gui.properties:590)",
+   "recommendedFix": "Fix the strings; use the pin's radix",
+   "memberIds": [
+    "F8",
+    "F42",
+    "F127"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C114",
+   "title": "Pin toolbar icons look like AND gates",
+   "kind": "visual",
+   "theme": "Visual design and theming",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Icon design",
+   "recommendedFix": "Redraw the pin icons in the canvas tag shape",
+   "memberIds": [
+    "F10"
+   ],
+   "evidence": [
+    "evidence/toolbar-pin-icons.png"
+   ]
+  },
+  {
+   "cid": "C115",
+   "title": "0 and 1 wire colours have weak contrast, and pin values are tiny",
+   "kind": "a11y",
+   "theme": "Visual design and theming",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "computed (~2.2:1)",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "AppPreferences 805-806 TRUE #18A05B / FALSE #1F5F43",
+   "recommendedFix": "Increase the luminance difference; larger digits",
+   "memberIds": [
+    "F11"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C116",
+   "title": "The Save dialog is a small Swing chooser with an empty name",
+   "kind": "ux",
+   "theme": "Copy, help and localisation",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Default JFileChooser",
+   "recommendedFix": "Pre-fill a name; enlarge the dialog",
+   "memberIds": [
+    "F12"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C117",
+   "title": "The first click on an unfocused window is swallowed (likely the harness)",
+   "kind": "bug",
+   "theme": "Shell, windows and layout",
+   "priority": null,
+   "status": "dropped",
+   "judgeSeverity": "low",
+   "reviewVerdict": "refuted",
+   "reviewSeverity": "none",
+   "reproStatus": "not-applicable",
+   "verification": "refuted (window manager)",
+   "effort": null,
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Xwayland/KWin focus-click behaviour",
+   "recommendedFix": "Retest on a normal desktop",
+   "memberIds": [
+    "F13",
+    "F28"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C118",
+   "title": "Circuit name errors are inconsistent (raw regex; Rename loses the typed text)",
+   "kind": "copy",
+   "theme": "Copy, help and localisation",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "strings confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "gui.properties:592 shows the regex; ProjectCircuitActions 114-118 concatenates the message",
+   "recommendedFix": "Share one validator; validate inline",
+   "memberIds": [
+    "F19"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C119",
+   "title": "'Pin Attached To Super circuit.' dialog copy",
+   "kind": "copy",
+   "theme": "Copy, help and localisation",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "String wording",
+   "recommendedFix": "Rewrite title and body; named buttons",
+   "memberIds": [
+    "F21"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C120",
+   "title": "Simulation tree entries are unsorted, named only by coordinates, and show two highlights",
+   "kind": "ux",
+   "theme": "Shell, windows and layout",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "No sort, no labels, selection not synced",
+   "recommendedFix": "Sort; show labels; sync the selection",
+   "memberIds": [
+    "F22"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C121",
+   "title": "The appearance Text tool creates stray text when clicking away",
+   "kind": "ux",
+   "theme": "Editing, undo and inspector",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "A click outside an active text edit starts a new text",
+   "recommendedFix": "End the edit on an outside click; commit with Enter",
+   "memberIds": [
+    "F23"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C122",
+   "title": "Delete-circuit enabled state is inconsistent between the icon and the menu",
+   "kind": "consistency",
+   "theme": "Editing, undo and inspector",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "MainMenuListener.java:138 uses the current circuit; Popups.java:97-98 uses the right-clicked circuit",
+   "recommendedFix": "Share the logic; list where the circuit is used",
+   "memberIds": [
+    "F24"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C123",
+   "title": "Subcircuit port markers are 2-3px dots",
+   "kind": "visual",
+   "theme": "Visual design and theming",
+   "priority": null,
+   "status": "dropped",
+   "judgeSeverity": "low",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "none",
+   "reproStatus": "not-applicable",
+   "verification": "preference exists",
+   "effort": null,
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "AppPreferences.PinAppearance offers dot sizes",
+   "recommendedFix": "No change needed",
+   "memberIds": [
+    "F26"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C124",
+   "title": "Right-clicking the explorer switches circuits, and tab dirty dots are unclear",
+   "kind": "ux",
+   "theme": "Editing, undo and inspector",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "The popup trigger also activates the circuit",
+   "recommendedFix": "Do not activate on right-click",
+   "memberIds": [
+    "F27"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C125",
+   "title": "The Enter Decimal dialog does not show the valid range",
+   "kind": "ux",
+   "theme": "Editing, undo and inspector",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "No hint text",
+   "recommendedFix": "Show min and max",
+   "memberIds": [
+    "F35"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C126",
+   "title": "Width badges and endpoint circles cover splitter and component text",
+   "kind": "visual",
+   "theme": "Visual design and theming",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Badge placement",
+   "recommendedFix": "Offset the badges; background pill",
+   "memberIds": [
+    "F38"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C127",
+   "title": "No warning while dragging a wire that will cause a width conflict",
+   "kind": "ux",
+   "theme": "Error explanation and diagnosability",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "M",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "The preview does not check widths",
+   "recommendedFix": "Tint the preview when the widths differ",
+   "memberIds": [
+    "F39"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C128",
+   "title": "Placed components show the tool tooltip ('Add an input pin')",
+   "kind": "copy",
+   "theme": "Copy, help and localisation",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "yes",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "InstanceComponent.getToolTip (410-420) falls back to factory.getDefaultToolTip()",
+   "recommendedFix": "Show an instance tooltip",
+   "memberIds": [
+    "F40"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C129",
+   "title": "A combo property needs three clicks to open",
+   "kind": "ux",
+   "theme": "Editing, undo and inspector",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "standard Swing",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Cell editor does not open its popup on activation",
+   "recommendedFix": "setPopupVisible on mouse activation",
+   "memberIds": [
+    "F41"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C130",
+   "title": "The osc fixture settles to E with no explanation",
+   "kind": "ux",
+   "theme": "Error explanation and diagnosability",
+   "priority": null,
+   "status": "dropped",
+   "judgeSeverity": "low",
+   "reviewVerdict": "refuted",
+   "reviewSeverity": "none",
+   "reproStatus": "not-applicable",
+   "verification": "refuted (correct semantics)",
+   "effort": null,
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "A floating loop has no defined value; fixture artefact",
+   "recommendedFix": "Fix the fixture; generic E tooltip is a separate idea",
+   "memberIds": [
+    "F48"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C131",
+   "title": "The Timing panel opens too short and clips its options",
+   "kind": "visual",
+   "theme": "Visual design and theming",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Initial drawer height",
+   "recommendedFix": "Size the panel to its content",
+   "memberIds": [
+    "F49"
+   ],
+   "evidence": [
+    "evidence/timing-options-clipped.png"
+   ]
+  },
+  {
+   "cid": "C132",
+   "title": "Waveforms have low contrast and time labels mix units",
+   "kind": "visual",
+   "theme": "Visual design and theming",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Render style and cursor time formatting",
+   "recommendedFix": "Line traces; consistent units",
+   "memberIds": [
+    "F50"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C133",
+   "title": "The timing radix ignores the pin radix, and Float is offered for invalid widths (NaN)",
+   "kind": "consistency",
+   "theme": "Visual design and theming",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "chrono/PopupMenu.java:44 offers all RadixOption.OPTIONS; SignalInfo.java:69 hard-codes RADIX_2",
+   "recommendedFix": "Initialise from the pin; offer Float only for 16/32/64 bits",
+   "memberIds": [
+    "F51",
+    "F210"
+   ],
+   "evidence": [
+    "evidence/timing-float-nan.png"
+   ]
+  },
+  {
+   "cid": "C134",
+   "title": "-tty table reports oscillation as E and exits 0",
+   "kind": "bug",
+   "theme": "Silent wrong answers",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "yes",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "TtyInterface.run 344-346 returns EXIT_SUCCESS after doTableAnalysis; only runSimulation returns EXIT_OSCILLATION",
+   "recommendedFix": "Warn and return EXIT_OSCILLATION",
+   "memberIds": [
+    "F52"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C135",
+   "title": "Changing the tick frequency dirties the project with nothing to undo",
+   "kind": "ux",
+   "theme": "Editing, undo and inspector",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "yes",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Circuit.setTickFrequency (999-1004) calls setForcedDirty outside any Action",
+   "recommendedFix": "Make it undoable; format the labels",
+   "memberIds": [
+    "F53"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C136",
+   "title": "Simulation control names differ between menu and toolbar, and Reset has no button",
+   "kind": "consistency",
+   "theme": "Copy, help and localisation",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "strings confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Separate strings (simulateRunItem vs simulateRunTip)",
+   "recommendedFix": "Unify the names; add a Reset button",
+   "memberIds": [
+    "F54"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C137",
+   "title": "Vectors that omit inputs run silently",
+   "kind": "ux",
+   "theme": "Silent wrong answers",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "docs-checked",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Uncovered inputs are not checked",
+   "recommendedFix": "Warn, or reset those inputs and say so",
+   "memberIds": [
+    "F60"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C138",
+   "title": "The expression parse error appears far from the edited line",
+   "kind": "ux",
+   "theme": "Editing, undo and inspector",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Error label sits at the bottom of the tab",
+   "recommendedFix": "Show the error inline",
+   "memberIds": [
+    "F62"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C139",
+   "title": "Export Table does not apply the CSV extension, and a missing extension closes the dialog with 'Error Reading File'",
+   "kind": "ux",
+   "theme": "Copy, help and localisation",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "ExportTableButton 84-97 never adds the filter's extension; uses openErrorTitle",
+   "recommendedFix": "Add the extension automatically; 'Cannot Save File' title",
+   "memberIds": [
+    "F63"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C140",
+   "title": "Analyzer messages and help wording are outdated or awkward",
+   "kind": "copy",
+   "theme": "Copy, help and localisation",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Stale strings",
+   "recommendedFix": "Reword; label the buttons",
+   "memberIds": [
+    "F64"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C141",
+   "title": "The Replace confirmation does not warn when the circuit is used elsewhere",
+   "kind": "ux",
+   "theme": "Editing, undo and inspector",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "strings confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "buildConfirmReplaceMessage is generic",
+   "recommendedFix": "List the circuits that use it and the pin changes",
+   "memberIds": [
+    "F65"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C142",
+   "title": "The Load Vector chooser starts in the home folder",
+   "kind": "ux",
+   "theme": "Editing, undo and inspector",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "TestFrame.java:49 new JFileChooser() with no directory",
+   "recommendedFix": "Default to the project folder",
+   "memberIds": [
+    "F66"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C143",
+   "title": "Hex editor windows are all titled 'Hex Editor'",
+   "kind": "ux",
+   "theme": "Editing, undo and inspector",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "yes",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "HexFrame.java:241 setTitle(S.get(\"hexFrameTitle\")) with no instance text",
+   "recommendedFix": "Include label and circuit in the title",
+   "memberIds": [
+    "F71"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C144",
+   "title": "Labels on 7-segment and hex digit displays are hidden by default",
+   "kind": "visual",
+   "theme": "Visual design and theming",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "root cause corrected",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "SevenSegment.java:165 LABEL_VISIBILITY defaults to false (also HexDigit), unlike Button/DipSwitch/DotMatrix",
+   "recommendedFix": "Make the default consistent across I/O components",
+   "memberIds": [
+    "F75"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C145",
+   "title": "An unconnected LED matrix renders as a solid red block",
+   "kind": "visual",
+   "theme": "Visual design and theming",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "DotMatrixBase.paintInstance (~405-414) draws any non-TRUE/FALSE value with Value.errorColor()",
+   "recommendedFix": "Draw a dot grid in an undefined style",
+   "memberIds": [
+    "F76"
+   ],
+   "evidence": [
+    "evidence/led-matrix-red.png"
+   ]
+  },
+  {
+   "cid": "C146",
+   "title": "The memory image format dialog uses checkboxes for exclusive options",
+   "kind": "ux",
+   "theme": "Editing, undo and inspector",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "HexFile.java 487-497, 645 JCheckBox in ButtonGroups",
+   "recommendedFix": "Use radio groups",
+   "memberIds": [
+    "F78"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C147",
+   "title": "Register and counter show poked hex in different case",
+   "kind": "consistency",
+   "theme": "Editing, undo and inspector",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Counter.java:344 upper-cases; Register.java 85/154 use StringUtil.toHexString",
+   "recommendedFix": "Use one formatter",
+   "memberIds": [
+    "F79"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C148",
+   "title": "The hex digit showed '-' on load (seen once)",
+   "kind": "bug",
+   "theme": "Visual design and theming",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "seen once; needs repro",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Unknown; wire was grey in the capture, likely pre-propagation",
+   "recommendedFix": "Needs a reliable repro",
+   "memberIds": [
+    "F80"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C149",
+   "title": "Corrupt-file and load errors show raw Java exceptions in a non-wrapping field, in two stacked dialogs; empty <project/> NPEs on lastLibElt",
+   "kind": "copy",
+   "theme": "Error explanation and diagnosability",
+   "priority": "P2",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "medium",
+   "reproStatus": "partial",
+   "verification": "code + screenshot; visually confirmed (visual sweep)",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "LogisimFile 293-294 uses firstExcept.toString(); XmlReader ~1283 NPE with no <lib> elements",
+   "recommendedFix": "One user-facing dialog per failed open ('not a valid Logisim project: malformed XML at line N'); wrapped text; raw exception behind Details/Copy error; guard the root element",
+   "memberIds": [
+    "F89",
+    "F156"
+   ],
+   "evidence": [
+    "evidence/load-raw-exception.png",
+    "evidence/vis-load-error-1.png",
+    "evidence/vis-load-error-2.png"
+   ],
+   "visualSweepMembers": [
+    {
+     "sweepArea": "dialogs",
+     "title": "Opening a malformed .circ file produces two stacked, redundant, developer-facing error dialogs",
+     "inspectorSeverity": "high",
+     "adjustedSeverity": "medium",
+     "reviewVerdict": "confirmed",
+     "note": "'File Error' shows a raw SAXParseException cut off behind a horizontal scrollbar; a second 'Error During Open' dialog then shows a raw LoadFailedException class name. Two dialogs for one failure. Raised the cluster from low to medium on this evidence.",
+     "evidence": [
+      "evidence/vis-load-error-1.png",
+      "evidence/vis-load-error-2.png"
+     ],
+     "priorRef": null
+    }
+   ]
+  },
+  {
+   "cid": "C150",
+   "title": "The 'Show Navigation Pane' check mark is out of date",
+   "kind": "bug",
+   "theme": "Shell, windows and layout",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "partial",
+   "verification": "code-plausible",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "WindowMenu.java:143 sets the state in the constructor; re-synced only on window focus (218-220)",
+   "recommendedFix": "Refresh the state in menuSelected",
+   "memberIds": [
+    "F90"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C151",
+   "title": "A Load Library name clash gives an upper-cased, unactionable message",
+   "kind": "consistency",
+   "theme": "Copy, help and localisation",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Different conflict path from Merge",
+   "recommendedFix": "Reuse the Merge conflict dialog",
+   "memberIds": [
+    "F91"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C152",
+   "title": "The merge conflict dialog has no Cancel or apply-to-all, and Replace is the default",
+   "kind": "ux",
+   "theme": "Editing, undo and inspector",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "yes",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "LogisimFileActions 203-236: options[0]=Replace default; CLOSED maps to skip; no abort",
+   "recommendedFix": "Add Cancel merge and Apply to all; make Rename the default",
+   "memberIds": [
+    "F92",
+    "F166"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C153",
+   "title": "Export Image has no preview, name suggestion or confirmation",
+   "kind": "ux",
+   "theme": "Copy, help and localisation",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "No status feedback; no pre-filled name",
+   "recommendedFix": "Pre-fill the name; preview; toast",
+   "memberIds": [
+    "F93",
+    "F141"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C154",
+   "title": "Non-printer-view export shows values that were never simulated",
+   "kind": "bug",
+   "theme": "Silent wrong answers",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Circuits have no live state",
+   "recommendedFix": "Propagate first, or fall back to printer view",
+   "memberIds": [
+    "F94"
+   ],
+   "evidence": [
+    "evidence/export-false-values.png"
+   ]
+  },
+  {
+   "cid": "C155",
+   "title": "Assorted copy and format issues in file flows (TikZ preamble, stderr noise, recent list)",
+   "kind": "copy",
+   "theme": "Copy, help and localisation",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "grab-bag",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Assorted strings",
+   "recommendedFix": "Fix the strings; split into separate tickets",
+   "memberIds": [
+    "F96"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C156",
+   "title": "The VHDL port error has no line number, uses the wrong term, and prints a stack trace",
+   "kind": "ux",
+   "theme": "Copy, help and localisation",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "IllegalVhdlContentException carries no position",
+   "recommendedFix": "Add line/column; stop printing the trace",
+   "memberIds": [
+    "F100"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C157",
+   "title": "DRC messages do not name the component, and warnings use the error icon",
+   "kind": "copy",
+   "theme": "Copy, help and localisation",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Generic DRC strings",
+   "recommendedFix": "Name the component; warning icon",
+   "memberIds": [
+    "F103"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C158",
+   "title": "'No' on 'not completely mapped' aborts the run",
+   "kind": "ux",
+   "theme": "Editing, undo and inspector",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Flow control",
+   "recommendedFix": "Return to the mapping dialog",
+   "memberIds": [
+    "F105"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C159",
+   "title": "A missing toolchain is not explained",
+   "kind": "ux",
+   "theme": "Editing, undo and inspector",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "partial",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "FpgaCommander 396-415 adds actions only when tools are present",
+   "recommendedFix": "Show disabled options with a reason",
+   "memberIds": [
+    "F106"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C160",
+   "title": "The toolchain failure error does not point to the Console tab",
+   "kind": "ux",
+   "theme": "Editing, undo and inspector",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "No tab switch on failure",
+   "recommendedFix": "Focus the Console tab",
+   "memberIds": [
+    "F107"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C161",
+   "title": "No Verilog entity authoring, and a generic error for VHDL entities in Verilog mode",
+   "kind": "missing-feature",
+   "theme": "Editing, undo and inspector",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "scope choice + copy",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "HDL choice is a global preference; unsupported-component message is generic",
+   "recommendedFix": "Specific reason per component",
+   "memberIds": [
+    "F108"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C162",
+   "title": "HDL editor papercuts (pink dot highlighting, 'Autor', no tooltips or dirty dot)",
+   "kind": "visual",
+   "theme": "Copy, help and localisation",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "partly confirmed (vhdl.templ 'Autor')",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Syntax scheme and template strings",
+   "recommendedFix": "Fix scheme and template; add tooltips",
+   "memberIds": [
+    "F109"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C163",
+   "title": "The commander title keeps the old project name after Save As",
+   "kind": "bug",
+   "theme": "Shell, windows and layout",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "FpgaCommander.projectChanged (132-139) handles ACTION_SET_FILE only by rebuilding the circuit list; title set only at construction and localeChanged (:565)",
+   "recommendedFix": "Update the title on ACTION_SET_FILE",
+   "memberIds": [
+    "F110"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C164",
+   "title": "SoC parts cannot be found until the library is loaded",
+   "kind": "ux",
+   "theme": "Shell, windows and layout",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "design limit",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Search covers loaded libraries only",
+   "recommendedFix": "Index unloaded built-in libraries",
+   "memberIds": [
+    "F111"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C165",
+   "title": "The FPGA settings page has legacy layout artefacts",
+   "kind": "visual",
+   "theme": "Shell, windows and layout",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "visually confirmed",
+   "effort": "M",
+   "priorAudit": {
+    "tag": "still-open",
+    "ref": "dialogs-21"
+   },
+   "rootCause": "Legacy FpgaOptions panel: hard black board-list border, two-per-row colour grid, unelided path field",
+   "recommendedFix": "Port to the shared form layout",
+   "memberIds": [
+    "F112"
+   ],
+   "evidence": [
+    "evidence/vis-prefs-fpga.png"
+   ],
+   "visualSweepMembers": [
+    {
+     "sweepArea": "dialogs",
+     "title": "Workspace location path field shows a mid-string fragment with no ellipsis",
+     "inspectorSeverity": "low",
+     "adjustedSeverity": "low",
+     "reviewVerdict": "downgraded",
+     "note": "Field is scrolled to the end with no cue; partly caused by the harness's long temp HOME. Reviewer also saw the 'External FPGA Board list' box drawn with a hard black border around an empty, unlabelled field.",
+     "evidence": [
+      "evidence/vis-prefs-fpga.png"
+     ],
+     "priorRef": "dialogs-21"
+    },
+    {
+     "sweepArea": "dialogs",
+     "title": "Board editor / board map colours: two label+swatch pairs per row with ragged alignment",
+     "inspectorSeverity": "low",
+     "adjustedSeverity": "low",
+     "reviewVerdict": "confirmed",
+     "note": "Swatches sit against the next label ('move color:' / 'Selectable mapped component color:'); unlike the one-per-row Colors page.",
+     "evidence": [
+      "evidence/vis-prefs-fpga.png"
+     ],
+     "priorRef": "dialogs-21"
+    }
+   ]
+  },
+  {
+   "cid": "C166",
+   "title": "Repeating the same arrow key adds no-op undo entries",
+   "kind": "bug",
+   "theme": "Editing, undo and inspector",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "yes",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "EditTool.attemptReface (131-148) never compares with the current facing; SetAttributeAction.isEmpty only checks list emptiness",
+   "recommendedFix": "Skip no-op actions",
+   "memberIds": [
+    "F119"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C167",
+   "title": "Esc and Enter do not commit a floating paste, and the preview hides labels",
+   "kind": "ux",
+   "theme": "Editing, undo and inspector",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "convenience gap",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "No key bindings",
+   "recommendedFix": "Bind Enter and Esc",
+   "memberIds": [
+    "F121"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C168",
+   "title": "The zoom factor slider shows no value and uses tiny steps",
+   "kind": "ux",
+   "theme": "Keyboard, focus and accessibility",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Slider configuration",
+   "recommendedFix": "Show the value; snap the steps",
+   "memberIds": [
+    "F123"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C169",
+   "title": "Toolbar slots 11+ have no default shortcut",
+   "kind": "missing-feature",
+   "theme": "Keyboard, focus and accessibility",
+   "priority": null,
+   "status": "dropped",
+   "judgeSeverity": "low",
+   "reviewVerdict": "refuted",
+   "reviewSeverity": "none",
+   "reproStatus": "yes",
+   "verification": "intentional",
+   "effort": null,
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "AppPreferences 1470-1488: slots 1-10 use the digit keys; no digits remain",
+   "recommendedFix": "No change; user-assignable",
+   "memberIds": [
+    "F126"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C170",
+   "title": "The Properties panel keeps 'Various items x 4' after the selection is dropped",
+   "kind": "bug",
+   "theme": "Editing, undo and inspector",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "No refresh when a tool switch clears the selection",
+   "recommendedFix": "Refresh on selection cleared",
+   "memberIds": [
+    "F128"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C171",
+   "title": "French leftover in the English Library Reference",
+   "kind": "copy",
+   "theme": "Copy, help and localisation",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "yes",
+   "verification": "verified",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "libs/index.html:23 'donne'",
+   "recommendedFix": "Translate it",
+   "memberIds": [
+    "F132"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C172",
+   "title": "The Printing help shows an old screenshot and stray markup",
+   "kind": "copy",
+   "theme": "Copy, help and localisation",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Stale documentation",
+   "recommendedFix": "Refresh the page",
+   "memberIds": [
+    "F133"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C173",
+   "title": "A mixed-type selection shows only 'FPGA supported'",
+   "kind": "ux",
+   "theme": "Editing, undo and inspector",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "M",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Attributes intersected by attribute set, not by key",
+   "recommendedFix": "Intersect by key",
+   "memberIds": [
+    "F137"
+   ],
+   "evidence": [
+    "evidence/mixed-selection.png"
+   ]
+  },
+  {
+   "cid": "C174",
+   "title": "No component help from the canvas or the library",
+   "kind": "missing-feature",
+   "theme": "Copy, help and localisation",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "feature gap",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "No help hook",
+   "recommendedFix": "Add a Help item and F1",
+   "memberIds": [
+    "F139"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C175",
+   "title": "Font and colour pickers are titled 'Select Value' and clip their content",
+   "kind": "visual",
+   "theme": "Shell, windows and layout",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Generic dialog",
+   "recommendedFix": "Title each dialog after its attribute; widen it",
+   "memberIds": [
+    "F140"
+   ],
+   "evidence": [
+    "evidence/font-picker.png"
+   ]
+  },
+  {
+   "cid": "C176",
+   "title": "The Open dialog is not centred on the window",
+   "kind": "ux",
+   "theme": "Shell, windows and layout",
+   "priority": null,
+   "status": "dropped",
+   "judgeSeverity": "low",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "none",
+   "reproStatus": "not-applicable",
+   "verification": "root cause refuted",
+   "effort": null,
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "MenuFile 128-129 passes the canvas as parent, so Swing centres on the canvas; harness placement may also apply",
+   "recommendedFix": "Optional: pass the frame",
+   "memberIds": [
+    "F142"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C177",
+   "title": "Undo history entries are generic ('Change Property')",
+   "kind": "copy",
+   "theme": "Copy, help and localisation",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "strings confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "gui.properties:273 changeAttributeAction omits the attribute",
+   "recommendedFix": "Include the attribute name",
+   "memberIds": [
+    "F143"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C178",
+   "title": "Each project window opens with the Poke tool active",
+   "kind": "ux",
+   "theme": "Shell, windows and layout",
+   "priority": null,
+   "status": "dropped",
+   "judgeSeverity": "low",
+   "reviewVerdict": "refuted",
+   "reviewSeverity": "none",
+   "reproStatus": "not-applicable",
+   "verification": "intended",
+   "effort": null,
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Frame.java 440/1299 select the first toolbar tool; Poke is first by design",
+   "recommendedFix": "No change; toolbar is reorderable",
+   "memberIds": [
+    "F144"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C179",
+   "title": "Settings rows are ragged: Preferences pages and Project Options use at least three label/control alignments",
+   "kind": "visual",
+   "theme": "Shell, windows and layout",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "visually confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "still-open",
+    "ref": "shell-32"
+   },
+   "rootCause": "Each Preferences/Project Options page lays out its own form (flush-left, indented, centred grids)",
+   "recommendedFix": "One shared two-column form component (fixed label column, common left margin, top-aligned) for every Preferences and Project Options page",
+   "memberIds": [
+    "F145"
+   ],
+   "evidence": [
+    "evidence/vis-prefs-window.png",
+    "evidence/vis-prefs-layout.png",
+    "evidence/vis-prefs-signal.png",
+    "evidence/vis-project-options.png",
+    "evidence/vis-prefs-intl.png"
+   ],
+   "visualSweepMembers": [
+    {
+     "sweepArea": "dialogs",
+     "title": "Form label/control alignment differs between Preferences pages and Project Options",
+     "inspectorSeverity": "low",
+     "adjustedSeverity": "low",
+     "reviewVerdict": "confirmed",
+     "note": "Window is flush-left, Layout indented about 90px, Signal symbols centred, Project Options > Simulation centred with right-aligned labels: at least three layouts.",
+     "evidence": [
+      "evidence/vis-prefs-window.png",
+      "evidence/vis-prefs-layout.png",
+      "evidence/vis-prefs-signal.png",
+      "evidence/vis-project-options.png"
+     ],
+     "priorRef": "shell-32"
+    },
+    {
+     "sweepArea": "design-critique",
+     "title": "Preferences International: 'Gate shape' and 'Language' rows do not share a label column",
+     "inspectorSeverity": "low",
+     "adjustedSeverity": "low",
+     "reviewVerdict": "downgraded",
+     "note": "Alignment half confirmed (colons at x~515 vs x~408). The other half (dialog opens on International rather than Template) is deliberate: PreferencesFrame calls showPage(intlIndex).",
+     "evidence": [
+      "evidence/vis-prefs-intl.png"
+     ],
+     "priorRef": "scaling-30"
+    }
+   ]
+  },
+  {
+   "cid": "C180",
+   "title": "-tty load failures print no reason",
+   "kind": "ux",
+   "theme": "Silent wrong answers",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "yes",
+   "verification": "reproduced (CLI)",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "TtyInterface 296-299 ignores e.getMessage()",
+   "recommendedFix": "Log the cause",
+   "memberIds": [
+    "F158"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C181",
+   "title": "-n needs a display and crashes when headless",
+   "kind": "crash",
+   "theme": "Silent wrong answers",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "yes",
+   "verification": "reproduced (CLI)",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Startup 343-346: only -t and -f set headless; Main.java:54 error handler itself throws HeadlessException",
+   "recommendedFix": "Treat -n as headless; stderr fallback in Main",
+   "memberIds": [
+    "F159"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C182",
+   "title": "Duplicate circuit names load and save without a warning",
+   "kind": "bug",
+   "theme": "File integrity and state truthfulness",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "reproduced (CLI)",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "No uniqueness check in XmlReader",
+   "recommendedFix": "Rename duplicates on load",
+   "memberIds": [
+    "F160"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C183",
+   "title": "Save As onto a directory named x.circ fails and leaves a stray .bak directory",
+   "kind": "bug",
+   "theme": "File integrity and state truthfulness",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "yes",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Loader ~470-485 has no isDirectory check before the backup copy",
+   "recommendedFix": "Reject directories",
+   "memberIds": [
+    "F161"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C184",
+   "title": "No or Escape on Confirm Overwrite abandons Save As",
+   "kind": "ux",
+   "theme": "File integrity and state truthfulness",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "yes",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "ProjectActions 806-813: overwrite check outside the retry loop",
+   "recommendedFix": "Move the check into the loop",
+   "memberIds": [
+    "F168"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C185",
+   "title": "RAM/ROM draw as empty boxes after Undo when Auto-Propagate is off",
+   "kind": "visual",
+   "theme": "Visual design and theming",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Painting does not create missing state",
+   "recommendedFix": "Create state lazily on paint",
+   "memberIds": [
+    "F173"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C186",
+   "title": "A selected NOT gate renders like scissors",
+   "kind": "visual",
+   "theme": "Visual design and theming",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Selection fill painted over the outline",
+   "recommendedFix": "Paint the fill before the component",
+   "memberIds": [
+    "F176"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C187",
+   "title": "The label-validation error dialog uses an info icon and the title 'Message'",
+   "kind": "copy",
+   "theme": "Copy, help and localisation",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Uses INFORMATION_MESSAGE",
+   "recommendedFix": "ERROR_MESSAGE and a specific title",
+   "memberIds": [
+    "F177"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C188",
+   "title": "Deep subcircuit nesting at/above the oscillation limit is falsely reported as oscillation",
+   "kind": "bug",
+   "theme": "Silent wrong answers",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "reproduced (CLI)",
+   "effort": "M",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Suspected: lazy substate creation steps count toward the limit (unverified)",
+   "recommendedFix": "Exclude initialisation steps from the counter",
+   "memberIds": [
+    "F188"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C189",
+   "title": "-l/--load swallows the following circuit filename",
+   "kind": "ux",
+   "theme": "Silent wrong answers",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "yes",
+   "verification": "reproduced (CLI)",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Startup.java:314 UNLIMITED_VALUES; handleArgLoad accepts 1-2 values",
+   "recommendedFix": "Limit the values or use a suffix syntax; better error",
+   "memberIds": [
+    "F189"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C190",
+   "title": "Empty or duplicate-column vector files pass vacuously",
+   "kind": "bug",
+   "theme": "Silent wrong answers",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "yes",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "TestVector.parseHeader (213-266) validates neither",
+   "recommendedFix": "Reject them",
+   "memberIds": [
+    "F190"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C191",
+   "title": "A normal halt is logged at ERROR; --save writes 150 MB of zeros (plain format by design)",
+   "kind": "copy",
+   "theme": "Silent wrong answers",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "yes",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "TtyInterface 561-566 logger.error; saveRam uses 'v3.0 hex words plain'",
+   "recommendedFix": "Log at INFO; consider an RLE option",
+   "memberIds": [
+    "F191"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C192",
+   "title": "Divider drag ignores MAX_PANEL in memory; persisted value is clamped",
+   "kind": "bug",
+   "theme": "Shell, windows and layout",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "partial",
+   "verification": "root cause corrected",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "No MAX_PANEL clamp during drag; LayoutPrefs clamps only on save (:100); the stated mouseReleased ordering is a no-op because doLayout returns while dragging",
+   "recommendedFix": "Clamp during the drag",
+   "memberIds": [
+    "F196"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C193",
+   "title": "Panel visibility from several windows is merged into one saved state",
+   "kind": "consistency",
+   "theme": "Shell, windows and layout",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "ShellLayout 358/379 write the global pref on every toggle",
+   "recommendedFix": "Save a snapshot from the last window",
+   "memberIds": [
+    "F197"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C194",
+   "title": "Switching theme resets the Preferences scroll position",
+   "kind": "ux",
+   "theme": "Keyboard, focus and accessibility",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "updateComponentTreeUI resets the viewport",
+   "recommendedFix": "Restore the viewport position",
+   "memberIds": [
+    "F199"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C195",
+   "title": "The hex run-length count overflows to a negative word count",
+   "kind": "bug",
+   "theme": "Editing, undo and inspector",
+   "priority": null,
+   "status": "dropped",
+   "judgeSeverity": "low",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "none",
+   "reproStatus": "yes",
+   "verification": "no user impact",
+   "effort": null,
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "decodedWordCount int (HexFile 1001,1196) used only for the preview text; write path uses long and clamps",
+   "recommendedFix": "Optional: use a long",
+   "memberIds": [
+    "F208"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C196",
+   "title": "The autosave interval is saved only on Enter",
+   "kind": "ux",
+   "theme": "Keyboard, focus and accessibility",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "yes",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "AutosaveOptions 78-89 only actionPerformed",
+   "recommendedFix": "Commit on focus loss",
+   "memberIds": [
+    "F209"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C197",
+   "title": "The Assembly viewer opens at screen (0,0)",
+   "kind": "ux",
+   "theme": "Shell, windows and layout",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "yes",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "AssemblyWindow.java:145 prefs default 0,0",
+   "recommendedFix": "Place relative to the frame",
+   "memberIds": [
+    "F211"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C198",
+   "title": "The FPGA pre-multiplier accepts 0",
+   "kind": "bug",
+   "theme": "Editing, undo and inspector",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "FpgaClockPanel.getPreMultiplierValue (193-201) catches only NumberFormatException; DownloadBase 69-74 then scales by 0",
+   "recommendedFix": "Validate positive",
+   "memberIds": [
+    "F212"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C199",
+   "title": "Preferences International page has large empty space",
+   "kind": "ux",
+   "theme": "Shell, windows and layout",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "visually confirmed (earlier review had refuted it as by-design sizing)",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Multi-page settings dialog sized for its larger pages",
+   "recommendedFix": "Top-align content and size the dialog to its largest page's content, not the window",
+   "memberIds": [
+    "F213"
+   ],
+   "evidence": [
+    "evidence/vis-prefs-2x-void.png"
+   ],
+   "visualSweepMembers": [
+    {
+     "sweepArea": "scale-matrix",
+     "title": "Preferences dialog leaves large unused vertical space, more so at 2.0x",
+     "inspectorSeverity": "low",
+     "adjustedSeverity": "low",
+     "reviewVerdict": "confirmed",
+     "note": "Visible at 1.0 and 2.0 on the International page. Reviewer notes this is normal for a fixed-size multi-page settings dialog; reinstated only at the lowest priority.",
+     "evidence": [
+      "evidence/vis-prefs-2x-void.png"
+     ],
+     "priorRef": null
+    }
+   ]
+  },
+  {
+   "cid": "C200",
+   "title": "Subagent note about orchestration/model assignment",
+   "kind": "missing-feature",
+   "theme": "Not a product finding",
+   "priority": null,
+   "status": "dropped",
+   "judgeSeverity": "low",
+   "reviewVerdict": "refuted",
+   "reviewSeverity": "none",
+   "reproStatus": "not-applicable",
+   "verification": "not a product finding",
+   "effort": null,
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Meta note, not about Logisim",
+   "recommendedFix": "Handle in the orchestrator",
+   "memberIds": [
+    "F215"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C201",
+   "title": "MenuSimulate state is updated from SimThread, and Reset sleeps 500ms on the EDT (VHDL only)",
+   "kind": "bug",
+   "theme": "Crashes and threading",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "yes",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "fireSimulatorReset runs on SimThread (Simulator 534,762); MenuSimulate.updateSimulator mutates menu items; Thread.sleep(500) on the EDT",
+   "recommendedFix": "Post to the EDT; wait asynchronously",
+   "memberIds": [
+    "F222"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C202",
+   "title": "Startup does Swing and Project work off the EDT",
+   "kind": "bug",
+   "theme": "Crashes and threading",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "code-confirmed",
+   "effort": "M",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Startup.run (955-1107) runs on the main thread",
+   "recommendedFix": "invokeAndWait for the post-splash work",
+   "memberIds": [
+    "F224"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C203",
+   "title": "macOS open-file events race on the filesToOpen list",
+   "kind": "bug",
+   "theme": "Crashes and threading",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Non-volatile initialized flag (:95) and plain ArrayList (809-815)",
+   "recommendedFix": "Concurrent queue",
+   "memberIds": [
+    "F226"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C204",
+   "title": "File drag-and-drop swallows all exceptions",
+   "kind": "ux",
+   "theme": "Shell, windows and layout",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "yes",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Frame.java 480-493 catch Exception and do nothing",
+   "recommendedFix": "Log and show an error",
+   "memberIds": [
+    "F227"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C205",
+   "title": "Each Frame allocates an unused non-daemon Timer thread",
+   "kind": "perf",
+   "theme": "Crashes and threading",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "yes",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Frame.java:136; only timer.cancel() at :750",
+   "recommendedFix": "Remove the field",
+   "memberIds": [
+    "F228"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C206",
+   "title": "TestPanel.propagationCompleted races on fields the EDT sets to null",
+   "kind": "bug",
+   "theme": "Crashes and threading",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Non-volatile storedPinValues read on SimThread (438-466), nulled at :291",
+   "recommendedFix": "Copy to locals, or handle on the EDT",
+   "memberIds": [
+    "F229"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C207",
+   "title": "PrefOptionList labels are not associated with their combo boxes",
+   "kind": "a11y",
+   "theme": "Keyboard, focus and accessibility",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "PrefOptionList 33-34 no setLabelFor",
+   "recommendedFix": "Call setLabelFor",
+   "memberIds": [
+    "F238"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C208",
+   "title": "Tab order does not follow the visual layout",
+   "kind": "a11y",
+   "theme": "Keyboard, focus and accessibility",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tabwalk only",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "No FocusTraversalPolicy",
+   "recommendedFix": "Install an ordered policy",
+   "memberIds": [
+    "F240"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C209",
+   "title": "The zoom percentage button's accessible name omits the zoom level",
+   "kind": "a11y",
+   "theme": "Keyboard, focus and accessibility",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "ZoomPill.refresh -> configureChromeButton sets the name to the tooltip (PanelHeader:87)",
+   "recommendedFix": "Name it with the zoom text",
+   "memberIds": [
+    "F241"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C210",
+   "title": "Menu items have no mnemonics",
+   "kind": "a11y",
+   "theme": "Keyboard, focus and accessibility",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "MenuMnemonics handles top-level menus only",
+   "recommendedFix": "Recurse into the items",
+   "memberIds": [
+    "F242"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C211",
+   "title": "The SelectionList empty message uses an unscaled 12pt font and a hard-coded English string",
+   "kind": "a11y",
+   "theme": "Keyboard, focus and accessibility",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "code-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "SelectionList.java:336 fixed Font; :350 literal 'drag here to add'",
+   "recommendedFix": "Use UiFonts and S.get",
+   "memberIds": [
+    "F243"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C212",
+   "title": "'subcircuit' spelling is inconsistent (3 strays)",
+   "kind": "copy",
+   "theme": "Copy, help and localisation",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "grep-confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "fpga.properties:150 'sub-circuit'; gui.properties:1044-1045 'sub circuits'",
+   "recommendedFix": "Normalise to 'subcircuit'",
+   "memberIds": [
+    "F248"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C213",
+   "title": "Simulation controls are shown up to three times at once",
+   "kind": "visual",
+   "theme": "Visual design and theming",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "still-open",
+    "ref": "critic-17/shell-11"
+   },
+   "rootCause": "Control cluster repeated in each panel",
+   "recommendedFix": "Keep one cluster",
+   "memberIds": [
+    "F255"
+   ],
+   "evidence": [
+    "evidence/timing-triple-controls.png"
+   ]
+  },
+  {
+   "cid": "C214",
+   "title": "Tool windows carry the full main menubar with disabled menus",
+   "kind": "consistency",
+   "theme": "Shell, windows and layout",
+   "priority": null,
+   "status": "dropped",
+   "judgeSeverity": "low",
+   "reviewVerdict": "refuted",
+   "reviewSeverity": "none",
+   "reproStatus": "not-applicable",
+   "verification": "intended (macOS menubar)",
+   "effort": null,
+   "priorAudit": {
+    "tag": "still-open",
+    "ref": "analyzer-11"
+   },
+   "rootCause": "Shared LogisimMenuBar by design",
+   "recommendedFix": "No change",
+   "memberIds": [
+    "F256"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C215",
+   "title": "The Analyzer content area gets a full-window focus border",
+   "kind": "visual",
+   "theme": "Visual design and theming",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": "low",
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "tester-observed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "new",
+    "ref": null
+   },
+   "rootCause": "Focus ring drawn on the tab container",
+   "recommendedFix": "Draw focus only on the focused control",
+   "memberIds": [
+    "F257"
+   ],
+   "evidence": []
+  },
+  {
+   "cid": "C216",
+   "title": "With a tool that has no attributes active, Properties shows only a hint instead of circuit attributes",
+   "kind": "ux",
+   "theme": "Editing, undo and inspector",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": null,
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "downgraded",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "still-open",
+    "ref": "inspector-10"
+   },
+   "rootCause": "Frame falls back to the 'propertiesEmptyHint' placeholder when the active tool (Hand/Poke) has no attributes; intentional empty state",
+   "recommendedFix": "Show the current circuit's attributes when nothing is selected and the tool has none",
+   "memberIds": [],
+   "evidence": [
+    "evidence/vis-props-empty.png"
+   ],
+   "visualSweepMembers": [
+    {
+     "sweepArea": "main-shell",
+     "title": "Properties panel is empty/unhelpful by default",
+     "inspectorSeverity": "low",
+     "adjustedSeverity": "low",
+     "reviewVerdict": "downgraded",
+     "note": "Intentional empty state (Hand tool active); remaining polish idea only. Prior inspector-10 is narrowed: a hint now exists.",
+     "evidence": [
+      "evidence/vis-props-empty.png"
+     ],
+     "priorRef": "inspector-10"
+    }
+   ]
+  },
+  {
+   "cid": "C217",
+   "title": "RAM/ROM IEC dependency labels and pin numbers are about 7px and tightly stacked at 100% zoom",
+   "kind": "visual",
+   "theme": "Visual design and theming",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": null,
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "downgraded",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "still-open",
+    "ref": "components-02"
+   },
+   "rootCause": "Memory painters use small fixed fonts on a 10px pin pitch; hex cells themselves are ~10px near-white on near-black and readable",
+   "recommendedFix": "Hide the per-bit dependency notation below a zoom threshold or draw it at a legible minimum size; do not remove it (IEC notation)",
+   "memberIds": [],
+   "evidence": [
+    "evidence/vis-ram-crop.png",
+    "evidence/vis-rom-crop.png",
+    "evidence/vis-busy-dark.png"
+   ],
+   "visualSweepMembers": [
+    {
+     "sweepArea": "main-shell",
+     "title": "Memory component hex-dump content is very small and low-contrast at 100% zoom",
+     "inspectorSeverity": "medium",
+     "adjustedSeverity": "low",
+     "reviewVerdict": "downgraded",
+     "note": "Hex cells are high contrast; what is small is the ~7px 'A,1,3' labels and crowded 'M3 [Write enable]'/'M2 [Output enable]' lines.",
+     "evidence": [
+      "evidence/vis-ram-crop.png"
+     ],
+     "priorRef": "components-02"
+    },
+    {
+     "sweepArea": "design-critique",
+     "title": "RAM/ROM pin-label text overlaps sibling labels at default zoom",
+     "inspectorSeverity": "high",
+     "adjustedSeverity": "low",
+     "reviewVerdict": "downgraded",
+     "note": "No overlap visible; M3/M2/C1 lines are packed on the 10px pitch but do not collide. Legibility nit.",
+     "evidence": [
+      "evidence/vis-rom-crop.png",
+      "evidence/vis-busy-dark.png"
+     ],
+     "priorRef": "components-02"
+    }
+   ]
+  },
+  {
+   "cid": "C218",
+   "title": "Project Options > Toolbar list draws tool icons touching the first letter of their labels",
+   "kind": "visual",
+   "theme": "Visual design and theming",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": null,
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "visually confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "still-open",
+    "ref": "scaling-09"
+   },
+   "rootCause": "The toolbar-list cell renderer sets no icon-text gap",
+   "recommendedFix": "Use the same icon-text gap as the explorer tree (4-6px scaled)",
+   "memberIds": [],
+   "evidence": [
+    "evidence/vis-toolbar-icon-gap.png"
+   ],
+   "visualSweepMembers": [
+    {
+     "sweepArea": "dialogs",
+     "title": "Zero pixel gap between tool icon and label text in the available/current-tools lists",
+     "inspectorSeverity": "low",
+     "adjustedSeverity": "low",
+     "reviewVerdict": "confirmed",
+     "note": "Hand, arrow, wire and text icons touch 'Interact', 'Edit', 'Wire', 'Text'.",
+     "evidence": [
+      "evidence/vis-toolbar-icon-gap.png"
+     ],
+     "priorRef": "scaling-09"
+    }
+   ]
+  },
+  {
+   "cid": "C219",
+   "title": "Parts picker drops every component name at 2.0x in a 1280x800 window (icon-only single column)",
+   "kind": "visual",
+   "theme": "Shell, windows and layout",
+   "priority": "P2",
+   "status": "open",
+   "judgeSeverity": null,
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "medium",
+   "reproStatus": "not-applicable",
+   "verification": "downgraded",
+   "effort": "M",
+   "priorAudit": {
+    "tag": "still-open",
+    "ref": "palette-01 (scaling-02, palette-17)"
+   },
+   "rootCause": "Picker tile/grid width does not reflow for the scale factor in a narrow sidebar; it falls back to unlabelled icons",
+   "recommendedFix": "Below a width threshold switch to a single labelled list row (icon + full name) instead of dropping captions; scale the minimum sidebar width",
+   "memberIds": [],
+   "evidence": [
+    "evidence/vis-picker-2x-dark.png",
+    "evidence/vis-picker-2x-light.png",
+    "evidence/vis-picker-1x-dark.png"
+   ],
+   "visualSweepMembers": [
+    {
+     "sweepArea": "scale-matrix",
+     "title": "Component labels vanish from parts picker at 2.0x scale on a 1280x800 window",
+     "inspectorSeverity": "high",
+     "adjustedSeverity": "medium",
+     "reviewVerdict": "downgraded",
+     "note": "Confirmed in dark and light; 1.0x shows names. 640x400 logical is an extreme case, but names are only reachable by hovering.",
+     "evidence": [
+      "evidence/vis-picker-2x-dark.png",
+      "evidence/vis-picker-2x-light.png",
+      "evidence/vis-picker-1x-dark.png"
+     ],
+     "priorRef": "palette-01"
+    }
+   ]
+  },
+  {
+   "cid": "C220",
+   "title": "Properties labels and values truncate even at 1.0x (e.g. 'Data bus implement...')",
+   "kind": "visual",
+   "theme": "Editing, undo and inspector",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": null,
+   "reviewVerdict": "confirmed",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "visually confirmed",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "still-open",
+    "ref": "light-03"
+   },
+   "rootCause": "Inspector default width and fixed label/value split elide long attribute names and values",
+   "recommendedFix": "Wrap labels to two lines or widen the label column; full text in tooltip",
+   "memberIds": [],
+   "evidence": [
+    "evidence/vis-props-trunc-1x.png"
+   ],
+   "visualSweepMembers": [
+    {
+     "sweepArea": "scale-matrix",
+     "title": "Long property labels truncate even at 1.0x scale on a 1280-wide window",
+     "inspectorSeverity": "low",
+     "adjustedSeverity": "low",
+     "reviewVerdict": "confirmed",
+     "note": "'Data bus implement...', 'Simulation reset be...', 'Clear contents on re...', 'Separate data buses...'. Panel is resizable.",
+     "evidence": [
+      "evidence/vis-props-trunc-1x.png"
+     ],
+     "priorRef": "light-03"
+    }
+   ]
+  },
+  {
+   "cid": "C221",
+   "title": "UI type scale is flat: welcome headline, panel headers and body sit within ~11-15px",
+   "kind": "visual",
+   "theme": "Visual design and theming",
+   "priority": "P3",
+   "status": "open",
+   "judgeSeverity": null,
+   "reviewVerdict": "downgraded",
+   "reviewSeverity": "low",
+   "reproStatus": "not-applicable",
+   "verification": "downgraded",
+   "effort": "S",
+   "priorAudit": {
+    "tag": "still-open",
+    "ref": "critic-32"
+   },
+   "rootCause": "UiFonts roles are close in size; the welcome headline (~15px semibold) is barely larger than its body (~12px)",
+   "recommendedFix": "Define a 4-step type scale (empty-state headline ~20, panel header 13 semibold, body 12-13, caption 11) in UiFonts",
+   "memberIds": [],
+   "evidence": [
+    "evidence/vis-welcome-dark.png",
+    "evidence/vis-busy-dark.png"
+   ],
+   "visualSweepMembers": [
+    {
+     "sweepArea": "design-critique",
+     "title": "No clear type-scale hierarchy between window title, panel headers, and body/canvas labels",
+     "inspectorSeverity": "medium",
+     "adjustedSeverity": "low",
+     "reviewVerdict": "downgraded",
+     "note": "Welcome headline weak hierarchy confirmed; muted panel captions are an IDE convention and canvas labels are not UI type. Subjective polish.",
+     "evidence": [
+      "evidence/vis-welcome-dark.png",
+      "evidence/vis-busy-dark.png"
+     ],
+     "priorRef": "critic-32"
+    }
+   ]
+  }
+ ],
+ "visualSweep": {
+  "date": "2026-09-25",
+  "method": "Five visual-QA inspectors (main shell, dialogs, scale matrix, canvas components, design critique) drove the frozen jar in the isolated KWin/Xwayland harness; each report got a skeptical screenshot review. Severity is the reviewer's adjustedSeverity.",
+  "raw": 20,
+  "refuted": 5,
+  "surviving": 15,
+  "newClusters": [
+   "C216",
+   "C217",
+   "C218",
+   "C219",
+   "C220",
+   "C221"
+  ],
+  "mergedInto": [
+   "C149",
+   "C179",
+   "C165",
+   "C98",
+   "C110",
+   "C199"
+  ],
+  "refutedClaims": [
+   "Colors page canvas/grid swatches invisible (they have the same 2px border)",
+   "Dark title-bar text 1.95:1 (re-sampled 9.5:1; anti-aliasing pixel)",
+   "RAM 'A,1,3' labels repeated per row (IEC dependency notation, per bit line)",
+   "Ctrl+Shift+A no selection (that is Search; Select All is Ctrl+A)",
+   "Secondary grey near AA boundary (own estimate ~6.5:1)"
+  ]
+ }
+}

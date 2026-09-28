@@ -48,10 +48,12 @@ A B O_Nor O_Nand O_Xor O_Or O_And O_AB[2]
 	<img src="../../../img-guide/vector-result.png" alt="Test Vector window showing results with errors flagged in red">
 </p>
 
-<p>Any incorrect outputs will be flagged in red. Hover the mouse over
-the red box to see what the output should have been, according to the
-test vector. Rows with incorrect outputs are sorted to the top of the
-window.</p>
+<p>Any incorrect outputs will be flagged in red and shown as
+<tt>expected&nbsp;&rarr;&nbsp;computed</tt>, for example <tt>1&nbsp;&rarr;&nbsp;0</tt>.
+Rows stay in the order of the file, so they do not move when results
+arrive or when you press <b>Reset</b>. If the vector does not set some
+of the circuit's inputs, Logisim warns you when it is loaded: those
+inputs keep their default value in every test.</p>
 
 <p>The file format is simple. You can use the Logging module (with
 "Include Header Line" selected in the file output tab) to get started,

@@ -13,6 +13,7 @@ import com.cburch.draw.model.CanvasModelEvent;
 import com.cburch.draw.model.CanvasModelListener;
 import com.cburch.logisim.circuit.Circuit;
 import com.cburch.logisim.circuit.CircuitState;
+import com.cburch.logisim.circuit.EditLockAction;
 import com.cburch.logisim.circuit.Simulator;
 import com.cburch.logisim.file.LibraryEvent;
 import com.cburch.logisim.file.LibraryListener;
@@ -86,6 +87,10 @@ public class MainMenuListener extends MenuListener {
         ProjectCircuitActions.doAddVhdl(proj);
       } else if (src == LogisimMenuBar.IMPORT_VHDL) {
         ProjectCircuitActions.doImportVhdl(proj);
+      } else if (src == LogisimMenuBar.ADD_VERILOG) {
+        ProjectCircuitActions.doAddVerilog(proj);
+      } else if (src == LogisimMenuBar.IMPORT_VERILOG) {
+        ProjectCircuitActions.doImportVerilog(proj);
       } else if (src == LogisimMenuBar.MOVE_CIRCUIT_UP) {
         ProjectCircuitActions.doMoveCircuit(proj, cur, -1);
       } else if (src == LogisimMenuBar.MOVE_CIRCUIT_DOWN) {
@@ -111,6 +116,15 @@ public class MainMenuListener extends MenuListener {
         ProjectCircuitActions.doAnalyze(proj, cur);
       } else if (src == LogisimMenuBar.CIRCUIT_STATS) {
         StatisticsDialog.show(frame, proj.getLogisimFile(), cur);
+      } else if (src == LogisimMenuBar.LOCK_CIRCUIT) {
+        if (cur != null) proj.doAction(EditLockAction.setCircuitLocked(cur, !cur.isEditLocked()));
+      } else if (src == LogisimMenuBar.LOCK_SELECTION) {
+        if (cur != null) {
+          final var selected = proj.getSelection().getComponents();
+          proj.doAction(
+              EditLockAction.setComponentsLocked(
+                  cur, selected, !EditLockAction.allLocked(cur, selected)));
+        }
       }
     }
 
@@ -135,7 +149,7 @@ public class MainMenuListener extends MenuListener {
         canSetMain = file.getMainCircuit() != cur;
         canMoveUp = curIndex > 0;
         canMoveDown = curIndex < file.getTools().size() - 1;
-        canRemove = file.getCircuits().size() > 1 && proj.getDependencies().canRemove(cur);
+        canRemove = ProjectCircuitActions.canRemoveCircuit(proj, cur);
         canRevert = viewAppearance && !cur.getAppearance().isDefaultAppearance();
       } else if (proj.getCurrentHdl() != null) {
         canRemove = true;
@@ -145,6 +159,8 @@ public class MainMenuListener extends MenuListener {
       menubar.setEnabled(LogisimMenuBar.ADD_CIRCUIT, true);
       menubar.setEnabled(LogisimMenuBar.ADD_VHDL, true);
       menubar.setEnabled(LogisimMenuBar.IMPORT_VHDL, true);
+      menubar.setEnabled(LogisimMenuBar.ADD_VERILOG, true);
+      menubar.setEnabled(LogisimMenuBar.IMPORT_VERILOG, true);
       menubar.setEnabled(LogisimMenuBar.MOVE_CIRCUIT_UP, canMoveUp);
       menubar.setEnabled(LogisimMenuBar.MOVE_CIRCUIT_DOWN, canMoveDown);
       menubar.setEnabled(LogisimMenuBar.SET_MAIN_CIRCUIT, canSetMain);
@@ -155,6 +171,8 @@ public class MainMenuListener extends MenuListener {
       menubar.setEnabled(LogisimMenuBar.REVERT_APPEARANCE, canRevert);
       menubar.setEnabled(LogisimMenuBar.ANALYZE_CIRCUIT, true);
       menubar.setEnabled(LogisimMenuBar.CIRCUIT_STATS, true);
+      menubar.setEnabled(LogisimMenuBar.LOCK_CIRCUIT, curIndex >= 0);
+      menubar.setEnabled(LogisimMenuBar.LOCK_SELECTION, curIndex >= 0);
       fireEnableChanged();
     }
 
@@ -220,6 +238,8 @@ public class MainMenuListener extends MenuListener {
       menubar.addActionListener(LogisimMenuBar.ADD_CIRCUIT, this);
       menubar.addActionListener(LogisimMenuBar.ADD_VHDL, this);
       menubar.addActionListener(LogisimMenuBar.IMPORT_VHDL, this);
+      menubar.addActionListener(LogisimMenuBar.ADD_VERILOG, this);
+      menubar.addActionListener(LogisimMenuBar.IMPORT_VERILOG, this);
       menubar.addActionListener(LogisimMenuBar.MOVE_CIRCUIT_UP, this);
       menubar.addActionListener(LogisimMenuBar.MOVE_CIRCUIT_DOWN, this);
       menubar.addActionListener(LogisimMenuBar.SET_MAIN_CIRCUIT, this);
@@ -230,6 +250,8 @@ public class MainMenuListener extends MenuListener {
       menubar.addActionListener(LogisimMenuBar.REVERT_APPEARANCE, this);
       menubar.addActionListener(LogisimMenuBar.ANALYZE_CIRCUIT, this);
       menubar.addActionListener(LogisimMenuBar.CIRCUIT_STATS, this);
+      menubar.addActionListener(LogisimMenuBar.LOCK_CIRCUIT, this);
+      menubar.addActionListener(LogisimMenuBar.LOCK_SELECTION, this);
 
       computeEnabled();
     }

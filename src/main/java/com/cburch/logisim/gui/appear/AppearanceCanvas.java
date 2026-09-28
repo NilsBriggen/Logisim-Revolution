@@ -21,7 +21,10 @@ import com.cburch.draw.model.CanvasObject;
 import com.cburch.draw.model.ReorderRequest;
 import com.cburch.draw.undo.UndoAction;
 import com.cburch.logisim.circuit.Circuit;
+import com.cburch.logisim.circuit.CircuitEvent;
+import com.cburch.logisim.circuit.CircuitListener;
 import com.cburch.logisim.circuit.CircuitState;
+import com.cburch.logisim.circuit.EditLockedException;
 import com.cburch.logisim.circuit.appear.AppearanceElement;
 import com.cburch.logisim.data.Bounds;
 import com.cburch.logisim.gui.generic.CanvasPane;
@@ -40,6 +43,7 @@ import java.util.ArrayList;
 import javax.swing.JPopupMenu;
 
 public class AppearanceCanvas extends Canvas implements CanvasPaneContents, ActionDispatcher {
+  static final String EDIT_LOCK_PROPERTY = "editLock";
   private static final long serialVersionUID = 1L;
   private static final int BOUNDS_BUFFER = 70;
   // pixels shown in canvas beyond outermost boundaries
@@ -122,9 +126,25 @@ public class AppearanceCanvas extends Canvas implements CanvasPaneContents, Acti
   }
 
   @Override
+  public boolean isReadOnly() {
+    return circuitState != null && circuitState.getCircuit().isEditLocked();
+  }
+
+  @Override
+  protected boolean beforeToolInput() {
+    return getTool() == selectTool || checkCanEdit();
+  }
+
+  boolean checkCanEdit() {
+    if (!isReadOnly()) return true;
+    proj.reportRefusedEdit(new EditLockedException(circuitState.getCircuit(), null));
+    return false;
+  }
+
+  @Override
   public void doAction(UndoAction canvasAction) {
     final var circuit = circuitState.getCircuit();
-    if (!proj.getLogisimFile().contains(circuit)) {
+    if (!checkCanEdit() || !proj.getLogisimFile().contains(circuit)) {
       return;
     }
 
@@ -334,10 +354,14 @@ public class AppearanceCanvas extends Canvas implements CanvasPaneContents, Acti
   }
 
   public void setCircuit(Project proj, CircuitState circuitState) {
+    if (this.circuitState != null) {
+      this.circuitState.getCircuit().removeCircuitListener(listener);
+    }
     this.proj = proj;
     this.circuitState = circuitState;
     final var circuit = circuitState.getCircuit();
     setModel(circuit.getAppearance().getCustomAppearanceDrawing(), this);
+    circuit.addCircuitListener(listener);
   }
 
   @Override
@@ -396,7 +420,24 @@ public class AppearanceCanvas extends Canvas implements CanvasPaneContents, Acti
     }
   }
 
-  private class Listener implements CanvasModelListener, PropertyChangeListener {
+  private class Listener implements CanvasModelListener, PropertyChangeListener, CircuitListener {
+    @Override
+    public void circuitChanged(CircuitEvent event) {
+      if (event.getAction() != CircuitEvent.ACTION_SET_EDIT_LOCK) return;
+      final var locked = getCircuit().isEditLocked();
+      if (locked) {
+        hidePopup();
+        final var tool = getTool();
+        if (tool != null) {
+          tool.cancelMousePress(AppearanceCanvas.this);
+          setTool(null);
+          setTool(tool);
+        }
+      }
+      firePropertyChange(EDIT_LOCK_PROPERTY, !locked, locked);
+      repaint();
+    }
+
     @Override
     public void modelChanged(CanvasModelEvent event) {
       computeSize(false);

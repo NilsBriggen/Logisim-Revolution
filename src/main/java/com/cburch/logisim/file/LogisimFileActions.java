@@ -14,6 +14,7 @@ import static com.cburch.logisim.file.Strings.S;
 import com.cburch.logisim.circuit.Circuit;
 import com.cburch.logisim.circuit.CircuitAttributes;
 import com.cburch.logisim.circuit.CircuitMutation;
+import com.cburch.logisim.circuit.EditLockedException;
 import com.cburch.logisim.circuit.SubcircuitFactory;
 import com.cburch.logisim.circuit.Wire;
 import com.cburch.logisim.comp.Component;
@@ -32,13 +33,13 @@ import com.cburch.logisim.tools.LibraryTools;
 import com.cburch.logisim.util.SyntaxChecker;
 import com.cburch.logisim.vhdl.base.VhdlContent;
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.jar.JarFile;
+import javax.swing.JCheckBox;
+import javax.swing.JOptionPane;
 
 public final class LogisimFileActions {
 
@@ -79,7 +80,7 @@ public final class LogisimFileActions {
 
     @Override
     public String getName() {
-      return S.get("addVhdlAction");
+      return S.get(vhdl.isVerilog() ? "addVerilogAction" : "addVhdlAction");
     }
 
     @Override
@@ -88,20 +89,82 @@ public final class LogisimFileActions {
     }
   }
 
+  /** How to resolve a merged circuit whose name already exists in the project. */
+  enum MergeConflictChoice {
+    RENAME,
+    REPLACE,
+    SKIP,
+    CANCEL
+  }
+
+  /**
+   * The answer to one merge name conflict.
+   *
+   * @param applyToAll reuse the choice for every later conflict of the same merge
+   */
+  record MergeConflictDecision(MergeConflictChoice choice, boolean applyToAll) {}
+
+  /** Asks how to resolve one merge name conflict. */
+  interface MergeConflictResolver {
+    MergeConflictDecision resolve(String circuitName, String suggestedName);
+  }
+
+  /** The interactive resolver: Rename is the default, closing the dialog cancels the merge. */
+  static final MergeConflictResolver ASK_USER =
+      (circuitName, suggestedName) -> {
+        final var applyToAll = new JCheckBox(S.get("FileMergeApplyToAll"));
+        final var message = new Object[] {S.get("FileMergeQuestion", circuitName), applyToAll};
+        final var options =
+            new String[] {
+              S.get("FileMergeRename", suggestedName),
+              S.get("FileMergeReplace"),
+              S.get("FileMergeCancel"),
+              S.get("FileMergeAbort")
+            };
+        final var response =
+            OptionPane.showOptionDialog(
+                null,
+                message,
+                S.get("FileMergeTitle"),
+                JOptionPane.DEFAULT_OPTION,
+                OptionPane.QUESTION_MESSAGE,
+                null,
+                options,
+                options[0]);
+        final var choice =
+            switch (response) {
+              case 0 -> MergeConflictChoice.RENAME;
+              case 1 -> MergeConflictChoice.REPLACE;
+              case 2 -> MergeConflictChoice.SKIP;
+              default -> MergeConflictChoice.CANCEL;
+            };
+        return new MergeConflictDecision(
+            choice, applyToAll.isSelected() && choice != MergeConflictChoice.CANCEL);
+      };
+
+  /**
+   * Merges circuits (and the libraries they need) from another file into the project.
+   *
+   * <p>The whole merge is a single undoable step: {@link #doIt} runs the actions it is made of
+   * itself, records them, and {@link #undo} reverts them in reverse order. A redo replays the
+   * recorded actions without asking any question again.
+   */
   private static class MergeFile extends Action {
+    private record JarRef(File file, String className) {}
+
     private final ArrayList<Circuit> mergedCircuits = new ArrayList<>();
-    private final ArrayList<File> jarLibs = new ArrayList<>();
+    private final ArrayList<JarRef> jarLibs = new ArrayList<>();
     private final ArrayList<File> logiLibs = new ArrayList<>();
+    private final ArrayList<String> builtinLibs = new ArrayList<>();
+    private final ArrayList<Action> performed = new ArrayList<>();
+    private boolean executed = false;
 
-    MergeFile(LogisimFile mergelib, LogisimFile source) {
-      this(mergelib, source, null, true);
-    }
-
-    MergeFile(LogisimFile mergelib, LogisimFile source, List<Circuit> selectedCircuits) {
-      this(mergelib, source, selectedCircuits, true);
-    }
-
-    MergeFile(LogisimFile mergelib, LogisimFile source, List<Circuit> selectedCircuits, boolean includeDependencies) {
+    MergeFile(
+        LogisimFile mergelib,
+        LogisimFile source,
+        List<Circuit> selectedCircuits,
+        boolean includeDependencies,
+        MergeConflictResolver resolver) {
       final var libNames = new HashMap<String, Library>();
       final var toolList = new HashSet<String>();
       final var errors = new HashMap<String, String>();
@@ -136,20 +199,40 @@ public final class LogisimFileActions {
             }
             canContinue = false;
           }
-          final var splits = mergelib.getLoader().getDescriptor(lib).split("#");
-          final var theFile = mergelib.getLoader().getFileFor(splits[1], null);
-          if ("file".equals(splits[0]))
+          if (!canContinue) continue;
+          final var descriptor = mergelib.getLoader().getDescriptor(lib);
+          if (descriptor.charAt(0) == LibraryManager.DESC_SEP) {
+            // A built-in library ("#Name"): there is no file to locate, the project's own copy of
+            // it is added when the merge is carried out.
+            builtinLibs.add(lib.getName());
+            continue;
+          }
+          final var splits = descriptor.split(String.valueOf(LibraryManager.DESC_SEP));
+          final var isJar = "jar".equals(splits[0]);
+          final File theFile;
+          try {
+            theFile =
+                mergelib
+                    .getLoader()
+                    .getFileFor(splits[1], isJar ? Loader.JAR_FILTER : Loader.LOGISIM_FILTER);
+          } catch (LoaderException e) {
+            // The user cancelled locating a library the merged circuits need: merge nothing.
+            clear();
+            return;
+          }
+          if ("file".equals(splits[0])) {
             logiLibs.add(theFile);
-          else if ("jar".equals(splits[0]))
-            jarLibs.add(theFile);
+          } else if (isJar) {
+            jarLibs.add(new JarRef(theFile, splits.length > 2 ? splits[2] : null));
+          }
         }
         if (!canContinue) {
           LibraryTools.showErrors(mergelib.getName(), errors);
-          logiLibs.clear();
-          jarLibs.clear();
+          clear();
           return;
         }
         /* Okay merged the missing libraries, now add the circuits */
+        MergeConflictChoice choiceForAll = null;
         for (final var circ : getCircuitsToMerge(mergelib, selectedCircuits, includeDependencies)) {
           final var circName = circ.getName().toUpperCase();
           if (toolList.contains(circName)) {
@@ -178,62 +261,24 @@ public final class LogisimFileActions {
                     OptionPane.ERROR_MESSAGE);
                 canContinue = false;
               } else {
-                String suggestedName = circ.getName();
-                int index = 1;
-                while (true) {
-                  boolean exists = false;
-                  for (final var c : source.getCircuits()) {
-                    if (c.getName().equalsIgnoreCase(suggestedName)) {
-                      exists = true;
-                      break;
-                    }
-                  }
-                  if (!exists) {
-                    final var tools = new HashSet<String>();
-                    LibraryTools.buildToolList(source, tools);
-                    if (!tools.contains(suggestedName.toUpperCase())) {
-                      break;
-                    }
-                    exists = true;
-                  }
-                  if (!exists) break;
-                  suggestedName = circ.getName() + "_" + index++;
+                final var suggestedName = suggestName(circ.getName(), source);
+                var choice = choiceForAll;
+                if (choice == null) {
+                  final var decision = resolver.resolve(circ.getName(), suggestedName);
+                  choice = decision.choice();
+                  if (decision.applyToAll()) choiceForAll = choice;
                 }
-
-                final var options = new String[] {
-                    S.get("FileMergeReplace"),
-                    S.get("FileMergeRename", suggestedName),
-                    S.get("FileMergeCancel")
-                };
-                final var response = OptionPane.showOptionDialog(
-                    null,
-                    S.get("FileMergeQuestion", circ.getName()),
-                    S.get("FileMergeTitle"),
-                    0,
-                    OptionPane.QUESTION_MESSAGE,
-                    null,
-                    options,
-                    options[0]);
-
-                if (response == 0) {
-                  mergedCircuits.add(circ);
-                } else if (response == 1) { // Rename
-                  final var renamed = new Circuit(suggestedName, mergelib, null);
-                  CircuitAttributes.copyStaticAttributes(renamed.getStaticAttributes(), circ.getStaticAttributes());
-                  final var mutation = new CircuitMutation(renamed);
-                  for (final var comp : circ.getNonWires()) {
-                    mutation.add(comp);
+                switch (choice) {
+                  case REPLACE -> mergedCircuits.add(circ);
+                  case RENAME -> mergedCircuits.add(renamedCopy(circ, suggestedName, mergelib));
+                  case SKIP -> {
+                    // leave the project's circuit as it is
                   }
-                  for (final var wir : circ.getWires()) {
-                    mutation.add(Wire.create(wir.getEnd0(), wir.getEnd1()));
+                  default -> {
+                    clear();
+                    return;
                   }
-                  mutation.execute();
-                  if (circ.getAppearance().hasCustomAppearance()) {
-                    renamed.getAppearance().repairCustomAppearance(circ.getAppearance().getCustomObjectsFromBottom());
-                  }
-                  mergedCircuits.add(renamed);
                 }
-                // response == 2 or dialog closed -> cancel (do nothing)
               }
             }
           } else {
@@ -242,12 +287,57 @@ public final class LogisimFileActions {
         }
         if (!canContinue) {
           LibraryTools.showErrors(mergelib.getName(), errors);
-          logiLibs.clear();
-          jarLibs.clear();
-          mergedCircuits.clear();
+          clear();
           return;
         }
       } else LibraryTools.showErrors(mergelib.getName(), errors);
+    }
+
+    /** A free name for a renamed copy, avoiding the project's circuits and tools. */
+    private String suggestName(String name, LogisimFile source) {
+      final var taken = new HashSet<String>();
+      LibraryTools.buildToolList(source, taken);
+      for (final var c : source.getCircuits()) taken.add(c.getName().toUpperCase());
+      for (final var c : mergedCircuits) taken.add(c.getName().toUpperCase());
+      var suggestedName = name;
+      var index = 1;
+      while (taken.contains(suggestedName.toUpperCase())) {
+        suggestedName = name + "_" + index++;
+      }
+      return suggestedName;
+    }
+
+    private static Circuit renamedCopy(Circuit circ, String name, LogisimFile mergelib) {
+      final var renamed = new Circuit(name, mergelib, null);
+      CircuitAttributes.copyStaticAttributes(renamed.getStaticAttributes(), circ.getStaticAttributes());
+      final var mutation = new CircuitMutation(renamed);
+      for (final var comp : circ.getNonWires()) {
+        mutation.add(comp);
+      }
+      for (final var wir : circ.getWires()) {
+        mutation.add(Wire.create(wir.getEnd0(), wir.getEnd1()));
+      }
+      mutation.execute();
+      if (circ.getAppearance().hasCustomAppearance()) {
+        renamed.getAppearance().repairCustomAppearance(circ.getAppearance().getCustomObjectsFromBottom());
+      } else if (circ.getAppearance().isLegacyDefaultCustomAppearance()) {
+        renamed.getAppearance().useLegacyDefaultCustomAppearance();
+      }
+      return renamed;
+    }
+
+    private void clear() {
+      mergedCircuits.clear();
+      jarLibs.clear();
+      logiLibs.clear();
+      builtinLibs.clear();
+    }
+
+    boolean isEmpty() {
+      return mergedCircuits.isEmpty()
+          && jarLibs.isEmpty()
+          && logiLibs.isEmpty()
+          && builtinLibs.isEmpty();
     }
 
     private static List<Circuit> getCircuitsToMerge(
@@ -270,33 +360,40 @@ public final class LogisimFileActions {
       LogisimFileActions.addCircWithDeps(circ, mergelib, visited);
     }
 
+    /** Runs one step of the merge and records it so the merge can be undone as a whole. */
+    private void perform(Project proj, Action act) {
+      if (act == null) return;
+      act.doIt(proj);
+      performed.add(act);
+    }
+
     @Override
     public void doIt(Project proj) {
+      if (executed) {
+        // redo: replay the recorded steps
+        for (final var act : performed) act.doIt(proj);
+        return;
+      }
+      executed = true;
       final var loader = proj.getLogisimFile().getLoader();
-      /* first we are going to merge the jar libraries */
+      /* first the built-in libraries, taken from this project's own loader */
+      for (final var name : builtinLibs) {
+        final var lib = loader.getBuiltin().getLibrary(name);
+        if (lib != null && !proj.getLogisimFile().getLibraries().contains(lib)) {
+          perform(proj, LogisimFileActions.loadLibrary(lib, proj.getLogisimFile()));
+        }
+      }
+      builtinLibs.clear();
+      /* then the jar libraries */
       for (final var jarLib : jarLibs) {
-        String className = null;
-        try (final var jarFile = new JarFile(jarLib)) {
-          final var manifest = jarFile.getManifest();
-          className = manifest.getMainAttributes().getValue("Library-Class");
-        } catch (IOException e) {
-          // if opening the JAR file failed, do nothing
-        }
-        // if the class name was not found, go back to the good old dialog
-        if (className == null) {
-          className =
-              OptionPane.showInputDialog(
-                  proj.getFrame(),
-                  S.get("jarClassNamePrompt"),
-                  S.get("jarClassNameTitle"),
-                  OptionPane.QUESTION_MESSAGE);
-          // if user canceled selection, abort
-          if (className == null)
-            continue;
-        }
-        final var lib = loader.loadJarLibrary(jarLib, className);
+        final var className =
+            jarLib.className() != null
+                ? jarLib.className()
+                : loader.askJarLibraryClass(jarLib.file());
+        if (className == null) continue;
+        final var lib = loader.loadJarLibrary(jarLib.file(), className);
         if (lib != null) {
-          proj.doAction(LogisimFileActions.loadLibrary(lib, proj.getLogisimFile()));
+          perform(proj, LogisimFileActions.loadLibrary(lib, proj.getLogisimFile()));
         }
       }
       jarLibs.clear();
@@ -304,7 +401,7 @@ public final class LogisimFileActions {
       for (final var logiLib : logiLibs) {
         final var put = loader.loadLogisimLibrary(logiLib);
         if (put != null) {
-          proj.doAction(LogisimFileActions.loadLibrary(put, proj.getLogisimFile()));
+          perform(proj, LogisimFileActions.loadLibrary(put, proj.getLogisimFile()));
         }
       }
       logiLibs.clear();
@@ -335,12 +432,14 @@ public final class LogisimFileActions {
         }
         if (!replace) {
           result.execute();
-          proj.doAction(LogisimFileActions.addCircuit(newCircuit));
+          perform(proj, LogisimFileActions.addCircuit(newCircuit));
         } else {
-          proj.doAction(result.toAction(S.getter("replaceCircuitAction")));
+          perform(proj, result.toAction(S.getter("replaceCircuitAction")));
         }
         if (circ.getAppearance().hasCustomAppearance()) {
           newCircuit.getAppearance().repairCustomAppearance(circ.getAppearance().getCustomObjectsFromBottom());
+        } else if (circ.getAppearance().isLegacyDefaultCustomAppearance()) {
+          newCircuit.getAppearance().useLegacyDefaultCustomAppearance();
         }
       }
       final var availableTools = new HashMap<String, AddTool>();
@@ -367,7 +466,7 @@ public final class LogisimFileActions {
               } else System.out.println("Not found:" + comp.getFactory().getName());
             }
           }
-          proj.doAction(result.toAction(S.getter("replaceCircuitAction")));
+          perform(proj, result.toAction(S.getter("replaceCircuitAction")));
         }
       }
       mergedCircuits.clear();
@@ -380,13 +479,14 @@ public final class LogisimFileActions {
 
     @Override
     public boolean isModification() {
-      return false;
+      return !performed.isEmpty();
     }
 
     @Override
     public void undo(Project proj) {
-      // If it does nothing, then we should never call it, so let's throw some meat.
-      throw new UnsupportedOperationException();
+      for (var i = performed.size() - 1; i >= 0; i--) {
+        performed.get(i).undo(proj);
+      }
     }
   }
 
@@ -397,7 +497,6 @@ public final class LogisimFileActions {
     LoadLibraries(Library[] libs, LogisimFile source) {
       final var libNames = new HashMap<String, Library>();
       final var toolList = new HashSet<String>();
-      final var errors = new HashMap<String, String>();
       for (final var newLib : libs) {
         // first cleanup step: remove unused libraries from loaded library
         LibraryManager.removeUnusedLibraries(newLib);
@@ -425,28 +524,56 @@ public final class LogisimFileActions {
           OptionPane.showMessageDialog(
               null,
               "\"" + lib.getName() + "\": " + S.get("LibraryAlreadyLoaded"),
-              S.get("LibLoadErrors") + " " + lib.getName() + " !",
+              S.get("LibLoadErrors") + " " + lib.getName(),
               OptionPane.WARNING_MESSAGE);
         } else {
+          // each library is judged on its own problems, not on those of the one before it
+          final var errors = new HashMap<String, String>();
           LibraryTools.removePresentLibraries(lib, libNames, false);
           if (LibraryTools.isLibraryConform(lib, new HashSet<>(), new HashSet<>(), errors)) {
             final var addedToolList = new HashSet<String>();
             LibraryTools.buildToolList(lib, addedToolList);
-            for (final var tool : addedToolList)
-              if (toolList.contains(tool))
-                errors.put(tool, S.get("LibraryMultipleToolError"));
-            if (errors.keySet().isEmpty()) {
+            final var clashes = new ArrayList<String>();
+            for (final var tool : addedToolList) {
+              if (toolList.contains(tool)) clashes.add(tool);
+            }
+            if (clashes.isEmpty()) {
               LibraryTools.buildLibraryList(lib, libNames);
               toolList.addAll(addedToolList);
               mergedLibs.add(lib);
             } else {
-              LibraryTools.showErrors(lib.getName(), errors);
-              baseLibsToEnable.clear();
+              showToolClashes(lib, clashes);
             }
           } else
             LibraryTools.showErrors(lib.getName(), errors);
         }
       }
+      if (mergedLibs.isEmpty()) {
+        // nothing is loaded, so no base library needs to be promoted either
+        baseLibsToEnable.clear();
+      }
+    }
+
+    /**
+     * Tells the user which of the library's circuits/tools clash with names already in the
+     * project, in their own spelling, and how to resolve it.
+     */
+    private static void showToolClashes(Library lib, List<String> upperCaseClashes) {
+      final var names =
+          new ArrayList<>(LibraryTools.getToolLocation(lib, "", upperCaseClashes).keySet());
+      if (names.isEmpty()) names.addAll(upperCaseClashes);
+      names.sort(String.CASE_INSENSITIVE_ORDER);
+      final var list = new StringBuilder();
+      for (final var name : names) list.append("\n    \u2022 ").append(name);
+      OptionPane.showMessageDialog(
+          null,
+          S.get("LibraryToolClash", lib.getName(), list.toString()),
+          S.get("LibLoadErrors") + " " + lib.getName(),
+          OptionPane.ERROR_MESSAGE);
+    }
+
+    boolean isEmpty() {
+      return mergedLibs.isEmpty() && baseLibsToEnable.isEmpty();
     }
 
     @Override
@@ -557,6 +684,7 @@ public final class LogisimFileActions {
 
     @Override
     public void doIt(Project proj) {
+      if (circuit.isEditLocked()) throw new EditLockedException(circuit, null);
       index = proj.getLogisimFile().indexOfCircuit(circuit);
       proj.getLogisimFile().removeCircuit(circuit);
     }
@@ -588,7 +716,7 @@ public final class LogisimFileActions {
 
     @Override
     public String getName() {
-      return S.get("removeVhdlAction");
+      return S.get(vhdl.isVerilog() ? "removeVerilogAction" : "removeVhdlAction");
     }
 
     @Override
@@ -767,23 +895,49 @@ public final class LogisimFileActions {
   }
 
   public static Action mergeFile(LogisimFile mergelib, LogisimFile source) {
-    return new MergeFile(mergelib, source);
+    return mergeFile(mergelib, source, null, true);
   }
 
   public static Action mergeFile(LogisimFile mergelib, LogisimFile source, List<Circuit> selectedCircuits) {
-    return new MergeFile(mergelib, source, selectedCircuits);
+    return mergeFile(mergelib, source, selectedCircuits, true);
   }
 
+  /**
+   * Builds the action merging circuits of {@code mergelib} into {@code source}, asking the user
+   * about any conflict and any library file to locate.
+   *
+   * @return the action, or null when there is nothing to merge (conflicts made it impossible, or
+   *     the user cancelled)
+   */
   public static Action mergeFile(LogisimFile mergelib, LogisimFile source, List<Circuit> selectedCircuits, boolean includeDependencies) {
-    return new MergeFile(mergelib, source, selectedCircuits, includeDependencies);
+    return mergeFile(mergelib, source, selectedCircuits, includeDependencies, ASK_USER);
   }
 
+  static Action mergeFile(
+      LogisimFile mergelib,
+      LogisimFile source,
+      List<Circuit> selectedCircuits,
+      boolean includeDependencies,
+      MergeConflictResolver resolver) {
+    final var action =
+        new MergeFile(mergelib, source, selectedCircuits, includeDependencies, resolver);
+    return action.isEmpty() ? null : action;
+  }
+
+  /**
+   * Builds the action loading libraries into {@code source}.
+   *
+   * @return the action, or null when every library was rejected (the user has been told why), so
+   *     that no empty step lands in the undo history
+   */
   public static Action loadLibraries(Library[] libs, LogisimFile source) {
-    return new LoadLibraries(libs, source);
+    final var action = new LoadLibraries(libs, source);
+    return action.isEmpty() ? null : action;
   }
 
+  /** Single-library form of {@link #loadLibraries}; may return null likewise. */
   public static Action loadLibrary(Library lib, LogisimFile source) {
-    return new LoadLibraries(new Library[] {lib}, source);
+    return loadLibraries(new Library[] {lib}, source);
   }
 
   public static Action moveCircuit(AddTool tool, int toIndex) {

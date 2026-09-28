@@ -159,4 +159,59 @@ class ShellLayoutTest {
       assertTrue(split.getTopComponent().getHeight() >= 100);
     });
   }
+
+  @Test
+  void editorReserveKeepsTheCanvasUsableWithoutStarvingTheDrawer() {
+    final var min = com.cburch.logisim.util.UiScale.scaled(ShellLayout.MIN_EDITOR_HEIGHT);
+    final var max = com.cburch.logisim.util.UiScale.scaled(ShellLayout.MAX_EDITOR_RESERVE);
+    assertEquals(min, ShellLayout.editorReserve(0));
+    assertEquals(max, ShellLayout.editorReserve(max * 4));
+    final var middle = (min + max) / 2 * 2;
+    assertEquals(middle / 2, ShellLayout.editorReserve(middle));
+  }
+
+  @Test
+  void drawerOpenedForAPanelGrowsToItsHeightButNotPastTheEditorReserve() throws Exception {
+    SwingUtilities.invokeAndWait(() -> {
+      final var stored = new AtomicInteger(160);
+      final var split = split(JSplitPane.VERTICAL_SPLIT, true, stored, new AtomicInteger());
+      final var content = (JPanel) split.getBottomComponent();
+      assertEquals(160, content.getHeight());
+      split.ensureAtLeast(340);
+      split.doLayout();
+      assertEquals(340, content.getHeight());
+      split.ensureAtLeast(200);
+      split.doLayout();
+      assertEquals(340, content.getHeight(), "a smaller request must not shrink the drawer");
+
+      ((JPanel) split.getTopComponent()).setMinimumSize(new Dimension(0, 600));
+      split.ensureAtLeast(500);
+      split.doLayout();
+      assertTrue(split.getTopComponent().getHeight() >= 600, "the editor reserve was ignored");
+    });
+  }
+
+  @Test
+  void draggingPastTheLargestPanelSizeIsClampedInMemoryAsWellAsOnDisk() throws Exception {
+    SwingUtilities.invokeAndWait(() -> {
+      final var maximum = com.cburch.logisim.util.UiScale.scaled(LayoutPrefs.MAX_PANEL);
+      final var stored = new AtomicInteger(200);
+      final var split = split(JSplitPane.VERTICAL_SPLIT, true, stored, new AtomicInteger());
+      split.setSize(1000, maximum + 600);
+      split.doLayout();
+      final var divider = ((BasicSplitPaneUI) split.getUI()).getDivider();
+      final var drag = maximum + 100 - 200;
+      divider.dispatchEvent(new MouseEvent(divider, MouseEvent.MOUSE_PRESSED, 1,
+          InputEvent.BUTTON1_DOWN_MASK, 2, 2, 1, false, MouseEvent.BUTTON1));
+      divider.dispatchEvent(new MouseEvent(divider, MouseEvent.MOUSE_DRAGGED, 2,
+          InputEvent.BUTTON1_DOWN_MASK, 2, 2 - drag, 0, false, MouseEvent.NOBUTTON));
+      split.doLayout();
+      assertTrue(split.getBottomComponent().getHeight() > maximum, "fixture did not overshoot");
+      divider.dispatchEvent(new MouseEvent(divider, MouseEvent.MOUSE_RELEASED, 3,
+          0, 2, 2, 1, false, MouseEvent.BUTTON1));
+      split.doLayout();
+      assertEquals(maximum, stored.get());
+      assertEquals(maximum, split.getBottomComponent().getHeight());
+    });
+  }
 }

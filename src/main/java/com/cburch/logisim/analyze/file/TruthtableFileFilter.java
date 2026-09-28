@@ -35,4 +35,8 @@ public class TruthtableFileFilter extends FileFilter {
   public String getDescription() {
     return description.toString();
   }
+
+  public String getExtension() {
+    return extention;
+  }
 }

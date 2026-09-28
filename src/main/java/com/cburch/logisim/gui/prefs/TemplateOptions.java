@@ -15,13 +15,13 @@ import com.cburch.logisim.file.Loader;
 import com.cburch.logisim.file.LoaderException;
 import com.cburch.logisim.file.LogisimFile;
 import com.cburch.logisim.gui.generic.OptionPane;
+import com.cburch.logisim.gui.generic.SettingsForm;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.prefs.PrefMonitorBoolean;
 import com.cburch.logisim.prefs.Template;
 import com.cburch.logisim.util.JFileChoosers;
 import com.cburch.logisim.util.Spacing;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
+import java.awt.BorderLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.beans.PropertyChangeEvent;
@@ -44,7 +44,7 @@ class TemplateOptions extends OptionsPanel {
   private final JRadioButton plain = new JRadioButton();
   private final JRadioButton empty = new JRadioButton();
   private final JRadioButton custom = new JRadioButton();
-  private final JTextField templateField = new JTextField(40);
+  private final JTextField templateField = new JTextField(24);
   private final JButton templateButton = new JButton();
   private final JCheckBox removeLibs;
   public TemplateOptions(PreferencesFrame window) {
@@ -62,35 +62,20 @@ class TemplateOptions extends OptionsPanel {
     templateButton.addActionListener(myListener);
     myListener.computeEnabled();
 
-    final var gridbag = new GridBagLayout();
-    final var gbc = new GridBagConstraints();
     removeLibs = ((PrefMonitorBoolean) AppPreferences.REMOVE_UNUSED_LIBRARIES).getCheckBox();
-    setLayout(gridbag);
-    gbc.weightx = 1.0;
-    gbc.gridx = 0;
-    gbc.gridy = GridBagConstraints.RELATIVE;
-    gbc.gridwidth = 3;
-    gbc.anchor = GridBagConstraints.LINE_START;
-    gridbag.setConstraints(removeLibs, gbc);
-    add(removeLibs);
-    gridbag.setConstraints(plain, gbc);
-    add(plain);
-    gridbag.setConstraints(empty, gbc);
-    add(empty);
-    gridbag.setConstraints(custom, gbc);
-    add(custom);
-    gbc.fill = GridBagConstraints.HORIZONTAL;
-    gbc.gridwidth = 1;
-    gbc.gridy = 3;
-    gbc.gridx = GridBagConstraints.RELATIVE;
-    // An indent, expressed as one, rather than an invisible fifty-pixel panel that never scaled.
-    gbc.insets = new java.awt.Insets(0, Spacing.xl(), 0, 0);
-    gbc.weightx = 1.0;
-    gridbag.setConstraints(templateField, gbc);
-    add(templateField);
-    gbc.weightx = 0.0;
-    gridbag.setConstraints(templateButton, gbc);
-    add(templateButton);
+    final var pathRow = new JPanel(new BorderLayout(Spacing.sm(), 0));
+    pathRow.add(templateField, BorderLayout.CENTER);
+    pathRow.add(templateButton, BorderLayout.LINE_END);
+
+    final var form = new SettingsForm();
+    form.addFull(plain);
+    form.addFull(empty);
+    form.addFull(custom);
+    // The file belongs to the "user template" choice, so it sits indented under it.
+    form.addDependent(pathRow, true);
+    form.addFull(removeLibs);
+    setLayout(new BorderLayout());
+    add(form, BorderLayout.NORTH);
 
     AppPreferences.addPropertyChangeListener(AppPreferences.TEMPLATE_TYPE, myListener);
     AppPreferences.addPropertyChangeListener(AppPreferences.TEMPLATE_FILE, myListener);
@@ -139,9 +124,13 @@ class TemplateOptions extends OptionsPanel {
             reader = new FileInputStream(file);
             final var template = Template.create(reader);
             reader2 = template.createStream();
-            LogisimFile.load(reader2, loader); // to see if OK
-            AppPreferences.setTemplateFile(file, template);
-            AppPreferences.setTemplateType(AppPreferences.TEMPLATE_CUSTOM);
+            // Only adopt a template that actually loads; load() reports its own errors.
+            final var loaded = LogisimFile.load(reader2, loader);
+            if (loaded != null) {
+              loaded.retireAutosaveThread();
+              AppPreferences.setTemplateFile(file, template);
+              AppPreferences.setTemplateType(AppPreferences.TEMPLATE_CUSTOM);
+            }
           } catch (LoaderException ignored) {
           } catch (IOException ex) {
             OptionPane.showMessageDialog(
@@ -155,7 +144,7 @@ class TemplateOptions extends OptionsPanel {
             } catch (IOException ignored) {
             }
             try {
-              if (reader != null) reader2.close();
+              if (reader2 != null) reader2.close();
             } catch (IOException ignored) {
             }
           }

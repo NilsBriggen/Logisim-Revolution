@@ -593,6 +593,31 @@ public class OutputExpressions {
     }
   }
 
+  /** An expression the user typed, rather than the minimal one computed from the table. */
+  public record TypedExpression(Expression expression, String text) {}
+
+  /**
+   * The expressions the user typed, by output name, for undo. Computes nothing: outputs whose
+   * expression is simply the minimal form of the table are left out.
+   */
+  public Map<String, TypedExpression> getTypedExpressions() {
+    final var ret = new HashMap<String, TypedExpression>();
+    for (final var entry : outputData.entrySet()) {
+      final var data = entry.getValue();
+      if (data.expr != null && data.expr != data.minimalExpr) {
+        ret.put(entry.getKey(), new TypedExpression(data.expr, data.exprString));
+      }
+    }
+    return ret;
+  }
+
+  /** The minimized format of each output that has expression data, for undo. */
+  public Map<String, Integer> getMinimizedFormats() {
+    final var ret = new HashMap<String, Integer>();
+    for (final var entry : outputData.entrySet()) ret.put(entry.getKey(), entry.getValue().format);
+    return ret;
+  }
+
   private boolean allowUpdates = false;
 
   public void enableUpdates() {

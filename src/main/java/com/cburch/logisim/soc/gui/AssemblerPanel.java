@@ -24,6 +24,8 @@ import com.cburch.logisim.gui.icons.InfoIcon;
 import com.cburch.logisim.gui.icons.OpenSaveIcon;
 import com.cburch.logisim.gui.icons.RunIcon;
 import com.cburch.logisim.prefs.AppPreferences;
+import com.cburch.logisim.proj.Project;
+import com.cburch.logisim.proj.ProjectCloseConfirmation;
 import com.cburch.logisim.soc.data.SocProcessorInterface;
 import com.cburch.logisim.soc.util.Assembler;
 import com.cburch.logisim.soc.util.AssemblerInterface;
@@ -42,8 +44,10 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.util.function.BooleanSupplier;
 import javax.swing.Box;
 import javax.swing.JFileChooser;
+import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenuItem;
 import javax.swing.JPanel;
@@ -84,6 +88,8 @@ public class AssemblerPanel extends JPanel
   private final ListeningFrame parent;
   private final SocProcessorInterface cpu;
   private final CircuitState circuitState;
+  private final Project project;
+  private final BooleanSupplier closeGuard = this::confirmDiscardChanges;
   private int lineNumber = 1;
   private int numberOfLines = 1;
   private boolean documentChanged = false;
@@ -94,9 +100,13 @@ public class AssemblerPanel extends JPanel
       String highLiter,
       AssemblerInterface assembler,
       SocProcessorInterface cpu,
-      CircuitState state) {
+      CircuitState state,
+      Project project) {
     parent.addWindowListener(this);
+    // Closing is decided in windowClosing, so that unsaved source can be kept (Cancel).
+    parent.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
     this.parent = parent;
+    this.project = project;
     this.cpu = cpu;
     circuitState = state;
     textFile = null;
@@ -164,21 +174,39 @@ public class AssemblerPanel extends JPanel
     EditorTheme.install(asmWindow);
   }
 
-  private void openFile() {
-    if (documentChanged) {
-      int ret =
-          OptionPane.showConfirmDialog(
+  /**
+   * Offers Save, Discard or Cancel when the source has unsaved changes.
+   *
+   * @return true when it is fine to drop the current text (it was saved, discarded or unchanged)
+   */
+  public boolean confirmDiscardChanges() {
+    return ProjectCloseConfirmation.confirm(
+        documentChanged,
+        () -> {
+          parent.setVisible(true);
+          parent.toFront();
+          final String[] options = {
+            S.get("AsmPanSaveOption"), S.get("AsmPanDiscardOption"), S.get("AsmPanCancelOption")
+          };
+          return OptionPane.showOptionDialog(
               parent,
               S.get("AsmPanDocumentChangedSave"),
               parent.getParentTitle(),
-              OptionPane.YES_NO_OPTION);
-      if (ret == OptionPane.YES_OPTION) {
-        if (textFile == null) {
-          OptionPane.showMessageDialog(parent, S.get("AsmPanSaveFirstBeforeOpen"));
-          return;
-        } else saveFile(false);
-      }
-    }
+              OptionPane.YES_NO_CANCEL_OPTION,
+              OptionPane.QUESTION_MESSAGE,
+              null,
+              options,
+              options[0]);
+        },
+        () -> saveFile(false));
+  }
+
+  public boolean isDocumentChanged() {
+    return documentChanged;
+  }
+
+  private void openFile() {
+    if (!confirmDiscardChanges()) return;
     JFileChooser chooser = new JFileChooser();
     FileNameExtensionFilter filter =
         new FileNameExtensionFilter(S.get("AsmPanAmsFileExtention"), "S", "asm");
@@ -212,16 +240,18 @@ public class AssemblerPanel extends JPanel
     updateLineNumber();
   }
 
-  private void saveFile(boolean AskFileName) {
-    if (!documentChanged) return;
-    if (AskFileName || textFile == null) {
+  /** Saves the source; returns false when the user cancelled or the file could not be written. */
+  private boolean saveFile(boolean askFileName) {
+    if (!documentChanged && !askFileName) return true;
+    if (askFileName || textFile == null) {
       JFileChooser chooser = new JFileChooser();
       FileNameExtensionFilter filter =
           new FileNameExtensionFilter(S.get("AsmPanAmsFileExtention"), "S", "asm");
       chooser.setDialogTitle(parent.getParentTitle() + ": " + S.get("AsmPanSaveAsmFile"));
       chooser.setFileFilter(filter);
-      int ret = chooser.showOpenDialog(parent);
-      if (ret != JFileChooser.APPROVE_OPTION) return;
+      if (textFile != null) chooser.setSelectedFile(textFile);
+      int ret = chooser.showSaveDialog(parent);
+      if (ret != JFileChooser.APPROVE_OPTION) return false;
       textFile = chooser.getSelectedFile();
     }
     try {
@@ -235,9 +265,11 @@ public class AssemblerPanel extends JPanel
           S.get("AsmPanErrorCreateFile", textFile.getName()),
           parent.getParentTitle(),
           OptionPane.ERROR_MESSAGE);
+      return false;
     }
     documentChanged = false;
     updateLineNumber();
+    return true;
   }
 
   private boolean assemble(boolean showWindow) {
@@ -353,8 +385,24 @@ public class AssemblerPanel extends JPanel
   }
 
   @Override
+  public void windowOpened(WindowEvent e) {
+    // The frame is reused after being closed, so the guard follows its open/closed life cycle.
+    if (project != null) project.addCloseGuard(closeGuard);
+  }
+
+  @Override
+  public void windowClosing(WindowEvent e) {
+    if (confirmDiscardChanges()) {
+      parent.setVisible(false);
+      parent.dispose();
+    }
+  }
+
+  @Override
   public void windowClosed(WindowEvent e) {
+    if (project != null) project.removeCloseGuard(closeGuard);
     if (documentChanged) {
+      // Disposed without asking (the processor was removed): offer a last chance to save.
       parent.setVisible(true);
       int ret =
           OptionPane.showConfirmDialog(
@@ -363,7 +411,6 @@ public class AssemblerPanel extends JPanel
               parent.getParentTitle(),
               OptionPane.YES_NO_OPTION);
       if (ret == OptionPane.YES_OPTION) saveFile(false);
-      documentChanged = false;
       parent.setVisible(false);
     }
     asmWindow.setText("");

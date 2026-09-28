@@ -74,6 +74,97 @@ public final class UiSnapshot {
   }
 
   /**
+   * Renders the Print ({@code -Pdialog=print}) or Export Image ({@code -Pdialog=export}) dialog
+   * with its preview, once the preview has been rendered. {@code -PdialogAll=true} selects every
+   * circuit; {@code -PdialogPrinterView=false} unchecks printer view in the export dialog.
+   */
+  private static void captureDialog(
+      com.cburch.logisim.proj.Project project, String dialog, File output, Theme.Mode mode)
+      throws Exception {
+    final var all = Boolean.getBoolean("snapshot.dialogAll");
+    final var printerView =
+        Boolean.parseBoolean(System.getProperty("snapshot.dialogPrinterView", "true"));
+    final var window = new javax.swing.JFrame();
+    final var holder = new javax.swing.JComponent[1];
+    SwingUtilities.invokeAndWait(
+        () -> {
+          final var options =
+              "print".equals(dialog)
+                  ? com.cburch.logisim.gui.main.Print.buildForSnapshot(project, all)
+                  : com.cburch.logisim.gui.main.ExportImage.buildForSnapshot(
+                      project, all, printerView);
+          holder[0] = options;
+          final var pane =
+              new javax.swing.JOptionPane(
+                  options,
+                  javax.swing.JOptionPane.PLAIN_MESSAGE,
+                  javax.swing.JOptionPane.OK_CANCEL_OPTION);
+          window.setContentPane(pane);
+          window.pack();
+          window.validate();
+        });
+    final var preview = findPreview(holder[0]);
+    final var deadline = System.currentTimeMillis() + FRAME_TIMEOUT_MS;
+    // The first layout sizes the preview, which then renders on its own thread.
+    Thread.sleep(300);
+    while (System.currentTimeMillis() < deadline) {
+      final var busy = new boolean[1];
+      SwingUtilities.invokeAndWait(() -> busy[0] = preview != null && preview.isBusy());
+      if (!busy[0]) break;
+      Thread.sleep(50);
+    }
+    final var page = Integer.getInteger("snapshot.page", -1);
+    if (page > 0 && preview != null) {
+      SwingUtilities.invokeAndWait(() -> preview.showPage(page));
+      Thread.sleep(100);
+      while (System.currentTimeMillis() < deadline) {
+        final var busy = new boolean[1];
+        SwingUtilities.invokeAndWait(() -> busy[0] = preview.isBusy());
+        if (!busy[0]) break;
+        Thread.sleep(50);
+      }
+    }
+    captureWindow(window, output, mode);
+  }
+
+  private static com.cburch.logisim.gui.main.PreviewPane findPreview(java.awt.Container parent) {
+    for (final var child : parent.getComponents()) {
+      if (child instanceof com.cburch.logisim.gui.main.PreviewPane preview) return preview;
+      if (child instanceof java.awt.Container container) {
+        final var found = findPreview(container);
+        if (found != null) return found;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Renders one page of a settings window ({@code -Ppage=N}), or every page ({@code -Ppage=all}),
+   * the latter to {@code <out>-<N>.png} so a layout change can be checked on all pages at once.
+   */
+  private static void capturePages(
+      javax.swing.JFrame window,
+      java.util.function.IntConsumer showPage,
+      int pageCount,
+      File output,
+      Theme.Mode mode)
+      throws Exception {
+    final var page = System.getProperty("snapshot.page", "-1");
+    if (!"all".equals(page)) {
+      final var index = Integer.parseInt(page);
+      if (index >= 0) SwingUtilities.invokeAndWait(() -> showPage.accept(index));
+      captureWindow(window, output, mode);
+      return;
+    }
+    final var name = output.getName().replaceFirst("\\.png$", "");
+    for (var index = 0; index < pageCount; index++) {
+      final var current = index;
+      SwingUtilities.invokeAndWait(() -> showPage.accept(current));
+      captureWindow(window, new File(output.getParentFile(), name + "-" + index + ".png"), mode);
+    }
+  }
+
+  /**
    * Renders a circuit the way exporting an image does, in the print palette.
    *
    * <p>This is the check that matters most for a canvas change: the theme's colours are chosen
@@ -156,6 +247,13 @@ public final class UiSnapshot {
     Theme.install();
     AppPreferences.applyThemeColors();
 
+    // A remembered drawer height, in logical pixels, to review how a restored drawer is fitted.
+    final var bottomHeight = Integer.getInteger("snapshot.bottomHeight", 0);
+    if (bottomHeight > 0) {
+      AppPreferences.getPrefs().putInt("shell.bottomHeight", bottomHeight);
+      AppPreferences.getPrefs().putBoolean("shell.logicalSizes", true);
+    }
+
     // A named file lets a real circuit be reviewed, which is the only way to judge canvas work.
     final var circuitFile = System.getProperty("snapshot.file", "");
     final var project =
@@ -170,6 +268,17 @@ public final class UiSnapshot {
     }
     final var frame = project.getFrame();
     if (frame == null) throw new IllegalStateException("the project window was never created");
+
+    // The selection outline is drawn only by the editing tools, not by the Poke tool.
+    final var toolName = System.getProperty("snapshot.tool", "");
+    if (!toolName.isBlank()) {
+      final var tool = project.getLogisimFile().getLibraries().stream()
+          .map(lib -> lib.getTool(toolName))
+          .filter(java.util.Objects::nonNull)
+          .findFirst()
+          .orElseThrow(() -> new IllegalArgumentException("No tool named " + toolName));
+      SwingUtilities.invokeAndWait(() -> project.setTool(tool));
+    }
 
     final var selectionName = System.getProperty("snapshot.select", "");
     if (!selectionName.isBlank()) {
@@ -191,17 +300,49 @@ public final class UiSnapshot {
       System.exit(0);
     }
 
+    final var dialog = System.getProperty("snapshot.dialog", "");
+    if (!dialog.isEmpty()) {
+      captureDialog(project, dialog, output, mode);
+      System.exit(0);
+    }
+
     if (Boolean.getBoolean("snapshot.preferences")) {
       final var preferences = com.cburch.logisim.gui.prefs.PreferencesFrame.buildForSnapshot();
-      final var page = Integer.getInteger("snapshot.page", -1);
-      if (page >= 0) preferences.showPageForSnapshot(page);
-      captureWindow(preferences, output, mode);
+      capturePages(
+          preferences, preferences::showPageForSnapshot, preferences.getPageCount(), output, mode);
+      System.exit(0);
+    }
+
+    if (Boolean.getBoolean("snapshot.options")) {
+      final var options = new com.cburch.logisim.gui.opts.OptionsFrame(project);
+      capturePages(options, options::showPageForSnapshot, options.getPageCount(), output, mode);
       System.exit(0);
     }
 
     final var sideView = System.getProperty("snapshot.side", "");
-    if (!sideView.isEmpty()) {
+    if ("timing".equals(sideView)) {
+      // Not a side view: opens the timing diagram in the drawer, on its waveform tab.
+      SwingUtilities.invokeAndWait(() -> {
+        frame.showLogPanel();
+        selectTimingTab(frame.getContentPane());
+      });
+    } else if (!sideView.isEmpty()) {
       SwingUtilities.invokeAndWait(() -> frame.showSideView(sideView));
+    }
+
+    final var drawer = System.getProperty("snapshot.drawer", "");
+    if (!drawer.isEmpty()) {
+      SwingUtilities.invokeAndWait(
+          () -> {
+            frame.pack();
+            frame.setSize(width, height);
+            frame.validate();
+            switch (drawer) {
+              case "timing" -> frame.showLogPanel();
+              case "test" -> frame.showTestPanel();
+              default -> frame.setVhdlSimulatorConsoleStatusVisible();
+            }
+          });
     }
 
     SwingUtilities.invokeAndWait(
@@ -246,5 +387,20 @@ public final class UiSnapshot {
             size.height,
             mode.key()));
     System.exit(0);
+  }
+
+  private static boolean selectTimingTab(java.awt.Container parent) {
+    for (final var child : parent.getComponents()) {
+      if (child instanceof javax.swing.JTabbedPane tabs) {
+        for (var i = 0; i < tabs.getTabCount(); i++) {
+          if (tabs.getComponentAt(i) instanceof com.cburch.logisim.gui.chrono.ChronoPanel) {
+            tabs.setSelectedIndex(i);
+            return true;
+          }
+        }
+      }
+      if (child instanceof java.awt.Container container && selectTimingTab(container)) return true;
+    }
+    return false;
   }
 }

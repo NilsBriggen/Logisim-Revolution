@@ -58,6 +58,20 @@ public class UiFontsTest extends TestBase {
     assertTrue(UiFonts.body().getSize() < UiFonts.heading().getSize());
   }
 
+  /** Four distinct roles: display > header >= body > caption, with a clear headline step. */
+  @Test
+  public void typeScaleHasFourDistinctRoles() {
+    UiScaleTestSupport.setScaleFactor(1.0);
+    final var body = UiFonts.body().getSize();
+    assertTrue(UiFonts.caption().getSize() < body, "caption must be smaller than body");
+    assertEquals(body, UiFonts.header().getSize(), "header is body-sized");
+    assertTrue(UiFonts.header().isBold(), "header is set apart by weight");
+    assertTrue(UiFonts.display().isBold());
+    assertTrue(UiFonts.display().getSize() >= Math.round(body * 1.5f),
+        "the display role must stand well clear of body text");
+    assertEquals(UiFonts.caption(), UiFonts.small());
+  }
+
   @Test
   public void boldRolesAreBold() {
     assertTrue(UiFonts.bodyBold().isBold());

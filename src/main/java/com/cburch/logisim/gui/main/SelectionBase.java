@@ -31,6 +31,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 class SelectionBase {
+  /** How many grid steps a paste at the mouse may move aside to avoid an identical copy. */
+  private static final int MAX_PASTE_CASCADE = 50;
 
   static final Logger logger = LoggerFactory.getLogger(SelectionBase.class);
   static final Set<Component> NO_COMPONENTS = Collections.emptySet();
@@ -127,7 +129,8 @@ class SelectionBase {
     }
   }
 
-  private HashMap<Component, Component> copyComponents(Collection<Component> components, boolean translate) {
+  private HashMap<Component, Component> copyComponents(
+      Collection<Component> components, boolean translate, Collection<Component> pending) {
     // determine translation offset where we can legally place the clipboard
     int dx;
     int dy;
@@ -164,7 +167,7 @@ class SelectionBase {
 
       if (bds.getX() + dx >= 0
           && bds.getY() + dy >= 0
-          && !hasConflictTranslated(components, dx, dy, true)) {
+          && !isOccupied(components, dx, dy, pending)) {
         return copyComponents(components, dx, dy, translate);
       }
     }
@@ -277,23 +280,47 @@ class SelectionBase {
     return false;
   }
 
+  /**
+   * Whether moving {@code comps} by (dx, dy) puts one of them exactly onto a component already in
+   * the circuit or onto one of {@code pending}, which are about to be added.
+   */
+  boolean isOccupied(Collection<Component> comps, int dx, int dy, Collection<Component> pending) {
+    if (hasConflictTranslated(comps, dx, dy, true)) return true;
+    for (final var comp : comps) {
+      if (comp instanceof Wire) continue;
+      final var movedLoc = comp.getLocation().translate(dx, dy);
+      final var movedBounds = comp.getBounds().translate(dx, dy);
+      for (final var other : pending) {
+        if (!(other instanceof Wire)
+            && other.getLocation().equals(movedLoc)
+            && other.getBounds().equals(movedBounds)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
   public boolean hasConflictWhenMoved(int dx, int dy) {
     return hasConflictTranslated(unionSet, dx, dy, false);
   }
 
   void pasteHelper(CircuitMutation xn, Collection<Component> comps) {
+    // A previous paste still floating is dropped by clear(), but only when xn runs; until then
+    // the circuit does not know about it and a copy could land exactly on top of it.
+    final var pending = new ArrayList<Component>(lifted);
     clear(xn);
     final var canvas = proj.getFrame().getCanvas();
     java.awt.Point mousePos = canvas.getMousePosition();
     HashMap<Component, Component> newItem;
 
     if (mousePos != null) {
-      final double zoomFactor = canvas.getZoomFactor();
+      final var target = canvas.toCircuitPoint(mousePos);
       Bounds bds = computeBounds(comps);
       int centerX = bds.getX() + bds.getWidth() / 2;
       int centerY = bds.getY() + bds.getHeight() / 2;
-      int dx = ((int) Math.round((mousePos.x / zoomFactor - centerX) / 10)) * 10;
-      int dy = ((int) Math.round((mousePos.y / zoomFactor - centerY) / 10)) * 10;
+      int dx = ((int) Math.round((target.x - centerX) / 10.0)) * 10;
+      int dy = ((int) Math.round((target.y - centerY) / 10.0)) * 10;
       int newX = bds.getX() + dx;
       int newY = bds.getY() + dy;
       if (newX < 0) {
@@ -302,9 +329,16 @@ class SelectionBase {
       if (newY < 0) {
         dy = dy - newY;
       }
+      // Pasting again at the same spot would stack an identical copy on top of the last one,
+      // hiding it and silently doubling its drivers; cascade diagonally until the spot is free.
+      for (var tries = 0; tries < MAX_PASTE_CASCADE && isOccupied(comps, dx, dy, pending);
+          tries++) {
+        dx += 10;
+        dy += 10;
+      }
       newItem = copyComponents(comps, dx, dy, false);
     } else {
-      newItem = copyComponents(comps, false);
+      newItem = copyComponents(comps, false, pending);
     }
 
     lifted.addAll(newItem.values());

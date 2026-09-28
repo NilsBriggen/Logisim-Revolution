@@ -67,7 +67,9 @@ public class ZoomPill extends JPanel {
     setOpaque(false);
     add(button(AppIcons.Id.ZOOM_OUT, "zoomOutTip", control::zoomOut));
     percent.addActionListener(event -> {
-      if (ZoomPill.this.model != null) ZoomPill.this.model.setZoomFactorCenter(1.0);
+      if (ZoomPill.this.model != null) {
+        ZoomPill.this.model.setZoomFactorCenter(ZoomControl.actualSizeZoom());
+      }
     });
     add(percent);
     add(button(AppIcons.Id.ZOOM_IN, "zoomInTip", control::zoomIn));
@@ -153,6 +155,9 @@ public class ZoomPill extends JPanel {
     percent.setEnabled(model != null);
     final var text = zoomText();
     percent.setText(text);
+    // Screen readers announce the level itself; what clicking does is the description.
+    if (!text.isEmpty()) percent.getAccessibleContext().setAccessibleName(text);
+    percent.getAccessibleContext().setAccessibleDescription(S.get("zoomResetTip"));
     percent.setForeground(Tokens.statusBarForeground());
     gridButton.setIcon(
         AppIcons.colored(
@@ -168,7 +173,7 @@ public class ZoomPill extends JPanel {
   }
 
   private String zoomText() {
-    return model == null ? "" : Math.round(model.getZoomFactor() * 100) + "%";
+    return model == null ? "" : ZoomControl.percentText(model.getZoomFactor());
   }
 
   @Override

@@ -19,6 +19,7 @@ import com.cburch.logisim.data.Location;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.util.GraphicsUtil;
 import com.cburch.logisim.gui.canvas.CanvasStyle;
+import com.cburch.logisim.instance.InstanceComponent;
 import com.cburch.logisim.proj.Action;
 import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.proj.ProjectEvent;
@@ -67,6 +68,8 @@ public class Selection extends SelectionBase {
         final var gfxNew = g.create();
         context.setGraphics(gfxNew);
         c.getFactory().drawGhost(context, new Color(AppPreferences.COMPONENT_GHOST_COLOR.get()), loc.getX(), loc.getY(), c.getAttributeSet());
+        // The label belongs to the preview too: it is part of what will be dropped.
+        if (c instanceof InstanceComponent instance) instance.drawLabelPreview(context);
         gfxNew.dispose();
       }
     }
@@ -78,7 +81,6 @@ public class Selection extends SelectionBase {
         CustomHandles handler = (CustomHandles) comp.getFeature(CustomHandles.class);
         if (handler == null) {
           drawSelectionOutline(context, comp);
-          context.drawHandles(comp);
         } else {
           handler.drawHandles(context);
         }
@@ -90,12 +92,40 @@ public class Selection extends SelectionBase {
   }
 
   /**
+   * Tints the area behind each selected component. It is drawn before the circuit, so the tint
+   * never washes over the symbol's own strokes.
+   */
+  public void drawUnderlay(ComponentDrawContext context, Set<Component> hidden) {
+    final var g = context.getGraphics();
+    for (final var comp : unionSet) {
+      if (suppressHandles.contains(comp) || hidden.contains(comp)) continue;
+      if (comp.getFeature(CustomHandles.class) != null) continue;
+      final var bounds = comp.getBounds(g);
+      if (bounds == null || bounds.getWidth() <= 0 || bounds.getHeight() <= 0) continue;
+      final var inset = CanvasStyle.selectionInset();
+      final var radius = CanvasStyle.bodyRadius() + inset;
+      final var previous = g.getColor();
+      g.setColor(CanvasStyle.markerWash(context.isPrintView()));
+      g.fillRoundRect(
+          bounds.getX() - inset,
+          bounds.getY() - inset,
+          bounds.getWidth() + 2 * inset,
+          bounds.getHeight() + 2 * inset,
+          radius,
+          radius);
+      g.setColor(previous);
+    }
+  }
+
+  /**
    * Rings a selected component.
    *
    * <p>Selection used to be shown only by four small corner handles, which on a busy drawing is
    * easy to miss and says nothing about which parts of a group are in the selection. The outline
    * follows the component's bounds a little way outside it, so it reads at a glance without
-   * covering the symbol.
+   * covering the symbol. The handles sit on the outline's rounded corners rather than on the
+   * component's own corners: on a symbol that fills its bounds, such as a NOT gate, handles on the
+   * bounds covered the triangle's tips and the bubble.
    */
   private static void drawSelectionOutline(ComponentDrawContext context, Component comp) {
     final var gfx = context.getGraphics();
@@ -105,23 +135,19 @@ public class Selection extends SelectionBase {
     final var radius = CanvasStyle.bodyRadius() + inset;
     final var previous = gfx.getColor();
     GraphicsUtil.switchToWidth(gfx, 1);
-    gfx.setColor(CanvasStyle.markerWash(context.isPrintView()));
-    gfx.fillRoundRect(
-        bounds.getX() - inset,
-        bounds.getY() - inset,
-        bounds.getWidth() + 2 * inset,
-        bounds.getHeight() + 2 * inset,
-        radius,
-        radius);
     gfx.setColor(CanvasStyle.marker(context.isPrintView()));
-    gfx.drawRoundRect(
-        bounds.getX() - inset,
-        bounds.getY() - inset,
-        bounds.getWidth() + 2 * inset,
-        bounds.getHeight() + 2 * inset,
-        radius,
-        radius);
+    final var left = bounds.getX() - inset;
+    final var top = bounds.getY() - inset;
+    final var width = bounds.getWidth() + 2 * inset;
+    final var height = bounds.getHeight() + 2 * inset;
+    gfx.drawRoundRect(left, top, width, height, radius, radius);
     gfx.setColor(previous);
+    // The point of each rounded corner nearest the sharp corner: the arc has radius / 2.
+    final var cut = (int) Math.round(radius / 2.0 * (1 - Math.sqrt(0.5)));
+    context.drawHandle(left + cut, top + cut);
+    context.drawHandle(left + width - cut, top + cut);
+    context.drawHandle(left + cut, top + height - cut);
+    context.drawHandle(left + width - cut, top + height - cut);
   }
 
   public void drawGhostsShifted(ComponentDrawContext context, int dx, int dy) {
@@ -137,6 +163,10 @@ public class Selection extends SelectionBase {
       final var y = loc.getY() + dy;
       context.setGraphics(g.create());
       comp.getFactory().drawGhost(context, new Color(AppPreferences.COMPONENT_GHOST_COLOR.get()), x, y, attrs);
+      if (comp instanceof InstanceComponent instance) {
+        context.getGraphics().translate(x - loc.getX(), y - loc.getY());
+        instance.drawLabelPreview(context);
+      }
       context.getGraphics().dispose();
     }
     context.setGraphics(g);
@@ -191,6 +221,27 @@ public class Selection extends SelectionBase {
       if (bds.contains(comp.getBounds(g))) ret.add(comp);
     }
     return ret;
+  }
+
+  /**
+   * Throws away the floating components (a paste or duplicate not dropped yet) without adding them
+   * to the circuit. They were never part of it, so nothing in the circuit changes.
+   *
+   * @return whether anything was floating
+   */
+  public boolean discardFloating() {
+    if (lifted.isEmpty()) return false;
+    lifted.clear();
+    fireSelectionChanged();
+    return true;
+  }
+
+  /** Deselects everything; only valid when nothing is floating, which would need dropping. */
+  public void deselectAll() {
+    if (!lifted.isEmpty()) throw new IllegalStateException("floating components must be dropped");
+    if (selected.isEmpty()) return;
+    selected.clear();
+    fireSelectionChanged();
   }
 
   public Collection<Component> getFloatingComponents() {

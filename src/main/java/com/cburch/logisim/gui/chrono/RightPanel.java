@@ -284,20 +284,20 @@ public class RightPanel extends JPanel {
   }
 
   public void changeSpotlight(Signal oldSignal, Signal newSignal) {
-    if (oldSignal != null) {
-      final var waveform = rows.get(oldSignal.idx);
-      waveform.flush();
-      repaint(waveform.getBounds());
-    }
-    if (newSignal != null) {
-      final var waveform = rows.get(newSignal.idx);
+    // Look rows up by identity: a signal that has just been removed has no row any more.
+    for (final var signal : new Signal[] {oldSignal, newSignal}) {
+      final var idx = signal == null ? -1 : indexOf(signal);
+      if (idx < 0) continue;
+      final var waveform = rows.get(idx);
       waveform.flush();
       repaint(waveform.getBounds());
     }
   }
 
   public void updateSelected(int firstIdx, int lastIdx) {
-    for (var i = firstIdx; i <= lastIdx; i++) {
+    // A selection event can still describe rows of a previous, longer signal list.
+    final var last = Math.min(lastIdx, rows.size() - 1);
+    for (var i = Math.max(0, firstIdx); i <= last; i++) {
       final var waveform = rows.get(i);
       final var selected = selectionModel.isSelectedIndex(i);
       if (selected != waveform.selected) {
@@ -764,6 +764,8 @@ public class RightPanel extends JPanel {
   static final long[] subd = new long[] {4, 4, 5, 5};
 
   private class Timeline extends JPanel {
+    // The unit the ruler was last labelled in; the cursor label uses it too.
+    private long labelUnit = 1;
 
     @Override
     public void paintComponent(Graphics gr) {
@@ -787,7 +789,7 @@ public class RightPanel extends JPanel {
       final var t = getCurrentTime();
       g.setFont(timeFont());
 
-      final var s = Model.formatDuration(t);
+      final var s = Model.formatDuration(t, labelUnit, Model.durationDecimals(t, labelUnit));
       final var fm = g.getFontMetrics();
       final var y = UiScale.scaled(3) + fm.getAscent();
       final var padding = UiScale.scaled(3);
@@ -834,6 +836,8 @@ public class RightPanel extends JPanel {
       long divMajor = unit[j] * b;
       long numMinor = subd[j];
       long divMinor = divMajor / numMinor;
+      labelUnit = Model.durationUnit(divMajor);
+      final var decimals = Model.durationDecimals(divMajor, labelUnit);
 
       final var f = g.getFont();
       g.setFont(timeFont());
@@ -848,7 +852,7 @@ public class RightPanel extends JPanel {
         final var x = (int) ((t - time0) * pixelPerTime);
         if (x >= width) break;
         if (i % numMinor == 0) {
-          final var label = Model.formatDuration(t);
+          final var label = Model.formatDuration(t, labelUnit, decimals);
           if (x + fm.stringWidth(label) <= width) {
             g.drawString(label, x, UiScale.scaled(3) + fm.getAscent());
           }

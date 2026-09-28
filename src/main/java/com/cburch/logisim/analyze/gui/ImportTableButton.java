@@ -71,6 +71,18 @@ public class ImportTableButton extends JButton {
             OptionPane.OK_OPTION);
         return;
       }
+      if (model.isEdited()) {
+        // Importing replaces the table the user built by hand, and the analyzer has no undo.
+        final var confirm =
+            OptionPane.showConfirmDialog(
+                parent,
+                S.get("importReplaceEditedMessage", file.getName()),
+                S.get("importReplaceEditedTitle"),
+                OptionPane.YES_NO_OPTION,
+                OptionPane.WARNING_MESSAGE);
+        if (confirm != OptionPane.YES_OPTION) return;
+      }
+      model.beginReplacement();
       try {
         final var fileName = file.getName();
         final var idx = fileName.lastIndexOf(".");
@@ -91,6 +103,8 @@ public class ImportTableButton extends JButton {
       } catch (IOException e) {
         OptionPane.showMessageDialog(
             parent, e.getMessage(), S.get("openErrorTitle"), OptionPane.ERROR_MESSAGE);
+      } finally {
+        model.endReplacement();
       }
     }
   }

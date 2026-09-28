@@ -68,7 +68,7 @@ class Toolbox extends JPanel implements LocaleListener {
             setShowingTree(!AppPreferences.PALETTE_SHOW_TREE.getBoolean()));
 
     setShowingTree(AppPreferences.PALETTE_SHOW_TREE.getBoolean());
-    LocaleManager.addLocaleListener(this);
+    LocaleManager.addLocaleListener(this, this);
     localeChanged();
   }
 

@@ -12,9 +12,11 @@ package com.cburch.logisim.gui.menu;
 import static com.cburch.logisim.gui.Strings.S;
 
 import com.cburch.logisim.circuit.Circuit;
+import com.cburch.logisim.circuit.EditLockAction;
 import com.cburch.logisim.file.LoadedLibrary;
 import com.cburch.logisim.gui.main.Frame;
 import com.cburch.logisim.gui.main.StatisticsDialog;
+import com.cburch.logisim.gui.theme.AppIcons;
 import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.tools.AddTool;
 import com.cburch.logisim.tools.Library;
@@ -29,6 +31,17 @@ import javax.swing.JPopupMenu;
 import javax.swing.SwingUtilities;
 
 public class Popups {
+  /**
+   * "Lock Circuit" with a closed padlock, or "Unlock Circuit" with an open one, for a circuit's
+   * context menu.
+   */
+  public static JMenuItem circuitLockItem(Circuit circuit) {
+    final var locked = circuit.isEditLocked();
+    final var item = new JMenuItem(S.get(locked ? "circuitUnlockItem" : "circuitLockItem"));
+    item.setIcon(AppIcons.get(locked ? AppIcons.Id.UNLOCK : AppIcons.Id.LOCK, AppIcons.SIZE));
+    return item;
+  }
+
   public static JPopupMenu forCircuit(Project proj, AddTool tool, Circuit circ) {
     return new CircuitPopup(proj, tool, circ);
   }
@@ -46,7 +59,8 @@ public class Popups {
   }
 
   public static JPopupMenu forTool(Project proj, Tool tool) {
-    return null;
+    if (!(tool instanceof AddTool)) return null;
+    return new ToolPopup(proj, (AddTool) tool);
   }
 
   @SuppressWarnings("serial")
@@ -61,6 +75,7 @@ public class Popups {
     final JMenuItem editLayout = new JMenuItem(S.get("projectEditCircuitLayoutItem"));
     final JMenuItem editAppearance = new JMenuItem(S.get("projectEditCircuitAppearanceItem"));
     final JMenuItem exportCircuit = new JMenuItem(S.get("projectExportCircuitItem"));
+    final JMenuItem lock;
 
     CircuitPopup(Project proj, Tool tool, Circuit circuit) {
       super(S.get("circuitMenu"));
@@ -83,6 +98,11 @@ public class Popups {
       main.addActionListener(this);
       add(remove);
       remove.addActionListener(this);
+      addSeparator();
+      lock = circuitLockItem(circuit);
+      add(lock);
+      lock.addActionListener(this);
+      lock.setEnabled(proj.getLogisimFile().contains(circuit));
 
       final var canChange = proj.getLogisimFile().contains(circuit);
       final var file = proj.getLogisimFile();
@@ -94,8 +114,7 @@ public class Popups {
         }
       }
       main.setEnabled(canChange && file.getMainCircuit() != circuit);
-      remove.setEnabled(
-          canChange && file.getCircuitCount() > 1 && proj.getDependencies().canRemove(circuit));
+      remove.setEnabled(ProjectCircuitActions.canRemoveCircuit(proj, circuit));
     }
 
     @Override
@@ -118,6 +137,8 @@ public class Popups {
         ProjectCircuitActions.doSetAsMainCircuit(proj, circuit);
       } else if (source == remove) {
         ProjectCircuitActions.doRemoveCircuit(proj, circuit);
+      } else if (source == lock) {
+        proj.doAction(EditLockAction.setCircuitLocked(circuit, !circuit.isEditLocked()));
       }
     }
   }
@@ -127,13 +148,18 @@ public class Popups {
 
     final Project proj;
     final VhdlContent vhdl;
-    final JMenuItem edit = new JMenuItem(S.get("projectEditVhdlItem"));
-    final JMenuItem remove = new JMenuItem(S.get("projectRemoveVhdlItem"));
+    final JMenuItem edit;
+    final JMenuItem remove;
 
     VhdlPopup(Project proj, Tool tool, VhdlContent vhdl) {
-      super(S.get("vhdlMenu"));
+      super(S.get(vhdl.isVerilog() ? "verilogMenu" : "vhdlMenu"));
       this.proj = proj;
       this.vhdl = vhdl;
+      edit =
+          new JMenuItem(S.get(vhdl.isVerilog() ? "projectEditVerilogItem" : "projectEditVhdlItem"));
+      remove =
+          new JMenuItem(
+              S.get(vhdl.isVerilog() ? "projectRemoveVerilogItem" : "projectRemoveVhdlItem"));
       add(edit);
       edit.addActionListener(this);
       add(remove);
@@ -158,6 +184,7 @@ public class Popups {
   private static class LibraryPopup extends JPopupMenu implements ActionListener {
     final Project proj;
     final Library lib;
+    final JMenuItem help = new JMenuItem();
     final JMenuItem unload = new JMenuItem(S.get("projectUnloadLibraryItem"));
     final JMenuItem reload = new JMenuItem(S.get("projectReloadLibraryItem"));
 
@@ -166,6 +193,10 @@ public class Popups {
       this.proj = proj;
       this.lib = lib;
 
+      help.setText(S.get("libHelpItem", lib.getDisplayName()));
+      add(help);
+      help.addActionListener(this);
+      addSeparator();
       add(unload);
       unload.addActionListener(this);
       add(reload);
@@ -177,10 +208,37 @@ public class Popups {
     @Override
     public void actionPerformed(ActionEvent e) {
       final var src = e.getSource();
-      if (src == unload) {
+      if (src == help) {
+        if (proj.getFrame().getJMenuBar() instanceof LogisimMenuBar menuBar) {
+          menuBar.help.showHelp(ComponentHelp.getHelpTarget(lib));
+        }
+      } else if (src == unload) {
         ProjectLibraryActions.doUnloadLibrary(proj, lib);
       } else if (src == reload) {
         proj.getLogisimFile().getLoader().reload((LoadedLibrary) lib);
+      }
+    }
+  }
+
+  @SuppressWarnings("serial")
+  private static class ToolPopup extends JPopupMenu implements ActionListener {
+    final Project proj;
+    final AddTool tool;
+    final JMenuItem help = new JMenuItem();
+
+    ToolPopup(Project proj, AddTool tool) {
+      this.proj = proj;
+      this.tool = tool;
+      help.setText(S.get("libHelpItem", tool.getFactory().getDisplayGetter().toString()));
+      add(help);
+      help.addActionListener(this);
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent e) {
+      if (e.getSource() == help && proj.getFrame().getJMenuBar() instanceof LogisimMenuBar menuBar) {
+        final var target = ComponentHelp.getHelpTarget(tool.getFactory(), proj.getLogisimFile());
+        menuBar.help.showHelp(target);
       }
     }
   }
@@ -190,6 +248,7 @@ public class Popups {
     final Project proj;
     final JMenuItem add = new JMenuItem(S.get("projectAddCircuitItem"));
     final JMenuItem vhdl = new JMenuItem(S.get("projectAddVhdlItem"));
+    final JMenuItem verilog = new JMenuItem(S.get("projectAddVerilogItem"));
     final JMenu load = new JMenu(S.get("projectLoadLibraryItem"));
     final JMenu loadBuiltin = new JMenu(S.get("projectLoadBuiltinItem"));
     final JMenuItem loadLogisim = new JMenuItem(S.get("projectLoadLogisimItem"));
@@ -210,6 +269,8 @@ public class Popups {
       add.addActionListener(this);
       add(vhdl);
       vhdl.addActionListener(this);
+      add(verilog);
+      verilog.addActionListener(this);
       add(load);
     }
 
@@ -220,6 +281,8 @@ public class Popups {
         ProjectCircuitActions.doAddCircuit(proj);
       } else if (src == vhdl) {
         ProjectCircuitActions.doAddVhdl(proj);
+      } else if (src == verilog) {
+        ProjectCircuitActions.doAddVerilog(proj);
       } else if (src == loadLogisim) {
         ProjectLibraryActions.doLoadLogisimLibrary(proj);
       } else if (src == loadJar) {

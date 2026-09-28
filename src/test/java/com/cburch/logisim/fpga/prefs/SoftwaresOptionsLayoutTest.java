@@ -49,12 +49,13 @@ class SoftwaresOptionsLayoutTest {
 
           // 792px is the observed form viewport in the 1200px/2.0 Preferences window.
           // Also cover widening, returning to that width, and the tighter existing fixture.
-          for (final var width : new int[] {792, 1200, 792, 760}) {
+          // The caption now spans the whole row, so it first has to wrap somewhat narrower.
+          for (final var width : new int[] {792, 1200, 792, 760, 700}) {
             viewport.setSize(width, 780);
             for (var pass = 0; pass < 3; pass++) layoutTree(viewport);
             assertTrue(form.getScrollableTracksViewportWidth());
             assertEquals(width, form.getWidth());
-            assertCaptionEndVisible(caption, width < 1000);
+            assertCaptionEndVisible(caption, width <= 700);
           }
 
           UiScale.setFactor(1.0);
@@ -64,6 +65,16 @@ class SoftwaresOptionsLayoutTest {
           assertEquals(UiFonts.body().getSize2D(), caption.getFont().getSize2D());
           assertCaptionEndVisible(caption, false);
         });
+  }
+
+  private static void collectButtons(Container parent, java.util.List<JButton> buttons) {
+    for (final var child : parent.getComponents()) {
+      if (child instanceof JButton button) buttons.add(button);
+      // A combo box's arrow is a button too, but not one of the page's actions.
+      if (child instanceof Container nested && !(child instanceof javax.swing.JComboBox<?>)) {
+        collectButtons(nested, buttons);
+      }
+    }
   }
 
   private static JTextArea findCaption(Container parent) {
@@ -114,17 +125,15 @@ class SoftwaresOptionsLayoutTest {
 
           assertTrue(form.getScrollableTracksViewportWidth());
           assertEquals(width, form.getWidth());
-          var buttons = 0;
-          for (final var component : software.getComponents()) {
-            if (component instanceof JButton button) {
-              buttons++;
-              final var position = SwingUtilities.convertPoint(button, new Point(0, 0), form);
-              assertTrue(position.x >= 0);
-              assertTrue(position.x + button.getWidth() <= viewport.getWidth());
-              assertEquals(button.getPreferredSize().width, button.getWidth());
-            }
+          final var buttons = new java.util.ArrayList<JButton>();
+          collectButtons(software, buttons);
+          for (final var button : buttons) {
+            final var position = SwingUtilities.convertPoint(button, new Point(0, 0), form);
+            assertTrue(position.x >= 0);
+            assertTrue(position.x + button.getWidth() <= viewport.getWidth());
+            assertEquals(button.getPreferredSize().width, button.getWidth());
           }
-          assertEquals(5, buttons);
+          assertEquals(5, buttons.size());
         });
   }
 }

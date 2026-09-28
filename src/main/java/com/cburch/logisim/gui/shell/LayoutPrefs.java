@@ -44,6 +44,17 @@ public final class LayoutPrefs {
   public static final int DEFAULT_INSPECTOR_WIDTH = 280;
   public static final int DEFAULT_BOTTOM_HEIGHT = 200;
 
+  /**
+   * The drawer height the timing diagram opens at, in logical pixels.
+   *
+   * <p>Its options page stacks three groups of controls; at the ordinary drawer height the
+   * lower half of them were clipped the first time it was shown.
+   */
+  public static final int TIMING_DRAWER_HEIGHT = 340;
+
+  /** The drawer height the test-vector table opens at: the toolbar and a handful of rows. */
+  public static final int TEST_DRAWER_HEIGHT = 260;
+
   private static final String SIDE_WIDTH = "shell.sideWidth";
   private static final String INSPECTOR_WIDTH = "shell.inspectorWidth";
   private static final String BOTTOM_HEIGHT = "shell.bottomHeight";

@@ -15,6 +15,7 @@ import com.cburch.logisim.circuit.Circuit;
 import com.cburch.logisim.file.LoadFailedException;
 import com.cburch.logisim.file.LoadedLibrary;
 import com.cburch.logisim.file.Loader;
+import com.cburch.logisim.file.LoaderException;
 import com.cburch.logisim.file.LogisimFile;
 import com.cburch.logisim.file.LogisimFileActions;
 import com.cburch.logisim.file.ProjectBundlePaths;
@@ -24,7 +25,6 @@ import com.cburch.logisim.gui.generic.WaitCursor;
 import com.cburch.logisim.gui.main.Frame;
 import com.cburch.logisim.gui.start.SplashScreen;
 import com.cburch.logisim.prefs.AppPreferences;
-import com.cburch.logisim.tools.Library;
 import com.cburch.logisim.tools.LibraryTools;
 import com.cburch.logisim.util.JFileChoosers;
 
@@ -64,9 +64,6 @@ import javax.swing.JScrollPane;
 import javax.swing.SwingUtilities;
 
 public final class ProjectActions {
-  private static final String FILE_NAME_FORMAT_ERROR = "FileNameError";
-  private static final String FILE_NAME_KEYWORD_ERROR = "ExistingToolName";
-
   private ProjectActions() {}
 
   private static class CreateFrame implements Runnable {
@@ -95,34 +92,12 @@ public final class ProjectActions {
         // The stack trace belongs behind the Details button, not in front of the user as the
         // entire message.
         OptionPane.showError(null, S.get("windowCreateFailedTitle"), S.get("windowCreateFailed"), e);
-        System.exit(-1);
+        // Quitting would also discard the unsaved work of every other open window.
+        final var othersOpen =
+            Projects.getOpenProjects().stream().anyMatch(other -> other != proj);
+        if (!othersOpen) System.exit(-1);
       }
     }
-  }
-
-  /**
-   * Returns true if the filename contains valid characters only, that is, alphanumeric characters
-   * and underscores.
-   */
-  private static boolean checkValidFilename(
-      String filename, Project proj, HashMap<String, String> errors) {
-    var isOk = true;
-    var tempSet = new HashMap<String, Library>();
-    var forbiddenNames = new HashSet<String>();
-    LibraryTools.buildLibraryList(proj.getLogisimFile(), tempSet);
-    LibraryTools.buildToolList(proj.getLogisimFile(), forbiddenNames);
-    forbiddenNames.addAll(tempSet.keySet());
-    var pattern = Pattern.compile("[^a-z\\d_.]", Pattern.CASE_INSENSITIVE);
-    var matcher = pattern.matcher(filename);
-    if (matcher.find()) {
-      isOk = false;
-      errors.put(FILE_NAME_FORMAT_ERROR, S.get("InvalidFileFormatError"));
-    }
-    if (forbiddenNames.contains(filename.toUpperCase())) {
-      isOk = false;
-      errors.put(FILE_NAME_KEYWORD_ERROR, S.get("UsedLibraryToolnameError"));
-    }
-    return isOk;
   }
 
   private static Project completeProject(
@@ -172,8 +147,8 @@ public final class ProjectActions {
     try {
       file = loader.openLogisimFile(templReader);
     } catch (IOException ex) {
-      displayException(baseProject.getFrame(), ex);
-      file = createEmptyFile(loader, baseProject);
+      displayException(parent, ex);
+      file = null;
     } finally {
       try {
         templReader.close();
@@ -181,6 +156,8 @@ public final class ProjectActions {
         // Do nothing.
       }
     }
+    // A template that cannot be parsed yields null (its error was already shown).
+    if (file == null) file = createEmptyFile(loader, baseProject);
     return file;
   }
 
@@ -248,11 +225,7 @@ public final class ProjectActions {
       if (mergelib == null) return;
     } catch (LoadFailedException ex) {
       if (!ex.isShown()) {
-        OptionPane.showMessageDialog(
-            parent,
-            S.get("fileMergeError", ex.toString()),
-            S.get("FileMergeErrorItem"),
-            OptionPane.ERROR_MESSAGE);
+        OptionPane.showError(parent, S.get("FileMergeErrorItem"), ex.getMessage(), ex.getCause());
       }
       return;
     }
@@ -354,11 +327,21 @@ public final class ProjectActions {
       if (circuitsToMerge.isEmpty()) return;
     }
 
-    baseProject.doAction(LogisimFileActions.mergeFile(
-        mergelib,
-        baseProject.getLogisimFile(),
-        circuitsToMerge,
-        includeDependencies));
+    try {
+      baseProject.doAction(LogisimFileActions.mergeFile(
+          mergelib,
+          baseProject.getLogisimFile(),
+          circuitsToMerge,
+          includeDependencies));
+    } catch (LoaderException ex) {
+      if (!ex.isShown()) {
+        OptionPane.showMessageDialog(
+            parent,
+            S.get("fileMergeError", ex.getMessage()),
+            S.get("FileMergeErrorItem"),
+            OptionPane.ERROR_MESSAGE);
+      }
+    }
   }
 
   private static void updatecircs(LogisimFile lib, Project proj) {
@@ -408,14 +391,33 @@ public final class ProjectActions {
   public static Project doOpenReplacingBlank(
       Component parent, Project baseProject, Project current, File file) {
     final var opened = doOpen(parent, baseProject, file);
-    if (opened != null
-        && current != null
-        && opened != current
-        && !current.isFileDirty()
-        && current.getLogisimFile().getLoader().getMainFile() == null) {
+    if (opened != null && opened != current && isUntouchedBlank(current)) {
       current.getFrame().dispose();
     }
     return opened;
+  }
+
+  /**
+   * Starts a new project the way the welcome screen does: in {@code current}'s own window when it
+   * holds only the untouched, unsaved blank project Logisim starts with, and in a new window
+   * otherwise. The blank project was made from the same template, so reusing it gives the same
+   * result without leaving an empty window behind.
+   *
+   * @param current project whose window asked for a new project
+   * @return {@code current} if it was reused, otherwise the project in the new window
+   */
+  public static Project doNewReplacingBlank(Project current) {
+    if (!isUntouchedBlank(current)) return doNew(current);
+    // It is the user's project now, so a later Open must not load over it.
+    current.setStartupScreen(false);
+    return current;
+  }
+
+  /** Whether {@code project} is an unsaved project that nobody has changed yet. */
+  static boolean isUntouchedBlank(Project project) {
+    if (project == null || project.isFileDirty()) return false;
+    final var loader = project.getLogisimFile().getLoader();
+    return loader != null && loader.getMainFile() == null;
   }
 
   public static Project doOpen(Component parent, Project baseProject, File f) {
@@ -472,11 +474,8 @@ public final class ProjectActions {
       }
     } catch (LoadFailedException ex) {
       if (!ex.isShown()) {
-        OptionPane.showMessageDialog(
-            parent,
-            S.get("fileOpenError", ex.toString()),
-            S.get("fileOpenErrorTitle"),
-            OptionPane.ERROR_MESSAGE);
+        // The message names the file and the reason; the exception is only for the details.
+        OptionPane.showError(parent, S.get("fileOpenErrorTitle"), ex.getMessage(), ex.getCause());
       }
       return null;
     }
@@ -502,10 +501,33 @@ public final class ProjectActions {
     return completeProject(monitor, loader, file, false);
   }
 
+  /**
+   * Opens the unsaved work in the recovery file {@code autosave} as a new, unsaved project. The
+   * recovery file is kept until that project is saved or its changes are discarded.
+   */
+  public static Project doOpenRecovered(SplashScreen monitor, File autosave)
+      throws LoadFailedException {
+    if (monitor != null) monitor.setProgress(SplashScreen.FILE_LOAD);
+    final var loader = new Loader(monitor);
+    final var file = loader.openRecoveredFile(autosave);
+    return completeProject(monitor, loader, file, false);
+  }
+
   public static Project doOpenNoWindow(SplashScreen monitor, File source)
       throws LoadFailedException {
-    final var loader = new Loader(monitor);
-    final var file = loader.openLogisimFile(source);
+    return doOpenNoWindow(new Loader(monitor), source, Collections.emptyMap());
+  }
+
+  /**
+   * Loads a project with the given loader without creating a window, for command-line use.
+   *
+   * @param loader        The loader to use; it receives any load errors.
+   * @param source        The project file.
+   * @param substitutions Library files to replace while loading.
+   */
+  public static Project doOpenNoWindow(Loader loader, File source, Map<File, File> substitutions)
+      throws LoadFailedException {
+    final var file = loader.openLogisimFile(source, substitutions);
     final var ret = new Project(file);
     updatecircs(file, ret);
     return ret;
@@ -530,7 +552,45 @@ public final class ProjectActions {
     final var loader = proj.getLogisimFile().getLoader();
     final var f = loader.getMainFile();
     if (f == null) return doSaveAs(proj);
-    else return doSave(proj, f);
+    if (proj.getLogisimFile().isLoadedWithErrors() && proj.getFrame() != null) {
+      final String[] options = {
+        S.get("saveAfterLoadErrorsOverwrite"),
+        S.get("saveAfterLoadErrorsSaveAs"),
+        S.get("saveAfterLoadErrorsCancel"),
+      };
+      final var choice =
+          OptionPane.showOptionDialog(
+              proj.getFrame(),
+              S.get("saveAfterLoadErrorsMessage", f.getName()),
+              S.get("saveAfterLoadErrorsTitle"),
+              OptionPane.YES_NO_CANCEL_OPTION,
+              OptionPane.WARNING_MESSAGE,
+              null,
+              options,
+              options[1]);
+      if (choice == 1) return doSaveAs(proj);
+      if (choice != 0) return false;
+    }
+    if (loader.isMainFileChangedExternally() && proj.getFrame() != null) {
+      final String[] options = {
+        S.get("saveAfterLoadErrorsOverwrite"),
+        S.get("saveAfterLoadErrorsSaveAs"),
+        S.get("saveAfterLoadErrorsCancel"),
+      };
+      final var choice =
+          OptionPane.showOptionDialog(
+              proj.getFrame(),
+              S.get("saveChangedExternallyMessage", f.getName()),
+              S.get("saveChangedExternallyTitle"),
+              OptionPane.YES_NO_CANCEL_OPTION,
+              OptionPane.WARNING_MESSAGE,
+              null,
+              options,
+              options[1]);
+      if (choice == 1) return doSaveAs(proj);
+      if (choice != 0) return false;
+    }
+    return doSave(proj, f);
   }
 
   public static boolean doSave(Project proj, File f) {
@@ -546,6 +606,7 @@ public final class ProjectActions {
             final var ret = loader.save(proj.getLogisimFile(), f);
             if (ret) {
               AppPreferences.updateRecentFile(f);
+              proj.getLogisimFile().clearLoadedWithErrors();
               proj.setFileAsClean();
             }
             return ret;
@@ -685,10 +746,19 @@ public final class ProjectActions {
    * @return true if success, false otherwise
    */
   public static boolean doExportProject(Project proj) {
-    var ret = true;
-    final var loader = proj.getLogisimFile().getLoader();
+    // Every way out, including cancelling a dialog, must give the user back their tool.
     final var oldTool = proj.getTool();
     proj.setTool(null);
+    try {
+      return exportProjectBundle(proj);
+    } finally {
+      proj.setTool(oldTool);
+    }
+  }
+
+  private static boolean exportProjectBundle(Project proj) {
+    var ret = true;
+    final var loader = proj.getLogisimFile().getLoader();
     var mainFileName = loader.getMainFile() == null ? "Untitled.circ" : loader.getMainFile().getName();
     var zipFile = mainFileName.replace(Loader.LOGISIM_EXTENSION, Loader.LOGISIM_PROJECT_BUNDLE_EXTENSION);
     final var chooser = loader.createChooser();
@@ -700,7 +770,6 @@ public final class ProjectActions {
     do {
       ret &= chooser.showSaveDialog(proj.getFrame()) == JFileChooser.APPROVE_OPTION;
       if (!ret) {
-        proj.setTool(oldTool);
         return false;
       }
       try {
@@ -733,11 +802,9 @@ public final class ProjectActions {
         }
       } catch (IOException e) {
         OptionPane.showMessageDialog(proj.getFrame(), S.get("ProjUnableToCreate", e.getMessage()));
-        proj.setTool(oldTool);
         return false;
       }
     } while (!isCorrectFile);
-    proj.setTool(oldTool);
     return ret;
   }
 
@@ -754,65 +821,84 @@ public final class ProjectActions {
     var loader = proj.getLogisimFile().getLoader();
     var chooser = loader.createChooser();
     chooser.setFileFilter(Loader.LOGISIM_FILTER);
-    if (loader.getMainFile() != null) {
-      chooser.setSelectedFile(loader.getMainFile());
-    }
+    chooser.setSelectedFile(suggestedSaveFile(proj, chooser.getCurrentDirectory()));
 
-    int returnVal;
-    var validFilename = false;
-    var errors = new HashMap<String, String>();
-    do {
-      errors.clear();
-      returnVal = chooser.showSaveDialog(proj.getFrame());
+    // Every rejection below returns to the chooser rather than abandoning Save As. Any file name
+    // the system accepts is fine: the FPGA flow checks the project name itself when it needs to.
+    while (true) {
+      final var returnVal = chooser.showSaveDialog(proj.getFrame());
       if (returnVal != JFileChooser.APPROVE_OPTION) {
         return false;
       }
-      validFilename = checkValidFilename(chooser.getSelectedFile().getName(), proj, errors);
-      if (!validFilename) {
-        var message = "\"" + chooser.getSelectedFile() + "\":\n";
-        for (String key : errors.keySet()) {
-          message = message.concat("=> " + S.get(errors.get(key)) + "\n");
+
+      var selectedFile = chooser.getSelectedFile();
+      if (!selectedFile.getName().endsWith(Loader.LOGISIM_EXTENSION)) {
+        var old = selectedFile.getName();
+        int ext0 = old.lastIndexOf('.');
+        if (ext0 < 0 || !Pattern.matches("\\.\\p{L}{2,}\\d?", old.substring(ext0))) {
+          selectedFile = new File(selectedFile.getParentFile(), old + Loader.LOGISIM_EXTENSION);
+        } else {
+          var ext = old.substring(ext0);
+          var ttl = S.get("replaceExtensionTitle");
+          var msg = S.get("replaceExtensionMessage", ext);
+          Object[] options = {
+            S.get("replaceExtensionReplaceOpt", ext),
+            S.get("replaceExtensionAddOpt", Loader.LOGISIM_EXTENSION),
+            S.get("replaceExtensionKeepOpt")
+          };
+          var dlog = new JOptionPane(msg);
+          dlog.setMessageType(OptionPane.QUESTION_MESSAGE);
+          dlog.setOptions(options);
+          dlog.createDialog(proj.getFrame(), ttl).setVisible(true);
+
+          selectedFile = resolveSaveExtension(selectedFile, dlog.getValue(), options);
+          if (selectedFile == null) return false;
         }
+      }
+
+      final var rejection = saveTargetRejection(proj, selectedFile);
+      if (rejection != null) {
         OptionPane.showMessageDialog(
-            chooser, message, S.get("FileSaveAsItem"), OptionPane.ERROR_MESSAGE);
+            proj.getFrame(), rejection, S.get("FileSaveAsItem"), OptionPane.ERROR_MESSAGE);
+        continue;
       }
-    } while (!validFilename);
-
-    var selectedFile = chooser.getSelectedFile();
-    if (!selectedFile.getName().endsWith(Loader.LOGISIM_EXTENSION)) {
-      var old = selectedFile.getName();
-      int ext0 = old.lastIndexOf('.');
-      if (ext0 < 0 || !Pattern.matches("\\.\\p{L}{2,}\\d?", old.substring(ext0))) {
-        selectedFile = new File(selectedFile.getParentFile(), old + Loader.LOGISIM_EXTENSION);
-      } else {
-        var ext = old.substring(ext0);
-        var ttl = S.get("replaceExtensionTitle");
-        var msg = S.get("replaceExtensionMessage", ext);
-        Object[] options = {
-          S.get("replaceExtensionReplaceOpt", ext),
-          S.get("replaceExtensionAddOpt", Loader.LOGISIM_EXTENSION),
-          S.get("replaceExtensionKeepOpt")
-        };
-        var dlog = new JOptionPane(msg);
-        dlog.setMessageType(OptionPane.QUESTION_MESSAGE);
-        dlog.setOptions(options);
-        dlog.createDialog(proj.getFrame(), ttl).setVisible(true);
-
-        selectedFile = resolveSaveExtension(selectedFile, dlog.getValue(), options);
-        if (selectedFile == null) return false;
+      if (selectedFile.exists()) {
+        final var confirm =
+            OptionPane.showConfirmDialog(
+                proj.getFrame(),
+                S.get("confirmOverwriteMessage"),
+                S.get("confirmOverwriteTitle"),
+                OptionPane.YES_NO_OPTION);
+        if (confirm != OptionPane.YES_OPTION) continue;
       }
+      return doSave(proj, selectedFile);
     }
+  }
 
-    if (selectedFile.exists()) {
-      var confirm =
-          OptionPane.showConfirmDialog(
-              proj.getFrame(),
-              S.get("confirmOverwriteMessage"),
-              S.get("confirmOverwriteTitle"),
-              OptionPane.YES_NO_OPTION);
-      if (confirm != OptionPane.YES_OPTION) return false;
+  /**
+   * The file Save As starts from: the current file, or for a project never saved the project's
+   * name in the chooser's folder, so that the name field is never empty.
+   */
+  static File suggestedSaveFile(Project proj, File directory) {
+    final var current = proj.getLogisimFile().getLoader().getMainFile();
+    if (current != null) return current;
+    return new File(directory, proj.getLogisimFile().getName() + Loader.LOGISIM_EXTENSION);
+  }
+
+  /**
+   * Why {@code target} cannot receive a Save As of {@code proj}, or {@code null} if it can. A
+   * folder cannot be overwritten, and a file another window has open would later be overwritten
+   * again by that window, silently discarding this save.
+   */
+  static String saveTargetRejection(Project proj, File target) {
+    if (target.isDirectory()) {
+      return S.get("saveAsDirectoryError", target.getName());
     }
-    return doSave(proj, selectedFile);
+    final var owner = Projects.findProjectFor(target);
+    if (owner != null && owner != proj) {
+      return S.get("saveAsOpenElsewhereError", target.getName());
+    }
+    return null;
   }
 
   static File resolveSaveExtension(File selected, Object result, Object[] options) {

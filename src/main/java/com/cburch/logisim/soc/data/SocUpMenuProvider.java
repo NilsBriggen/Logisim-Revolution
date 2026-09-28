@@ -287,7 +287,7 @@ public class SocUpMenuProvider implements ActionListener {
       final var frame = new ListeningFrame(data.getProcessorType(), S.getter("SocUpMenuCpuAsmWindowTitle"), csh);
       parentFrame.addWindowListener(frame);
       final var assembler = data.getAssembler();
-      final var pan = new AssemblerPanel(frame, assembler.getHighlightStringIdentifier(), assembler, data.getProcessorInterface(), state);
+      final var pan = new AssemblerPanel(frame, assembler.getHighlightStringIdentifier(), assembler, data.getProcessorInterface(), state, parentFrame.getProject());
       frame.add(pan);
       frame.setVisible(true);
       frame.pack();

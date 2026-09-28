@@ -26,11 +26,11 @@
           </p>
         </dd>
 		<dt>
-          <strong>Add VHDL Entity...</strong>
+          <strong>New VHDL Entity...</strong>
         </dt>
         <dd>
           <p>
-            --
+            Adds a new VHDL entity to the project and opens it in the HDL editor. See <a href="../hdl_ip/vhdlcomp.html">VHDL Entity</a>.
           </p>
         </dd>
 		<dt>
@@ -38,7 +38,23 @@
         </dt>
         <dd>
           <p>
-            --
+            Adds a VHDL entity read from a <code>.vhd</code> file to the project.
+          </p>
+        </dd>
+		<dt>
+          <strong>New Verilog Module...</strong>
+        </dt>
+        <dd>
+          <p>
+            Adds a new Verilog module to the project and opens it in the HDL editor. Verilog modules are used for FPGA generation in Verilog; Logisim does not simulate them. See <a href="../hdl_ip/verilog.html">Verilog Modules</a>.
+          </p>
+        </dd>
+		<dt>
+          <strong>Import Verilog Module...</strong>
+        </dt>
+        <dd>
+          <p>
+            Adds a Verilog module read from a <code>.v</code> file that contains one ANSI-style module to the project.
           </p>
         </dd>
         <dt>
@@ -170,6 +186,22 @@
           </p>
           <p>
             If you are using circuits from a loaded Logisim library, those components are considered to be <q>black boxes</q>: The contents of the library's circuits are not included in the unique and recursive counts.
+          </p>
+        </dd>
+        <dt>
+          <strong>Lock Circuit</strong>
+        </dt>
+        <dd>
+          <p>
+            Locks the circuit on screen against accidental edits, or unlocks it when it is ticked. Nothing in a locked circuit can be added, removed, moved or changed, though its inputs can still be poked. See <a href="../gui/gui-lock.html">Locking circuits and components</a>; anyone can unlock, so this is a guard against slips rather than a security feature.
+          </p>
+        </dd>
+        <dt>
+          <strong>Lock Selected Components</strong>
+        </dt>
+        <dd>
+          <p>
+            Locks the selected components, or unlocks them when they are all locked already. A locked component cannot be moved, deleted, rotated or have its properties changed.
           </p>
         </dd>
         <dt>

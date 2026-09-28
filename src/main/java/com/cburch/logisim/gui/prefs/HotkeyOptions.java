@@ -11,18 +11,18 @@ package com.cburch.logisim.gui.prefs;
 
 import static com.cburch.logisim.gui.Strings.S;
 
+import com.cburch.logisim.gui.generic.SettingsForm;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.prefs.PrefMonitor;
 import com.cburch.logisim.prefs.PrefMonitorKeyStroke;
 import com.cburch.logisim.util.JHotkeyInput;
-import com.cburch.logisim.util.TableLayout;
+import java.awt.BorderLayout;
 import java.awt.event.InputEvent;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 import javax.swing.JButton;
 import javax.swing.JLabel;
-import javax.swing.JPanel;
 import javax.swing.KeyStroke;
 
 class HotkeyOptions extends OptionsPanel {
@@ -65,29 +65,11 @@ class HotkeyOptions extends OptionsPanel {
 
   public HotkeyOptions(PreferencesFrame window) {
     super(window);
-    this.setLayout(new TableLayout(1));
 
-    /* settings the layout up */
     resetBtn = new JButton();
     resetBtn.addActionListener(e -> AppPreferences.resetHotkeys());
-    add(resetBtn);
-    add(new JLabel(" "));
-
-    menuKeyHeaderLabel = new JLabel();
-    add(menuKeyHeaderLabel);
-    add(new JLabel(" "));
-    JPanel menuKeyPanel = new JPanel();
-    add(menuKeyPanel);
-
-    add(new JLabel(" "));
-    normalKeyHeaderLabel = new JLabel();
-    add(normalKeyHeaderLabel);
-    add(new JLabel(" "));
-    JPanel normalKeyPanel = new JPanel();
-    add(normalKeyPanel);
-
-    menuKeyPanel.setLayout(new TableLayout(2));
-    normalKeyPanel.setLayout(new TableLayout(2));
+    final var menuRows = new ArrayList<Integer>();
+    final var normalRows = new ArrayList<Integer>();
 
     /* bind up the hotkeys */
     Field[] fields = AppPreferences.class.getDeclaredFields();
@@ -138,38 +120,31 @@ class HotkeyOptions extends OptionsPanel {
         keyInputList.get(i).setBoundKeyStroke(prefKeyStroke);
         continue;
       }
-      keyLabels.get(i).setText(S.get(prefKeyStroke.getName()) + "  ");
+      keyLabels.get(i).setText(S.get(prefKeyStroke.getName()));
       keyInputList.set(i, new JHotkeyInput(window, prefKeyStroke.getDisplayString()));
       keyInputList.get(i).setEnabled(prefKeyStroke.canModify());
       keyInputList.get(i).setBoundKeyStroke(prefKeyStroke);
-      if (prefKeyStroke.needMetaKey()) {
-        menuKeyPanel.add(keyLabels.get(i));
-        menuKeyPanel.add(keyInputList.get(i));
-      } else {
-        normalKeyPanel.add(keyLabels.get(i));
-        normalKeyPanel.add(keyInputList.get(i));
-      }
+      (prefKeyStroke.needMetaKey() ? menuRows : normalRows).add(i);
     }
 
-    /* adding layout for arrow hotkeys */
-    normalKeyPanel.add(new JLabel(" "));
-    normalKeyPanel.add(new JLabel(" "));
-
-    orientDescLabel = new JLabel();
-    normalKeyPanel.add(orientDescLabel);
-    normalKeyPanel.add(new JLabel(" "));
+    // One form: the shortcuts under two headings, then the orientation keys under a third.
+    final var form = new SettingsForm();
+    form.addFull(resetBtn);
+    menuKeyHeaderLabel = form.addSection("");
+    for (final var i : menuRows) form.addRow(keyLabels.get(i), keyInputList.get(i));
+    normalKeyHeaderLabel = form.addSection("");
+    for (final var i : normalRows) form.addRow(keyLabels.get(i), keyInputList.get(i));
+    orientDescLabel = form.addSection("");
     orientEastLabel = new JLabel();
     orientNorthLabel = new JLabel();
     orientSouthLabel = new JLabel();
     orientWestLabel = new JLabel();
-    normalKeyPanel.add(orientNorthLabel);
-    normalKeyPanel.add(northBtn);
-    normalKeyPanel.add(orientEastLabel);
-    normalKeyPanel.add(eastBtn);
-    normalKeyPanel.add(orientSouthLabel);
-    normalKeyPanel.add(southBtn);
-    normalKeyPanel.add(orientWestLabel);
-    normalKeyPanel.add(westBtn);
+    form.addRow(orientNorthLabel, northBtn);
+    form.addRow(orientEastLabel, eastBtn);
+    form.addRow(orientSouthLabel, southBtn);
+    form.addRow(orientWestLabel, westBtn);
+    setLayout(new BorderLayout());
+    add(form, BorderLayout.NORTH);
 
     // A 200ms timer used to poll this panel's own width for ever, to set a preferred size the
     // layout can work out for itself. It never stopped, in every open preferences window.
@@ -203,10 +178,11 @@ class HotkeyOptions extends OptionsPanel {
         InputEvent.getModifiersExText(AppPreferences.hotkeyMenuMask)));
     resetBtn.setText(S.get("hotkeyOptResetBtn"));
     orientDescLabel.setText(S.get("hotkeyOptOrientDesc"));
-    orientEastLabel.setText(" " + S.get("hotkeyDirEast") + " ");
-    orientWestLabel.setText(" " + S.get("hotkeyDirWest") + " ");
-    orientSouthLabel.setText(" " + S.get("hotkeyDirSouth") + " ");
-    orientNorthLabel.setText(" " + S.get("hotkeyDirNorth") + " ");
+    orientDescLabel.setToolTipText(S.get("hotkeyOptOrientTip"));
+    orientEastLabel.setText(S.get("hotkeyDirEast"));
+    orientWestLabel.setText(S.get("hotkeyDirWest"));
+    orientSouthLabel.setText(S.get("hotkeyDirSouth"));
+    orientNorthLabel.setText(S.get("hotkeyDirNorth"));
     for (int i = 0; i < hotkeys.size(); i++) {
       var prefKeyStroke = ((PrefMonitorKeyStroke) hotkeys.get(i));
       if (hotkeys.get(i) == AppPreferences.HOTKEY_DIR_NORTH
@@ -215,7 +191,7 @@ class HotkeyOptions extends OptionsPanel {
           || hotkeys.get(i) == AppPreferences.HOTKEY_DIR_WEST) {
         continue;
       }
-      keyLabels.get(i).setText(S.get(prefKeyStroke.getName()) + "  ");
+      keyLabels.get(i).setText(S.get(prefKeyStroke.getName()));
     }
   }
 }

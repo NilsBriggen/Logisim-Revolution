@@ -77,16 +77,20 @@ public class LogFrame extends LFrame.SubWindowWithSimulation {
       }
     }
 
+    // The next three run on the simulation thread. They only sample the circuit; the model and the
+    // timing diagram are updated on the event thread (see ModelUpdateQueue).
     @Override
     public void simulatorReset(Simulator.Event e) {
       final var model = eventModel(e);
-      if (model != null) model.simulatorReset();
+      if (model != null) updates.simulatorReset(model);
     }
 
     @Override
     public void propagationCompleted(Simulator.Event e) {
       final var model = eventModel(e);
-      if (model != null) model.propagationCompleted(e.didTick(), e.didSingleStep(), e.didPropagate());
+      if (model != null) {
+        updates.propagationCompleted(model, e.didTick(), e.didSingleStep(), e.didPropagate());
+      }
     }
 
     @Override
@@ -98,7 +102,7 @@ public class LogFrame extends LFrame.SubWindowWithSimulation {
     @Override
     public void propagationInProgress(Simulator.Event e) {
       final var model = eventModel(e);
-      if (model != null) model.propagationCompleted(false, true, false); // treat as a single-step
+      if (model != null) updates.propagationCompleted(model, false, true, false); // a single-step
     }
 
     @Override
@@ -157,6 +161,7 @@ public class LogFrame extends LFrame.SubWindowWithSimulation {
   private final LogModelHistory modelHistory = new LogModelHistory();
   private Model displayedModel;
   private final MyListener myListener = new MyListener();
+  private final ModelUpdateQueue updates = new ModelUpdateQueue();
   private final MyChangeListener myChangeListener = new MyChangeListener();
 
   private final WindowMenuManager windowManager;
@@ -233,7 +238,7 @@ public class LogFrame extends LFrame.SubWindowWithSimulation {
     tabbedPane.setPreferredSize(new Dimension(w, h));
     if (!dockedInDrawer) contents.add(modelView, BorderLayout.CENTER);
 
-    LocaleManager.addLocaleListener(myListener);
+    LocaleManager.addLocaleListener(this, myListener);
     myListener.localeChanged();
     pack();
     h = getSize().height;

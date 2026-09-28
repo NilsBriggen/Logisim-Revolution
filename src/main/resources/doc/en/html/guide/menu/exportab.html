@@ -17,10 +17,10 @@
         Export of images
       </h1>
       <p>
-        When you select <b class=menu>|&nbsp;Export Image...&nbsp;|</b>, Logisim displays a dialog box with four options.
+        When you select <b class=menu>|&nbsp;Export Image...&nbsp;|</b>, Logisim displays a dialog box with four options and, on the right, a preview of the image they produce.
       </p>
       <p align="center">
-        <img src="../../../img-guide/menu-3-exporttab.png" alt="#########">
+        <img src="../../../img-guide/menu-3-exporttab.png" alt="The Export Image dialog with its options on the left and a preview of the selected circuit on the right">
       </p>
 	  <h2>Configuring Export</h2>
       <ul>
@@ -31,16 +31,24 @@
           <b>Image Format:</b> You can create PNG, GIF, JPEG, TikZ and SVG files. I would recommend PNG files: The GIF format is quite dated, and the JPEG format will introduce artifacts into the image, as the JPEG format is really meant for photographic images.
         </li>
         <li>
-          <b>Scale Factor:</b>You can scale the images as they are dumped into image files using this slider.
+          <b>Scale Factor:</b> You can scale the images as they are dumped into image files using this slider.
         </li>
         <li>
-          <b>Printer View:</b>Style of the image produced with either the stat information or only the schema.
+          <b>Printer View:</b> If checked, the circuit is drawn in black on white, without the values on its wires, as for printing. If not, it is drawn as it looks on the canvas, with the current values and the canvas colors.
         </li>
-       <p align="center">
-          <img src="../../../../img-guide/exportex0.png" alt="#########">
-        </p>
-		This option is also available in "<a href="../prefs/pref-layout.html">Print view:</a>" in the export of circuits. This will change the display in the workspace.
       </ul>
+      <h2>
+        Preview
+      </h2>
+      <p>
+        The preview shows the image the export writes, with the chosen format, scale and printer view, reduced if it is too large for the dialog. Under it, Logisim gives the size of the image in pixels for PNG, GIF and JPEG files. For TikZ and SVG, which are vector formats, it gives the size of the drawing instead. A checkerboard marks where a vector image has no background. When several circuits are selected, use the arrows under the preview to step through them.
+      </p>
+      <p align="center">
+        <img src="../../../../img-guide/exportex0.png" alt="#########">
+      </p>
+      <p>
+        This option is also available in "<a href="../prefs/pref-layout.html">Print view:</a>" in the export of circuits. This will change the display in the workspace.
+      </p>
       <p>
         After clicking <b class="button">OK</b>, Logisim will display a file selection dialog box. If you have selected one circuit, select the file into which the image should be placed. If you have selected multiple circuits, select a directory where the files should be placed; Logisim will name the images based on the circuits' names (<tt>main.png</tt>, for example).
       </p>

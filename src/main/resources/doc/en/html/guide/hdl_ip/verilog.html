@@ -1,0 +1,117 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0//EN">
+<html lang="en">
+<head>
+	<META name="viewport" content="width=device-width, initial-scale=1.0">
+	<META http-equiv="content-type" content="text/html; charset=UTF-8">
+	<META http-equiv="Content-Language" content="en">
+	<title>Verilog Modules</title>
+	<LINK rel="stylesheet" type="text/css" href="../../style.css">
+</head>
+
+<body>
+<div class="maindiv">
+        <h1>Verilog Modules</h1>
+
+        <p>A <strong>Verilog module</strong> is a component of your project
+           described by a single Verilog <code>module ... endmodule</code>.
+           Logisim reads the module header to give the component its ports; the
+           module body is copied unchanged into the Verilog that Logisim
+           generates for an FPGA board. Verilog modules work like
+           <a href="vhdlcomp.html">VHDL entities</a>, but for designs generated
+           in Verilog.
+        </p>
+
+        <h2>Creating a Verilog module</h2>
+
+        <p>Choose <i>Project</i> &gt; <i>New Verilog Module…</i> and type a
+           name. The module opens in the HDL editor with a small example to
+           replace. To use an existing file instead, choose <i>Project</i> &gt;
+           <i>Import Verilog Module…</i> and select a <code>.v</code> file that
+           contains one module. The module then appears in the project list next
+           to the circuits and VHDL entities, and can be placed in any circuit.
+        </p>
+
+        <h2>Editing</h2>
+
+        <p>The HDL editor highlights Verilog syntax. Its toolbar imports a
+           <code>.v</code> file into the module, exports the module to a file and
+           validates the header. Validation checks the module name and ports
+           only; errors in the body are reported by the synthesis tools. After a
+           valid change, every placed instance of the module gets the new ports.
+        </p>
+
+        <h2>What the header may contain</h2>
+
+        <p>Logisim needs fixed ports, so the header must use the ANSI style,
+           with every port declared in the port list:</p>
+
+<pre>
+module counter (
+    input  wire       clock,
+    input  wire [3:0] load,
+    output reg  [3:0] count,
+    inout  wire       bus
+);
+  ...
+endmodule
+</pre>
+
+        <ul>
+            <li>Directions: <code>input</code>, <code>output</code> and
+                <code>inout</code>. Names after a declaration share its
+                direction and width, as in <code>input [3:0] a, b</code>.</li>
+            <li>Types: <code>wire</code>, <code>reg</code> or
+                <code>logic</code>, optionally <code>signed</code>, or no type.</li>
+            <li>Widths: a constant range such as <code>[7:0]</code> or
+                <code>[1:8]</code>, up to 64 bits.</li>
+            <li>Compiler directives such as <code>`timescale</code> may precede
+                the module.</li>
+        </ul>
+
+        <p>These are refused with an error that names the line:</p>
+
+        <ul>
+            <li>parameter lists (<code>#(parameter W = 8)</code>) and ranges
+                that use parameters or expressions, such as
+                <code>[W-1:0]</code>. Use <code>localparam</code> inside the
+                module instead;</li>
+            <li>non-ANSI headers, where the port list only names the ports and
+                the directions follow in the body;</li>
+            <li>array ports, ports with default values, and escaped
+                identifiers;</li>
+            <li>more than one module, or text after <code>endmodule</code>.</li>
+        </ul>
+
+        <p>The module name follows the same rules as circuit names: a letter
+           first, then letters, digits and single underscores, and no Verilog or
+           VHDL keyword.</p>
+
+        <h2>Simulation</h2>
+
+        <p>Logisim does not simulate Verilog. In the simulator, the outputs of a
+           Verilog module are always unknown and the component shows an amber
+           <b>!</b> badge; the rest of the circuit keeps simulating. The external
+           QuestaSim simulator used for <a href="simulation.html">VHDL
+           simulation</a> is only given the VHDL entities, so Verilog modules
+           are meant for FPGA generation only.</p>
+
+        <h2>HDL generation</h2>
+
+        <p>Select Verilog as the hardware description language in the FPGA
+           settings. Logisim then writes the module as you wrote it, renamed to
+           its lower-case HDL name, and connects each instance to the ports by
+           name. If VHDL is selected, the design rule check stops with an error
+           that marks the Verilog modules.</p>
+
+        <h2>Files</h2>
+
+        <p>A Verilog module is saved in the <code>.circ</code> file like a VHDL
+           entity, in a <code>&lt;vhdl&gt;</code> element marked
+           <code>language="verilog"</code>. Versions of Logisim without Verilog
+           support still open such a file: they report the module as a VHDL
+           entity they cannot read and keep the rest of the project.</p>
+
+        <p><b>Back to:</b> <a href="../menu/project.html">The Project menu</a>.</p>
+	</div>
+    </body>
+</html>

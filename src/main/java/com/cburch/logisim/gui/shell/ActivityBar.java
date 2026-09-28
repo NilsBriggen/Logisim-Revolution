@@ -9,6 +9,8 @@
 
 package com.cburch.logisim.gui.shell;
 
+import static com.cburch.logisim.gui.Strings.S;
+
 import com.cburch.logisim.gui.theme.AppIcons;
 import com.cburch.logisim.gui.theme.Theme;
 import com.cburch.logisim.gui.theme.Tokens;
@@ -21,7 +23,6 @@ import java.awt.RenderingHints;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
-import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JPanel;
 
@@ -129,26 +130,114 @@ public class ActivityBar extends JPanel {
   }
 
   private final List<Item> items = new ArrayList<>();
-  private final JPanel top = new JPanel();
-  private final JPanel bottom = new JPanel();
+  private final List<Item> top = new ArrayList<>();
+  private final List<Item> bottom = new ArrayList<>();
+  private final List<Item> overflow = new ArrayList<>();
+  private final Item more;
 
   public ActivityBar() {
-    setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
-    top.setLayout(new BoxLayout(top, BoxLayout.Y_AXIS));
-    bottom.setLayout(new BoxLayout(bottom, BoxLayout.Y_AXIS));
-    top.setOpaque(false);
-    bottom.setOpaque(false);
-    add(top);
-    add(javax.swing.Box.createVerticalGlue());
-    add(bottom);
+    setLayout(new OverflowLayout());
+    more = new Item("more", AppIcons.Id.MORE, S.get("activityBarMoreTip"), false,
+        this::showOverflow);
+    add(more);
     setOpaque(true);
     applyTheme();
     Theme.addListener(this, this::applyTheme);
   }
 
+  /**
+   * Stacks the views from the top and the actions from the bottom.
+   *
+   * <p>At a high interface scale in a short window the buttons no longer all fit. Rather than cut
+   * the last ones off, the entries that do not fit are moved, bottom first, behind a "more"
+   * button that lists them by name.
+   */
+  private final class OverflowLayout implements java.awt.LayoutManager {
+    @Override
+    public void addLayoutComponent(String name, java.awt.Component component) {}
+
+    @Override
+    public void removeLayoutComponent(java.awt.Component component) {}
+
+    @Override
+    public Dimension preferredLayoutSize(java.awt.Container target) {
+      final var insets = target.getInsets();
+      final var size = UiScale.scaled(BUTTON_SIZE);
+      return new Dimension(size + insets.left + insets.right,
+          size * items.size() + insets.top + insets.bottom);
+    }
+
+    @Override
+    public Dimension minimumLayoutSize(java.awt.Container target) {
+      final var insets = target.getInsets();
+      final var size = UiScale.scaled(BUTTON_SIZE);
+      return new Dimension(size + insets.left + insets.right,
+          size * Math.min(2, items.size()) + insets.top + insets.bottom);
+    }
+
+    @Override
+    public void layoutContainer(java.awt.Container target) {
+      final var insets = target.getInsets();
+      final var size = UiScale.scaled(BUTTON_SIZE);
+      final var height = target.getHeight() - insets.top - insets.bottom;
+      final var shown = visibleCount(items.size(), height, size);
+      overflow.clear();
+      // Hide from the end of the actions, then from the end of the views.
+      final var order = new ArrayList<Item>(top);
+      order.addAll(bottom);
+      overflow.addAll(order.subList(shown, order.size()));
+      var y = insets.top;
+      for (final var item : top) {
+        final var visible = !overflow.contains(item);
+        item.setVisible(visible);
+        if (!visible) continue;
+        item.setBounds(insets.left, y, size, size);
+        y += size;
+      }
+      var bottomY = target.getHeight() - insets.bottom;
+      more.setVisible(!overflow.isEmpty());
+      if (more.isVisible()) {
+        bottomY -= size;
+        more.setBounds(insets.left, bottomY, size, size);
+      }
+      for (var i = bottom.size() - 1; i >= 0; i--) {
+        final var item = bottom.get(i);
+        final var visible = !overflow.contains(item);
+        item.setVisible(visible);
+        if (!visible) continue;
+        bottomY -= size;
+        item.setBounds(insets.left, bottomY, size, size);
+      }
+    }
+  }
+
+  /**
+   * How many of {@code count} buttons of this size fit in the height, leaving room for the "more"
+   * button whenever any are left out.
+   */
+  static int visibleCount(int count, int height, int buttonSize) {
+    if (buttonSize <= 0 || count * buttonSize <= height) return count;
+    return Math.max(0, Math.min(count, height / buttonSize - 1));
+  }
+
+  private void showOverflow() {
+    if (overflow.isEmpty()) return;
+    final var menu = new javax.swing.JPopupMenu();
+    for (final var item : overflow) {
+      final var entry = new javax.swing.JMenuItem(item.getToolTipText(),
+          AppIcons.colored(item.icon, 16,
+              item.isSelected() ? Tokens.accent() : Tokens.iconForeground()));
+      entry.addActionListener(event -> item.doClick(0));
+      menu.add(entry);
+    }
+    final var preferred = menu.getPreferredSize();
+    menu.show(more, more.getWidth(), more.getHeight() - preferred.height);
+  }
+
   private void applyTheme() {
     setBackground(Tokens.activityBarBackground());
     for (final var item : items) item.revalidate();
+    if (more != null) more.revalidate();
     revalidate();
     repaint();
   }
@@ -164,6 +253,8 @@ public class ActivityBar extends JPanel {
         new Item(view.id(), view.icon(), tooltip, true, () -> onSelect.accept(view.id()));
     items.add(item);
     top.add(item);
+    // Views first, then actions, then "more": the order keyboard focus moves in.
+    add(item, top.size() - 1);
   }
 
   /** Adds a button that simply runs an action, such as opening the preferences. */
@@ -171,6 +262,7 @@ public class ActivityBar extends JPanel {
     final var item = new Item(id, icon, tooltip, false, action);
     items.add(item);
     bottom.add(item);
+    add(item, getComponentCount() - 1);
   }
 
   /** Marks {@code id} as the view now showing, or clears the mark when the panel is hidden. */

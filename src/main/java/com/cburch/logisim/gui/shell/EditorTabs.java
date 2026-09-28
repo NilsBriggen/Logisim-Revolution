@@ -25,8 +25,10 @@ import java.awt.event.MouseEvent;
 import java.util.function.Function;
 import javax.swing.JComponent;
 import javax.swing.JTabbedPane;
+import javax.swing.JTable;
 import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
+import javax.swing.text.JTextComponent;
 
 /**
  * The strip of tabs above the canvas, one per circuit the user has opened.
@@ -91,8 +93,10 @@ public class EditorTabs extends JTabbedPane {
   /**
    * The keys an editor's tab strip is expected to answer.
    *
-   * <p>With several circuits open there was no way to switch, cycle or close a tab without the
-   * mouse: Ctrl+Tab and Ctrl+W did nothing, and Ctrl+Shift+W closed the whole project window.
+   * <p>Ctrl+PageDown / Ctrl+PageUp cycle the tabs from anywhere in the window (a focused table
+   * or text field that uses these keys itself keeps them); Ctrl+Tab / Ctrl+Shift+Tab do the same
+   * unless focus is in a table or text component, where Ctrl+Tab is Swing's way out of the
+   * component and must keep that meaning.
    */
   private void installKeyBindings() {
     final var input = getInputMap(WHEN_IN_FOCUSED_WINDOW);
@@ -104,6 +108,8 @@ public class EditorTabs extends JTabbedPane {
         KeyStroke.getKeyStroke(KeyEvent.VK_TAB,
             InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK),
         PREVIOUS_TAB);
+    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_PAGE_DOWN, InputEvent.CTRL_DOWN_MASK), NEXT_TAB);
+    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_PAGE_UP, InputEvent.CTRL_DOWN_MASK), PREVIOUS_TAB);
     input.put(KeyStroke.getKeyStroke(KeyEvent.VK_W, menuMask), CLOSE_TAB);
     actions.put(NEXT_TAB, action(() -> step(1)));
     actions.put(PREVIOUS_TAB, action(() -> step(-1)));
@@ -124,7 +130,10 @@ public class EditorTabs extends JTabbedPane {
     super.removeNotify();
   }
 
-  /** Routes editor cycling before Swing consumes Ctrl+Tab as a focus-traversal key. */
+  /**
+   * Routes editor cycling before Swing consumes Ctrl+Tab as a focus-traversal key, except in
+   * tables and text components, which rely on Ctrl+Tab to move focus out of themselves.
+   */
   boolean dispatchTabKey(KeyEvent event) {
     final var tabKey = event.getKeyCode() == KeyEvent.VK_TAB
         || (event.getID() == KeyEvent.KEY_TYPED && event.getKeyChar() == '\t');
@@ -133,8 +142,9 @@ public class EditorTabs extends JTabbedPane {
       return false;
     }
     final var root = getRootPane();
-    if (root == null || event.getComponent() == null
-        || SwingUtilities.getRootPane(event.getComponent()) != root) return false;
+    final var source = event.getComponent();
+    if (root == null || source == null || SwingUtilities.getRootPane(source) != root) return false;
+    if (keepsCtrlTab(source)) return false;
     if (event.getID() == KeyEvent.KEY_PRESSED) {
       final var key = event.isShiftDown() ? PREVIOUS_TAB : NEXT_TAB;
       getActionMap().get(key).actionPerformed(
@@ -142,6 +152,12 @@ public class EditorTabs extends JTabbedPane {
     }
     event.consume();
     return true;
+  }
+
+  /** Whether {@code component} (or the table it edits in) uses Ctrl+Tab itself. */
+  static boolean keepsCtrlTab(java.awt.Component component) {
+    return component instanceof JTextComponent || component instanceof JTable
+        || SwingUtilities.getAncestorOfClass(JTable.class, component) != null;
   }
 
   private static javax.swing.Action action(Runnable body) {
@@ -223,7 +239,7 @@ public class EditorTabs extends JTabbedPane {
       for (var index = 0; index < tabs.size(); index++) {
         final var tab = tabs.get(index);
         final var prefix = model.isDirty(tab) ? DIRTY_MARK : "";
-        final var title = prefix + titler.apply(tab);
+        final var title = prefix + labelFor(tab);
         if (index == getTabCount()) {
           addTab(title, iconFor(tab), null, tooltipFor(tab));
         } else {
@@ -250,9 +266,17 @@ public class EditorTabs extends JTabbedPane {
         14);
   }
 
-  private String tooltipFor(Tab tab) {
+  /** A circuit's layout and appearance can both be open, so their tabs must read differently. */
+  String labelFor(Tab tab) {
     final var name = titler.apply(tab);
-    return tab.kind() == Kind.APPEARANCE ? name + " \u2014 appearance" : name;
+    return tab.kind() == Kind.APPEARANCE ? S.get("editorTabAppearanceTitle", name) : name;
+  }
+
+  String tooltipFor(Tab tab) {
+    final var name = titler.apply(tab);
+    final var tip = tab.kind() == Kind.APPEARANCE ? S.get("editorTabAppearanceTip", name) : name;
+    // Says what the dot in front of the title means.
+    return model.isDirty(tab) ? S.get("editorTabUnsavedTip", tip) : tip;
   }
 
   /** Re-reads the labels, after a circuit was renamed or the language changed. */

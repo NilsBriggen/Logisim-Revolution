@@ -12,14 +12,14 @@ package com.cburch.logisim.gui.prefs;
 import static com.cburch.logisim.gui.Strings.S;
 
 import com.cburch.logisim.circuit.RadixOption;
+import com.cburch.logisim.gui.generic.SettingsForm;
 import com.cburch.logisim.instance.StdAttr;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.proj.Projects;
-import com.cburch.logisim.util.TableLayout;
+import java.awt.BorderLayout;
 import java.util.prefs.PreferenceChangeEvent;
 import java.util.prefs.PreferenceChangeListener;
-import javax.swing.JPanel;
 
 class LayoutOptions extends OptionsPanel {
   private static final long serialVersionUID = 1L;
@@ -101,23 +101,16 @@ class LayoutOptions extends OptionsPanel {
                   AppPreferences.PIN_APPEAR_DOT_BIGGER, S.getter("layoutPinAppearanceDotBigger"))
             });
 
-    final var panel = new JPanel(new TableLayout(2));
-    panel.add(defaultAppearance.getJLabel());
-    panel.add(defaultAppearance.getJComboBox());
-    panel.add(afterAdd.getJLabel());
-    panel.add(afterAdd.getJComboBox());
-    panel.add(radix1.getJLabel());
-    panel.add(radix1.getJComboBox());
-    panel.add(radix2.getJLabel());
-    panel.add(radix2.getJComboBox());
-    panel.add(prefPinAppearance.getJLabel());
-    panel.add(prefPinAppearance.getJComboBox());
-
-    setLayout(new TableLayout(1));
+    final var form = new SettingsForm();
     for (final var check : checks) {
-      add(check);
+      form.addFull(check);
     }
-    add(panel);
+    for (final var option :
+        new PrefOptionList[] {defaultAppearance, afterAdd, radix1, radix2, prefPinAppearance}) {
+      form.addRow(option.getJLabel(), option.getJComboBox());
+    }
+    setLayout(new BorderLayout());
+    add(form, BorderLayout.NORTH);
   }
 
   @Override

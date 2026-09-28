@@ -9,6 +9,9 @@
 
 package com.cburch.logisim.std.memory;
 
+import com.cburch.logisim.circuit.Circuit;
+import com.cburch.logisim.circuit.EditLockedException;
+import com.cburch.logisim.comp.Component;
 import com.cburch.logisim.data.AbstractAttributeSet;
 import com.cburch.logisim.data.Attribute;
 import com.cburch.logisim.data.AttributeOption;
@@ -26,6 +29,7 @@ import java.util.WeakHashMap;
 class RomAttributes extends AbstractAttributeSet {
 
   static HexFrame getHexFrame(MemContents value, Project proj, Instance instance) {
+    register(value, proj);
     synchronized (windowRegistry) {
       HexFrame ret = windowRegistry.get(value);
       if (ret == null) {
@@ -72,6 +76,8 @@ class RomAttributes extends AbstractAttributeSet {
   private BitWidth addrBits = BitWidth.create(8);
   private BitWidth dataBits = BitWidth.create(8);
   private MemContents contents;
+  private Circuit circuit;
+  private Component component;
   private AttributeOption lineSize = Mem.SINGLE;
   private Boolean allowMisaligned = false;
   private String label = "";
@@ -91,6 +97,8 @@ class RomAttributes extends AbstractAttributeSet {
     d.lineSize = lineSize;
     d.allowMisaligned = allowMisaligned;
     d.contents = contents.clone();
+    d.circuit = null;
+    d.component = null;
     d.labelFont = labelFont;
     d.labelVisible = labelVisible;
     d.appearance = appearance;
@@ -134,6 +142,27 @@ class RomAttributes extends AbstractAttributeSet {
     return null;
   }
 
+  void setOwner(Circuit circuit, Component component) {
+    this.circuit = circuit;
+    this.component = component;
+    guardContents();
+  }
+
+  private void guardContents() {
+    if (circuit == null) return;
+    contents.setWriteCheck(
+        () -> {
+          if (circuit.contains(component) && circuit.isEditLockedFor(component)) {
+            final var refused =
+                new EditLockedException(circuit, circuit.isEditLocked() ? null : component);
+            final var registered = listenerRegistry.get(contents);
+            final var project = registered == null ? circuit.getProject() : registered.proj;
+            if (project != null) project.reportRefusedEdit(refused);
+            throw refused;
+          }
+        });
+  }
+
   void setProject(Project proj) {
     register(contents, proj);
   }
@@ -165,7 +194,9 @@ class RomAttributes extends AbstractAttributeSet {
     } else if (attr == Rom.CONTENTS_ATTR) {
       final var newContents = (MemContents) value;
       if (contents.equals(newContents)) return;
+      closeHexFrame(contents);
       contents = newContents;
+      guardContents();
       fireAttributeValueChanged(attr, value, null);
     } else if (attr == StdAttr.LABEL) {
       final var newLabel = (String) value;

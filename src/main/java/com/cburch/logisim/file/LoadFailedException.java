@@ -22,6 +22,12 @@ public class LoadFailedException extends Exception {
     this.shown = shown;
   }
 
+  /** A failure not yet reported, whose message is for the user and {@code cause} for details. */
+  LoadFailedException(String desc, Throwable cause) {
+    super(desc, cause);
+    this.shown = false;
+  }
+
   public boolean isShown() {
     return shown;
   }

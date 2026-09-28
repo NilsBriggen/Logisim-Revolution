@@ -81,10 +81,18 @@ public class MenuListener {
       for (final var item : LogisimMenuBar.EDIT_ITEMS) {
         menubar.addActionListener(item, this);
       }
+      for (final var item : LogisimMenuBar.ARRANGE_ITEMS) {
+        menubar.addActionListener(item, this);
+      }
       computeEnabled();
     }
 
     public void computeEnabled() {
+      // Only the layout editor arranges components; a handler that does not know these commands
+      // must not inherit whatever state the previous handler left them in.
+      for (final var item : LogisimMenuBar.ARRANGE_ITEMS) {
+        menubar.setEnabled(item, false);
+      }
       if (handler != null) {
         handler.computeEnabled();
       } else {

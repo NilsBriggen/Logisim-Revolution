@@ -46,10 +46,12 @@ public class AppearanceEditHandler extends EditHandler implements SelectionListe
     final var model = canvas.getModel();
     if (model != null) model.addCanvasModelListener(this);
     canvas.addPropertyChangeListener(Canvas.MODEL_PROPERTY, this);
+    canvas.addPropertyChangeListener(AppearanceCanvas.EDIT_LOCK_PROPERTY, this);
   }
 
   @Override
   public void addControlPoint() {
+    if (!canvas.checkCanEdit()) return;
     final var sel = canvas.getSelection();
     final var handle = sel.getSelectedHandle();
     canvas.doAction(new ModelInsertHandleAction(canvas.getModel(), handle));
@@ -61,7 +63,7 @@ public class AppearanceEditHandler extends EditHandler implements SelectionListe
     final var circ = canvas.getCircuit();
     final var sel = canvas.getSelection();
     final var selEmpty = sel.isEmpty();
-    final var canChange = proj.getLogisimFile().contains(circ);
+    final var canChange = proj.getLogisimFile().contains(circ) && !circ.isEditLocked();
     var selHasRemovable = false;
     for (final var o : sel.getSelected()) {
       if (!(o instanceof AppearanceElement)) {
@@ -128,6 +130,7 @@ public class AppearanceEditHandler extends EditHandler implements SelectionListe
 
   @Override
   public void cut() {
+    if (!canvas.checkCanEdit()) return;
     if (!canvas.getSelection().isEmpty()) {
       canvas.getProject().doAction(ClipboardActions.cut(canvas));
     }
@@ -135,6 +138,7 @@ public class AppearanceEditHandler extends EditHandler implements SelectionListe
 
   @Override
   public void delete() {
+    if (!canvas.checkCanEdit()) return;
     final var sel = canvas.getSelection();
     final var n = sel.getSelected().size();
     final var select = new ArrayList<CanvasObject>(n);
@@ -170,6 +174,7 @@ public class AppearanceEditHandler extends EditHandler implements SelectionListe
 
   @Override
   public void duplicate() {
+    if (!canvas.checkCanEdit()) return;
     final var sel = canvas.getSelection();
     final var n = sel.getSelected().size();
     final var select = new ArrayList<CanvasObject>(n);
@@ -196,6 +201,7 @@ public class AppearanceEditHandler extends EditHandler implements SelectionListe
 
   @Override
   public void lower() {
+    if (!canvas.checkCanEdit()) return;
     final var act = ModelReorderAction.createLower(canvas.getModel(), canvas.getSelection().getSelected());
     if (act != null) {
       canvas.doAction(act);
@@ -204,6 +210,7 @@ public class AppearanceEditHandler extends EditHandler implements SelectionListe
 
   @Override
   public void lowerBottom() {
+    if (!canvas.checkCanEdit()) return;
     final var act = ModelReorderAction.createLowerBottom(canvas.getModel(), canvas.getSelection().getSelected());
     if (act != null) {
       canvas.doAction(act);
@@ -217,6 +224,7 @@ public class AppearanceEditHandler extends EditHandler implements SelectionListe
 
   @Override
   public void paste() {
+    if (!canvas.checkCanEdit()) return;
     if (pasteSystemClipboardImage()) return;
 
     final var clip = Clipboard.get();
@@ -303,6 +311,7 @@ public class AppearanceEditHandler extends EditHandler implements SelectionListe
   @Override
   public void propertyChange(PropertyChangeEvent e) {
     final var prop = e.getPropertyName();
+    if (prop.equals(AppearanceCanvas.EDIT_LOCK_PROPERTY)) computeEnabled();
     if (prop.equals(Canvas.MODEL_PROPERTY)) {
       final var oldModel = (CanvasModel) e.getOldValue();
       if (oldModel != null) {
@@ -317,6 +326,7 @@ public class AppearanceEditHandler extends EditHandler implements SelectionListe
 
   @Override
   public void raise() {
+    if (!canvas.checkCanEdit()) return;
     final var act = ModelReorderAction.createRaise(canvas.getModel(), canvas.getSelection().getSelected());
     if (act != null) {
       canvas.doAction(act);
@@ -325,6 +335,7 @@ public class AppearanceEditHandler extends EditHandler implements SelectionListe
 
   @Override
   public void raiseTop() {
+    if (!canvas.checkCanEdit()) return;
     final var act = ModelReorderAction.createRaiseTop(canvas.getModel(), canvas.getSelection().getSelected());
     if (act != null) {
       canvas.doAction(act);
@@ -333,6 +344,7 @@ public class AppearanceEditHandler extends EditHandler implements SelectionListe
 
   @Override
   public void removeControlPoint() {
+    if (!canvas.checkCanEdit()) return;
     final var sel = canvas.getSelection();
     final var handle = sel.getSelectedHandle();
     canvas.doAction(new ModelDeleteHandleAction(canvas.getModel(), handle));

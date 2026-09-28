@@ -188,24 +188,45 @@ public class ComponentTile extends JComponent {
     return Math.max(0, width - compactTextX() - pinSize() - Spacing.sm());
   }
 
+  /**
+   * Whether a list row of this width has room for the name beside the symbol.
+   *
+   * <p>At a high interface scale in a narrow sidebar it does not: the name then goes under the
+   * symbol, wrapped across the whole row, rather than being cut down to nothing.
+   */
+  private boolean besideSymbol(int width) {
+    return compactTextWidth(width) >= getFontMetrics(getFont()).charWidth('m') * 5;
+  }
+
+  private boolean rowLayout() {
+    return compact && besideSymbol(getWidth());
+  }
+
   int compactHeight(int width) {
     final var metrics = getFontMetrics(getFont());
-    final var lines = captionLines(caption(), metrics, compactTextWidth(width)).size();
+    if (!besideSymbol(width)) {
+      final var lines = wrappedLines(caption(), metrics, width - Spacing.sm() * 2).size();
+      return Spacing.sm() * 2 + previewHeight() + Spacing.xs() + metrics.getHeight() * lines;
+    }
+    final var lines = wrappedLines(caption(), metrics, compactTextWidth(width)).size();
     return Spacing.xs() * 2
         + Math.max(previewHeight(), metrics.getHeight() * lines);
   }
 
   int captionWidth() {
-    return compact ? compactTextWidth(getWidth()) : getWidth() - Spacing.sm() * 2;
+    return rowLayout() ? compactTextWidth(getWidth()) : getWidth() - Spacing.sm() * 2;
   }
 
   List<String> visibleCaptionLines() {
-    return captionLines(caption(), getFontMetrics(getFont()), captionWidth());
+    final var metrics = getFontMetrics(getFont());
+    // A list row has the height to spare, so it shows the whole name however narrow it is.
+    return compact ? wrappedLines(caption(), metrics, captionWidth())
+        : captionLines(caption(), metrics, captionWidth());
   }
 
   int firstBaseline() {
     final var metrics = getFontMetrics(getFont());
-    if (compact) {
+    if (rowLayout()) {
       return (getHeight() - metrics.getHeight() * visibleCaptionLines().size()) / 2
           + metrics.getAscent();
     }
@@ -216,7 +237,7 @@ public class ComponentTile extends JComponent {
   Rectangle favouriteBounds() {
     final var size = pinSize();
     return new Rectangle(Math.max(0, getWidth() - size - Spacing.xs()),
-        compact ? Math.max(0, (getHeight() - size) / 2) : Spacing.xs(), size, size);
+        rowLayout() ? Math.max(0, (getHeight() - size) / 2) : Spacing.xs(), size, size);
   }
 
   public Tool tool() {
@@ -258,8 +279,9 @@ public class ComponentTile extends JComponent {
         g.setStroke(new BasicStroke(current ? 1.6f : 1f));
         g.drawRoundRect(0, 0, width - 1, height - 1, radius, radius);
       }
-      final var iconX = compact ? Spacing.xs() : (width - preview.getIconWidth()) / 2;
-      final var iconY = compact ? (height - preview.getIconHeight()) / 2
+      final var row = rowLayout();
+      final var iconX = row ? Spacing.xs() : (width - preview.getIconWidth()) / 2;
+      final var iconY = row ? (height - preview.getIconHeight()) / 2
           : Spacing.sm() + (previewHeight() - preview.getIconHeight()) / 2;
       preview.paintIcon(this, g, Math.max(0, iconX), Math.max(0, iconY));
       if (favourite || hovered || isFocusOwner()) {
@@ -274,7 +296,7 @@ public class ComponentTile extends JComponent {
       final var metrics = g.getFontMetrics();
       var baseline = firstBaseline();
       for (final var line : visibleCaptionLines()) {
-        g.drawString(line, compact ? compactTextX() : (width - metrics.stringWidth(line)) / 2f,
+        g.drawString(line, row ? compactTextX() : (width - metrics.stringWidth(line)) / 2f,
             baseline);
         baseline += metrics.getHeight();
       }
@@ -290,6 +312,55 @@ public class ComponentTile extends JComponent {
     if (metrics.stringWidth(text) <= available) return List.of(text);
     return balancedLines(text, metrics).stream()
         .map(line -> shorten(line, metrics, available)).toList();
+  }
+
+  /**
+   * Wraps the whole caption to the width, at spaces where it can and inside a word where it must.
+   *
+   * <p>Used by the one-column list a narrow or high-scale sidebar falls back to: there a name cut
+   * to "c…ub" is no more use than no name at all.
+   */
+  static List<String> wrappedLines(String text, FontMetrics metrics, int available) {
+    if (text == null || text.isBlank()) return List.of("");
+    text = text.trim();
+    if (metrics.stringWidth(text) <= available) return List.of(text);
+    final var lines = new java.util.ArrayList<String>();
+    var line = new StringBuilder();
+    for (final var word : text.split("\\s+")) {
+      final var joined = line.isEmpty() ? word : line + " " + word;
+      if (metrics.stringWidth(joined) <= available) {
+        line = new StringBuilder(joined);
+        continue;
+      }
+      if (!line.isEmpty()) {
+        lines.add(line.toString());
+        line = new StringBuilder();
+      }
+      var rest = word;
+      while (metrics.stringWidth(rest) > available) {
+        final var count = rest.codePointCount(0, rest.length());
+        var cut = 1;
+        while (cut < count
+            && metrics.stringWidth(rest.substring(0, rest.offsetByCodePoints(0, cut + 1)))
+                <= available) {
+          cut++;
+        }
+        var end = rest.offsetByCodePoints(0, cut);
+        // Prefer to break after a separator, so "counter_sub" reads "counter_" / "sub".
+        for (var i = end - 1; i > 0; i--) {
+          if ("_-./".indexOf(rest.charAt(i - 1)) >= 0) {
+            end = i;
+            break;
+          }
+        }
+        lines.add(rest.substring(0, end));
+        rest = rest.substring(end);
+        if (rest.isEmpty()) break;
+      }
+      line.append(rest);
+    }
+    if (!line.isEmpty()) lines.add(line.toString());
+    return List.copyOf(lines);
   }
 
   private static List<String> balancedLines(String text, FontMetrics metrics) {

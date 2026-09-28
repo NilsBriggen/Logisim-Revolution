@@ -15,8 +15,16 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.cburch.logisim.Main;
 import com.cburch.logisim.TestBase;
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -82,5 +90,47 @@ public class OptionPaneTest extends TestBase {
     } else {
       assertFalse(parent instanceof JPanel, "unexpected parent: " + parent);
     }
+  }
+
+  /** Loader errors arrive as a scrollable text area; headless reporting must still read them. */
+  @Test
+  public void messageTextReadsComponentsAndStrings() {
+    assertEquals("plain", OptionPane.messageText("plain"));
+    assertEquals("", OptionPane.messageText(null));
+    assertEquals(
+        "line 1\nline 2", OptionPane.messageText(new JScrollPane(new JTextArea("line 1\nline 2"))));
+    final var panel = new JPanel();
+    panel.add(new JLabel("first"));
+    panel.add(new JLabel("second"));
+    assertEquals("first\nsecond", OptionPane.messageText(panel));
+  }
+
+  /** Without a GUI an option dialog cannot be answered, but its message must not be lost. */
+  @Test
+  public void headlessOptionDialogLogsItsMessage() {
+    final var originalHeadless = Main.headless;
+    final var originalErr = System.err;
+    final var err = new ByteArrayOutputStream();
+    try {
+      Main.headless = true;
+      System.setErr(new PrintStream(err, true, StandardCharsets.UTF_8));
+      final Object[] options = {"Copy", "OK"};
+      final var result =
+          OptionPane.showOptionDialog(
+              null,
+              new JScrollPane(new JTextArea("Unknown component ‘Frob’")),
+              "File Error",
+              JOptionPane.DEFAULT_OPTION,
+              OptionPane.ERROR_MESSAGE,
+              null,
+              options,
+              options[1]);
+      assertEquals(OptionPane.CLOSED_OPTION, result);
+    } finally {
+      System.setErr(originalErr);
+      Main.headless = originalHeadless;
+    }
+    final var logged = err.toString(StandardCharsets.UTF_8);
+    assertTrue(logged.contains("File Error: Unknown component ‘Frob’"), logged);
   }
 }

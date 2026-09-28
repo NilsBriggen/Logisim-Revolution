@@ -13,15 +13,21 @@ import static com.cburch.logisim.gui.Strings.S;
 
 import com.cburch.logisim.Main;
 import com.cburch.logisim.util.Spacing;
+import com.cburch.logisim.util.StringUtil;
 import com.cburch.logisim.util.UiFonts;
 import com.cburch.logisim.util.UiScale;
 import java.awt.BorderLayout;
 import java.awt.Component;
+import java.awt.Container;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.Frame;
 import java.awt.KeyboardFocusManager;
+import java.awt.Toolkit;
+import java.awt.datatransfer.StringSelection;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.ArrayList;
 import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JLabel;
@@ -30,6 +36,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
+import javax.swing.text.JTextComponent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -146,8 +153,17 @@ public class OptionPane {
           if (window != null) window.pack();
         });
 
-    final var toggleRow = new JPanel(new BorderLayout());
-    toggleRow.add(toggle, BorderLayout.WEST);
+    // A bug report needs the text; selecting it inside the collapsed area is awkward.
+    final var copy = new JButton(S.get("errorDetailsCopy"));
+    copy.addActionListener(
+        event ->
+            Toolkit.getDefaultToolkit()
+                .getSystemClipboard()
+                .setContents(new StringSelection(message + "\n\n" + trace.getText()), null));
+
+    final var toggleRow = new JPanel(new FlowLayout(FlowLayout.LEADING, Spacing.xs(), 0));
+    toggleRow.add(toggle);
+    toggleRow.add(copy);
 
     final var south = new JPanel(new BorderLayout(0, Spacing.xs()));
     south.add(toggleRow, BorderLayout.NORTH);
@@ -185,7 +201,7 @@ public class OptionPane {
   }
 
   /** Escapes the few characters that would otherwise be read as markup by the HTML label. */
-  static String escapeHtml(String text) {
+  public static String escapeHtml(String text) {
     if (text == null) return "";
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
   }
@@ -199,8 +215,8 @@ public class OptionPane {
   public static void showMessageDialog(Component parentComponent, Object message) {
     if (Main.hasGui()) {
       JOptionPane.showMessageDialog(resolveParent(parentComponent), message);
-    } else if (message instanceof String msg) {
-      logger.info(msg);
+    } else {
+      logHeadless(null, message, INFORMATION_MESSAGE);
     }
   }
 
@@ -216,14 +232,53 @@ public class OptionPane {
       Component parentComponent, Object message, String title, int messageType) {
     if (Main.hasGui()) {
       JOptionPane.showMessageDialog(resolveParent(parentComponent), message, title, messageType);
-    } else if (message instanceof String) {
-      final var logMessage = title + ":" + message;
-      switch (messageType) {
-        case ERROR_MESSAGE -> logger.error(logMessage);
-        case OptionPane.WARNING_MESSAGE -> logger.warn(logMessage);
-        default -> logger.info(logMessage);
-      }
+    } else {
+      logHeadless(title, message, messageType);
     }
+  }
+
+  /**
+   * Reports what a dialog would have shown when there is no GUI, so that a command-line run never
+   * drops a message silently. Errors and warnings go to the log (standard error).
+   */
+  static void logHeadless(String title, Object message, int messageType) {
+    final var text = messageText(message);
+    if (text.isEmpty()) return;
+    final var logMessage = StringUtil.isNullOrEmpty(title) ? text : title + ": " + text;
+    switch (messageType) {
+      case ERROR_MESSAGE -> logger.error(logMessage);
+      case WARNING_MESSAGE -> logger.warn(logMessage);
+      default -> logger.info(logMessage);
+    }
+  }
+
+  /**
+   * Extracts the readable text of a dialog message, which may be a plain string or a Swing
+   * component such as a scrollable text area.
+   */
+  static String messageText(Object message) {
+    if (message == null) return "";
+    if (message instanceof String text) return text;
+    if (message instanceof JTextComponent text) return text.getText();
+    if (message instanceof JLabel label) return label.getText() == null ? "" : label.getText();
+    if (message instanceof JScrollPane scroll) return messageText(scroll.getViewport().getView());
+    if (message instanceof Container container) {
+      final var parts = new ArrayList<String>();
+      for (final var child : container.getComponents()) {
+        final var text = messageText(child);
+        if (!text.isEmpty()) parts.add(text);
+      }
+      return String.join("\n", parts);
+    }
+    if (message instanceof Object[] array) {
+      final var parts = new ArrayList<String>();
+      for (final var item : array) {
+        final var text = messageText(item);
+        if (!text.isEmpty()) parts.add(text);
+      }
+      return String.join("\n", parts);
+    }
+    return message.toString();
   }
 
   /**
@@ -330,7 +385,8 @@ public class OptionPane {
    * @param options         The array of options the user can select from.
    * @param initialValue    The initial value selected.
    *
-   * @return The option chosen by the user, or CLOSED_OPTION if the GUI is not available.
+   * @return The option chosen by the user, or CLOSED_OPTION if the GUI is not available. Without
+   *     a GUI the message is logged instead, so that errors reported this way are not lost.
    */
   public static int showOptionDialog(Component parentComponent,
                                      Object message,
@@ -340,10 +396,12 @@ public class OptionPane {
                                      Icon icon,
                                      Object[] options,
                                      Object initialValue) {
-    return Main.hasGui()
-        ? JOptionPane.showOptionDialog(resolveParent(parentComponent), message, title, optionType,
-            messageType, icon, options, initialValue)
-        : CLOSED_OPTION;
+    if (Main.hasGui()) {
+      return JOptionPane.showOptionDialog(resolveParent(parentComponent), message, title,
+          optionType, messageType, icon, options, initialValue);
+    }
+    logHeadless(title, message, messageType);
+    return CLOSED_OPTION;
   }
 
   public static Frame getFrameForComponent(Component parentComponent) {

@@ -43,6 +43,24 @@ Gitea manual run, builds its native package, and uploads a one-day GitHub Action
 The Gitea workflow downloads these artifacts into a draft Gitea release. The macOS DMGs are
 development packages without Apple notarization.
 
+The `prepare` job uses the `logisim-revolution-github-mirror` concurrency group with
+`cancel-in-progress: false`. Use Gitea 1.26 or newer with job concurrency support. Only preparation
+and dispatch are serialized; native builds can overlap. Gitea retains only one pending job in a
+concurrency group, so avoid queuing batches of manual releases.
+
+The mirror keeps its own snapshot history and never receives the inherited Gitea Git history.
+An atomic, non-forced push advances GitHub `main` and creates the immutable lightweight tag
+`gitea-build-<run-id>-attempt-<preparation-attempt>`. Dispatch uses that tag, and hosted jobs check
+out the resolved workflow commit. Collection verifies both the tag's source tree and the hosted
+run's exact snapshot commit. Existing tags are reused only when their tree matches; they are never
+moved. An external conflicting push fails preparation instead of overwriting remote history.
+
+All native builds and the portable JAR receive `LOGISIM_SOURCE_SHA` and `LOGISIM_SOURCE_TREE`.
+`genBuildInfo` requires both full hashes and checks the tree against `HEAD^{tree}` before recording
+the canonical Gitea commit in `BuildInfo.sourceCommit`, `branchLastCommitHash`, and `buildId`.
+`BuildInfo.buildCommit` retains the actual checkout commit (the independent snapshot SHA on
+GitHub), and `sourceTree` records the shared tree. Normal local builds use their own Git identity.
+
 [GitHub's billing documentation](https://docs.github.com/en/billing/concepts/product-billing/github-actions)
 says standard hosted runner time is free for public repositories. Do not switch the mirror to
 private or a larger runner without checking the billing settings.
@@ -53,20 +71,63 @@ In Gitea **Repository Settings → Actions → General**, enable Actions and per
 **Code: read** and **Releases: write**. The workflow uses its built-in `GITEA_TOKEN` for draft
 creation and attachment uploads. Store a GitHub token in the Gitea repository Actions secret
 `GH_TOKEN`. It needs access only to the public `NilsBriggen/Logisim-Revolution` mirror with
-**Contents: read and write** and **Actions: read and write**. It pushes a history-free snapshot of the Gitea source tree
-to GitHub `main`, dispatches the hosted workflow, checks its result, and downloads its artifacts.
+**Contents: read and write**, **Actions: read and write**, and **Workflows: write**.
+The workflow permission is needed when the snapshot updates `.github/workflows`; a classic token
+needs the corresponding `workflow` scope. The token pushes source snapshots and immutable tags,
+dispatches the hosted workflow, checks its result, and downloads its artifacts.
 The GitHub workflow receives no Gitea credential.
 
 In Gitea's **Actions** tab, select **Build all platforms and publish release** and run it on
 `main`. It creates a draft prerelease tagged `build-<run-id>-attempt-<attempt>`, builds Linux
 x86_64 and emulated ARM64 locally, and dispatches the Windows and Mac jobs. It publishes the
 Gitea release only when every job succeeds and all ten expected files are present and nonempty.
-A failure leaves the draft unpublished for inspection. A rerun uses a new attempt tag.
+A failure leaves the draft unpublished for inspection. Preparation exports the release ID, release
+tag, source SHA, and source tree as job outputs. Every consumer uses this prepared identity.
+A retry of only a failed native build, collection, or publication job reuses the original draft and
+GitHub snapshot, even when the workflow attempt number increases. Uploads replace only their own
+filenames in that verified draft. A full workflow rerun (or a rerun including `prepare`) creates a
+new draft and snapshot tag using the new preparation attempt.
+
+If the hosted GitHub build itself failed, rerun its failed jobs before retrying Gitea collection,
+or rerun the entire Gitea workflow. GitHub artifacts expire after one day; after expiry, use a new
+full release run. Retrying an already published release fails without modifying it.
 
 The ten files are a portable application JAR and source JAR, DEB and RPM for each Linux
 architecture, a Windows x86_64 MSI and portable ZIP, and Intel and Apple Silicon DMGs.
-Package names are derived from `gradle.properties` and checked before publication. There is
-no automatic nightly release or Snap Store upload.
+Package names are derived from `gradle.properties` and checked before publication. Publication
+also checks the prepared tag, the canonical Gitea checkout SHA, the draft's target commit, and any
+existing Gitea tag's commit. Missing, empty, duplicate, or unexpected attachments block publication.
+There is no automatic nightly release or Snap Store upload.
+
+### Trigger and verify a release
+
+1. Record the intended Gitea `main` commit and its tree (`git rev-parse HEAD HEAD^{tree}`), and
+   confirm the normal CI build passes for that commit.
+2. Run **Build all platforms and publish release** on `main` in Gitea Actions. Record the
+   prepared tag and draft release ID from `prepare`; retries may have a newer attempt number.
+3. Check the GitHub run titled **Gitea build `<prepared-tag>`**. All three hosted jobs must succeed,
+   its commit must equal the GitHub `gitea-<prepared-tag>` tag, and its tree must equal the Gitea
+   tree. The two repositories' commit SHAs intentionally differ.
+4. Check that all five Gitea jobs succeeded. The final release must have `draft=false`,
+   `prerelease=true`, and a tag resolving to the recorded Gitea commit. Compare its ten nonempty,
+   downloadable attachments with `release.expected_assets()` for that checkout.
+5. When checking a packaged application's build identity, use the canonical `buildId`/`sourceCommit`.
+   The separate `buildCommit` identifies the checkout used to build that platform.
+
+### Focused release checks
+
+Run the Python unit and workflow policy tests without contacting either service:
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts/ci -p 'test_*.py'
+```
+
+With JDK 21 and Gradle dependencies already cached, check generated provenance and compile the
+generated class in a temporary build directory (does not run the full Gradle test/build suite):
+
+```bash
+python3 scripts/ci/check_build_info.py
+```
 
 ## Other CI checks
 

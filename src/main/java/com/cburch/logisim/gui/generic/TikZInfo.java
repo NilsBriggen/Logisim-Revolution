@@ -164,6 +164,8 @@ public class TikZInfo implements Cloneable {
   }
 
   public void setColor(Color c) {
+    // As Graphics.setColor documents: a null colour is ignored.
+    if (c == null) return;
     currentDrawColor = getColorName(c);
     drawColor = c;
   }
@@ -420,13 +422,14 @@ public class TikZInfo implements Cloneable {
   public void writeFile(File outfile) throws IOException {
     optimize();
     final var writer = new FileWriter(outfile);
-    writer.write("% Important: If latex complains about unicode characters,\n");
-    writer.write("% please use \"\\usepackage[utf8x]{inputenc}\" in your preamble\n");
+    writer.write("% Important: If LaTeX complains about Unicode characters, compile with a\n");
+    writer.write("% LaTeX release from 2018 or later (UTF-8 input is the default), or add\n");
+    writer.write("% \"\\usepackage[utf8]{inputenc}\" to your preamble.\n");
     writer.write("% You can change the size of the picture by putting it into the construct:\n");
     writer.write("% 1) \\resizebox{10cm}{!}{\"below picture\"} to scale horizontally to 10 cm\n");
     writer.write("% 2) \\resizebox{!}{15cm}{\"below picture\"} to scale vertically to 15 cm\n");
     writer.write("% 3) \\resizebox{10cm}{15cm}{\"below picture\"} a combination of above two\n");
-    writer.write("% It is not recomended to use the scale option of the tikzpicture environment.\n");
+    writer.write("% It is not recommended to use the scale option of the tikzpicture environment.\n");
     writer.write("\\begin{tikzpicture}[x=1pt,y=-1pt,line cap=rect]\n");
     for (int i = 0; i < usedFonts.size(); i++) writer.write(getFontDefinition(i));
     writer.write(getColorDefinitions());

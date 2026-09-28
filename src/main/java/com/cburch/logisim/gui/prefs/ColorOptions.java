@@ -12,18 +12,21 @@ package com.cburch.logisim.gui.prefs;
 import static com.cburch.logisim.gui.Strings.S;
 
 import com.cburch.logisim.gui.generic.OptionPane;
+import com.cburch.logisim.gui.generic.SettingsForm;
 import com.cburch.logisim.gui.shell.SectionPanel;
 import com.cburch.logisim.gui.theme.AppIcons;
 import com.cburch.logisim.gui.theme.Tokens;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.prefs.PrefMonitor;
 import com.cburch.logisim.util.Spacing;
+import java.awt.BorderLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.util.ArrayList;
 import java.util.List;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 
@@ -48,11 +51,12 @@ public class ColorOptions extends OptionsPanel {
   private final List<String> sectionKeys = new ArrayList<>();
   private final JButton defaultsButton = new JButton();
   private final JButton colorBlindButton = new JButton();
+  private final SettingsForm form = new SettingsForm();
 
   public ColorOptions(PreferencesFrame window) {
     super(window);
-    setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
-    setBorder(Spacing.panelBorder());
+    setLayout(new BorderLayout());
+    add(form, BorderLayout.NORTH);
 
     addSection(
         "colorsCanvasGroup",
@@ -94,32 +98,22 @@ public class ColorOptions extends OptionsPanel {
     // Sixteen, folded away: they matter only to someone reading a Karnaugh map.
     addCoverSection(window, AppPreferences.kmapColorMonitors());
 
-    add(resetRow());
+    form.addFull(resetRow());
     localeChanged();
   }
 
   private void addSection(
       String titleKey, PreferencesFrame window, String[] keys, PrefMonitor<?>[] monitors,
       boolean expanded) {
-    final var grid = new JPanel(new GridBagLayout());
-    final var gbc = new GridBagConstraints();
-    gbc.anchor = GridBagConstraints.LINE_START;
-    gbc.insets = Spacing.formGaps();
+    // Every section shares the page's label column, so all swatches line up at one x.
+    final var grid = form.createNested();
     for (var index = 0; index < keys.length; index++) {
-      gbc.gridx = 0;
-      gbc.gridy = index;
       final var caption = new JLabel();
-      grid.add(caption, gbc);
-      gbc.gridx = 1;
       @SuppressWarnings("unchecked")
       final var monitor = (PrefMonitor<Integer>) monitors[index];
       final var button = new ColorChooserButton(window, monitor);
-      grid.add(button, gbc);
+      grid.addRow(caption, button);
       swatches.add(new Swatch(keys[index], caption, button));
-      gbc.gridx = 2;
-      gbc.weightx = 1.0;
-      grid.add(javax.swing.Box.createHorizontalGlue(), gbc);
-      gbc.weightx = 0.0;
     }
     register(titleKey, grid, expanded);
   }
@@ -129,14 +123,19 @@ public class ColorOptions extends OptionsPanel {
     final var grid = new JPanel(new GridBagLayout());
     final var gbc = new GridBagConstraints();
     gbc.anchor = GridBagConstraints.LINE_START;
-    gbc.insets = Spacing.formGaps();
     for (var index = 0; index < covers.length; index++) {
       gbc.gridx = (index % 4) * 2;
       gbc.gridy = index / 4;
+      // Rows start at the page's label column, like every other row on the page.
+      gbc.insets = new java.awt.Insets(Spacing.xs(), gbc.gridx == 0 ? 0 : Spacing.lg(),
+          Spacing.xs(), Spacing.sm());
       final var caption = new JLabel(S.get("simKmapColors", index + 1));
       grid.add(caption, gbc);
       gbc.gridx++;
-      grid.add(new ColorChooserButton(window, covers[index]), gbc);
+      gbc.insets = new java.awt.Insets(Spacing.xs(), 0, Spacing.xs(), 0);
+      final var button = new ColorChooserButton(window, covers[index]);
+      caption.setLabelFor(button);
+      grid.add(button, gbc);
     }
     gbc.gridx = 8;
     gbc.gridy = 0;
@@ -145,12 +144,11 @@ public class ColorOptions extends OptionsPanel {
     register("colorsKarnaughGroup", grid, false);
   }
 
-  private void register(String titleKey, JPanel content, boolean expanded) {
+  private void register(String titleKey, JComponent content, boolean expanded) {
     final var section = new SectionPanel(S.get(titleKey), content, expanded);
-    section.setAlignmentX(LEFT_ALIGNMENT);
     sections.add(section);
     sectionKeys.add(titleKey);
-    add(section);
+    form.addFull(section, true);
   }
 
   /**

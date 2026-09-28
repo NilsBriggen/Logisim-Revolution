@@ -18,9 +18,14 @@ import java.util.WeakHashMap;
 import javax.swing.SwingUtilities;
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 import org.fife.ui.rsyntaxtextarea.Theme;
+import org.fife.ui.rsyntaxtextarea.Token;
 
 public final class EditorTheme {
   private static final String LISTENER_KEY = EditorTheme.class.getName() + ".listener";
+  private static final String PLAIN_ERRORS_KEY = EditorTheme.class.getName() + ".plainErrors";
+  private static final int[] LEXER_ERROR_TOKENS = {
+    Token.ERROR_IDENTIFIER, Token.ERROR_NUMBER_FORMAT, Token.ERROR_STRING_DOUBLE, Token.ERROR_CHAR
+  };
   private static final String THEME_ROOT = "/org/fife/ui/rsyntaxtextarea/themes/";
 
   /**
@@ -38,6 +43,17 @@ public final class EditorTheme {
   private EditorTheme() {}
 
   public static void install(RSyntaxTextArea editor) {
+    install(editor, false);
+  }
+
+  /**
+   * Installs the theme; with {@code plainLexerErrors} the lexer's error tokens get no background.
+   *
+   * <p>The VHDL lexer marks ordinary characters such as the dots in {@code ieee.std_logic_1164.all}
+   * as errors, which the themes paint as pink blocks. Real errors are reported by Validate instead.
+   */
+  public static void install(RSyntaxTextArea editor, boolean plainLexerErrors) {
+    editor.putClientProperty(PLAIN_ERRORS_KEY, plainLexerErrors);
     apply(editor);
     synchronized (editors) {
       editors.add(editor);
@@ -75,6 +91,14 @@ public final class EditorTheme {
     try (final var input = EditorTheme.class.getResourceAsStream(themePath)) {
       if (input != null) {
         Theme.load(input).apply(editor);
+        if (Boolean.TRUE.equals(editor.getClientProperty(PLAIN_ERRORS_KEY))) {
+          final var scheme = editor.getSyntaxScheme();
+          for (final var token : LEXER_ERROR_TOKENS) {
+            final var style = scheme.getStyle(token);
+            if (style != null) style.background = null;
+          }
+          editor.setSyntaxScheme(scheme);
+        }
       }
     } catch (IOException ignored) {
     }

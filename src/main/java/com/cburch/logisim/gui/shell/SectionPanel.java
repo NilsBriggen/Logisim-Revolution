@@ -16,10 +16,13 @@ import com.cburch.logisim.util.Spacing;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.Insets;
+import javax.accessibility.AccessibleContext;
+import javax.accessibility.AccessibleState;
+import javax.accessibility.AccessibleStateSet;
+import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JToggleButton;
 
 /**
  * A named group of controls that can be folded away.
@@ -35,7 +38,14 @@ public class SectionPanel extends JPanel {
   /** Fired when the section is folded or unfolded, so a panel can remember the state. */
   public static final String EXPANDED_PROPERTY = "expanded";
 
-  private final JToggleButton titleButton = new JToggleButton();
+  /**
+   * The heading, a plain button rather than a toggle.
+   *
+   * <p>It was a toggle button showing "expanded" as "selected", which the look and feel paints as a
+   * grey fill: muted heading text on that fill fell to 3.8:1. The state is carried by the chevron
+   * and, for assistive technology, by the expandable/expanded accessible states.
+   */
+  private final JButton titleButton = new HeadingButton();
   private final JLabel badgeLabel = new JLabel();
   private final JPanel headerRow = new JPanel(new BorderLayout());
   private final JComponent content;
@@ -50,8 +60,8 @@ public class SectionPanel extends JPanel {
     headerRow.setOpaque(false);
     badgeLabel.setVisible(false);
     headerRow.add(badgeLabel, BorderLayout.WEST);
-    titleButton.setHorizontalAlignment(JToggleButton.LEADING);
-    titleButton.addActionListener(event -> setExpanded(titleButton.isSelected()));
+    titleButton.setHorizontalAlignment(JButton.LEADING);
+    titleButton.addActionListener(event -> setExpanded(!isExpanded()));
     headerRow.add(titleButton, BorderLayout.CENTER);
 
     add(headerRow, BorderLayout.NORTH);
@@ -84,12 +94,19 @@ public class SectionPanel extends JPanel {
   public final void setExpanded(boolean expanded) {
     final var previous = this.expanded;
     this.expanded = expanded;
-    titleButton.setSelected(expanded);
     content.setVisible(expanded);
     refreshHeader();
     revalidate();
     repaint();
     firePropertyChange(EXPANDED_PROPERTY, previous, expanded);
+    if (previous != expanded) {
+      titleButton
+          .getAccessibleContext()
+          .firePropertyChange(
+              AccessibleContext.ACCESSIBLE_STATE_PROPERTY,
+              previous ? AccessibleState.EXPANDED : AccessibleState.COLLAPSED,
+              expanded ? AccessibleState.EXPANDED : AccessibleState.COLLAPSED);
+    }
   }
 
   /**
@@ -102,6 +119,16 @@ public class SectionPanel extends JPanel {
     badge = icon;
     badgeLabel.setVisible(icon != null);
     badgeLabel.setIcon(icon == null ? null : AppIcons.colored(icon, 12, Tokens.mutedForeground()));
+  }
+
+  /** The heading text. */
+  public String getTitle() {
+    return titleButton.getText();
+  }
+
+  /** The folded part, without the heading. */
+  public JComponent getContent() {
+    return content;
   }
 
   public final void setTitle(String title) {
@@ -123,5 +150,29 @@ public class SectionPanel extends JPanel {
   public Dimension getMaximumSize() {
     return expanded ? super.getMaximumSize()
         : new Dimension(Integer.MAX_VALUE, getPreferredSize().height);
+  }
+
+  /** A button that reports the section's expanded or collapsed state to assistive technology. */
+  private final class HeadingButton extends JButton {
+    private static final long serialVersionUID = 1L;
+
+    @Override
+    public AccessibleContext getAccessibleContext() {
+      if (accessibleContext == null) {
+        accessibleContext =
+            new AccessibleJButton() {
+              private static final long serialVersionUID = 1L;
+
+              @Override
+              public AccessibleStateSet getAccessibleStateSet() {
+                final var states = super.getAccessibleStateSet();
+                states.add(AccessibleState.EXPANDABLE);
+                states.add(expanded ? AccessibleState.EXPANDED : AccessibleState.COLLAPSED);
+                return states;
+              }
+            };
+      }
+      return accessibleContext;
+    }
   }
 }

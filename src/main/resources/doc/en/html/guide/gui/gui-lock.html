@@ -1,0 +1,70 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html lang="en">
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="content-type" content="text/html; charset=utf-8">
+    <meta http-equiv="Content-Language" content="en">
+    <title>
+      Locking circuits and components
+    </title>
+    <link rel="stylesheet" type="text/css" href="../../style.css">
+  </head>
+  <body>
+    <div class="maindiv">
+      <h1>
+        Locking circuits and components
+      </h1>
+      <p>
+        A lock keeps part of a project from being changed by accident. An instructor can hand out an exercise with the given parts locked, so that a student who drags the wrong thing or presses <b class=menu>Delete</b> at the wrong moment does not break them.
+      </p>
+      <p>
+        <b class=note>A lock is not a security feature.</b> Anyone who opens the project can unlock anything in it, from the same menus that lock it. It protects against slips, not against someone who wants to change the circuit.
+      </p>
+
+      <h2>Locking a component</h2>
+      <p>
+        Right-click a component and choose <b class=menu>Lock Component</b>. With several components selected, choose <b class=menu>Lock Selected Components</b> from the right-click menu or from <b class=menu>|&nbsp;Project&nbsp;|</b>→<b class=menu>|&nbsp;Lock Selected Components&nbsp;|</b>. A locked component:
+      </p>
+      <ul>
+        <li>cannot be moved, deleted, cut or rotated;</li>
+        <li>cannot have its properties changed: its rows in the properties panel are read-only, with a note above them saying why;</li>
+        <li>cannot have its ROM contents changed, including through an already-open memory editor, image loading or the Poke tool; RAM contents remain writable simulation state;</li>
+        <li>still works in the simulation, and an input pin, button or switch can still be poked with the Poke tool.</li>
+      </ul>
+      <p>
+        A small padlock at the top right corner of a locked component shows that it is locked. Choose <b class=menu>Unlock Component</b> from its right-click menu to unlock it.
+      </p>
+
+      <h2>Locking a circuit</h2>
+      <p>
+        Choose <b class=menu>|&nbsp;Project&nbsp;|</b>→<b class=menu>|&nbsp;Lock Circuit&nbsp;|</b>, or <b class=menu>Lock Circuit</b> from the circuit's right-click menu in the circuit list. In a locked circuit nothing can be added, removed, moved or changed: no components, no wires and no text, and neither the circuit's own properties nor its appearance. The circuit cannot be renamed or removed from the project either. Its inputs can still be poked while simulating, and it can still be used as a subcircuit elsewhere.
+      </p>
+      <p>
+        A locked circuit has a padlock beside its name in the circuit list and in the status bar. Choose the same menu entry again to unlock it.
+      </p>
+
+      <p>
+        Locking a circuit also cancels unfinished gestures and text editing in its appearance editor. Selecting and copying shapes, clearing the selection, zooming and panning remain available. Unlock the circuit before drawing or editing its appearance again.
+      </p>
+      <p>
+        FPGA annotation checks the complete subcircuit hierarchy before changing any labels. If a label that needs changing belongs to a locked component or circuit, the whole annotation is refused. Existing valid locked labels can be kept when annotating only missing labels.
+      </p>
+
+      <h2>When an edit is refused</h2>
+      <p>
+        An edit that would change something locked simply does not happen. Instead of a dialog, the status bar at the bottom of the window says what is locked and how to unlock it. Nothing is added to the undo history, and the project is not marked as changed.
+      </p>
+      <p>
+        Locking and unlocking are themselves ordinary edits: they can be undone, and they are saved with the project.
+      </p>
+
+      <h2>In the project file</h2>
+      <p>
+        A lock is saved as a <code>locked="true"</code> attribute on the circuit's or component's element in the <code>.circ</code> file. Versions of Logisim-evolution that do not know about locks ignore it and open the project unlocked. Projects without locks are saved exactly as before.
+      </p>
+      <p>
+        <b>Next:</b> <a href="../index.html">User's Guide</a>.
+      </p>
+    </div>
+  </body>
+</html>
