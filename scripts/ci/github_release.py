@@ -2,8 +2,8 @@
 """Dispatch hosted native builds and copy their artifacts into a Gitea draft."""
 
 import json
+import re
 import shutil
-import uuid
 import os
 import subprocess
 import sys
@@ -13,6 +13,8 @@ import urllib.error
 import urllib.request
 import zipfile
 from pathlib import Path
+
+import release
 
 
 GITHUB_REPOSITORY = "NilsBriggen/Logisim-Revolution"
@@ -50,16 +52,56 @@ def git_output(*args):
     return subprocess.check_output(["git", *args], text=True).strip()
 
 
+def snapshot_tag(tag):
+    if not re.fullmatch(r"build-[0-9]+-attempt-[0-9]+", tag):
+        raise ValueError("Invalid prepared release tag.")
+    return f"gitea-{tag}"
+
+
+def snapshot_commit(tag, source_tree):
+    ref = github_api(f"git/ref/tags/{snapshot_tag(tag)}")["object"]
+    if ref["type"] != "commit":
+        raise ValueError("The snapshot tag must point directly to a commit.")
+    sha = ref["sha"]
+    if github_api(f"git/commits/{sha}")["tree"]["sha"] != source_tree:
+        raise ValueError("GitHub snapshot tag differs from the Gitea source tree.")
+    return sha
+
+
 def mirror_and_dispatch():
-    sha = os.environ["GITEA_SHA"]
-    if git_output("rev-parse", "HEAD") != sha:
-        raise ValueError("Gitea checkout does not match the dispatched commit.")
-    source_tree = git_output("rev-parse", "HEAD^{tree}")
+    sha, source_tree = release.source_identity()
     tag = os.environ["RELEASE_TAG"]
+    snapshot = snapshot_tag(tag)
+    # A retry after pushing the tag must use the existing immutable snapshot.
+    try:
+        mirror_sha = snapshot_commit(tag, source_tree)
+    except urllib.error.HTTPError as error:
+        if error.code != 404:
+            raise
+        error.close()
+        mirror_sha = mirror_snapshot(sha, source_tree, snapshot)
+    if snapshot_commit(tag, source_tree) != mirror_sha:
+        raise ValueError("GitHub snapshot tag did not retain the mirrored commit.")
+    if matching_run(tag, mirror_sha):
+        print(f"GitHub build already dispatched for {tag}.")
+        return
+    github_api(
+        f"actions/workflows/{GITHUB_WORKFLOW}/dispatches", "POST",
+        {"ref": snapshot, "inputs": {
+            "source_sha": sha, "source_tree": source_tree, "release_tag": tag,
+        }},
+    )
+    print(f"Dispatched GitHub Windows and macOS builds for {tag} (source {sha}).")
+
+
+def mirror_snapshot(sha, source_tree, snapshot):
+    # The prepare job's concurrency group serializes this operation and dispatch.
+    # The atomic, non-forced push also rejects competing updates outside Actions.
     with tempfile.TemporaryDirectory() as temporary:
         # GitHub contains source snapshots, never the inherited Gitea history.
         mirror = Path(temporary) / "mirror"
-        git("clone", "--quiet", "--depth=1", f"https://github.com/{GITHUB_REPOSITORY}.git", str(mirror))
+        git("clone", "--quiet", "--depth=1", "--no-tags", "--single-branch", "--branch=main",
+            f"https://github.com/{GITHUB_REPOSITORY}.git", str(mirror))
         for path in mirror.iterdir():
             if path.name != ".git":
                 if path.is_dir() and not path.is_symlink():
@@ -99,26 +141,17 @@ def mirror_and_dispatch():
         env = os.environ.copy()
         env.update({"GIT_ASKPASS": str(askpass), "GIT_TERMINAL_PROMPT": "0"})
         git(
-            "-C", str(mirror), "-c", "credential.helper=", "push",
+            "-C", str(mirror), "-c", "credential.helper=", "push", "--atomic",
             f"https://github.com/{GITHUB_REPOSITORY}.git",
-            "HEAD:refs/heads/main", env=env,
+            "HEAD:refs/heads/main", f"HEAD:refs/tags/{snapshot}", env=env,
         )
-    if github_api("git/ref/heads/main")["object"]["sha"] != mirror_sha:
-        raise ValueError("GitHub mirror did not advance to the source snapshot.")
-    if github_api(f"git/commits/{mirror_sha}")["tree"]["sha"] != source_tree:
-        raise ValueError("GitHub mirror tree differs from the Gitea source tree.")
-    github_api(
-        f"actions/workflows/{GITHUB_WORKFLOW}/dispatches", "POST",
-        {"ref": "main", "inputs": {
-            "source_sha": sha, "source_tree": source_tree, "release_tag": tag,
-        }},
-    )
-    print(f"Dispatched GitHub Windows and macOS builds for {tag} (source {sha}).")
+    return mirror_sha
 
 
-def matching_run(tag):
+def matching_run(tag, mirror_sha):
     result = github_api(
-        f"actions/workflows/{GITHUB_WORKFLOW}/runs?event=workflow_dispatch&per_page=50"
+        f"actions/workflows/{GITHUB_WORKFLOW}/runs?event=workflow_dispatch"
+        f"&head_sha={mirror_sha}&per_page=100"
     )
     matches = [
         run for run in result["workflow_runs"]
@@ -127,10 +160,8 @@ def matching_run(tag):
     if not matches:
         return None
     run = max(matches, key=lambda candidate: candidate["id"])
-    source_tree = git_output("rev-parse", "HEAD^{tree}")
-    mirror_tree = github_api(f"git/commits/{run['head_sha']}")["tree"]["sha"]
-    if mirror_tree != source_tree:
-        raise ValueError("GitHub workflow source tree differs from the Gitea release commit.")
+    if run["head_sha"] != mirror_sha:
+        raise ValueError("GitHub workflow commit differs from the immutable snapshot tag.")
     return run
 
 
@@ -170,38 +201,15 @@ def valid_names(group, names):
     return len(names) == 1 and names[0].endswith(suffix)
 
 
-def gitea_upload(release_id, path):
-    boundary = f"logisim-{uuid.uuid4().hex}"
-    start = (
-        f"--{boundary}\r\nContent-Disposition: form-data; "
-        f' name="attachment"; filename="{path.name}"\r\n'
-        "Content-Type: application/octet-stream\r\n\r\n"
-    ).encode()
-    body = start + path.read_bytes() + f"\r\n--{boundary}--\r\n".encode()
-    api = os.environ["GITEA_API_URL"].rstrip("/")
-    repo = os.environ["GITEA_REPOSITORY"]
-    request = urllib.request.Request(
-        f"{api}/repos/{repo}/releases/{release_id}/assets",
-        data=body,
-        headers={
-            "Authorization": f"token {os.environ['GITEA_TOKEN']}",
-            "Content-Type": f"multipart/form-data; boundary={boundary}",
-        },
-        method="POST",
-    )
-    with urllib.request.urlopen(request, timeout=180) as response:
-        uploaded = json.load(response)
-    if uploaded["name"] != path.name or uploaded["size"] != path.stat().st_size:
-        raise ValueError(f"Gitea attachment verification failed for {path.name}.")
-    print(f"Attached {path.name} ({uploaded['size']} bytes).")
-
-
 def collect():
     tag = os.environ["RELEASE_TAG"]
+    release.prepared_release()
+    _, source_tree = release.source_identity()
+    mirror_sha = snapshot_commit(tag, source_tree)
     deadline = time.monotonic() + 3 * 60 * 60
     last_status = None
     while time.monotonic() < deadline:
-        run = matching_run(tag)
+        run = matching_run(tag, mirror_sha)
         if run and run["status"] == "completed":
             if run["conclusion"] != "success":
                 raise ValueError(f"GitHub build failed: {run['html_url']}")
@@ -236,7 +244,7 @@ def collect():
                         shutil.copyfileobj(source, output)
                     if path.stat().st_size <= 0:
                         raise ValueError(f"Empty release file: {name}")
-                    gitea_upload(os.environ["RELEASE_ID"], path)
+                    release.upload(path)
     print(f"Collected all Windows and macOS files from {run['html_url']}.")
 
 

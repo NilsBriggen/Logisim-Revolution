@@ -895,8 +895,18 @@ tasks.register("genBuildInfo") {
   val gitBranch = if (File("${projectDir}/.git").exists()) providers.exec {
     commandLine("git", "-C", projectDir, "rev-parse", "--abbrev-ref", "HEAD")
   }.standardOutput.asText.map { it.trim() } else providers.provider { "" }
+  val gitTree = if (File("${projectDir}/.git").exists()) providers.exec {
+    commandLine("git", "-C", projectDir, "rev-parse", "HEAD^{tree}")
+  }.standardOutput.asText.map { it.trim() } else providers.provider { "" }
+  // The public mirror has independent snapshot commits. Release builds record the
+  // canonical Gitea commit only when the supplied tree matches this checkout.
+  val releaseSourceSha = providers.environmentVariable("LOGISIM_SOURCE_SHA").orElse("")
+  val releaseSourceTree = providers.environmentVariable("LOGISIM_SOURCE_TREE").orElse("")
   inputs.property("gitRevision", gitRevision)
   inputs.property("gitBranch", gitBranch)
+  inputs.property("gitTree", gitTree)
+  inputs.property("releaseSourceSha", releaseSourceSha)
+  inputs.property("releaseSourceTree", releaseSourceTree)
   outputs.dir(buildInfoDir)
 
   val buildInfoFilePath = "${buildInfoDir}/BuildInfo.java"
@@ -909,16 +919,25 @@ tasks.register("genBuildInfo") {
     val now = Date()
     val nowIso = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ").format(now)
 
-    var branchName = ""
-    var branchLastCommitHash = "";
-    var buildId = "(Not built from Git repo)";
-    if (File("${projectDir}/.git").exists()) {
-      var errMsg = "Failed getting branch name."
-      branchName = func.runCommand(listOf("git", "-C", projectDir, "rev-parse", "--abbrev-ref", "HEAD"), errMsg)
-      errMsg = "Failed getting last commit hash."
-      branchLastCommitHash = func.runCommand(listOf("git", "-C", projectDir, "rev-parse", "--short=8", "HEAD"), errMsg)
-      buildId = "${branchName}/${branchLastCommitHash}"
+    val canonicalSha = releaseSourceSha.get()
+    val canonicalTree = releaseSourceTree.get()
+    val isRelease = canonicalSha.isNotEmpty() || canonicalTree.isNotEmpty()
+    if (isRelease) {
+      require(canonicalSha.matches(Regex("[0-9a-f]{40}")) &&
+          canonicalTree.matches(Regex("[0-9a-f]{40}"))) {
+        "Release provenance requires full LOGISIM_SOURCE_SHA and LOGISIM_SOURCE_TREE values."
+      }
+      require(canonicalTree == gitTree.get()) {
+        "Release source tree does not match the checkout."
+      }
     }
+    val buildCommit = gitRevision.get().takeUnless { it == "source-archive" } ?: ""
+    val sourceCommit = if (isRelease) canonicalSha else buildCommit
+    val sourceTree = gitTree.get()
+    val branchName = if (isRelease) "main" else gitBranch.get()
+    val branchLastCommitHash = sourceCommit.take(8)
+    val buildId = if (sourceCommit.isEmpty()) "(Not built from Git repo)"
+        else "${branchName}/${branchLastCommitHash}"
 
     val currentMillis = Date().time
     val buildYear = SimpleDateFormat("yyyy").format(now)
@@ -938,6 +957,9 @@ tasks.register("genBuildInfo") {
           public static final String branchName = "${branchName}";
           public static final String branchLastCommitHash = "${branchLastCommitHash}";
           public static final String buildId = "${buildId}";
+          public static final String sourceCommit = "${sourceCommit}";
+          public static final String sourceTree = "${sourceTree}";
+          public static final String buildCommit = "${buildCommit}";
 
           // Project build timestamp
           public static final long millis = ${currentMillis}L; // keep trailing 'L'

@@ -3,6 +3,17 @@
 # Changes #
 
 * @dev (????-??-??)
+  * Enforced circuit and component locks in ROM contents, appearance editing and FPGA
+    annotation, including already-open editors and recursive annotation preflight (@NilsBriggen).
+  * Fixed Auto scale readouts and prevented Preferences layout changes from persisting a manual
+    scale; mouse and keyboard choices still snap to quarter steps (@NilsBriggen).
+  * Connected F1 and component-help context menus to the redesigned component picker
+    (@NilsBriggen).
+  * Repaired translated command-line help continuations and a missing Russian format argument,
+    with regression coverage for all twelve language bundles (@NilsBriggen).
+  * Made release retries reuse their prepared draft, pinned hosted builds to immutable mirror
+    snapshots, and embedded the canonical Gitea source identity in every platform build
+    (@NilsBriggen).
   * Fixed the findings of the September 2026 usability audit (`docs/qa/2026-09-24-fresh`).
     Recovered autosaves, redo and unparseable components can no longer lose work silently; the
     timing diagram, RAM redo and several load, merge and export paths no longer crash; the
