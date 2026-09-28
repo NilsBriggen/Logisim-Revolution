@@ -45,7 +45,7 @@
 		</tocitem>
 		<tocitem target="mem_guide" text="Memory components">
             <tocitem target="mem_poke" text="Memory poke" />
-			<tocitem target="mem_hex" text="Editeur hexadécimal" />			
+			<tocitem target="mem_hex" text="Editeur hexadécimal" />
 			<tocitem target="mem_menu" text="Pop-up menus and files" />
 			<tocitem target="mem_filetabel" text="Memory file panel"/>
 			<tocitem target="mem_v2raw" text="File v2raw" />
@@ -130,7 +130,7 @@
 			<!-- <tocitem target="about_gpl_en" text="GNU General Public License (en)"/> -->
 		</tocitem>
 	</tocitem>
-	
+
 	<tocitem target="libs" text="Library Reference">
 		<tocitem target="wiring" text="Wiring library">
 			<tocitem target="wiring_splitter" text="Splitter" image="icon_splitter" />
@@ -216,11 +216,11 @@
 			<tocitem target="io_telnet" text="Telnet" image="icon_telnet" />
 			<tocitem target="io_realtimeclock" text="Real-Time Clock" image="icon_realtimeclock" />
 			<tocitem target="io_matrixkeypad" text="Matrix Keypad" image="icon_matrixkeypad" />
-<!-- not documented 
+<!-- not documented
      		<tocitem target="io_Port_IO" text="Port I/O" image="icon_Port_IO" />
 			<tocitem target="io_Repetar" text="Reptar Local Bus" image="icon_repetar" />
 			<tocitem target="io_videorgb" text="Video RGB" image="icon_videorgb" />
--->	
+-->
 		</tocitem>
 		<tocitem target="ioex" text="Input/Output-Extra">
 			<tocitem target="ioex_switch" text="Switch" image="icon_switch" />
@@ -232,7 +232,7 @@
 			<tocitem target="ioex_twopinled" text="2-Pin LED" image="icon_twopinled" />
 		</tocitem>
 		<tocitem target="ttl" text="TTL library" image="icon_ttl" />
-<!-- not documented 
+<!-- not documented
 		<tocitem target="tcl" text="TCL library">
 			<tocitem target="tcl_reds_console" text="REDS console" image="icon_reds_console" />
 			<tocitem target="tcl_generic" text="Generic" image="icon_generic" />
