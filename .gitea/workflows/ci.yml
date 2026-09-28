@@ -22,6 +22,8 @@ jobs:
           java-version: '21'
       - name: Check workflow policy and release completeness rules
         run: python3 -m unittest discover -s scripts/ci -p 'test_*.py'
+      - name: Check Arch installer release selection and packaging rules
+        run: python3 -B -m unittest discover -s support/arch -p 'test_*.py'
       - name: Install test dependency
         run: |
           if ! command -v xxd >/dev/null; then

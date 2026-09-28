@@ -25,6 +25,7 @@ native targets have built successfully; there may be no Revolution release yet.
 | --- | --- | --- |
 | Debian/Ubuntu, x86_64 or ARM64 | `.deb` | `sudo apt install ./logisim-revolution_*.deb` |
 | Fedora/RHEL, x86_64 or ARM64 | `.rpm` | `sudo dnf install ./logisim-revolution-*.rpm` |
+| Arch Linux / CachyOS, x86_64 or ARM64 | Native binary via the installer below | `python3 scripts/install-arch.py` |
 | Windows x86_64 | `.msi` | Open the installer and follow its prompts. |
 | Windows x86_64, portable | `-windows-amd64.zip` | Extract the whole ZIP, then run `logisim-revolution.exe` inside it. |
 | macOS Intel or Apple Silicon | `.dmg` | Open the disk image and copy Logisim Revolution to Applications. |
@@ -32,6 +33,29 @@ native targets have built successfully; there may be no Revolution release yet.
 These native packages include a Java runtime. The development DMGs are not notarized, so macOS
 may show a security warning on first launch. Snap and Flatpak files are not currently built or
 published for Revolution.
+
+### Arch Linux / CachyOS
+
+Download the standalone installer and run it as your normal user:
+
+```bash
+curl -fLO https://git.briggen.dev/NilsBriggen/Logisim-Revolution/raw/branch/main/scripts/install-arch.py
+python3 install-arch.py
+```
+
+In an existing checkout, use `python3 scripts/install-arch.py` instead. The installer packages
+the newest published release, including development prereleases, for pacman. Java is bundled;
+no source compilation or separate Java setup is needed.
+
+Launch **Logisim Revolution** from your application menu or run `logisim-revolution`.
+Rerun the same installer command to update. Uninstall with:
+
+```bash
+sudo pacman -Rns logisim-revolution-bin
+```
+
+See [Arch installation details](support/arch/README.md) for dependencies, choosing a release,
+building without installing, and package verification.
 
 ### Portable JAR
 

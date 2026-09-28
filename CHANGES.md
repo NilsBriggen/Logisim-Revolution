@@ -3,6 +3,8 @@
 # Changes #
 
 * @dev (????-??-??)
+  * Added a standalone Arch Linux and CachyOS installer that packages published native builds
+    for pacman, including the Java runtime, application menu entry and file icons (@NilsBriggen).
   * Enforced circuit and component locks in ROM contents, appearance editing and FPGA
     annotation, including already-open editors and recursive annotation preflight (@NilsBriggen).
   * Fixed Auto scale readouts and prevented Preferences layout changes from persisting a manual
