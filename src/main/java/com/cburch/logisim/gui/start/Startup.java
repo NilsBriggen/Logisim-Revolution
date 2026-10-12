@@ -88,6 +88,7 @@ public class Startup implements AWTEventListener {
   private boolean templEmpty = false;
   private boolean templPlain = false;
   private String testVector = null;
+  private final List<String> breakConditions = new ArrayList<>();
   private String circuitToTest = null;
   private boolean exitAfterStartup = false;
   private boolean quitAfterParsing = false;
@@ -166,6 +167,7 @@ public class Startup implements AWTEventListener {
   private static final String ARG_TEMPLATE_LONG = "user-template";
   private static final String ARG_VERSION_SHORT = "v";
   private static final String ARG_VERSION_LONG = "version";
+  private static final String ARG_BREAK_LONG = "break";
   private static final String ARG_TEST_VECTOR_SHORT = "w";
   private static final String ARG_TEST_VECTOR_LONG = "test-vector";
   private static final String ARG_NO_SPLASH_LONG = "no-splash";
@@ -318,6 +320,7 @@ public class Startup implements AWTEventListener {
     // Note: you need to create handler for each option. See handler loop below.
     // It is assumed that evey option always has long-form switch. Short forms are optional.
     addOption(opts, "argTtyOption", ARG_TTY_LONG, ARG_TTY_SHORT, 1);
+    addOption(opts, "argBreakOption", ARG_BREAK_LONG, 1);
     addOption(opts, "argTestImplement", ARG_TEST_FGPA_LONG, ARG_TEST_FGPA_SHORT, Option.UNLIMITED_VALUES);  // We can have 3, 4 or 5 arguments here
     addOption(opts, "argFpgaCableOption", ARG_FPGA_CABLE_LONG, 1);
     addOption(opts, "argClearOption", ARG_CLEAR_PREFS_LONG);
@@ -393,6 +396,7 @@ public class Startup implements AWTEventListener {
         case ARG_HELP_LONG -> printHelp(opts);
         case ARG_VERSION_LONG -> printVersion();
         case ARG_TTY_LONG -> handleArgTty(startup, opt);
+        case ARG_BREAK_LONG -> handleArgBreak(startup, opt);
         case ARG_SUBSTITUTE_LONG -> handleArgSubstitute(startup, opt);
         case ARG_LOAD_LONG -> handleArgLoad(startup, opt);
         case ARG_SAVE_LONG -> handleArgSave(startup, opt);
@@ -485,6 +489,16 @@ public class Startup implements AWTEventListener {
      * Handler completed successfully and requested application termination.
      */
     QUIT
+  }
+
+  private static RC handleArgBreak(Startup startup, Option opt) {
+    final var condition = opt.getValue();
+    if (TtyInterface.BreakCondition.parse(condition) == null) {
+      logger.error("{}", S.get("argBreakError", condition));
+      return RC.ERROR;
+    }
+    startup.breakConditions.add(condition);
+    return RC.OK;
   }
 
   private static RC handleArgTty(Startup startup, Option opt) {
@@ -962,6 +976,11 @@ public class Startup implements AWTEventListener {
 
   int getTtyFormat() {
     return ttyFormat;
+  }
+
+  /** The {@code --break} conditions, as given; each was checked to parse. */
+  List<String> getBreakConditions() {
+    return Collections.unmodifiableList(breakConditions);
   }
 
   boolean isFpgaDownload() {

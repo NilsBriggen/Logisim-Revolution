@@ -100,6 +100,18 @@ public class Model implements CircuitListener, SignalInfo.Listener {
       this.nanoTime = nanoTime;
     }
 
+    /**
+     * The sampled value of {@code item}, or null if it was not sampled. Unlike {@link #valueOf}
+     * it caches nothing, so any thread may call it.
+     */
+    Value find(SignalInfo item) {
+      if (item == clock) return clockValue;
+      for (var i = 0; i < items.length; i++) {
+        if (items[i] == item) return values[i];
+      }
+      return null;
+    }
+
     /** The sampled value of {@code item}, or null if it was not being logged at the time. */
     Value valueOf(SignalInfo item, int idx) {
       if (item == clock) return clockValue;
@@ -114,6 +126,7 @@ public class Model implements CircuitListener, SignalInfo.Listener {
 
   final CircuitState circuitState;
   private final LongSupplier nanoTime;
+  private final WatchpointSet watchpoints = new WatchpointSet();
   private final ArrayList<SignalInfo> info = new ArrayList<>();
   private final ArrayList<Signal> signals = new ArrayList<>();
   // Copy of info published for the simulation thread, which samples it (see Sample).
@@ -567,6 +580,10 @@ public class Model implements CircuitListener, SignalInfo.Listener {
 
   void fireSelectionChanged(Event e) {
     for (final var l : listeners) l.selectionChanged(e);
+  }
+
+  public WatchpointSet getWatchpoints() {
+    return watchpoints;
   }
 
   public CircuitState getCircuitState() {

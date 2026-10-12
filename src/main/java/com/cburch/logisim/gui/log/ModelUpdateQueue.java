@@ -57,10 +57,17 @@ final class ModelUpdateQueue {
     this.eventThread = eventThread;
   }
 
-  /** Samples {@code model} now and queues the propagation for the event thread. */
-  void propagationCompleted(Model model, boolean ticked, boolean stepped, boolean propagated) {
-    if (!model.wantsSample(stepped, propagated)) return;
-    post(new Update(model, model.sample(), false, ticked, stepped, propagated));
+  /**
+   * Samples {@code model} now and queues the propagation for the event thread.
+   *
+   * @return the sample taken, or null if the propagation is not recorded
+   */
+  Model.Sample propagationCompleted(
+      Model model, boolean ticked, boolean stepped, boolean propagated) {
+    if (!model.wantsSample(stepped, propagated)) return null;
+    final var sample = model.sample();
+    post(new Update(model, sample, false, ticked, stepped, propagated));
+    return sample;
   }
 
   /** Samples {@code model} now and queues a reset for the event thread. */

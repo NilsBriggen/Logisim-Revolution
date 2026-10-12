@@ -3,6 +3,9 @@
 # Changes #
 
 * @dev (????-??-??)
+  * Added watchpoints: a Watchpoints tab in the timing diagram window pauses the simulation clock
+    when a logged signal equals or differs from a value, rises, falls or changes, and
+    `--tty` runs accept `--break <label>=<value>` to stop at a pin value (@NilsBriggen).
   * Added Value Change Dump (`.vcd`) export to the timing diagram, for viewers such as GTKWave
     (@NilsBriggen).
   * Added an Assertion component (Wiring library) that pauses the simulation clock or logs when

@@ -38,6 +38,7 @@ import java.io.Reader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -381,14 +382,16 @@ public class TtyInterface {
       prop.propagate(); // propagate memory values before running simulation.
     }
 
-    if (haltPin == null && (format & FORMAT_TTY) == 0) {
+    final var breaks = resolveBreaks(args.getBreakConditions(), pinNames);
+    if (breaks == null) return EXIT_FAILURE;
+    if (haltPin == null && breaks.isEmpty() && (format & FORMAT_TTY) == 0) {
       // Without a halt pin only an interactive TTY session has a way to end (interrupting it).
       logger.error("{}", S.get("ttyNoHaltPinError"));
       return EXIT_FAILURE;
     }
 
     final var ttyFormat = args.getTtyFormat();
-    final var simCode = runSimulation(circState, outputPins, haltPin, ttyFormat);
+    final var simCode = runSimulation(circState, outputPins, haltPin, breaks, ttyFormat);
     return finishSimulation(circState, args.getSaveFile(), simCode);
   }
 
@@ -524,6 +527,76 @@ public class TtyInterface {
   }
 
   /**
+   * A {@code --break} condition: stop the simulation once the pin labelled {@code label} equals
+   * (or, with {@code !=}, differs from) {@code value}.
+   */
+  record BreakCondition(String label, boolean equal, long value) {
+    /** Parses {@code label=value}, {@code label==value} or {@code label!=value}; null if invalid. */
+    static BreakCondition parse(String text) {
+      if (text == null) return null;
+      final var notEqual = text.indexOf("!=");
+      final var equal = text.indexOf('=');
+      if (equal <= 0) return null;
+      final var opStart = notEqual >= 0 && notEqual < equal ? notEqual : equal;
+      final var label = text.substring(0, opStart).trim();
+      var rest = text.substring(equal + 1);
+      if (notEqual < 0 && rest.startsWith("=")) rest = rest.substring(1);
+      final var number = parseNumber(rest.trim());
+      if (label.isEmpty() || number == null) return null;
+      return new BreakCondition(label, notEqual < 0 || notEqual > equal, number);
+    }
+
+    private static Long parseNumber(String text) {
+      final var t = text.replace("_", "").toLowerCase();
+      try {
+        if (t.startsWith("0x")) return Long.parseUnsignedLong(t.substring(2), 16);
+        if (t.startsWith("0b")) return Long.parseUnsignedLong(t.substring(2), 2);
+        return Long.parseLong(t);
+      } catch (NumberFormatException e) {
+        return null;
+      }
+    }
+
+    boolean holds(Value v) {
+      if (!v.isFullyDefined()) return !equal;
+      final var width = v.getWidth();
+      final var mask = width >= 64 ? -1L : (1L << width) - 1;
+      final var same = (v.toLongValue() & mask) == (value & mask);
+      return same == equal;
+    }
+
+    @Override
+    public String toString() {
+      return label + (equal ? "=" : "!=") + value;
+    }
+  }
+
+  /** A break condition resolved to the pin it watches. */
+  record PinBreak(BreakCondition condition, Instance pin) {}
+
+  /**
+   * Resolves break conditions to pins by label.
+   *
+   * @return the resolved conditions, or null (after logging) if a label names no pin
+   */
+  static List<PinBreak> resolveBreaks(List<String> conditions, Map<Instance, String> pinNames) {
+    final var resolved = new ArrayList<PinBreak>();
+    for (final var text : conditions) {
+      final var condition = BreakCondition.parse(text);
+      Instance pin = null;
+      for (final var entry : pinNames.entrySet()) {
+        if (condition != null && entry.getValue().equals(condition.label())) pin = entry.getKey();
+      }
+      if (pin == null) {
+        logger.error("{}", S.get("ttyBreakPinError", text));
+        return null;
+      }
+      resolved.add(new PinBreak(condition, pin));
+    }
+    return resolved;
+  }
+
+  /**
    * Prints the faults (failed assertions, hit watchpoints) reported since the last call.
    *
    * @return whether any were reported
@@ -538,6 +611,15 @@ public class TtyInterface {
 
   static int runSimulation(
       CircuitState circState, ArrayList<Instance> outputPins, Instance haltPin, int format) {
+    return runSimulation(circState, outputPins, haltPin, List.of(), format);
+  }
+
+  static int runSimulation(
+      CircuitState circState,
+      ArrayList<Instance> outputPins,
+      Instance haltPin,
+      List<PinBreak> breaks,
+      int format) {
     final var showTable = (format & FORMAT_TABLE) != 0;
     final var showSpeed = (format & FORMAT_SPEED) != 0;
     final var showTty = (format & FORMAT_TTY) != 0;
@@ -565,6 +647,7 @@ public class TtyInterface {
     final var start = System.currentTimeMillis();
     var halted = false;
     var faulted = false;
+    BreakCondition brokeAt = null;
     ArrayList<Value> prevOutputs = null;
     final var prop = circState.getPropagator();
     while (true) {
@@ -587,6 +670,17 @@ public class TtyInterface {
       }
 
       if (halted) {
+        retCode = EXIT_SUCCESS;
+        break;
+      }
+      for (final var pinBreak : breaks) {
+        final var pinState = circState.getReusableInstanceState(pinBreak.pin());
+        if (pinBreak.condition().holds(Pin.FACTORY.getValue(pinState))) {
+          brokeAt = pinBreak.condition();
+          break;
+        }
+      }
+      if (brokeAt != null) {
         retCode = EXIT_SUCCESS;
         break;
       }
@@ -617,6 +711,9 @@ public class TtyInterface {
       logger.error("{}", S.get("ttyHaltReasonFault"));
     } else if (retCode == EXIT_OSCILLATION) {
       logger.error("{}", S.get("ttyHaltReasonOscillation"));
+    } else if (brokeAt != null) {
+      // Asked for explicitly, so always reported.
+      logger.info("{}", S.get("ttyHaltReasonBreak", brokeAt.toString(), tickCount));
     } else if (showHalt) {
       // A normal end is information, not an error.
       logger.info("{}", S.get("ttyHaltReasonPin"));
