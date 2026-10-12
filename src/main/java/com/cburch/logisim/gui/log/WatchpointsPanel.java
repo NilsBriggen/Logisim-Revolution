@@ -12,6 +12,7 @@ package com.cburch.logisim.gui.log;
 import static com.cburch.logisim.gui.Strings.S;
 
 import com.cburch.logisim.gui.generic.OptionPane;
+import com.cburch.logisim.util.UiScale;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.util.List;
@@ -180,6 +181,15 @@ class WatchpointsPanel extends LogPanel {
     valueField.setToolTipText(S.get("watchValueTip"));
     conditionBox.repaint();
     tableModel.fireTableStructureChanged();
+    sizeColumns();
+  }
+
+  /** The check box and the hit count need little room; the condition takes the rest. */
+  private void sizeColumns() {
+    final var columns = table.getColumnModel();
+    if (columns.getColumnCount() < 3) return;
+    columns.getColumn(0).setMaxWidth(UiScale.scaled(48));
+    columns.getColumn(2).setMaxWidth(UiScale.scaled(72));
   }
 
   @Override
