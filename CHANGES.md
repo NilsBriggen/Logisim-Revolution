@@ -3,6 +3,8 @@
 # Changes #
 
 * @dev (????-??-??)
+  * Added Value Change Dump (`.vcd`) export to the timing diagram, for viewers such as GTKWave
+    (@NilsBriggen).
   * Added an Assertion component (Wiring library) that pauses the simulation clock or logs when
     its condition goes low; failed assertions also fail test-vector rows and end `--tty` runs
     with exit code 1 (@NilsBriggen).
