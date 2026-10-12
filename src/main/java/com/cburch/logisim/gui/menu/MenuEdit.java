@@ -12,6 +12,7 @@ package com.cburch.logisim.gui.menu;
 import static com.cburch.logisim.gui.Strings.S;
 
 import com.cburch.logisim.gui.generic.OptionPane;
+import com.cburch.logisim.gui.main.FindReplaceLabelsDialog;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.prefs.PrefMonitor;
 import com.cburch.logisim.prefs.PrefMonitorKeyStroke;
@@ -49,6 +50,7 @@ class MenuEdit extends Menu {
   private final MenuItemImpl addCtrl = new MenuItemImpl(this, LogisimMenuBar.ADD_CONTROL);
   private final MenuItemImpl remCtrl = new MenuItemImpl(this, LogisimMenuBar.REMOVE_CONTROL);
   private final JMenu arrange = new JMenu();
+  private final JMenuItem replaceLabels = new JMenuItem();
   private final MenuItemImpl[] arrangeItems = new MenuItemImpl[LogisimMenuBar.ARRANGE_ITEMS.length];
   // Undo/Redo of a window with no project but a history of its own (such as the hex editor).
   private final MenuItemImpl windowUndo = new MenuItemImpl(this, LogisimMenuBar.UNDO);
@@ -104,6 +106,15 @@ class MenuEdit extends Menu {
 
     final var proj = menubar.getSaveProject();
     if (proj != null) {
+      addSeparator();
+      add(replaceLabels);
+      replaceLabels.addActionListener(
+          e -> {
+            final var current = menubar.getSaveProject();
+            if (current != null && current.getFrame() != null) {
+              FindReplaceLabelsDialog.show(current);
+            }
+          });
       proj.addProjectListener(myListener);
       undo.addActionListener(myListener);
       redo.addActionListener(myListener);
@@ -257,6 +268,7 @@ class MenuEdit extends Menu {
     addCtrl.setText(S.get("editAddControlItem"));
     remCtrl.setText(S.get("editRemoveControlItem"));
     arrange.setText(S.get("editArrangeMenu"));
+    replaceLabels.setText(S.get("editReplaceLabelsItem"));
     for (var i = 0; i < arrangeItems.length; i++) {
       arrangeItems[i].setText(LogisimMenuBar.arrangeItemText(LogisimMenuBar.ARRANGE_ITEMS[i]));
     }

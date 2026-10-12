@@ -3,6 +3,8 @@
 # Changes #
 
 * @dev (????-??-??)
+  * Added Edit > Replace in Labels to rename labels across a circuit or the whole project, with a
+    preview, optional regular expressions and one undo step (@NilsBriggen).
   * Double-clicking a wire with the Select tool selects its whole net, following tunnels with the
     same label (@NilsBriggen).
   * Added Rotate Clockwise/Counterclockwise and Flip Horizontally/Vertically to Edit > Arrange
