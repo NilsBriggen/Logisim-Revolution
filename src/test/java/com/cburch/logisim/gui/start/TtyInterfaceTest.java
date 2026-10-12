@@ -144,6 +144,16 @@ public class TtyInterfaceTest {
     assertTrue(err.contains(S.get("ttyTableOscillationError")), err);
   }
 
+  @Test
+  void failedAssertionFailsTheTruthTable() throws IOException {
+    final var args = startupFor(writeCircuit("assert.circ", ASSERTED_WIRE), TtyInterface.FORMAT_TABLE);
+
+    final var err = captureStderr(() -> assertEquals(TtyInterface.EXIT_FAULT, TtyInterface.run(args)));
+
+    assertTrue(err.contains(S.get("ttyHaltReasonFault")), err);
+    assertTrue(err.contains("a must be high"), err);
+  }
+
   /** {@code 1 << 31} is negative, so a wider table used to print nothing and succeed. */
   @Test
   void truthTableWithTooManyInputBitsFails() throws IOException {
@@ -295,6 +305,24 @@ public class TtyInterfaceTest {
             <a name="label" val="y"/>
           </comp>
           <wire from="(100,100)" to="(170,100)"/>
+          <wire from="(200,100)" to="(300,100)"/>
+      """;
+
+  /** Input a straight to output y, with an assertion that a is high: the a = 0 row fails. */
+  private static final String ASSERTED_WIRE =
+      """
+          <comp lib="0" loc="(100,100)" name="Pin">
+            <a name="label" val="a"/>
+          </comp>
+          <comp lib="0" loc="(200,100)" name="Assertion">
+            <a name="message" val="a must be high"/>
+          </comp>
+          <comp lib="0" loc="(300,100)" name="Pin">
+            <a name="facing" val="west"/>
+            <a name="output" val="true"/>
+            <a name="label" val="y"/>
+          </comp>
+          <wire from="(100,100)" to="(200,100)"/>
           <wire from="(200,100)" to="(300,100)"/>
       """;
 

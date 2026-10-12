@@ -75,6 +75,17 @@ public class Simulator {
     public void simulatorStateChanged(Event e);
   }
 
+  /** Notified of faults (failed assertions, hit watchpoints) raised during propagation. */
+  public static interface FaultListener {
+    /**
+     * Notify listeners that a fault was reported. Called by the simulation thread, after the
+     * propagation that raised it completed.
+     *
+     * @param reason the reported fault
+     */
+    public void faultReported(PauseReason reason);
+  }
+
   public static interface Listener extends StatusListener {
     /**
      * Notify listeners that a propagation has completed.
@@ -161,6 +172,10 @@ public class Simulator {
     private volatile boolean exceptionEncountered = false;
     private volatile String exceptionMessage = null;
     private volatile boolean oscillating = false;
+
+    // Set by the simulation thread when a fault (failed assertion, hit watchpoint) paused the
+    // clock; cleared on reset and when ticking is started again.
+    private volatile PauseReason pauseReason = null;
 
     // This last one should be made thread-safe, but it isn't for now.
     private final PropagationPoints stepPoints = new PropagationPoints();
@@ -289,6 +304,7 @@ public class Simulator {
         }
         autoTicking = value;
         autoTickingUnsynchronized = value;
+        if (value) pauseReason = null;
         if (Thread.currentThread() != this) {
           simStateUpdated.signalAll();
         }
@@ -347,6 +363,7 @@ public class Simulator {
       simStateLock.lock();
       try {
         resetRequested = true;
+        pauseReason = null;
         manualTicksRequested = 0;
         manualStepsRequested = 0;
         if (Thread.currentThread() != this) {
@@ -383,6 +400,30 @@ public class Simulator {
         if (Thread.currentThread() != this) {
           simStateUpdated.signalAll();
         }
+      } finally {
+        simStateLock.unlock();
+      }
+    }
+
+    /**
+     * Stops the clock and any queued ticks or steps, recording why. Signals already in flight still
+     * settle, so the circuit shows the values that caused the pause.
+     *
+     * @return whether the run state changed (the clock was running or work was queued)
+     */
+    boolean requestPause(PauseReason reason) {
+      simStateLock.lock();
+      try {
+        pauseReason = reason;
+        final var changed = autoTicking || manualTicksRequested > 0 || manualStepsRequested > 0;
+        autoTicking = false;
+        autoTickingUnsynchronized = false;
+        manualTicksRequested = 0;
+        manualStepsRequested = 0;
+        if (Thread.currentThread() != this) {
+          simStateUpdated.signalAll();
+        }
+        return changed;
       } finally {
         simStateLock.unlock();
       }
@@ -579,7 +620,19 @@ public class Simulator {
 
       osc = prop != null && prop.isOscillating();
 
+      PauseReason pause = null;
+      if (prop != null) {
+        for (final var fault : prop.drainFaults()) {
+          sim.fireFaultReported(fault);
+          if (pause == null && fault.pausesSimulation()) pause = fault;
+        }
+      }
+
       var stateChanged = false;
+      if (pause != null) {
+        requestPause(pause);
+        stateChanged = true;
+      }
       exceptionEncountered = oops;
       oscillating = osc;
       simStateLock.lock();
@@ -663,6 +716,7 @@ public class Simulator {
   // methods, but the gui thread can call add/removeSimulatorListener() at any
   // time.
   private final ArrayList<StatusListener> statusListeners = new ArrayList<>();
+  private final ArrayList<FaultListener> faultListeners = new ArrayList<>();
   private ArrayList<Listener> activityListeners = new ArrayList<>();
   private volatile ProgressListener progressListener = null;
   private final Object lock = new Object();
@@ -727,6 +781,29 @@ public class Simulator {
       synchronized (lock) {
         statusListeners.remove(listener);
       }
+    }
+  }
+
+  public void addFaultListener(FaultListener listener) {
+    synchronized (lock) {
+      faultListeners.add(listener);
+    }
+  }
+
+  public void removeFaultListener(FaultListener listener) {
+    synchronized (lock) {
+      faultListeners.remove(listener);
+    }
+  }
+
+  // called from simThread
+  private void fireFaultReported(PauseReason reason) {
+    final ArrayList<FaultListener> copy;
+    synchronized (lock) {
+      copy = new ArrayList<>(faultListeners);
+    }
+    for (final var listener : copy) {
+      listener.faultReported(reason);
     }
   }
 
@@ -819,6 +896,20 @@ public class Simulator {
 
   public boolean isOscillating() {
     return simThread.oscillating;
+  }
+
+  /** Returns why the clock was last paused by a fault, or null if it was not (or was restarted). */
+  public PauseReason getPauseReason() {
+    return simThread.pauseReason;
+  }
+
+  /**
+   * Stops the clock and records why, as a failed assertion or a hit watchpoint does. Safe to call
+   * from any thread.
+   */
+  public void requestPause(PauseReason reason) {
+    simThread.requestPause(reason);
+    fireSimulatorStateChanged();
   }
 
   public CircuitState getCircuitState() {

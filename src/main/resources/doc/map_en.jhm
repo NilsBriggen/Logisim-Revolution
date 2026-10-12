@@ -132,6 +132,7 @@
 	<mapID target="wiring_splitter"     url="en/html/libs/wiring/splitter.html" />
 	<mapID target="wiring_pin"          url="en/html/libs/wiring/pin.html" />
 	<mapID target="wiring_probe"        url="en/html/libs/wiring/probe.html" />
+	<mapID target="wiring_assertion"    url="en/html/libs/wiring/assertion.html" />
 	<mapID target="wiring_tunnel"       url="en/html/libs/wiring/tunnel.html" />
 	<mapID target="wiring_pull"         url="en/html/libs/wiring/pull.html" />
 	<mapID target="wiring_clock"        url="en/html/libs/wiring/clock.html" />

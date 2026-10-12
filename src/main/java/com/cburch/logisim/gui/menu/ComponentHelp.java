@@ -105,6 +105,7 @@ public final class ComponentHelp {
           Map.entry("Splitter", "wiring_splitter"),
           Map.entry("Pin", "wiring_pin"),
           Map.entry("Probe", "wiring_probe"),
+          Map.entry("Assertion", "wiring_assertion"),
           Map.entry("Tunnel", "wiring_tunnel"),
           Map.entry("Pull Resistor", "wiring_pull"),
           Map.entry("Clock", "wiring_clock"),

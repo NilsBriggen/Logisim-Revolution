@@ -14,6 +14,7 @@ import com.cburch.logisim.data.AttributeSet;
 import com.cburch.logisim.data.Value;
 import com.cburch.logisim.circuit.Circuit;
 import com.cburch.logisim.circuit.CircuitState;
+import com.cburch.logisim.circuit.PauseReason;
 import com.cburch.logisim.proj.Project;
 
 public interface InstanceState {
@@ -46,4 +47,10 @@ public interface InstanceState {
   void setData(InstanceData value);
 
   void setPort(int portIndex, Value value, int delay);
+
+  /**
+   * Reports a fault, such as a failed assertion, to be acted on once the current propagation
+   * completes. States that do not simulate (painting) ignore it.
+   */
+  default void reportFault(PauseReason reason) {}
 }

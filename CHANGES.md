@@ -3,6 +3,9 @@
 # Changes #
 
 * @dev (????-??-??)
+  * Added an Assertion component (Wiring library) that pauses the simulation clock or logs when
+    its condition goes low; failed assertions also fail test-vector rows and end `--tty` runs
+    with exit code 1 (@NilsBriggen).
   * Added a standalone Arch Linux and CachyOS installer that packages published native builds
     for pacman, including the Java runtime, application menu entry and file icons (@NilsBriggen).
   * Enforced circuit and component locks in ROM contents, appearance editing and FPGA

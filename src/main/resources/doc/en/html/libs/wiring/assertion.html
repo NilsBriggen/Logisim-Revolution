@@ -1,0 +1,116 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html lang="en">
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="content-type" content="text/html; charset=utf-8">
+    <meta http-equiv="Content-Language" content="en">
+    <title>
+      Assertion
+    </title>
+    <link rel="stylesheet" type="text/css" href="../../style.css">
+  </head>
+  <body>
+    <div class="maindiv">
+      <h1>
+        <em>Assertion</em>
+      </h1>
+      <table>
+        <tbody>
+          <tr>
+            <td>
+              <strong>Library:</strong>
+            </td>
+            <td>
+              <a href="index.html">Wiring</a>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <h2>
+        Behavior
+      </h2>
+      <p>
+        An assertion checks a condition while the circuit simulates. It fails whenever its
+        <b>condition</b> input is 0 while its <b>enable</b> input is 1 or left unconnected. When
+        <b class="propertie">Fail on Undefined Input</b> is set, a condition that is not a defined
+        0 or 1 (floating or an error) fails as well. The body turns red while the assertion is
+        failing.
+      </p>
+      <p>
+        A failure is reported once, when the assertion starts failing. Depending on
+        <b class="propertie">On Failure</b> it either pauses the simulation clock and shows the
+        message on the canvas and in the status bar, or is only logged. Either way, a failed
+        assertion fails the row it happens in when <a href="../../guide/verify/index.html">test
+        vectors</a> run, and it ends a command-line <code>--tty</code> run with exit code 1.
+      </p>
+      <p>
+        The assertion is a simulation aid only: it is left out of generated VHDL and Verilog.
+      </p>
+      <h2>
+        Pins
+      </h2>
+      <div class="attliste">
+      <dl>
+        <dt>
+          On the facing side (input, bit width 1)
+        </dt>
+        <dd>
+          The condition. The assertion fails while this is 0.
+        </dd>
+        <dt>
+          On the side a quarter turn clockwise (input, bit width 1)
+        </dt>
+        <dd>
+          Enable. The condition is checked only while this is 1 or unconnected.
+        </dd>
+      </dl>
+      </div>
+      <h2>
+        Attributes
+      </h2>
+      <div class="attliste">
+      <dl>
+        <dt>
+          <b class="propertie">Facing</b>
+        </dt>
+        <dd>
+          The side of the component where the condition input is.
+        </dd>
+        <dt>
+          <b class="propertie">Message</b>
+        </dt>
+        <dd>
+          The text reported when the assertion fails.
+        </dd>
+        <dt>
+          <b class="propertie">On Failure</b>
+        </dt>
+        <dd>
+          <em>Pause Simulation</em> stops the clock; <em>Log Only</em> keeps it running.
+        </dd>
+        <dt>
+          <b class="propertie">Fail on Undefined Input</b>
+        </dt>
+        <dd>
+          Whether a floating or error condition counts as a failure.
+        </dd>
+        <dt>
+          <b class="propertie">Label</b>, <b class="propertie">Label Font</b>
+        </dt>
+        <dd>
+          The label shown next to the component, also included in the failure message.
+        </dd>
+      </dl>
+      </div>
+      <h2>
+        Poke Tool Behavior
+      </h2>
+      <p>
+        None.
+      </p>
+      <p>
+        <b>Back to</b> <a href="../index.html">Library Reference</a>
+      </p>
+    </div>
+  </body>
+</html>

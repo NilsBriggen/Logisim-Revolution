@@ -214,6 +214,10 @@ public class TestPanel extends JPanel implements ValueTable.Model, Simulator.Lis
         if (err != null) { // err instanceof FailException failEx) {
           failed = true;
           for (final var e : err) {
+            if (e.isFault()) {
+              rowmsg = rowmsg == null ? e.columnName() : rowmsg + "; " + e.columnName();
+              continue;
+            }
             var col = e.column();
             msg[col] = S.get("expectedValueMessage", e.expected().toDisplayString(getColumnValueRadix(pinColumnStart + col)));
             altdata[col] = e.computed();

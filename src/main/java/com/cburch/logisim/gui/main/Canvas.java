@@ -194,10 +194,13 @@ public class Canvas extends JPanel implements LocaleListener, CanvasPaneContents
     final var simulator = proj.getSimulator();
     // An oscillation stops the simulation too, and the step counts it left behind ("no signals
     // changed") read as if nothing were wrong. Say why it stopped and what to do next instead.
+    final var pause = simulator.getPauseReason();
     frame.setStatusSimulationState(
         simulator.isOscillating()
             ? S.get("statusOscillationStopped")
-            : simulator.isAutoPropagating() ? "" : simulator.getSingleStepMessage());
+            : pause != null
+                ? S.get("statusPausedByFault", pause.message())
+                : simulator.isAutoPropagating() ? "" : simulator.getSingleStepMessage());
   }
 
   public static void snapToGrid(final MouseEvent e) {
@@ -1460,6 +1463,12 @@ public class Canvas extends JPanel implements LocaleListener, CanvasPaneContents
                 exceptionMessage == null || exceptionMessage.isBlank()
                     ? S.get("canvasExceptionError")
                     : exceptionMessage);
+      }
+
+      final var pause = proj.getSimulator().getPauseReason();
+      if (pause != null) {
+        g.setColor(Value.errorColor());
+        msgY = paintString(g, msgY, S.get("statusPausedByFault", pause.message()));
       }
 
       // Oscillation and width errors are reported by the problems pill over the canvas, which can

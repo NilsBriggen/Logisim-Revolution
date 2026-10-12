@@ -16,6 +16,7 @@ import com.cburch.logisim.analyze.model.Var;
 import com.cburch.logisim.circuit.Analyze;
 import com.cburch.logisim.circuit.Circuit;
 import com.cburch.logisim.circuit.CircuitState;
+import com.cburch.logisim.circuit.Propagator;
 import com.cburch.logisim.data.Value;
 import com.cburch.logisim.file.FileStatistics;
 import com.cburch.logisim.file.LogisimFile;
@@ -58,6 +59,7 @@ public class TtyInterface {
   static final int EXIT_SUCCESS = ExitCode.SUCCESS;
   static final int EXIT_FAILURE = ExitCode.FAILURE;
   static final int EXIT_OSCILLATION = ExitCode.SIMULATION_FAILED;
+  static final int EXIT_FAULT = ExitCode.SIMULATION_FAILED;
   static final int EXIT_LOAD_ERROR = ExitCode.LOAD_ERROR;
 
   /** Largest number of input bits a truth table can enumerate (its row count must fit an int). */
@@ -462,6 +464,7 @@ public class TtyInterface {
     final var rowCount = 1 << inputCount;
 
     var oscillated = false;
+    var faulted = false;
     var needTableHeader = true;
     final var valueMap = new HashMap<Instance, Value>();
     for (var i = 0; i < rowCount; i++) {
@@ -490,6 +493,7 @@ public class TtyInterface {
 
 
       oscillated |= prop.isOscillating();
+      faulted |= reportFaults(prop);
       for (final var pin : outputPins) {
         if (prop.isOscillating()) {
           final var width = pin.getAttributeValue(StdAttr.WIDTH);
@@ -512,7 +516,24 @@ public class TtyInterface {
       logger.error("{}", S.get("ttyTableOscillationError"));
       return EXIT_OSCILLATION;
     }
+    if (faulted) {
+      logger.error("{}", S.get("ttyHaltReasonFault"));
+      return EXIT_FAULT;
+    }
     return EXIT_SUCCESS;
+  }
+
+  /**
+   * Prints the faults (failed assertions, hit watchpoints) reported since the last call.
+   *
+   * @return whether any were reported
+   */
+  static boolean reportFaults(Propagator prop) {
+    final var faults = prop.drainFaults();
+    for (final var fault : faults) {
+      logger.error("{}", S.get("ttyFaultReported", fault.tick(), fault.message()));
+    }
+    return !faults.isEmpty();
   }
 
   static int runSimulation(
@@ -543,6 +564,7 @@ public class TtyInterface {
     long tickCount = 0;
     final var start = System.currentTimeMillis();
     var halted = false;
+    var faulted = false;
     ArrayList<Value> prevOutputs = null;
     final var prop = circState.getPropagator();
     while (true) {
@@ -572,6 +594,11 @@ public class TtyInterface {
         retCode = EXIT_OSCILLATION;
         break;
       }
+      if (reportFaults(prop)) {
+        faulted = true;
+        retCode = EXIT_FAULT;
+        break;
+      }
       if (keyboardStates != null) {
         final var buffer = stdinThread.getBuffer();
         if (buffer != null) {
@@ -586,7 +613,9 @@ public class TtyInterface {
     }
     final var elapse = System.currentTimeMillis() - start;
     if (showTty) ensureLineTerminated();
-    if (retCode == EXIT_OSCILLATION) {
+    if (faulted) {
+      logger.error("{}", S.get("ttyHaltReasonFault"));
+    } else if (retCode == EXIT_OSCILLATION) {
       logger.error("{}", S.get("ttyHaltReasonOscillation"));
     } else if (showHalt) {
       // A normal end is information, not an error.

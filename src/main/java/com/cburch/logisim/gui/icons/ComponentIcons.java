@@ -33,7 +33,7 @@ import javax.swing.Icon;
  */
 public final class ComponentIcons {
   private enum Shape {
-    CLOCK, RESET, PROBE, TUNNEL, CONSTANT, POWER, GROUND, DISCONNECTED, TRANSISTOR,
+    CLOCK, RESET, PROBE, ASSERTION, TUNNEL, CONSTANT, POWER, GROUND, DISCONNECTED, TRANSISTOR,
     TRANSMISSION, EXTENDER, MUX, DEMUX, DECODER, ENCODER, SELECTOR, PLA, ARITHMETIC,
     FLIP_FLOP, REGISTER, COUNTER, SHIFT, RANDOM, RAM, ROM, DUAL_RAM, BUTTON, SWITCH,
     JOYSTICK, KEYBOARD, LED, LED_BAR, RGB_LED, SEGMENT, HEX, MATRIX, TERMINAL, PORT,
@@ -61,6 +61,7 @@ public final class ComponentIcons {
     add(icons, "wiring", "Clock", Shape.CLOCK);
     add(icons, "wiring", "PowerOnReset", Shape.RESET);
     add(icons, "wiring", "Probe", Shape.PROBE);
+    add(icons, "wiring", "Assertion", Shape.ASSERTION);
     add(icons, "wiring", "Tunnel", Shape.TUNNEL);
     add(icons, "wiring", "Constant", Shape.CONSTANT);
     add(icons, "wiring", "Power", Shape.POWER);
@@ -209,6 +210,12 @@ public final class ComponentIcons {
           line(g, 1, 12, 6, 12);
           line(g, 6, 6, 19, 6, 23, 12, 19, 18, 6, 18, 6, 6);
           text(g, "01", 14, 12, 8);
+        }
+        case ASSERTION -> {
+          line(g, 1, 12, 6, 12);
+          line(g, 6, 5, 20, 5, 20, 19, 6, 19, 6, 5);
+          line(g, 13, 8, 13, 13);
+          line(g, 13, 15.5, 13, 17);
         }
         case TUNNEL -> {
           line(g, 1, 12, 7, 12);
