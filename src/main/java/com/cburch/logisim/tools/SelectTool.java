@@ -13,7 +13,9 @@ import static com.cburch.logisim.tools.Strings.S;
 
 import com.cburch.logisim.LogisimVersion;
 import com.cburch.logisim.circuit.EditLockedException;
+import com.cburch.logisim.circuit.NetSelection;
 import com.cburch.logisim.circuit.ReplacementMap;
+import com.cburch.logisim.circuit.Wire;
 import com.cburch.logisim.comp.Component;
 import com.cburch.logisim.comp.ComponentDrawContext;
 import com.cburch.logisim.data.AttributeSet;
@@ -597,6 +599,13 @@ public class SelectTool extends Tool {
     }
     if (e.getClickCount() >= 2) {
       final var comps = canvas.getProject().getSelection().getComponents();
+      if (comps.size() == 1 && comps.iterator().next() instanceof Wire wire) {
+        // Double-clicking a wire selects its whole net, through same-named tunnels too.
+        final var sel = canvas.getProject().getSelection();
+        sel.addAll(NetSelection.netOf(canvas.getCircuit(), wire));
+        canvas.getProject().repaintCanvas();
+        return;
+      }
       if (comps.size() == 1) {
         for (final var comp : comps) {
           if (comp.getAttributeSet().containsAttribute(StdAttr.LABEL)) {

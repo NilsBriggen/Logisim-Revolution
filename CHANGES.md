@@ -3,6 +3,8 @@
 # Changes #
 
 * @dev (????-??-??)
+  * Double-clicking a wire with the Select tool selects its whole net, following tunnels with the
+    same label (@NilsBriggen).
   * Added Rotate Clockwise/Counterclockwise and Flip Horizontally/Vertically to Edit > Arrange
     and the canvas context menu; they turn the whole selection, wires included (@NilsBriggen).
   * Added the TTL 7490 decade counter, 74148 priority encoder, 74154 4-to-16 decoder, 74280
