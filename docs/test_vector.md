@@ -240,6 +240,23 @@ The command will:
 4. Print results showing passed and failed tests
 5. Exit with status code 0 on success, non-zero on failure
 
+### Running several vectors and writing reports
+
+`--test-vector` may be repeated to run several vector files against the project; the exit
+code is that of the worst run. A manifest lists the runs instead, one `circuit,vector_file`
+per line (blank lines and `#` comments are ignored; relative paths are relative to the
+manifest):
+
+```bash
+java -jar logisim-evolution.jar --test-manifest tests.txt --report junit results.xml Computer.circ
+```
+
+`--report <format> <file>` also writes the results as `junit` (JUnit XML, one test case per
+vector row), `tap` (TAP version 13) or `json`, so CI systems and graders can read them.
+
+A failed [Assertion](../src/main/resources/doc/en/html/libs/wiring/assertion.html) component
+fails the vector row in which it fails.
+
 ## Backward Compatibility
 
 All existing test vector files continue to work without modification. The new features are optional:

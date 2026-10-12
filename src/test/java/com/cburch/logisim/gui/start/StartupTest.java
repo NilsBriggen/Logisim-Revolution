@@ -177,6 +177,45 @@ class StartupTest {
   }
 
   @Test
+  void repeatedTestVectorsRunAllAndWriteAReport(@TempDir File dir) throws IOException {
+    final var circuit = writeInverter(dir, "inv.circ", "");
+    final var passing = new File(dir, "pass.txt");
+    Files.writeString(passing.toPath(), "a y\n0 1\n1 0\n");
+    final var failing = new File(dir, "fail.txt");
+    Files.writeString(failing.toPath(), "a y\n0 1\n1 1\n");
+    final var report = new File(dir, "report.xml");
+
+    assertEquals(
+        ExitCode.SIMULATION_FAILED,
+        runBatch(
+            "--test-vector", "main", passing.getPath(),
+            "--test-vector", "main", failing.getPath(),
+            "--report", "junit", report.getPath(),
+            circuit.getPath()));
+    final var xml = Files.readString(report.toPath());
+    assertTrue(xml.contains("<testsuites tests=\"4\" failures=\"1\" errors=\"0\">"), xml);
+    assertTrue(xml.contains("name=\"row 2\">"), xml);
+  }
+
+  @Test
+  void manifestListsVectorsRelativeToItself(@TempDir File dir) throws IOException {
+    final var circuit = writeInverter(dir, "inv.circ", "");
+    Files.writeString(new File(dir, "pass.txt").toPath(), "a y\n0 1\n1 0\n");
+    final var manifest = new File(dir, "tests.txt");
+    Files.writeString(manifest.toPath(), "# all tests\nmain, pass.txt\n\n");
+    final var report = new File(dir, "report.json");
+
+    assertEquals(
+        ExitCode.SUCCESS,
+        runBatch("--test-manifest", manifest.getPath(), "--report", "json", report.getPath(), circuit.getPath()));
+    assertTrue(Files.readString(report.toPath()).contains("\"passed\": 2,"));
+
+    Files.writeString(manifest.toPath(), "main pass.txt\n");
+    assertNull(parseWithoutOutput("--test-manifest", manifest.getPath(), circuit.getPath()));
+    assertNull(parseWithoutOutput("--report", "xml", report.getPath(), circuit.getPath()));
+  }
+
+  @Test
   void testVectorRefusesProjectsThatLoadWithErrors(@TempDir File dir) throws IOException {
     final var broken =
         writeInverter(dir, "broken.circ", "<comp lib=\"1\" loc=\"(400,400)\" name=\"No Such Gate\"/>");

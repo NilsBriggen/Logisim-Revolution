@@ -26,6 +26,7 @@ import com.cburch.logisim.gui.main.Selection;
 import com.cburch.logisim.gui.main.SelectionActions;
 import com.cburch.logisim.gui.opts.OptionsFrame;
 import com.cburch.logisim.gui.test.TestFrame;
+import com.cburch.logisim.gui.test.TestRunResult;
 import com.cburch.logisim.gui.test.TestThread;
 import com.cburch.logisim.tools.AddTool;
 import com.cburch.logisim.tools.Library;
@@ -327,6 +328,21 @@ public class Project {
     }
     setCurrentCircuit(circuit);
     return TestThread.doTestVector(this, circuit, vectorname);
+  }
+
+  /**
+   * Runs a test vector file against the named circuit (the main circuit if null), for the
+   * command line.
+   */
+  public TestRunResult runTestVector(String vectorname, String name) {
+    final var circuit = (name == null ? file.getMainCircuit() : file.getCircuit(name));
+    if (circuit == null) {
+      final var message = "Circuit '" + name + "' not found.";
+      System.err.println(message);
+      return TestRunResult.error(file.getName(), name, vectorname, message);
+    }
+    setCurrentCircuit(circuit);
+    return TestThread.runTestVector(this, circuit, vectorname);
   }
 
   private void fireEvent(int action, Object data) {

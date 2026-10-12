@@ -3,6 +3,9 @@
 # Changes #
 
 * @dev (????-??-??)
+  * `--test-vector` can be repeated, `--test-manifest` runs a list of vector files, and
+    `--report junit|tap|json <file>` writes the results for CI systems and graders
+    (@NilsBriggen).
   * Added watchpoints: a Watchpoints tab in the timing diagram window pauses the simulation clock
     when a logged signal equals or differs from a value, rises, falls or changes, and
     `--tty` runs accept `--break <label>=<value>` to stop at a pin value (@NilsBriggen).
