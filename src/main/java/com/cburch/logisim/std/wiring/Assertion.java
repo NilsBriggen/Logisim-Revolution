@@ -28,8 +28,10 @@ import com.cburch.logisim.instance.InstancePainter;
 import com.cburch.logisim.instance.InstanceState;
 import com.cburch.logisim.instance.Port;
 import com.cburch.logisim.instance.StdAttr;
+import com.cburch.logisim.tools.key.DirectionConfigurator;
 import com.cburch.logisim.util.GraphicsUtil;
 import java.awt.Font;
+import java.awt.event.KeyEvent;
 
 /**
  * Checks an invariant while the circuit simulates: whenever its enable input is high (or
@@ -90,19 +92,21 @@ public class Assertion extends InstanceFactory {
           ATTR_ACTION,
           ATTR_STRICT,
           StdAttr.LABEL,
+          StdAttr.LABEL_LOC,
           StdAttr.LABEL_FONT,
         },
         new Object[] {
-          Direction.EAST, "", ACTION_PAUSE, false, "", StdAttr.DEFAULT_LABEL_FONT,
+          Direction.WEST, "", ACTION_PAUSE, false, "", Direction.EAST, StdAttr.DEFAULT_LABEL_FONT,
         });
     setFacingAttribute(StdAttr.FACING);
+    setKeyConfigurator(new DirectionConfigurator(StdAttr.LABEL_LOC, KeyEvent.ALT_DOWN_MASK));
   }
 
   @Override
   public Bounds getOffsetBounds(AttributeSet attrs) {
-    // The condition input is the anchor; the body extends away from it, like a probe's.
+    // As for an LED, the condition input is on the facing side and the body extends away from it.
     final var facing = attrs.getValue(StdAttr.FACING);
-    return Bounds.create(0, -SIZE / 2, SIZE, SIZE).rotate(Direction.EAST, facing, 0, 0);
+    return Bounds.create(0, -SIZE / 2, SIZE, SIZE).rotate(Direction.WEST, facing, 0, 0);
   }
 
   @Override
@@ -118,19 +122,22 @@ public class Assertion extends InstanceFactory {
       instance.recomputeBounds();
       updatePorts(instance);
       instance.computeLabelTextField(Instance.AVOID_LEFT);
+    } else if (attr == StdAttr.LABEL_LOC) {
+      instance.computeLabelTextField(Instance.AVOID_LEFT);
     }
   }
 
   private void updatePorts(Instance instance) {
     final var facing = instance.getAttributeValue(StdAttr.FACING);
-    // Enable sits on the side a quarter turn clockwise from the condition input.
+    // Enable sits in the middle of the body's top side, or of its left side when the body is
+    // vertical.
+    final var half = SIZE / 2;
     final var enableOffset =
-        switch (facing.toString()) {
-          case "north" -> new int[] {-SIZE / 2, -SIZE / 2};
-          case "south" -> new int[] {SIZE / 2, SIZE / 2};
-          case "west" -> new int[] {-SIZE / 2, SIZE / 2};
-          default -> new int[] {SIZE / 2, -SIZE / 2};
-        };
+        facing == Direction.EAST
+            ? new int[] {-half, -half}
+            : facing == Direction.NORTH
+                ? new int[] {-half, half}
+                : facing == Direction.SOUTH ? new int[] {-half, -half} : new int[] {half, -half};
     final var condition = new Port(0, 0, Port.INPUT, BitWidth.ONE);
     condition.setToolTip(S.getter("assertionConditionTip"));
     final var enable = new Port(enableOffset[0], enableOffset[1], Port.INPUT, BitWidth.ONE);
