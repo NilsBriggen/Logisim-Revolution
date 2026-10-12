@@ -264,6 +264,9 @@ public class Simulator {
         smoothingFactor = smoothFactor;
         manualTicksRequested = 0;
         manualStepsRequested = 0;
+        // A new root state starts with every component marked dirty, so propagate it once;
+        // otherwise a freshly opened circuit shows unpropagated values until the next edit.
+        if (prop != null && autoPropagating) nudgeRequested = true;
         if (newFrequency > 0) setTickFrequency(newFrequency); // simStateLock is reentrant so this works here.
         if (Thread.currentThread() != this) {
           simStateUpdated.signalAll();

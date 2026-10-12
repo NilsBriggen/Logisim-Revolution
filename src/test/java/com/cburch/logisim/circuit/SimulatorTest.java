@@ -21,15 +21,18 @@ import static org.mockito.Mockito.when;
 import com.cburch.logisim.comp.Component;
 import com.cburch.logisim.comp.ComponentDrawContext;
 import com.cburch.logisim.data.Location;
+import com.cburch.logisim.data.Value;
 import com.cburch.logisim.file.Loader;
 import com.cburch.logisim.file.LogisimFile;
 import com.cburch.logisim.instance.InstanceFactory;
 import com.cburch.logisim.instance.InstancePainter;
 import com.cburch.logisim.instance.InstanceState;
 import com.cburch.logisim.proj.Project;
+import com.cburch.logisim.std.gates.GatesLibrary;
 import com.cburch.logisim.std.wiring.Assertion;
 import com.cburch.logisim.std.wiring.Constant;
 import com.cburch.logisim.std.wiring.Pin;
+import com.cburch.logisim.tools.AddTool;
 import java.awt.Graphics2D;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -76,16 +79,44 @@ class SimulatorTest {
               }
             }
           });
+      // Setting the state propagates it, which runs the throwing component.
       simulator.setCircuitState(CircuitState.createRootState(project, circuit));
-      SwingUtilities.invokeAndWait(() -> {});
 
-      assertTrue(simulator.nudge());
       assertTrue(propagated.await(2, TimeUnit.SECONDS));
       assertTrue(stopped.await(2, TimeUnit.SECONDS));
       assertTrue(stoppedOnEdt.get());
       assertFalse(simulator.isAutoPropagating());
       assertTrue(simulator.isExceptionEncountered());
       assertEquals(PROPAGATE_ERROR, simulator.getExceptionMessage());
+    } finally {
+      simulator.shutDown();
+    }
+  }
+
+  @Test
+  void newCircuitStatePropagatesWithoutNudge() throws Exception {
+    final var file = LogisimFile.createNew(new Loader(null), null);
+    final var project = new Project(file);
+    final var circuit = file.getMainCircuit();
+    circuit.setProject(project);
+    final var constAttrs = Constant.FACTORY.createAttributeSet();
+    constAttrs.setValue(Constant.ATTR_VALUE, 0L);
+    add(circuit, Constant.FACTORY.createComponent(Location.create(70, 100, true), constAttrs));
+    final var output = Location.create(100, 100, true);
+    final var notGate = ((AddTool) new GatesLibrary().getTool("NOT Gate")).getFactory();
+    add(circuit, notGate.createComponent(output, notGate.createAttributeSet()));
+
+    final var simulator = project.getSimulator();
+    try {
+      final var state = CircuitState.createRootState(project, circuit);
+      simulator.setCircuitState(state);
+
+      // Nothing nudges or resets the simulator: setting the state alone must propagate it.
+      final var deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2);
+      while (state.getValue(output) != Value.TRUE && System.nanoTime() < deadline) {
+        Thread.sleep(10);
+      }
+      assertEquals(Value.TRUE, state.getValue(output));
     } finally {
       simulator.shutDown();
     }

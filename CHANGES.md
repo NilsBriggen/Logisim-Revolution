@@ -3,6 +3,8 @@
 # Changes #
 
 * @dev (????-??-??)
+  * Fixed newly opened circuits showing unpropagated values until the first edit or reset
+    (@NilsBriggen).
   * Added Replace With… to the component context menu: it swaps a component for another kind in
     place, keeping its label, facing and other shared attributes (@NilsBriggen).
   * Added Edit > Replace in Labels to rename labels across a circuit or the whole project, with a

@@ -30,6 +30,7 @@ import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.std.wiring.Constant;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.Test;
 
 class ReptarLocalBusTest {
@@ -73,15 +74,19 @@ class ReptarLocalBusTest {
       mutation.execute();
       final var state = CircuitState.createRootState(project, circuit);
       final var completed = new LinkedBlockingQueue<Boolean>();
+      final var resetSeen = new AtomicBoolean();
       simulator.addSimulatorListener(
           new Simulator.Listener() {
             @Override
             public void propagationCompleted(Simulator.Event e) {
-              completed.add(true);
+              // Only count propagations that follow a reset; setting the state propagates too.
+              if (resetSeen.getAndSet(false)) completed.add(true);
             }
 
             @Override
-            public void simulatorReset(Simulator.Event e) {}
+            public void simulatorReset(Simulator.Event e) {
+              resetSeen.set(true);
+            }
 
             @Override
             public void simulatorStateChanged(Simulator.Event e) {}
