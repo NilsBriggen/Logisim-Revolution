@@ -93,8 +93,8 @@ class MenuEdit extends Menu {
     for (var i = 0; i < arrangeItems.length; i++) {
       final var which = LogisimMenuBar.ARRANGE_ITEMS[i];
       arrangeItems[i] = new MenuItemImpl(this, which);
-      // Align and distribute are separate groups inside the submenu.
-      if (which == LogisimMenuBar.DISTRIBUTE_HORIZONTAL) arrange.addSeparator();
+      // Align, distribute and rotate/flip are separate groups inside the submenu.
+      if (LogisimMenuBar.startsArrangeGroup(which)) arrange.addSeparator();
       arrange.add(arrangeItems[i]);
       menubar.registerItem(which, arrangeItems[i]);
     }

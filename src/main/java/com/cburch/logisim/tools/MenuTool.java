@@ -170,7 +170,7 @@ public class MenuTool extends Tool {
       final var arrange = new JMenu(com.cburch.logisim.gui.Strings.S.get("editArrangeMenu"));
       var anyEnabled = false;
       for (final var item : LogisimMenuBar.ARRANGE_ITEMS) {
-        if (item == LogisimMenuBar.DISTRIBUTE_HORIZONTAL) arrange.addSeparator();
+        if (LogisimMenuBar.startsArrangeGroup(item)) arrange.addSeparator();
         final var entry = new JMenuItem(LogisimMenuBar.arrangeItemText(item));
         final var enabled = menuBar.isEnabled(item);
         entry.setEnabled(enabled);

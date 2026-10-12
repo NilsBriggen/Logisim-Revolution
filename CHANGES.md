@@ -3,6 +3,8 @@
 # Changes #
 
 * @dev (????-??-??)
+  * Added Rotate Clockwise/Counterclockwise and Flip Horizontally/Vertically to Edit > Arrange
+    and the canvas context menu; they turn the whole selection, wires included (@NilsBriggen).
   * Added the TTL 7490 decade counter, 74148 priority encoder, 74154 4-to-16 decoder, 74280
     parity generator, 74374 and 74574 three-state octal flip-flops and 74595 shift register with
     output latches (@NilsBriggen).
