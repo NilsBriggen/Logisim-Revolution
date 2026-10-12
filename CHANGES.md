@@ -3,6 +3,8 @@
 # Changes #
 
 * @dev (????-??-??)
+  * Added Replace With… to the component context menu: it swaps a component for another kind in
+    place, keeping its label, facing and other shared attributes (@NilsBriggen).
   * Added Edit > Replace in Labels to rename labels across a circuit or the whole project, with a
     preview, optional regular expressions and one undo step (@NilsBriggen).
   * Double-clicking a wire with the Select tool selects its whole net, following tunnels with the
