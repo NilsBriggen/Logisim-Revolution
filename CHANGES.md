@@ -3,6 +3,9 @@
 # Changes #
 
 * @dev (????-??-??)
+  * Added the TTL 7490 decade counter, 74148 priority encoder, 74154 4-to-16 decoder, 74280
+    parity generator, 74374 and 74574 three-state octal flip-flops and 74595 shift register with
+    output latches (@NilsBriggen).
   * Memory images can be loaded from and saved as Intel HEX, Motorola S-records and Verilog
     `$readmemh` files; all three are recognized automatically (@NilsBriggen).
   * `--test-vector` can be repeated, `--test-manifest` runs a list of vector files, and
