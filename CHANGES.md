@@ -3,6 +3,8 @@
 # Changes #
 
 * @dev (????-??-??)
+  * Memory images can be loaded from and saved as Intel HEX, Motorola S-records and Verilog
+    `$readmemh` files; all three are recognized automatically (@NilsBriggen).
   * `--test-vector` can be repeated, `--test-manifest` runs a list of vector files, and
     `--report junit|tap|json <file>` writes the results for CI systems and graders
     (@NilsBriggen).

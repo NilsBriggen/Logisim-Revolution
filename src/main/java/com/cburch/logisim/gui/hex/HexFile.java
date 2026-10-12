@@ -44,6 +44,7 @@ import java.io.StringWriter;
 import java.io.Writer;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.HashMap;
 import javax.swing.BorderFactory;
@@ -213,6 +214,8 @@ public class HexFile {
   static final int MAX_PREVIEW_SIZE = 10 * 1024; // 10KB max size for displaying files
   static final int SAVE_PREVIEW_WORD_LIMIT = 1024;
   private static final Logger logger = LoggerFactory.getLogger(HexFile.class);
+  /** Lines of a toolchain record format shown in the save preview. */
+  private static final int RECORD_PREVIEW_LINES = 64;
   private static final String autoFormat = "Any data file (auto-detects format)";
   protected static final String[] formatDescriptions = {
     "v3.0 hex words addressed", // header = desc
@@ -225,7 +228,10 @@ public class HexFile {
     "Binary data big-endian", // no header
     "Binary data little-endian", // no header
     "ASCII bytes, with escapes, big-endian", // no header
-    "ASCII bytes, with escapes, little-endian" // no header
+    "ASCII bytes, with escapes, little-endian", // no header
+    RecordFormats.INTEL_HEX, // no header
+    RecordFormats.S_RECORD, // no header
+    RecordFormats.READMEMH // no header
   };
 
   private HexFile() {}
@@ -258,6 +264,15 @@ public class HexFile {
 
   protected static boolean open(MemContents dst, File src, String desc) throws IOException {
     if (!dst.isWritable()) return false;
+    final var recordFormat = desc == null ? detectRecordFormat(src) : desc;
+    if (RecordFormats.handles(recordFormat)) {
+      final var loaded = MemContents.create(dst.getLogLength(), dst.getValueWidth(), false);
+      RecordFormats.read(
+          recordFormat, Files.readString(src.toPath(), StandardCharsets.ISO_8859_1), loaded);
+      if (!dst.isWritable()) return false;
+      dst.copyFrom(0, loaded, 0, (int) (loaded.getLastOffset() + 1));
+      return true;
+    }
     final var in = BufferedLineReader.forFile(src);
     try {
       final var r = new HexReader(in, dst.getLogLength(), dst.getValueWidth());
@@ -279,6 +294,18 @@ public class HexFile {
         // do nothing
       }
     }
+  }
+
+  /** Returns the toolchain record format the file is in, or null if it is none of them. */
+  private static String detectRecordFormat(File src) throws IOException {
+    final var head = new byte[4096];
+    final int n;
+    try (final var stream = Files.newInputStream(src.toPath())) {
+      n = stream.readNBytes(head, 0, head.length);
+    } catch (IOException e) {
+      throw new IOException(S.get("hexFileOpenError", e.getMessage()));
+    }
+    return RecordFormats.detect(new String(head, 0, n, StandardCharsets.ISO_8859_1));
   }
 
   public static ParseResult parseFromClipboard(String src, int addrSize, int wordSize) throws IOException {
@@ -338,6 +365,14 @@ public class HexFile {
   }
 
   public static void save(File f, MemContents src, String desc) throws IOException {
+    if (RecordFormats.handles(desc)) {
+      try (final var writer = Files.newBufferedWriter(f.toPath(), StandardCharsets.US_ASCII)) {
+        RecordFormats.write(desc, src, writer);
+      } catch (IOException e) {
+        throw new IOException(S.get("hexFileOpenError", e.getMessage()));
+      }
+      return;
+    }
     OutputStream out;
     try {
       out = new FileOutputStream(f);
@@ -353,6 +388,11 @@ public class HexFile {
   }
 
   static String saveToPreviewString(MemContents src, String desc) {
+    if (RecordFormats.handles(desc)) {
+      final var lines = saveToString(src, desc, -1).split("\n", RECORD_PREVIEW_LINES + 1);
+      if (lines.length <= RECORD_PREVIEW_LINES) return String.join("\n", lines);
+      return String.join("\n", Arrays.copyOf(lines, RECORD_PREVIEW_LINES)) + "\n…\n";
+    }
     final var wordCount = src.getLastOffset() + 1;
     final var preview = saveToString(src, desc, SAVE_PREVIEW_WORD_LIMIT);
     if (wordCount <= SAVE_PREVIEW_WORD_LIMIT) return preview;
@@ -373,6 +413,10 @@ public class HexFile {
       final var out = new StringWriter();
       OutputStream stream;
       if (desc == null) desc = "v2.0 raw";
+      if (RecordFormats.handles(desc)) {
+        RecordFormats.write(desc, src, out);
+        return out.toString();
+      }
       if (desc.startsWith("Binary")) stream = new OutputStreamBinarySanitizer(out);
       else stream = new OutputStreamEscaper(out, true, 0);
       final var w = new HexWriter(stream, src, desc);
@@ -410,6 +454,9 @@ public class HexFile {
       case "Binary data little-endian" -> S.get("hexFileFilterBinaryLittleEndian");
       case "ASCII bytes, with escapes, big-endian" -> S.get("hexFileFilterAsciiEscapesBigEndian");
       case "ASCII bytes, with escapes, little-endian" -> S.get("hexFileFilterAsciiEscapesLittleEndian");
+      case RecordFormats.INTEL_HEX -> S.get("hexFileFilterIntelHex");
+      case RecordFormats.S_RECORD -> S.get("hexFileFilterSRecord");
+      case RecordFormats.READMEMH -> S.get("hexFileFilterReadmemh");
       default -> desc;
     };
   }
