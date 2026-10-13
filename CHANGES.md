@@ -3,6 +3,8 @@
 # Changes #
 
 * @dev (????-??-??)
+  * Made the canvas grid clearly visible: it is drawn at the display's own pixel density, so dots
+    stay sharp under fractional desktop scaling, and its dots have more contrast (@NilsBriggen).
   * Fixed newly opened circuits showing unpropagated values until the first edit or reset
     (@NilsBriggen).
   * Added Replace With… to the component context menu: it swaps a component for another kind in
