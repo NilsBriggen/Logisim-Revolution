@@ -821,6 +821,7 @@ public final class ProjectActions {
     var loader = proj.getLogisimFile().getLoader();
     var chooser = loader.createChooser();
     chooser.setFileFilter(Loader.LOGISIM_FILTER);
+    chooser.setDialogTitle(S.get("FileSaveAsItem"));
     chooser.setSelectedFile(suggestedSaveFile(proj, chooser.getCurrentDirectory()));
 
     // Every rejection below returns to the chooser rather than abandoning Save As. Any file name

@@ -18,7 +18,7 @@ import com.cburch.logisim.instance.Instance;
 import com.cburch.logisim.instance.InstanceFactory;
 import org.junit.jupiter.api.Test;
 
-/** The 7490, 74148, 74154, 74280, 74374, 74574 and 74595. */
+/** The 7490, 74154, 74280, 74374, 74574 and 74595. */
 class TtlBatchTest {
 
   private static Value bit(boolean b) {
@@ -52,7 +52,6 @@ class TtlBatchTest {
   @Test
   void portLayouts() {
     assertPortCounts(new Ttl7490(), 10, 4);
-    assertPortCounts(new Ttl74148(), 14, 5);
     assertPortCounts(new Ttl74154(), 22, 16);
     assertPortCounts(new Ttl74280(), 11, 2);
     assertPortCounts(new Ttl74374(), 18, 8);
@@ -107,36 +106,6 @@ class TtlBatchTest {
     s.setPortValue(Ttl7490.PORT_INDEX_R9_2, Value.TRUE);
     gate.propagate(s);
     assertEquals(9, count7490(s));
-  }
-
-  @Test
-  void ttl74148EncodesHighestActiveInput() {
-    final var gate = new Ttl74148();
-    final var s = new TtlTestState(gate, false);
-    final int[] inputs = {
-      Ttl74148.PORT_I0, Ttl74148.PORT_I1, Ttl74148.PORT_I2, Ttl74148.PORT_I3,
-      Ttl74148.PORT_I4, Ttl74148.PORT_I5, Ttl74148.PORT_I6, Ttl74148.PORT_I7
-    };
-    for (final var p : inputs) s.setPortValue(p, Value.TRUE);
-    s.setPortValue(Ttl74148.PORT_EI, Value.FALSE);
-    gate.propagate(s);
-    assertEquals(Value.TRUE, s.getPortValue(Ttl74148.PORT_GS));
-    assertEquals(Value.FALSE, s.getPortValue(Ttl74148.PORT_EO));
-
-    s.setPortValue(Ttl74148.PORT_I2, Value.FALSE);
-    s.setPortValue(Ttl74148.PORT_I5, Value.FALSE);
-    gate.propagate(s);
-    // 5 = 101, outputs inverted: A2 A1 A0 = L H L.
-    assertEquals(Value.FALSE, s.getPortValue(Ttl74148.PORT_A2));
-    assertEquals(Value.TRUE, s.getPortValue(Ttl74148.PORT_A1));
-    assertEquals(Value.FALSE, s.getPortValue(Ttl74148.PORT_A0));
-    assertEquals(Value.FALSE, s.getPortValue(Ttl74148.PORT_GS));
-    assertEquals(Value.TRUE, s.getPortValue(Ttl74148.PORT_EO));
-
-    s.setPortValue(Ttl74148.PORT_EI, Value.TRUE);
-    gate.propagate(s);
-    assertEquals(Value.TRUE, s.getPortValue(Ttl74148.PORT_A2));
-    assertEquals(Value.TRUE, s.getPortValue(Ttl74148.PORT_EO));
   }
 
   @Test

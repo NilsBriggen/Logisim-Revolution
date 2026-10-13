@@ -1323,12 +1323,18 @@ public class AppPreferences {
   public static final PrefMonitor<String> DIALOG_DIRECTORY =
       create(new PrefMonitorString("dialogDirectory", ""));
 
+  public static final PrefMonitor<String> IMAGE_EXPORT_DIRECTORY =
+      create(new PrefMonitorString("imageExportDirectory", ""));
+
+  public static final PrefMonitor<String> SOC_DIRECTORY =
+      create(new PrefMonitorString("socDirectory", ""));
+
   /* Opens the action search when Shift is tapped twice in quick succession. Kept switchable
    * because Shift is a working modifier on the canvas, so the gesture can misfire. */
   public static final PrefMonitor<Boolean> SEARCH_DOUBLE_SHIFT =
       create(new PrefMonitorBoolean("searchDoubleShift", true));
 
-  /* Hotkey Settings */
+  /* Hotkeys Settings */
   /* Watch whether in headless mode */
   public static final int hotkeyMenuMask =
       GraphicsEnvironment.isHeadless()

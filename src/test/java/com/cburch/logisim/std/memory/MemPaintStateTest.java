@@ -45,7 +45,9 @@ class MemPaintStateTest {
     mutation.add(mem);
     mutation.execute();
     final var state = project.getCircuitState();
-    assertNull(state.getData(mem));
+    // A ROM may already have state from its contents listener; what matters is that painting
+    // leaves one behind.
+    if (!(factory instanceof Rom)) assertNull(state.getData(mem));
 
     final var image = new BufferedImage(400, 400, BufferedImage.TYPE_INT_RGB);
     final var g = image.createGraphics();

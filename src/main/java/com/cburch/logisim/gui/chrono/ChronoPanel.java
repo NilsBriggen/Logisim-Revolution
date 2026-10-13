@@ -315,6 +315,7 @@ public class ChronoPanel extends LogPanel implements Model.Listener {
   @Override
   public void selectionChanged(Model.Event event) {
     if (leftPanel == null || rightPanel == null) return;
+    changeSpotlight(null);
     leftPanel.updateSignals();
     rightPanel.updateSignals();
     editHandler.computeEnabled();

@@ -28,20 +28,20 @@ import javax.swing.KeyStroke;
 class HotkeyOptions extends OptionsPanel {
   private static final long serialVersionUID = 1L;
   /*
-   * Hotkey Options TAB
+   * Hotkeys Tab
    *
    * Author: Hanyuan Zhao <2524395907@qq.com>
    *
    * Description:
-   * This is the hotkey settings Tab in the preferences.
-   * Allowing users to decide which hotkey to bind to the specific function.
+   * This is the Hotkeys Tab in the preferences.
+   * It allows users to select which hotkey to bind to the specific function.
    *
-   * To add your own hotkey bindings from your code, you need some operations as follows.
-   * Firstly add your hotkey configurations to AppPreferences and set up their strings in resources
-   * Fill the resetHotkeys method in AppPreferences, adding the reset code for your hotkeys
-   * Set up the hotkey in your code by accessing AppPreferences.HOTKEY_ADD_BY_YOU
+   * To add your own bindings from your code, you need some operations as follows.
+   * First, add your configurations to AppPreferences and set up their strings in resources.
+   * Then, fill the resetHotkeys method in AppPreferences, adding the reset code for your hotkeys,
+   * Set up the in your code by accessing AppPreferences.HOTKEY_ADD_BY_YOU.
    * Do not forget to sync with the user's settings.
-   * You should go modifying hotkeySync in AppPreferences, adding your codes there.
+   * You also need to modify hotkeySync in AppPreferences, adding your codes there.
    *
    * Every accelerator on the menu bar is a preference listed here, and a new binding is refused
    * when it collides with one of them; see AppPreferences.hotkeyCheckConflict.

@@ -18,6 +18,7 @@ import com.cburch.logisim.tools.Library;
 import com.cburch.logisim.tools.Tool;
 import java.util.List;
 
+/** Built-in 74-series TTL devices. */
 public class TtlLibrary extends Library {
   /**
    * Unique identifier of the library, used as reference in project files. Do NOT change as it will
@@ -62,6 +63,7 @@ public class TtlLibrary extends Library {
       new FactoryDescription(Ttl7487.class, S.getter("TTL7487"), "ttl.gif"),
       new FactoryDescription(Ttl7490.class, S.getter("TTL7490"), "ttl.gif"),
       new FactoryDescription(Ttl7493.class, S.getter("TTL7493"), "ttl.gif"),
+      new FactoryDescription(Ttl74123.class, S.getter("TTL74123"), "ttl.gif"),
       new FactoryDescription(Ttl74125.class, S.getter("TTL74125"), "ttl.gif"),
       new FactoryDescription(Ttl74138.class, S.getter("TTL74138"), "ttl.gif"),
       new FactoryDescription(Ttl74139.class, S.getter("TTL74139"), "ttl.gif"),
@@ -95,10 +97,12 @@ public class TtlLibrary extends Library {
       new FactoryDescription(Ttl74374.class, S.getter("TTL74374"), "ttl.gif"),
       new FactoryDescription(Ttl74377.class, S.getter("TTL74377"), "ttl.gif"),
       new FactoryDescription(Ttl74381.class, S.getter("TTL74381"), "ttl.gif"),
+      new FactoryDescription(Ttl74390.class, S.getter("TTL74390"), "ttl.gif"),
       new FactoryDescription(Ttl74541.class, S.getter("TTL74541"), "ttl.gif"),
       new FactoryDescription(Ttl74574.class, S.getter("TTL74574"), "ttl.gif"),
       new FactoryDescription(Ttl74595.class, S.getter("TTL74595"), "ttl.gif"),
       new FactoryDescription(Ttl74670.class, S.getter("TTL74670"), "ttl.gif"),
+      new FactoryDescription(Ttl744060.class, S.getter("TTL744060"), "ttl.gif"),
       new FactoryDescription(Ttl747266.class, S.getter("TTL747266"), "ttl.gif"),
   };
 

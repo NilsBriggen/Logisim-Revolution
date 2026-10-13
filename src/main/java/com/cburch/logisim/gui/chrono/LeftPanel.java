@@ -170,6 +170,13 @@ public class LeftPanel extends JTable {
     addMouseListener(
         new MouseAdapter() {
           @Override
+          public void mousePressed(MouseEvent e) {
+            if (rowAtPoint(e.getPoint()) < 0) {
+              clearSelection();
+            }
+          }
+
+          @Override
           public void mouseClicked(MouseEvent e) {
             if (!SwingUtilities.isRightMouseButton(e)) return;
             if (!(e.getComponent() instanceof JTable)) return;
@@ -301,6 +308,15 @@ public class LeftPanel extends JTable {
     repaint();
   }
 
+  @Override
+  public void changeSelection(int row, int col, boolean toggle, boolean extend) {
+    if (!toggle && !extend && isRowSelected(row) && getSelectedRowCount() == 1) {
+      clearSelection();
+    } else {
+      super.changeSelection(row, col, toggle, extend);
+    }
+  }
+
   public void setModel(Model m) {
     model = m;
     updateSignals();
@@ -309,7 +325,8 @@ public class LeftPanel extends JTable {
   public void changeSpotlight(Signal oldSignal, Signal newSignal) {
     final var n = model.getSignalCount();
     for (final var signal : new Signal[] {oldSignal, newSignal}) {
-      if (signal == null || signal.idx >= n || model.getSignal(signal.idx) != signal) continue;
+      if (signal == null || signal.idx < 0 || signal.idx >= n) continue;
+      if (model.getSignal(signal.idx) != signal) continue;
       tableModel.fireTableRowsUpdated(signal.idx, signal.idx);
     }
   }
