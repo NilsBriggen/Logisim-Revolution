@@ -28,6 +28,7 @@ import com.cburch.logisim.gui.menu.LogisimMenuBar;
 import com.cburch.logisim.gui.menu.WindowManagers;
 import com.cburch.logisim.gui.search.DoubleShiftTrigger;
 import com.cburch.logisim.gui.test.TestBench;
+import com.cburch.logisim.gui.test.TestRunResult;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.proj.ProjectActions;
@@ -88,6 +89,13 @@ public class Startup implements AWTEventListener {
   private boolean templEmpty = false;
   private boolean templPlain = false;
   private String testVector = null;
+  /** A circuit and the test vector file to run against it. */
+  record TestVectorJob(String circuit, String vectorFile) {}
+
+  private final List<TestVectorJob> testVectorJobs = new ArrayList<>();
+  private TestReportWriter.Format reportFormat = null;
+  private File reportFile = null;
+  private final List<String> breakConditions = new ArrayList<>();
   private String circuitToTest = null;
   private boolean exitAfterStartup = false;
   private boolean quitAfterParsing = false;
@@ -166,6 +174,9 @@ public class Startup implements AWTEventListener {
   private static final String ARG_TEMPLATE_LONG = "user-template";
   private static final String ARG_VERSION_SHORT = "v";
   private static final String ARG_VERSION_LONG = "version";
+  private static final String ARG_BREAK_LONG = "break";
+  private static final String ARG_TEST_MANIFEST_LONG = "test-manifest";
+  private static final String ARG_REPORT_LONG = "report";
   private static final String ARG_TEST_VECTOR_SHORT = "w";
   private static final String ARG_TEST_VECTOR_LONG = "test-vector";
   private static final String ARG_NO_SPLASH_LONG = "no-splash";
@@ -318,6 +329,7 @@ public class Startup implements AWTEventListener {
     // Note: you need to create handler for each option. See handler loop below.
     // It is assumed that evey option always has long-form switch. Short forms are optional.
     addOption(opts, "argTtyOption", ARG_TTY_LONG, ARG_TTY_SHORT, 1);
+    addOption(opts, "argBreakOption", ARG_BREAK_LONG, 1);
     addOption(opts, "argTestImplement", ARG_TEST_FGPA_LONG, ARG_TEST_FGPA_SHORT, Option.UNLIMITED_VALUES);  // We can have 3, 4 or 5 arguments here
     addOption(opts, "argFpgaCableOption", ARG_FPGA_CABLE_LONG, 1);
     addOption(opts, "argClearOption", ARG_CLEAR_PREFS_LONG);
@@ -331,6 +343,8 @@ public class Startup implements AWTEventListener {
     addOption(opts, "argNoSplashOption", ARG_NO_SPLASH_LONG);
     addOption(opts, "argMainCircuitOption", ARG_MAIN_CIRCUIT, 1);
     addOption(opts, "argTestVectorOption", ARG_TEST_VECTOR_LONG, ARG_TEST_VECTOR_SHORT, 2);
+    addOption(opts, "argTestManifestOption", ARG_TEST_MANIFEST_LONG, 1);
+    addOption(opts, "argReportOption", ARG_REPORT_LONG, 2);
     addOption(opts, "argTestCircuitOption", ARG_TEST_CIRCUIT_LONG, ARG_TEST_CIRCUIT_SHORT, 1);     // FIXME add "Option" suffix to key name
     addOption(opts, "argTestCircGenOption", ARG_TEST_CIRC_GEN_LONG, ARG_TEST_CIRC_GEN_SHORT, 2);   // FIXME add "Option" suffix to key name
 
@@ -360,6 +374,7 @@ public class Startup implements AWTEventListener {
     // The batch modes run, report and exit: they must work without a display and never prompt.
     final var isBatch =
         cmd.hasOption(ARG_TEST_VECTOR_LONG)
+            || cmd.hasOption(ARG_TEST_MANIFEST_LONG)
             || cmd.hasOption(ARG_TEST_CIRCUIT_LONG)
             || cmd.hasOption(ARG_TEST_CIRC_GEN_LONG);
     if (isBatch) Main.headless = true;
@@ -393,6 +408,7 @@ public class Startup implements AWTEventListener {
         case ARG_HELP_LONG -> printHelp(opts);
         case ARG_VERSION_LONG -> printVersion();
         case ARG_TTY_LONG -> handleArgTty(startup, opt);
+        case ARG_BREAK_LONG -> handleArgBreak(startup, opt);
         case ARG_SUBSTITUTE_LONG -> handleArgSubstitute(startup, opt);
         case ARG_LOAD_LONG -> handleArgLoad(startup, opt);
         case ARG_SAVE_LONG -> handleArgSave(startup, opt);
@@ -402,6 +418,8 @@ public class Startup implements AWTEventListener {
         case ARG_TEMPLATE_LONG -> handleArgTemplate(startup, opt);
         case ARG_NO_SPLASH_LONG -> handleArgNoSplash(startup, opt);
         case ARG_TEST_VECTOR_LONG -> handleArgTestVector(startup, opt);
+        case ARG_TEST_MANIFEST_LONG -> handleArgTestManifest(startup, opt);
+        case ARG_REPORT_LONG -> handleArgReport(startup, opt);
         case ARG_TEST_FGPA_LONG -> handleArgTestFpga(startup, opt);
         case ARG_FPGA_CABLE_LONG -> handleArgFpgaCable(startup, opt);
         case ARG_TEST_CIRCUIT_LONG -> handleArgTestCircuit(startup, opt);
@@ -485,6 +503,16 @@ public class Startup implements AWTEventListener {
      * Handler completed successfully and requested application termination.
      */
     QUIT
+  }
+
+  private static RC handleArgBreak(Startup startup, Option opt) {
+    final var condition = opt.getValue();
+    if (TtyInterface.BreakCondition.parse(condition) == null) {
+      logger.error("{}", S.get("argBreakError", condition));
+      return RC.ERROR;
+    }
+    startup.breakConditions.add(condition);
+    return RC.OK;
   }
 
   private static RC handleArgTty(Startup startup, Option opt) {
@@ -692,9 +720,58 @@ public class Startup implements AWTEventListener {
   private static RC handleArgTestVector(Startup startup, Option opt) {
     startup.circuitToTest = opt.getValues()[0];
     startup.testVector = opt.getValues()[1];
+    startup.testVectorJobs.add(new TestVectorJob(opt.getValues()[0], opt.getValues()[1]));
     startup.showSplash = false;
     startup.exitAfterStartup = true;
     // This is to test a test bench. It will return 0 or 1 depending on if the tests pass or not.
+    return RC.OK;
+  }
+
+  /**
+   * Reads a manifest of test vector runs: one {@code circuit,vectorfile} per line, blank lines and
+   * lines starting with {@code #} ignored. Relative vector paths are relative to the manifest.
+   */
+  private static RC handleArgTestManifest(Startup startup, Option opt) {
+    final var manifest = new File(opt.getValue());
+    final List<String> lines;
+    try {
+      lines = Files.readAllLines(manifest.toPath(), StandardCharsets.UTF_8);
+    } catch (IOException e) {
+      logger.error("{}", S.get("argTestManifestReadError", manifest.getPath(), e.getMessage()));
+      return RC.ERROR;
+    }
+    final var dir = manifest.getAbsoluteFile().getParentFile();
+    for (var i = 0; i < lines.size(); i++) {
+      final var line = lines.get(i).trim();
+      if (line.isEmpty() || line.startsWith("#")) continue;
+      final var comma = line.indexOf(',');
+      if (comma <= 0 || comma == line.length() - 1) {
+        logger.error("{}", S.get("argTestManifestLineError", manifest.getPath(), i + 1));
+        return RC.ERROR;
+      }
+      var vector = new File(line.substring(comma + 1).trim());
+      if (!vector.isAbsolute()) vector = new File(dir, vector.getPath());
+      startup.testVectorJobs.add(
+          new TestVectorJob(line.substring(0, comma).trim(), vector.getPath()));
+    }
+    if (startup.testVectorJobs.isEmpty()) {
+      logger.error("{}", S.get("argTestManifestEmptyError", manifest.getPath()));
+      return RC.ERROR;
+    }
+    startup.testVector = startup.testVectorJobs.getFirst().vectorFile();
+    startup.showSplash = false;
+    startup.exitAfterStartup = true;
+    return RC.OK;
+  }
+
+  private static RC handleArgReport(Startup startup, Option opt) {
+    final var format = TestReportWriter.Format.parse(opt.getValues()[0]);
+    if (format == null) {
+      logger.error("{}", S.get("argReportFormatError", opt.getValues()[0]));
+      return RC.ERROR;
+    }
+    startup.reportFormat = format;
+    startup.reportFile = new File(opt.getValues()[1]);
     return RC.OK;
   }
 
@@ -964,6 +1041,11 @@ public class Startup implements AWTEventListener {
     return ttyFormat;
   }
 
+  /** The {@code --break} conditions, as given; each was checked to parse. */
+  List<String> getBreakConditions() {
+    return Collections.unmodifiableList(breakConditions);
+  }
+
   boolean isFpgaDownload() {
     return doFpgaDownload;
   }
@@ -1039,6 +1121,22 @@ public class Startup implements AWTEventListener {
 
     Toolkit.getDefaultToolkit()
         .addAWTEventListener(this, AWTEvent.COMPONENT_EVENT_MASK | AWTEvent.CONTAINER_EVENT_MASK);
+    // Warm up file choosers in background to avoid first-open delay.
+    final var warmupThread = new Thread(() -> {
+      try {
+        new JFileChooser();
+        if (MacCompatibility.isRunningOnMac()) {
+          final var fd = new java.awt.FileDialog((java.awt.Frame) null);
+          fd.addNotify();
+          fd.dispose();
+        }
+      } catch (Throwable ignored) {
+      }
+    }, "FileChooser-Warmup");
+    warmupThread.setDaemon(true);
+    warmupThread.setPriority(Thread.MIN_PRIORITY);
+    warmupThread.start();
+
     // pre-load the two basic component libraries, just so that the time
     // taken is shown separately in the progress bar.
     if (showSplash) {
@@ -1232,20 +1330,44 @@ public class Startup implements AWTEventListener {
       return ExitCode.USAGE;
     }
     var exitCode = ExitCode.SUCCESS;
+    final var results = new ArrayList<TestRunResult>();
     for (final var fileToOpen : filesToOpen) {
-      exitCode = ExitCode.worst(exitCode, runBatch(fileToOpen));
+      exitCode = ExitCode.worst(exitCode, runBatch(fileToOpen, results));
+    }
+    if (reportFormat != null && !testVectorJobs.isEmpty()) {
+      try (final var out = Files.newBufferedWriter(reportFile.toPath(), StandardCharsets.UTF_8)) {
+        TestReportWriter.write(reportFormat, results, out);
+      } catch (IOException e) {
+        logger.error("{}", S.get("argReportWriteError", reportFile.getPath(), e.getMessage()));
+        exitCode = ExitCode.worst(exitCode, ExitCode.FAILURE);
+      }
     }
     return exitCode;
   }
 
-  private int runBatch(File fileToOpen) {
+  private int runBatch(File fileToOpen, List<TestRunResult> results) {
     final var proj = new CliLoader().openProject(fileToOpen, substitutions);
-    if (proj == null) return ExitCode.LOAD_ERROR;
+    if (proj == null) {
+      for (final var job : testVectorJobs) {
+        results.add(
+            TestRunResult.error(
+                fileToOpen.getName(), job.circuit(), job.vectorFile(), S.get("batchProjectLoadFailed")));
+      }
+      return ExitCode.LOAD_ERROR;
+    }
     try {
-      if (testVector != null) {
-        final var failures = proj.doTestVector(testVector, circuitToTest);
-        if (failures < 0) return ExitCode.FAILURE;
-        return failures == 0 ? ExitCode.SUCCESS : ExitCode.SIMULATION_FAILED;
+      if (!testVectorJobs.isEmpty()) {
+        var exitCode = ExitCode.SUCCESS;
+        for (final var job : testVectorJobs) {
+          final var result = proj.runTestVector(job.vectorFile(), job.circuit());
+          results.add(result);
+          final var code =
+              result.error() != null
+                  ? ExitCode.FAILURE
+                  : result.failedCount() == 0 ? ExitCode.SUCCESS : ExitCode.SIMULATION_FAILED;
+          exitCode = ExitCode.worst(exitCode, code);
+        }
+        return exitCode;
       }
       if (testCircPathInput != null && testCircPathOutput != null) {
         // Rewrite the project in the current file format.

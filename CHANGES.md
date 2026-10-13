@@ -3,6 +3,36 @@
 # Changes #
 
 * @dev (????-??-??)
+  * Made the canvas grid clearly visible: it is drawn at the display's own pixel density, so dots
+    stay sharp under fractional desktop scaling, and its dots have more contrast (@NilsBriggen).
+  * Fixed newly opened circuits showing unpropagated values until the first edit or reset
+    (@NilsBriggen).
+  * Added Replace With… to the component context menu: it swaps a component for another kind in
+    place, keeping its label, facing and other shared attributes (@NilsBriggen).
+  * Added Edit > Replace in Labels to rename labels across a circuit or the whole project, with a
+    preview, optional regular expressions and one undo step (@NilsBriggen).
+  * Double-clicking a wire with the Select tool selects its whole net, following tunnels with the
+    same label (@NilsBriggen).
+  * Added Rotate Clockwise/Counterclockwise and Flip Horizontally/Vertically to Edit > Arrange
+    and the canvas context menu; they turn the whole selection, wires included (@NilsBriggen).
+  * Added the TTL 7490 decade counter, 74154 4-to-16 decoder, 74280 parity generator, 74374 and
+    74574 three-state octal flip-flops and 74595 shift register with output latches
+    (@NilsBriggen).
+  * Memory images can be loaded from and saved as Intel HEX, Motorola S-records and Verilog
+    `$readmemh` files; all three are recognized automatically (@NilsBriggen).
+  * `--test-vector` can be repeated, `--test-manifest` runs a list of vector files, and
+    `--report junit|tap|json <file>` writes the results for CI systems and graders
+    (@NilsBriggen).
+  * Added watchpoints: a Watchpoints tab in the timing diagram window pauses the simulation clock
+    when a logged signal equals or differs from a value, rises, falls or changes, and
+    `--tty` runs accept `--break <label>=<value>` to stop at a pin value (@NilsBriggen).
+  * Added Value Change Dump (`.vcd`) export to the timing diagram, for viewers such as GTKWave
+    (@NilsBriggen).
+  * Added an Assertion component (Wiring library) that pauses the simulation clock or logs when
+    its condition goes low; failed assertions also fail test-vector rows and end `--tty` runs
+    with exit code 1 (@NilsBriggen).
+  * Added a standalone Arch Linux and CachyOS installer that packages published native builds
+    for pacman, including the Java runtime, application menu entry and file icons (@NilsBriggen).
   * Enforced circuit and component locks in ROM contents, appearance editing and FPGA
     annotation, including already-open editors and recursive annotation preflight (@NilsBriggen).
   * Fixed Auto scale readouts and prevented Preferences layout changes from persisting a manual
@@ -353,7 +383,30 @@
     unreadably small on high-DPI displays (@NilsBriggen).
   * Made the split pane drag indicator follow the active theme so it stays visible in dark
     look and feels (@NilsBriggen).
+  * Fixed FPGA net tracing through unconnected splitter bits and resulting false short-circuit errors
+    [#3063] (@hewzhew).
+  * Showed source line numbers and applicable set/sequence numbers for failed command-line test vectors [#3060] (@goudan789).
+  * Added TTL 74390: dual decade ripple counter (@Vadimatorik).
+  * Optimized file dialog performance via startup background warmup and introduced scoped directory memory to isolate
+    circuit projects, image exports, and SoC software directories (@V-Zemlyakov).
+  * Added TTL 74123: dual retriggerable monostable multivibrator with reset (@Vadimatorik).
+  * Fixed ArrayIndexOutOfBoundsException during signal history deduplication and improved ChronoPanel buffer safety (@V-Zemlyakov).
+  * Added TTL 744060: 14-stage binary ripple counter (@Vadimatorik).
+  * Preserved pin and anchor edits in custom circuit appearances when saving [#3025] (@hewzhew).
+  * Refreshed I/O-extra PlaRom state after contents changes and fixed state cloning
+    [#1247] (@hewzhew).
+  * Improved ChronoPanel and signal logging: added Tunnel component support, automatic selection for equivalent clocks,
+    deduplication of tunnels, dynamic bus width updates, and UI stability fixes (@kevinawalsh, @V-Zemlyakov).
+  * Fixed cursor-centered zooming in the circuit appearance editor [#3018] (@hewzhew).
+  * Added TTL 74148: 8-line to 3-line priority encoder (@Vadimatorik).
+  * Added native macOS file dialogs for open and save operations with standard file filtering support (@V-Zemlyakov).
+  * Clarified unknown bits and output don't-care values in test vectors [#1123] (@hewzhew).
+  * Fix macOS preferences dialogue focus and update tab labels (@Alperenu0).
   * Fixed loss of custom appearance when merging circuits into a project (@V-Zemlyakov).
+  * Fixed undo and redo after moving polygon and polyline vertices [#1042] (@hewzhew).
+  * Unified the spelling of "Logisim-evolution" in the Snap and Flatpak metadata and the German and French guide
+    [#3008] (@xjx06127).
+  * Fixed French translation mistake for `selCutItem` (@LPe7).
 
 * v5.0.0 (2026-09-12)
   * Improved visual representation of Pull Resistor component (@V-Zemlyakov).

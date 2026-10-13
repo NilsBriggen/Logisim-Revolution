@@ -21,6 +21,7 @@ import com.cburch.logisim.gui.generic.OptionPane;
 import com.cburch.logisim.gui.generic.TikZWriter;
 import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.proj.Project;
+import com.cburch.logisim.util.JFileChoosers;
 import com.cburch.logisim.util.Spacing;
 import com.cburch.logisim.util.StringGetter;
 import com.cburch.logisim.util.UniquelyNamedThread;
@@ -63,6 +64,7 @@ public class ExportImage {
   public static final int FORMAT_TIKZ = 3;
   public static final int FORMAT_SVG = 4;
   public static final int FORMAT_WAVEDROM = 5;
+  public static final int FORMAT_VCD = 6;
   static final Logger logger = LoggerFactory.getLogger(ExportImage.class);
 
   private static final int SLIDER_DIVISIONS = 6;
@@ -87,6 +89,8 @@ public class ExportImage {
         return new ImageFileFilter(fmt, S.getter("exportSvgFilter"), new String[] {"svg"});
       case FORMAT_WAVEDROM:
         return new ImageFileFilter(fmt, S.getter("exportWaveDromFilter"), new String[] {"json"});
+      case FORMAT_VCD:
+        return new ImageFileFilter(fmt, S.getter("exportVcdFilter"), new String[] {"vcd"});
       default:
         logger.error("Unexpected image format; aborted!");
         return null;
@@ -124,23 +128,36 @@ public class ExportImage {
     if (filter == null) return;
 
     // Then display file chooser
-    final var loader = proj.getLogisimFile().getLoader();
-    final var chooser = loader.createChooser();
+    final var exportDir =
+        JFileChoosers.getCurrentDirectory(JFileChoosers.DirectoryScope.IMAGE_EXPORT);
+    final var initialDir =
+        (exportDir != null && !exportDir.isEmpty() && new File(exportDir).canRead())
+            ? new File(exportDir)
+            : proj.getLogisimFile().getLoader().getCurrentDirectory();
+    final var chooser =
+        JFileChoosers.createAt(initialDir, JFileChoosers.DirectoryScope.IMAGE_EXPORT);
     chooser.setAcceptAllFileFilterUsed(false);
     if (circuits.size() > 1) {
       chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
       chooser.setDialogTitle(S.get("exportImageDirectorySelect"));
     } else {
+      chooser.setDialogType(JFileChooser.SAVE_DIALOG);
       chooser.setFileFilter(filter);
       chooser.setDialogTitle(S.get("exportImageFileSelect"));
-      chooser.setSelectedFile(new File(circuits.get(0).getName() + filter.extensions[0]));
+      if (!circuits.isEmpty()) {
+        chooser.setSelectedFile(new File(circuits.get(0).getName() + filter.getDefaultExtension()));
+      }
     }
     final var returnVal = chooser.showDialog(frame, S.get("exportImageButton"));
     if (returnVal != JFileChooser.APPROVE_OPTION) return;
 
     // Determine whether destination is valid
     final var dest = chooser.getSelectedFile();
-    chooser.setCurrentDirectory(dest.isDirectory() ? dest : dest.getParentFile());
+    final var selectedDir = dest.isDirectory() ? dest : dest.getParentFile();
+    if (selectedDir != null) {
+      chooser.setCurrentDirectory(selectedDir);
+      JFileChoosers.setCurrentDirectory(JFileChoosers.DirectoryScope.IMAGE_EXPORT, selectedDir);
+    }
     if (dest.exists()) {
       if (!dest.isDirectory()) {
         final var confirm =

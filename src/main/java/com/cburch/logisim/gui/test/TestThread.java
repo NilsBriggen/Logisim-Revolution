@@ -18,6 +18,8 @@ import com.cburch.logisim.data.TestException;
 import com.cburch.logisim.data.TestVector;
 import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.util.UniquelyNamedThread;
+import java.util.ArrayList;
+import java.util.List;
 
 public class TestThread extends UniquelyNamedThread {
 
@@ -53,42 +55,76 @@ public class TestThread extends UniquelyNamedThread {
 
   // used only for automated testing via command line arguments
   public static int doTestVector(Project proj, Circuit circuit, String vectorname) {
+    final var result = runTestVector(proj, circuit, vectorname);
+    return result.error() != null ? -1 : result.failedCount();
+  }
+
+  /**
+   * Runs a test vector file against a circuit for the command line, printing progress and
+   * failures as it goes.
+   *
+   * @return the result; its error is set if the vector could not be loaded or set up
+   */
+  public static TestRunResult runTestVector(Project proj, Circuit circuit, String vectorname) {
+    final var projectName = proj.getLogisimFile().getName();
     System.out.println(S.get("testLoadingVector", vectorname));
     TestVector vec;
     try {
       vec = new TestVector(vectorname);
     } catch (Exception e) {
-      System.err.println(S.get("testLoadingFailed", e.getMessage()));
-      return -1;
+      final var message = S.get("testLoadingFailed", e.getMessage());
+      System.err.println(message);
+      return TestRunResult.error(projectName, circuit.getName(), vectorname, message);
     }
 
     TestThread tester;
     try {
       tester = new TestThread(proj, circuit, vec);
     } catch (TestException e) {
-      System.err.println(S.get("testSetupFailed", e.getMessage()));
-      return -1;
+      final var message = S.get("testSetupFailed", e.getMessage());
+      System.err.println(message);
+      return TestRunResult.error(projectName, circuit.getName(), vectorname, message);
     }
     final var undriven = TestVectorEvaluator.findUndrivenInputs(vec, circuit);
     if (!undriven.isEmpty()) {
       System.err.println(S.get("testUndrivenInputs", String.join(", ", undriven)));
     }
-    return tester.doTestVector();
+    final var start = System.currentTimeMillis();
+    final var rows = tester.runRows();
+    return new TestRunResult(
+        projectName, circuit.getName(), vectorname, rows, null, System.currentTimeMillis() - start);
   }
 
   public int doTestVector() {
+    return (int) runRows().stream().filter(row -> !row.passed()).count();
+  }
+
+  private List<TestRunResult.Row> runRows() {
     System.out.println(S.get("testRunning", Integer.toString(vector.data.size())));
+    final var rows = new ArrayList<TestRunResult.Row>();
     final var passFail = evaluator.evaluate((row, report) -> {
       System.out.print((row + 1) + " \r");
+      final var failures = new ArrayList<String>();
       if (report != null && !report.isEmpty()) {
         System.out.println();
-        System.err.println(S.get("testFailed", Integer.toString(row + 1)));
-        for (final var e1 : report) System.out.println("  " + e1);
+        final var vectorNumber = Integer.toString(row + 1);
+        final var lineNumber = Integer.toString(vector.lineNumbers[row]);
+        final var location = vector.setNumbers[row] > 0
+            ? S.get("testVectorLocationWithSetSeq", vectorNumber,
+                Integer.toString(vector.setNumbers[row]), Integer.toString(vector.seqNumbers[row]),
+                lineNumber)
+            : S.get("testVectorLocation", vectorNumber, lineNumber);
+        System.err.println(S.get("testFailed", location));
+        for (final var e1 : report) {
+          System.out.println("  " + e1);
+          failures.add(e1.toString());
+        }
       }
+      rows.add(new TestRunResult.Row(row + 1, List.copyOf(failures)));
     });
     System.out.println();
     System.out.println(S.get("testResults", Integer.toString(passFail[0]), Integer.toString(passFail[1])));
-    return passFail[1];
+    return rows;
   }
 
   public void cancel() {

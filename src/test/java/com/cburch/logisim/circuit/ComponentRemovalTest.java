@@ -53,11 +53,15 @@ class ComponentRemovalTest {
 
   @Test
   void ramWithoutSimulationStateCanBeRemovedAndRedone() {
+    // Opening a circuit propagates it on the simulation thread; keep that from creating the
+    // RAM's state, which this test needs to be missing.
+    project.getSimulator().setAutoPropagation(false);
     final var ramFactory = new Ram();
     final var ram =
         ramFactory.createComponent(Location.create(100, 100, true), ramFactory.createAttributeSet());
     add(ram);
     // Never propagated, so the RAM has no RamState: the removal hook must cope with that.
+    project.getCircuitState(circuit).setData(ram, null);
     assertNull(project.getCircuitState(circuit).getData(ram));
 
     deleteUndoRedo(ram);

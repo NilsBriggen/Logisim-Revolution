@@ -144,6 +144,44 @@ public class TtyInterfaceTest {
     assertTrue(err.contains(S.get("ttyTableOscillationError")), err);
   }
 
+  @Test
+  void breakConditionStopsTheSimulation() throws IOException {
+    final var args = startupFor(writeCircuit("clk.circ", CLOCKED_OUTPUT), TtyInterface.FORMAT_HALT);
+    when(args.getBreakConditions()).thenReturn(List.of("y=1"));
+
+    assertEquals(TtyInterface.EXIT_SUCCESS, TtyInterface.run(args));
+  }
+
+  @Test
+  void breakConditionOnUnknownPinFails() throws IOException {
+    final var args = startupFor(writeCircuit("clk.circ", CLOCKED_OUTPUT), TtyInterface.FORMAT_HALT);
+    when(args.getBreakConditions()).thenReturn(List.of("nope=1"));
+
+    final var err = captureStderr(() -> assertEquals(TtyInterface.EXIT_FAILURE, TtyInterface.run(args)));
+
+    assertTrue(err.contains(S.get("ttyBreakPinError", "nope=1")), err);
+  }
+
+  @Test
+  void breakConditionsParse() {
+    assertEquals(new TtyInterface.BreakCondition("count", true, 10), TtyInterface.BreakCondition.parse("count=10"));
+    assertEquals(new TtyInterface.BreakCondition("count", true, 10), TtyInterface.BreakCondition.parse("count == 0xA"));
+    assertEquals(new TtyInterface.BreakCondition("s", false, 5), TtyInterface.BreakCondition.parse("s!=0b101"));
+    assertNull(TtyInterface.BreakCondition.parse("=1"));
+    assertNull(TtyInterface.BreakCondition.parse("a=x"));
+    assertNull(TtyInterface.BreakCondition.parse("a"));
+  }
+
+  @Test
+  void failedAssertionFailsTheTruthTable() throws IOException {
+    final var args = startupFor(writeCircuit("assert.circ", ASSERTED_WIRE), TtyInterface.FORMAT_TABLE);
+
+    final var err = captureStderr(() -> assertEquals(TtyInterface.EXIT_FAULT, TtyInterface.run(args)));
+
+    assertTrue(err.contains(S.get("ttyHaltReasonFault")), err);
+    assertTrue(err.contains("a must be high"), err);
+  }
+
   /** {@code 1 << 31} is negative, so a wider table used to print nothing and succeed. */
   @Test
   void truthTableWithTooManyInputBitsFails() throws IOException {
@@ -295,6 +333,36 @@ public class TtyInterfaceTest {
             <a name="label" val="y"/>
           </comp>
           <wire from="(100,100)" to="(170,100)"/>
+          <wire from="(200,100)" to="(300,100)"/>
+      """;
+
+  /** A clock driving output y; it never halts by itself. */
+  private static final String CLOCKED_OUTPUT =
+      """
+          <comp lib="0" loc="(100,100)" name="Clock"/>
+          <comp lib="0" loc="(200,100)" name="Pin">
+            <a name="facing" val="west"/>
+            <a name="output" val="true"/>
+            <a name="label" val="y"/>
+          </comp>
+          <wire from="(100,100)" to="(200,100)"/>
+      """;
+
+  /** Input a straight to output y, with an assertion that a is high: the a = 0 row fails. */
+  private static final String ASSERTED_WIRE =
+      """
+          <comp lib="0" loc="(100,100)" name="Pin">
+            <a name="label" val="a"/>
+          </comp>
+          <comp lib="0" loc="(200,100)" name="Assertion">
+            <a name="message" val="a must be high"/>
+          </comp>
+          <comp lib="0" loc="(300,100)" name="Pin">
+            <a name="facing" val="west"/>
+            <a name="output" val="true"/>
+            <a name="label" val="y"/>
+          </comp>
+          <wire from="(100,100)" to="(200,100)"/>
           <wire from="(200,100)" to="(300,100)"/>
       """;
 

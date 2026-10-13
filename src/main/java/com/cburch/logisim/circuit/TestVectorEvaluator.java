@@ -31,8 +31,21 @@ public class TestVectorEvaluator {
   Consumer<TestVectorEvaluator> callback; // final callback with this evaluator
 
   public record LineReport(int column, String columnName, Value expected, Value computed, boolean oscillating) {
+    /**
+     * Returns a report for a fault (a failed assertion) raised while evaluating the row. It belongs
+     * to no column: {@link #column()} is -1 and {@link #columnName()} holds the message.
+     */
+    public static LineReport fault(String message) {
+      return new LineReport(-1, message, Value.NIL, Value.NIL, false);
+    }
+
+    public boolean isFault() {
+      return column < 0;
+    }
+
     @Override
     public String toString() {
+      if (isFault()) return columnName;
       return String.format("%s = %s (%s %s)%s", columnName, computed.toDisplayString(2), S.get("tveExpected"),
           expected.toDisplayString(2), (oscillating ? (" " + S.get("tveOscillating")) : "")
       );
@@ -155,9 +168,14 @@ public class TestVectorEvaluator {
         }
       }
 
+      // Drained on every row, reported or not, so a fault is charged to the row that raised it.
+      final var faults = prop.drainFaults();
       if (lineReportAction != null) {
         final var val = vector.data.get(stepRow);
         ArrayList<LineReport> report = new ArrayList<LineReport>();
+        for (final var fault : faults) {
+          report.add(LineReport.fault(fault.message()));
+        }
 
         // Compare pins with expected values
         for (var i = 0; i < pins.length; i++) {

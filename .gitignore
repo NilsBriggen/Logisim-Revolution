@@ -297,4 +297,6 @@ gradle-app.setting
 *.py
 !/artwork/generate_revolution_assets.py
 !/scripts/ci/*.py
+!/scripts/install-arch.py
+!/support/arch/test_*.py
 __pycache__/

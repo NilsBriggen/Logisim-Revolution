@@ -96,10 +96,23 @@ public class LayoutEditHandler extends EditHandler
     setEnabled(LogisimMenuBar.ADD_CONTROL, false);
     setEnabled(LogisimMenuBar.REMOVE_CONTROL, false);
     for (final var item : LogisimMenuBar.ARRANGE_ITEMS) {
-      final var mode = arrangeMode(item);
-      setEnabled(
-          item, sel != null && selectAvailable && canChange && SelectionArrange.isApplicable(sel, mode));
+      final var transform = transformMode(item);
+      final var applicable =
+          sel != null
+              && (transform != null
+                  ? SelectionTransform.isApplicable(sel)
+                  : SelectionArrange.isApplicable(sel, arrangeMode(item)));
+      setEnabled(item, selectAvailable && canChange && applicable);
     }
+  }
+
+  /** The rotate or flip command behind an Edit &gt; Arrange menu item, or null for align/distribute. */
+  static SelectionTransform.Mode transformMode(LogisimMenuItem item) {
+    if (item == LogisimMenuBar.ROTATE_CW) return SelectionTransform.Mode.ROTATE_CW;
+    if (item == LogisimMenuBar.ROTATE_CCW) return SelectionTransform.Mode.ROTATE_CCW;
+    if (item == LogisimMenuBar.FLIP_HORIZONTAL) return SelectionTransform.Mode.FLIP_HORIZONTAL;
+    if (item == LogisimMenuBar.FLIP_VERTICAL) return SelectionTransform.Mode.FLIP_VERTICAL;
+    return null;
   }
 
   /** The arrange command behind an Edit &gt; Arrange menu item. */
@@ -125,6 +138,14 @@ public class LayoutEditHandler extends EditHandler
     final var canvas = frame.getCanvas();
     final var sel = canvas.getSelection();
     final var circuit = canvas.getCircuit();
+    final var transform = transformMode(item);
+    if (transform != null) {
+      if (proj.getLogisimFile().contains(circuit) && SelectionTransform.isApplicable(sel)) {
+        proj.doAction(SelectionTransform.createAction(sel, transform));
+        proj.repaintCanvas();
+      }
+      return;
+    }
     final var mode = arrangeMode(item);
     if (!proj.getLogisimFile().contains(circuit) || !SelectionArrange.isApplicable(sel, mode)) {
       return;

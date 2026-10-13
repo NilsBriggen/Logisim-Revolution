@@ -11,6 +11,7 @@ package com.cburch.logisim.instance;
 
 import com.cburch.logisim.circuit.Circuit;
 import com.cburch.logisim.circuit.CircuitState;
+import com.cburch.logisim.circuit.PauseReason;
 import com.cburch.logisim.comp.Component;
 import com.cburch.logisim.comp.EndData;
 import com.cburch.logisim.data.Attribute;
@@ -93,6 +94,11 @@ public class InstanceStateImpl implements InstanceState {
   @Override
   public Project getProject() {
     return circuitState.getProject();
+  }
+
+  @Override
+  public void reportFault(PauseReason reason) {
+    circuitState.getPropagator().reportFault(reason);
   }
 
   @Override

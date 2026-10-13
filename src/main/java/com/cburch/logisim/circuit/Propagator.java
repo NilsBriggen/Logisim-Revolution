@@ -25,8 +25,10 @@ import com.cburch.logisim.util.SplayQueue;
 import com.cburch.logisim.util.QNode;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Random;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class Propagator {
   private static class Listener implements AttributeListener {
@@ -134,6 +136,12 @@ public class Propagator {
   private final Random noiseSource = new Random();
   private int noiseCount = 0;
 
+  /**
+   * Faults (failed assertions, hit watchpoints) reported while propagating. Components add to it
+   * from inside {@code propagate()}; the simulation driver drains it once propagation completes.
+   */
+  private final ConcurrentLinkedQueue<PauseReason> faults = new ConcurrentLinkedQueue<>();
+
   private int eventSerialNumber = 0;
   static int lastId = 0;
 
@@ -171,6 +179,23 @@ public class Propagator {
 
   public boolean isOscillating() {
     return isOscillating;
+  }
+
+  /**
+   * Records a fault to be acted on after the current propagation. Safe to call from any thread,
+   * including from a component's {@code propagate()}.
+   */
+  public void reportFault(PauseReason reason) {
+    if (reason != null) faults.add(reason);
+  }
+
+  /** Returns and clears the faults reported since the last call, oldest first. */
+  public List<PauseReason> drainFaults() {
+    final var drained = new ArrayList<PauseReason>();
+    for (PauseReason reason; (reason = faults.poll()) != null; ) {
+      drained.add(reason);
+    }
+    return drained;
   }
 
   boolean isPending() {
@@ -257,6 +282,7 @@ public class Propagator {
     }
     root.reset();
     isOscillating = false;
+    faults.clear();
   }
 
   //

@@ -665,13 +665,13 @@ public class AppPreferences {
   // faint one in between.
   public static final int DEFAULT_CANVAS_BG_COLOR = 0xFFFDFDFE;
   public static final int DEFAULT_GRID_BG_COLOR = 0xFFFDFDFE;
-  public static final int DEFAULT_GRID_DOT_COLOR = 0xFFA9B3C4;
-  public static final int DEFAULT_ZOOMED_DOT_COLOR = 0xFFDCE2EC;
+  public static final int DEFAULT_GRID_DOT_COLOR = 0xFF8C97AA;
+  public static final int DEFAULT_ZOOMED_DOT_COLOR = 0xFFBEC6D3;
   // dark mode default grid colors
   public static final int DARK_CANVAS_BG_COLOR = 0xFF1A1C20;
   public static final int DARK_GRID_BG_COLOR = 0xFF1A1C20;
-  public static final int DARK_GRID_DOT_COLOR = 0xFF525C6D;
-  public static final int DARK_ZOOMED_DOT_COLOR = 0xFF31373F;
+  public static final int DARK_GRID_DOT_COLOR = 0xFF667186;
+  public static final int DARK_ZOOMED_DOT_COLOR = 0xFF3D444F;
   public static final int DEFAULT_COMPONENT_COLOR = 0x00222831;
   public static final int DEFAULT_COMPONENT_SECONDARY_COLOR = 0x99999999;
   public static final int DEFAULT_COMPONENT_GHOST_COLOR = 0x99999999;
@@ -1323,12 +1323,18 @@ public class AppPreferences {
   public static final PrefMonitor<String> DIALOG_DIRECTORY =
       create(new PrefMonitorString("dialogDirectory", ""));
 
+  public static final PrefMonitor<String> IMAGE_EXPORT_DIRECTORY =
+      create(new PrefMonitorString("imageExportDirectory", ""));
+
+  public static final PrefMonitor<String> SOC_DIRECTORY =
+      create(new PrefMonitorString("socDirectory", ""));
+
   /* Opens the action search when Shift is tapped twice in quick succession. Kept switchable
    * because Shift is a working modifier on the canvas, so the gesture can misfire. */
   public static final PrefMonitor<Boolean> SEARCH_DOUBLE_SHIFT =
       create(new PrefMonitorBoolean("searchDoubleShift", true));
 
-  /* Hotkey Settings */
+  /* Hotkeys Settings */
   /* Watch whether in headless mode */
   public static final int hotkeyMenuMask =
       GraphicsEnvironment.isHeadless()

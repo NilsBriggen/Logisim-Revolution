@@ -16,6 +16,7 @@ import com.cburch.logisim.instance.Instance;
 import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.soc.data.SocSupport;
 import com.cburch.logisim.tools.MenuExtender;
+import com.cburch.logisim.util.JFileChoosers;
 import java.awt.Frame;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -52,10 +53,11 @@ public class PioMenu implements ActionListener, MenuExtender {
   }
 
   private void exportC() {
-    JFileChooser fc = new JFileChooser();
+    JFileChooser fc = JFileChoosers.create(JFileChoosers.DirectoryScope.SOC_SOFTWARE);
     fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
     int result = fc.showDialog(frame, S.get("SelectDirectoryToStoreC"));
     if (result == JFileChooser.APPROVE_OPTION) {
+      JFileChoosers.setCurrentDirectory(JFileChoosers.DirectoryScope.SOC_SOFTWARE, fc.getSelectedFile());
       PioState myState = instance.getAttributeValue(PioAttributes.PIO_STATE);
       if (myState == null) throw new NullPointerException("BUG in PioMenu.java");
       String compName =

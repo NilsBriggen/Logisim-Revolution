@@ -12,6 +12,7 @@ package com.cburch.logisim.gui.generic;
 import com.cburch.logisim.prefs.AppPreferences;
 import java.awt.Component;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.image.MemoryImageSource;
 import java.beans.PropertyChangeEvent;
@@ -31,6 +32,8 @@ public class GridPainter implements PropertyChangeListener {
   private double zoomFactor = 1.0;
   private Image gridImage;
   private int gridImageWidth;
+  /** The device pixels per canvas pixel the tile was rendered for (1.5 on a 150% display). */
+  private double tileScale = 1.0;
 
   public GridPainter(Component destination) {
     this.destination = destination;
@@ -107,6 +110,14 @@ public class GridPainter implements PropertyChangeListener {
    */
   public void paintGrid(Graphics g, int originX, int originY) {
     if (!showGrid) return;
+    // Render the tile at the display's own density. A tile made at canvas resolution and then
+    // stretched by a fractional desktop scale smears each one-pixel dot across neighbouring device
+    // pixels, which on a light canvas leaves the grid all but invisible.
+    final var scale = g instanceof Graphics2D g2 ? g2.getTransform().getScaleX() : 1.0;
+    if (scale > 0 && Double.isFinite(scale) && scale != tileScale) {
+      tileScale = scale;
+      createGridImage(gridSize, zoomFactor);
+    }
 
     final var clip = g.getClipBounds();
     // round down to a whole tile from the origin
@@ -114,7 +125,7 @@ public class GridPainter implements PropertyChangeListener {
     final var y0 = originY + Math.floorDiv(clip.y - originY, gridImageWidth) * gridImageWidth;
     for (var x = 0; x < clip.width + gridImageWidth; x += gridImageWidth) {
       for (var y = 0; y < clip.height + gridImageWidth; y += gridImageWidth) {
-        g.drawImage(gridImage, x0 + x, y0 + y, destination);
+        g.drawImage(gridImage, x0 + x, y0 + y, gridImageWidth, gridImageWidth, destination);
       }
     }
   }
@@ -125,7 +136,10 @@ public class GridPainter implements PropertyChangeListener {
 
   private void createGridImage(int size, double f) {
     final var w = tileWidth(size, f);
-    gridImage = destination.createImage(new MemoryImageSource(w, w, gridPixels(size, f, w), 0, w));
+    final var device = Math.max(1, (int) Math.round(w * tileScale));
+    gridImage =
+        destination.createImage(
+            new MemoryImageSource(device, device, gridPixels(size, f * tileScale, device), 0, device));
     gridImageWidth = w;
   }
 
@@ -152,7 +166,7 @@ public class GridPainter implements PropertyChangeListener {
     // The same document-space hierarchy at every zoom. Suppress minor points when they
     // become too dense, without changing snapping or circuit coordinates.
     final var step = size * f;
-    final var dotSize = Math.max(1, (int) f);
+    final var dotSize = Math.max(1, (int) Math.round(f));
     final var offset = -(dotSize / 2);
     for (var row = 0; Math.round(row * step) < w; row++) {
       final var y = (int) Math.round(row * step);

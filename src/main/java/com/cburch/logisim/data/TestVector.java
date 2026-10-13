@@ -44,6 +44,7 @@ public class TestVector {
   private class TestVectorReader {
     private final BufferedReader in;
     private StringTokenizer curLine;
+    private int lineNumber;
     private int setColumnIndex = -1;
     private int seqColumnIndex = -1;
 
@@ -56,6 +57,7 @@ public class TestVector {
       var line = in.readLine();
 
       while (line != null) {
+        lineNumber++;
         final var i = line.indexOf('#');
         if (i >= 0) line = line.substring(0, i);
         final var ret = new StringTokenizer(line);
@@ -75,10 +77,12 @@ public class TestVector {
       final var localFloatingFlags = new ArrayList<boolean[]>();
       final var localSetNumbers = new ArrayList<Integer>();
       final var localSeqNumbers = new ArrayList<Integer>();
+      final var localLineNumbers = new ArrayList<Integer>();
       curLine = findNonemptyLine();
 
       while (curLine != null) {
         parseData(localDontCareFlags, localFloatingFlags, localSetNumbers, localSeqNumbers);
+        localLineNumbers.add(lineNumber);
         curLine = findNonemptyLine();
       }
       // A header without rows would "pass" without testing anything.
@@ -117,6 +121,10 @@ public class TestVector {
       TestVector.this.seqNumbers = new int[localSeqNumbers.size()];
       for (int i = 0; i < localSeqNumbers.size(); i++) {
         TestVector.this.seqNumbers[i] = localSeqNumbers.get(i);
+      }
+      TestVector.this.lineNumbers = new int[localLineNumbers.size()];
+      for (int i = 0; i < localLineNumbers.size(); i++) {
+        TestVector.this.lineNumbers[i] = localLineNumbers.get(i);
       }
       TestVector.this.dontCareFlags = localDontCareFlags;
       TestVector.this.floatingFlags = localFloatingFlags;
@@ -296,6 +304,7 @@ public class TestVector {
   public List<Value[]> data;
   public int[] setNumbers;
   public int[] seqNumbers;
+  public int[] lineNumbers;
   private List<boolean[]> dontCareFlags;
   private List<boolean[]> floatingFlags;
 

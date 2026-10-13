@@ -82,15 +82,27 @@ public class LogFrame extends LFrame.SubWindowWithSimulation {
     @Override
     public void simulatorReset(Simulator.Event e) {
       final var model = eventModel(e);
-      if (model != null) updates.simulatorReset(model);
+      if (model != null) {
+        model.getWatchpoints().reset();
+        updates.simulatorReset(model);
+      }
     }
 
     @Override
     public void propagationCompleted(Simulator.Event e) {
       final var model = eventModel(e);
       if (model != null) {
-        updates.propagationCompleted(model, e.didTick(), e.didSingleStep(), e.didPropagate());
+        final var sample =
+            updates.propagationCompleted(model, e.didTick(), e.didSingleStep(), e.didPropagate());
+        // Only settled values count: a single step's intermediate values would fire spuriously.
+        if (sample != null && e.didPropagate()) checkWatchpoints(model, sample);
       }
+    }
+
+    private void checkWatchpoints(Model model, Model.Sample sample) {
+      final var prop = model.getCircuitState().getPropagator();
+      final var reason = model.getWatchpoints().check(sample::find, prop.getTickCount());
+      if (reason != null) curSimulator.requestPause(reason);
     }
 
     @Override
@@ -305,7 +317,8 @@ public class LogFrame extends LFrame.SubWindowWithSimulation {
     // circuit. This also permits opening the drawer for the first time while editing HDL.
     if (model != null) {
       if (panels.length == 0) {
-        panels = new LogPanel[] {new OptionsPanel(this), new ChronoPanel(this)};
+        panels =
+            new LogPanel[] {new OptionsPanel(this), new ChronoPanel(this), new WatchpointsPanel(this)};
         for (final var panel : panels) {
           tabbedPane.addTab(panel.getTitle(), null, panel, panel.getToolTipText());
         }

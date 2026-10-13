@@ -85,9 +85,11 @@ public abstract class PrintHandler implements Printable {
       ExportImage.getFilter(ExportImage.FORMAT_JPG),
       ExportImage.getFilter(ExportImage.FORMAT_TIKZ),
       ExportImage.getFilter(ExportImage.FORMAT_SVG),
-      ExportImage.getFilter(ExportImage.FORMAT_WAVEDROM)
+      ExportImage.getFilter(ExportImage.FORMAT_WAVEDROM),
+      ExportImage.getFilter(ExportImage.FORMAT_VCD)
     };
-    final var chooser = JFileChoosers.createSelected(getLastExported());
+    final var chooser =
+        JFileChoosers.createSelected(getLastExported(), JFileChoosers.DirectoryScope.IMAGE_EXPORT);
     chooser.setAcceptAllFileFilterUsed(false);
     for (final var ff : filters) {
       chooser.addChoosableFileFilter(ff);
@@ -144,6 +146,10 @@ public abstract class PrintHandler implements Printable {
       exportWaveDrom(dest);
       return;
     }
+    if (fmt == ExportImage.FORMAT_VCD) {
+      exportVcd(dest);
+      return;
+    }
     final var img = new BufferedImage(d.width, d.height, BufferedImage.TYPE_INT_RGB);
     final var base = (fmt == ExportImage.FORMAT_TIKZ || fmt == ExportImage.FORMAT_SVG) ? new TikZWriter() : img.getGraphics();
     if (base instanceof TikZWriter tz) {
@@ -190,6 +196,15 @@ public abstract class PrintHandler implements Printable {
             "WaveDrom export is only supported for Timing Diagrams.",
             "Unsupported Format",
             OptionPane.WARNING_MESSAGE);
+  }
+
+  /** Writes a Value Change Dump; only the timing diagram has signal histories to write. */
+  public void exportVcd(File dest) {
+    OptionPane.showMessageDialog(
+        KeyboardFocusManager.getCurrentKeyboardFocusManager().getActiveWindow(),
+        S.get("exportVcdUnsupported"),
+        S.get("exportVcdUnsupportedTitle"),
+        OptionPane.WARNING_MESSAGE);
   }
 
   public abstract Dimension getExportImageSize();

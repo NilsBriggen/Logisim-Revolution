@@ -77,7 +77,21 @@
           <b><a href="mem-vascii.html">Ascii byte escape big-endian</a></b><br>
           <b><a href="mem-vascii.html">Ascii byte escape little-endian</a></b> ASCII encoded file with escape code, as in C for non-printable characters.
         </li>
+        <li>
+          <b>Intel HEX</b> and <b>Motorola S-record</b>: the record formats written by
+          <tt>objcopy</tt> and most assemblers. They address bytes; each memory word takes as
+          many bytes as its width needs, most significant byte first. Checksums are verified on
+          loading. Saving writes only the 16-byte ranges that are not all zero.
+        </li>
+        <li>
+          <b>Verilog $readmemh</b>: one hexadecimal word per token, with <tt>@address</tt> jumps
+          (in words) and <tt>//</tt> or <tt>/* */</tt> comments, as read by Verilog's
+          <tt>$readmemh</tt>. Undefined words (<tt>xx</tt>) load as 0.
+        </li>
         </ul>
+        <p>
+          All three are recognized automatically on loading.
+        </p>
 		<p>
 		  
 		</p>

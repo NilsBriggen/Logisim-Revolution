@@ -34,6 +34,7 @@ public class WiringLibrary extends Library {
     new AddTool(SplitterFactory.instance),
     new AddTool(Pin.FACTORY),
     new AddTool(Probe.FACTORY),
+    new AddTool(Assertion.FACTORY),
     new AddTool(Tunnel.FACTORY),
     new AddTool(PullResistor.FACTORY),
     new AddTool(Clock.FACTORY),

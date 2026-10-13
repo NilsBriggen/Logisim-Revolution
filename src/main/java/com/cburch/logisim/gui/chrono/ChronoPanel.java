@@ -11,11 +11,13 @@ package com.cburch.logisim.gui.chrono;
 
 import static com.cburch.logisim.gui.Strings.S;
 
+import com.cburch.logisim.gui.generic.OptionPane;
 import com.cburch.logisim.gui.log.LogFrame;
 import com.cburch.logisim.gui.log.LogPanel;
 import com.cburch.logisim.gui.log.Model;
 import com.cburch.logisim.gui.log.Signal;
 import com.cburch.logisim.gui.log.SignalInfo;
+import com.cburch.logisim.gui.log.VcdWriter;
 import com.cburch.logisim.gui.menu.EditHandler;
 import com.cburch.logisim.gui.menu.LogisimMenuBar;
 import com.cburch.logisim.gui.menu.PrintHandler;
@@ -40,6 +42,7 @@ import java.awt.image.BufferedImage;
 import java.awt.print.PageFormat;
 import java.awt.print.Printable;
 import java.io.File;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -312,6 +315,7 @@ public class ChronoPanel extends LogPanel implements Model.Listener {
   @Override
   public void selectionChanged(Model.Event event) {
     if (leftPanel == null || rightPanel == null) return;
+    changeSpotlight(null);
     leftPanel.updateSignals();
     rightPanel.updateSignals();
     editHandler.computeEnabled();
@@ -443,6 +447,27 @@ public class ChronoPanel extends LogPanel implements Model.Listener {
           g.translate(l.width + 3, headerHeight);
           rightPanel.paintExportImage(g);
           g.translate(-(l.width + 3), -headerHeight);
+        }
+
+        @Override
+        public void exportVcd(File dest) {
+          final var signals = new ArrayList<Signal>();
+          for (var i = 0; i < model.getSignalCount(); i++) signals.add(model.getSignal(i));
+          final var circuit = model.getCircuit();
+          try (final var writer = new PrintWriter(dest, StandardCharsets.UTF_8)) {
+            VcdWriter.write(
+                signals,
+                circuit == null ? "logisim" : circuit.getName(),
+                model.getStartTime(),
+                model.getEndTime(),
+                writer);
+          } catch (IOException e) {
+            OptionPane.showMessageDialog(
+                ChronoPanel.this,
+                S.get("exportVcdError", e.getMessage()),
+                S.get("exportVcdUnsupportedTitle"),
+                OptionPane.ERROR_MESSAGE);
+          }
         }
 
         @Override

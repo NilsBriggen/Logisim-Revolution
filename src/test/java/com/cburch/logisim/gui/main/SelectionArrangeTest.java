@@ -274,12 +274,16 @@ class SelectionArrangeTest {
   @Test
   void everyArrangeMenuItemRunsItsOwnCommandAndHasALabel() {
     final var modes = new HashSet<Mode>();
+    final var transforms = new HashSet<SelectionTransform.Mode>();
     for (final var item : LogisimMenuBar.ARRANGE_ITEMS) {
-      modes.add(LayoutEditHandler.arrangeMode(item));
+      final var transform = LayoutEditHandler.transformMode(item);
+      if (transform != null) transforms.add(transform);
+      else modes.add(LayoutEditHandler.arrangeMode(item));
       final var label = LogisimMenuBar.arrangeItemText(item);
       assertFalse(label.isBlank() || label.startsWith("edit"), "label for " + item + ": " + label);
     }
     assertEquals(Mode.values().length, modes.size());
+    assertEquals(SelectionTransform.Mode.values().length, transforms.size());
   }
 
   private Component findAt(Location loc) {

@@ -66,6 +66,7 @@
               <tr><td><tt>nl</tt> Dutch</td></tr>
               <tr><td><tt>ja</tt> Japanese</td></tr>
               <tr><td><tt>pl</tt> Polish</td></tr>
+              <tr><td><tt>tr</tt> Turkish</td></tr>
               <tr><td><tt>zh</tt> Simplified Chinese</td></tr>
             </tbody>
           </table>
@@ -128,6 +129,16 @@
           </p>
         </dd>
 
+        <dt><tt>--break <i>LABEL=VALUE</i></tt>, <tt>--break <i>LABEL!=VALUE</i></tt></dt>
+        <dd>
+          <p>
+            Stops a TTY simulation once the pin labelled <i>LABEL</i> has (or no longer has) the
+            given value, written in decimal, <tt>0x</tt> hexadecimal or <tt>0b</tt> binary. It ends
+            a run without a <tt>halt</tt> pin, and may be repeated; the first condition that holds
+            stops the run.
+          </p>
+        </dd>
+
         <dt><tt>--toplevel-circuit <i>NAME</i></tt></dt>
         <dd><p>Selects the circuit to use as the top-level circuit.</p></dd>
       </dl>
@@ -138,7 +149,26 @@
         <dd>
           <p>
             Runs <i>VECTOR_FILE</i> against <i>CIRCUIT</i> in <i>PROJECT_FILE</i>, then exits. See
-            <a href="../verify/test.html">Test vectors</a>.
+            <a href="../verify/test.html">Test vectors</a>. Repeat the option to run several
+            vector files; the exit code is that of the worst run.
+          </p>
+        </dd>
+
+        <dt><tt>--test-manifest <i>FILE</i></tt></dt>
+        <dd>
+          <p>
+            Runs every test vector listed in <i>FILE</i>, one <tt>circuit,vector_file</tt> per
+            line. Blank lines and lines starting with <tt>#</tt> are ignored, and relative vector
+            paths are relative to the manifest.
+          </p>
+        </dd>
+
+        <dt><tt>--report <i>FORMAT FILE</i></tt></dt>
+        <dd>
+          <p>
+            Also writes the test vector results to <i>FILE</i> as <tt>junit</tt> (JUnit XML, one
+            test case per vector row), <tt>tap</tt> (TAP version 13) or <tt>json</tt>, for CI
+            systems and graders.
           </p>
         </dd>
 

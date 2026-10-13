@@ -33,7 +33,7 @@ import javax.swing.Icon;
  */
 public final class ComponentIcons {
   private enum Shape {
-    CLOCK, RESET, PROBE, TUNNEL, CONSTANT, POWER, GROUND, DISCONNECTED, TRANSISTOR,
+    CLOCK, RESET, PROBE, ASSERTION, TUNNEL, CONSTANT, POWER, GROUND, DISCONNECTED, TRANSISTOR,
     TRANSMISSION, EXTENDER, MUX, DEMUX, DECODER, ENCODER, SELECTOR, PLA, ARITHMETIC,
     FLIP_FLOP, REGISTER, COUNTER, SHIFT, RANDOM, RAM, ROM, DUAL_RAM, BUTTON, SWITCH,
     JOYSTICK, KEYBOARD, LED, LED_BAR, RGB_LED, SEGMENT, HEX, MATRIX, TERMINAL, PORT,
@@ -61,6 +61,7 @@ public final class ComponentIcons {
     add(icons, "wiring", "Clock", Shape.CLOCK);
     add(icons, "wiring", "PowerOnReset", Shape.RESET);
     add(icons, "wiring", "Probe", Shape.PROBE);
+    add(icons, "wiring", "Assertion", Shape.ASSERTION);
     add(icons, "wiring", "Tunnel", Shape.TUNNEL);
     add(icons, "wiring", "Constant", Shape.CONSTANT);
     add(icons, "wiring", "Power", Shape.POWER);
@@ -209,6 +210,12 @@ public final class ComponentIcons {
           line(g, 1, 12, 6, 12);
           line(g, 6, 6, 19, 6, 23, 12, 19, 18, 6, 18, 6, 6);
           text(g, "01", 14, 12, 8);
+        }
+        case ASSERTION -> {
+          line(g, 1, 12, 6, 12);
+          line(g, 6, 5, 20, 5, 20, 19, 6, 19, 6, 5);
+          line(g, 13, 8, 13, 13);
+          line(g, 13, 15.5, 13, 17);
         }
         case TUNNEL -> {
           line(g, 1, 12, 7, 12);
@@ -453,8 +460,9 @@ public final class ComponentIcons {
   private static final String TTL_PARTS =
       "7400 7402 7404 7408 7410 7411 7413 7414 7418 7419 7420 7421 "
       + "7424 7427 7430 7432 7434 7436 7438 7442 7443 7444 7447 7451 "
-      + "7454 7458 7464 7474 7476 7485 7486 7487 7493 74125 74138 74139 "
-      + "74151 74153 74157 74158 74161 74163 74164 74165 74166 74173 74175 74181 "
-      + "74182 74192 74193 74194 74240 74241 74244 74245 74266 74273 74283 74299 "
-      + "74377 74381 74541 74670 747266";
+      + "7454 7458 7464 7474 7476 7485 7486 7487 7490 7493 74125 74138 "
+      + "74123 74139 74148 74151 74153 74154 74157 74158 74161 74163 74164 74165 "
+      + "74166 74173 74175 74181 74182 74192 74193 74194 74240 74241 74244 74245 "
+      + "74266 74273 74280 74283 74299 74374 74377 74381 74390 74541 74574 74595 "
+      + "74670 744060 747266";
 }

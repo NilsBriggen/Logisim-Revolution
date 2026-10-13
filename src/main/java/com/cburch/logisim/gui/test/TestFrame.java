@@ -20,6 +20,7 @@ import com.cburch.logisim.gui.generic.OptionPane;
 import com.cburch.logisim.proj.Project;
 import com.cburch.logisim.proj.ProjectEvent;
 import com.cburch.logisim.proj.ProjectListener;
+import com.cburch.logisim.util.JFileChoosers;
 import com.cburch.logisim.util.LocaleListener;
 import com.cburch.logisim.util.LocaleManager;
 import com.cburch.logisim.util.UiScale;
@@ -47,7 +48,7 @@ public class TestFrame extends LFrame.SubWindowWithSimulation {
   private final ModelHistory modelHistory =
       new ModelHistory(circuit -> new Model(project, circuit), myListener);
   private final WindowMenuManager windowManager;
-  private final JFileChooser chooser = new JFileChooser();
+  private final JFileChooser chooser = JFileChoosers.create();
   private final TestPanel panel;
   private final JButton load = new JButton();
   private final JButton run = new JButton();

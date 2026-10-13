@@ -19,6 +19,7 @@ import com.cburch.logisim.comp.Component;
 import com.cburch.logisim.comp.ComponentDrawContext;
 import com.cburch.logisim.data.Location;
 import com.cburch.logisim.gui.main.Canvas;
+import com.cburch.logisim.gui.main.ReplaceComponent;
 import com.cburch.logisim.gui.main.SelectionActions;
 import com.cburch.logisim.gui.menu.ComponentHelp;
 import com.cburch.logisim.gui.menu.LogisimMenuBar;
@@ -54,6 +55,7 @@ public class MenuTool extends Tool {
     final JMenuItem rotateRight = new JMenuItem(S.get("compRotateRight"));
     final JMenuItem rotateLeft = new JMenuItem(S.get("compRotateLeft"));
     final JMenuItem help = new JMenuItem();
+    final JMenuItem replace = new JMenuItem(S.get("compReplaceItem"));
     final JMenuItem lock;
 
     MenuComponent(Project proj, Circuit circ, Component comp) {
@@ -80,6 +82,11 @@ public class MenuTool extends Tool {
       add(del);
       del.addActionListener(this);
       del.setEnabled(editable);
+      if (!(comp instanceof Wire)) {
+        add(replace);
+        replace.addActionListener(this);
+        replace.setEnabled(editable);
+      }
       add(attrs);
       attrs.addActionListener(this);
       if (!(comp instanceof Wire)) {
@@ -102,6 +109,8 @@ public class MenuTool extends Tool {
         xn.remove(comp);
         proj.doAction(
             xn.toAction(S.getter("removeComponentAction", comp.getFactory().getDisplayGetter())));
+      } else if (src == replace) {
+        ReplaceComponent.ask(proj, circ, comp);
       } else if (src == attrs) {
         proj.getFrame().viewComponentAttributes(circ, comp);
       } else if (src == lock) {
@@ -170,7 +179,7 @@ public class MenuTool extends Tool {
       final var arrange = new JMenu(com.cburch.logisim.gui.Strings.S.get("editArrangeMenu"));
       var anyEnabled = false;
       for (final var item : LogisimMenuBar.ARRANGE_ITEMS) {
-        if (item == LogisimMenuBar.DISTRIBUTE_HORIZONTAL) arrange.addSeparator();
+        if (LogisimMenuBar.startsArrangeGroup(item)) arrange.addSeparator();
         final var entry = new JMenuItem(LogisimMenuBar.arrangeItemText(item));
         final var enabled = menuBar.isEnabled(item);
         entry.setEnabled(enabled);

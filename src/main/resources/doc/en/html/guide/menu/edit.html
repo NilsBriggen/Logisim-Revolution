@@ -131,8 +131,22 @@
             components (<b>Align Left</b>, <b>Align Center</b>, <b>Align Right</b>,
             <b>Align Top</b>, <b>Align Middle</b>, <b>Align Bottom</b>; at least two components)
             or spaces them evenly (<b>Distribute Horizontally</b>, <b>Distribute Vertically</b>;
-            at least three components). See
+            at least three components), or rotates or flips the whole selection
+            (<b>Rotate Clockwise</b>, <b>Rotate Counterclockwise</b>, <b>Flip Horizontally</b>,
+            <b>Flip Vertically</b>). See
             <a href="../feature/fet-arrange.html">Aligning and distributing components</a>.
+          </p>
+        </dd>
+        <dt>
+          <strong>Replace in Labels…</strong>
+        </dt>
+        <dd>
+          <p>
+            Renames component labels that contain a text, in the current circuit or in all
+            circuits. A regular expression can be used, with <tt>$1</tt> and so on in the
+            replacement. The preview lists every change; a new label that is not a valid name,
+            is already used in its circuit or would be used twice is refused. All accepted
+            changes are undone together.
           </p>
         </dd>
         <dt>

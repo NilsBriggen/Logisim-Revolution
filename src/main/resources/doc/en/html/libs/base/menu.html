@@ -29,6 +29,12 @@ configure the mouse buttons to work differently.</p>
 
 <li>Delete: Removes the component from the circuit.
 
+<li>Replace With: Swaps the component for another kind, picked from a
+searchable list, in the same place. The new component keeps every
+attribute it shares with the old one, such as its label, facing and
+bit width; if some wire would be cut off because the new kind has no
+pin there, Logisim asks first. The swap is undone in one step.
+
 <li>Show Attributes: Places the component's attributes into the
 window's attribute table, so that the attribute values can be viewed and
 changed.

@@ -76,6 +76,10 @@ public class LogisimMenuBar extends JMenuBar {
       new LogisimMenuItem("DistributeHorizontal");
   public static final LogisimMenuItem DISTRIBUTE_VERTICAL =
       new LogisimMenuItem("DistributeVertical");
+  public static final LogisimMenuItem ROTATE_CW = new LogisimMenuItem("RotateClockwise");
+  public static final LogisimMenuItem ROTATE_CCW = new LogisimMenuItem("RotateCounterclockwise");
+  public static final LogisimMenuItem FLIP_HORIZONTAL = new LogisimMenuItem("FlipHorizontal");
+  public static final LogisimMenuItem FLIP_VERTICAL = new LogisimMenuItem("FlipVertical");
 
   /**
    * The Edit &gt; Arrange commands, in menu order. They are edit commands like {@link #EDIT_ITEMS}
@@ -91,7 +95,16 @@ public class LogisimMenuBar extends JMenuBar {
     ALIGN_BOTTOM,
     DISTRIBUTE_HORIZONTAL,
     DISTRIBUTE_VERTICAL,
+    ROTATE_CW,
+    ROTATE_CCW,
+    FLIP_HORIZONTAL,
+    FLIP_VERTICAL,
   };
+
+  /** Whether an Edit &gt; Arrange item starts a new group, after a separator. */
+  public static boolean startsArrangeGroup(LogisimMenuItem item) {
+    return item == DISTRIBUTE_HORIZONTAL || item == ROTATE_CW;
+  }
 
   /** The label of an Edit &gt; Arrange command, shared with the canvas context menu. */
   public static String arrangeItemText(LogisimMenuItem item) {
@@ -103,6 +116,10 @@ public class LogisimMenuBar extends JMenuBar {
     if (item == ALIGN_BOTTOM) return S.get("editAlignBottomItem");
     if (item == DISTRIBUTE_HORIZONTAL) return S.get("editDistributeHorizontalItem");
     if (item == DISTRIBUTE_VERTICAL) return S.get("editDistributeVerticalItem");
+    if (item == ROTATE_CW) return S.get("editRotateClockwiseItem");
+    if (item == ROTATE_CCW) return S.get("editRotateCounterclockwiseItem");
+    if (item == FLIP_HORIZONTAL) return S.get("editFlipHorizontalItem");
+    if (item == FLIP_VERTICAL) return S.get("editFlipVerticalItem");
     throw new IllegalArgumentException("not an arrange item: " + item);
   }
   public static final LogisimMenuItem ADD_VHDL = new LogisimMenuItem("AddVhdl");

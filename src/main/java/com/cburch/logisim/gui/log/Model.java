@@ -20,14 +20,20 @@ import com.cburch.logisim.circuit.SubcircuitFactory;
 import com.cburch.logisim.comp.Component;
 import com.cburch.logisim.data.Location;
 import com.cburch.logisim.data.Value;
+import com.cburch.logisim.instance.StdAttr;
+import com.cburch.logisim.std.wiring.Clock;
 import com.cburch.logisim.std.wiring.Pin;
+import com.cburch.logisim.std.wiring.Tunnel;
 import com.cburch.logisim.util.EventSourceWeakSupport;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.LongSupplier;
 
 public class Model implements CircuitListener, SignalInfo.Listener {
@@ -100,6 +106,18 @@ public class Model implements CircuitListener, SignalInfo.Listener {
       this.nanoTime = nanoTime;
     }
 
+    /**
+     * The sampled value of {@code item}, or null if it was not sampled. Unlike {@link #valueOf}
+     * it caches nothing, so any thread may call it.
+     */
+    Value find(SignalInfo item) {
+      if (item == clock) return clockValue;
+      for (var i = 0; i < items.length; i++) {
+        if (items[i] == item) return values[i];
+      }
+      return null;
+    }
+
     /** The sampled value of {@code item}, or null if it was not being logged at the time. */
     Value valueOf(SignalInfo item, int idx) {
       if (item == clock) return clockValue;
@@ -114,6 +132,7 @@ public class Model implements CircuitListener, SignalInfo.Listener {
 
   final CircuitState circuitState;
   private final LongSupplier nanoTime;
+  private final WatchpointSet watchpoints = new WatchpointSet();
   private final ArrayList<SignalInfo> info = new ArrayList<>();
   private final ArrayList<Signal> signals = new ArrayList<>();
   // Copy of info published for the simulation thread, which samples it (see Sample).
@@ -143,9 +162,19 @@ public class Model implements CircuitListener, SignalInfo.Listener {
   Model(CircuitState root, LongSupplier nanoTime) {
     circuitState = root;
     this.nanoTime = nanoTime;
-    // Add top-level pins, clocks, etc.
+    // Add top-level pins, clocks, etc. Sort by location first so the tunnel
+    // representative chosen per label is stable (smallest location wins).
     final var circ = circuitState.getCircuit();
-    for (final var comp : circ.getNonWires()) {
+    final var nonWires = new ArrayList<>(circ.getNonWires());
+    nonWires.sort(ComponentSelector.compareComponents);
+    final var seenTunnelLabels = new HashSet<String>();
+    for (final var comp : nonWires) {
+      if (comp.getFactory() instanceof Tunnel) {
+        final var label = comp.getAttributeSet().getValue(StdAttr.LABEL);
+        if (label != null && !label.isEmpty() && !seenTunnelLabels.add(label)) {
+          continue; // skip duplicate tunnel labels at init time
+        }
+      }
       final var item = makeIfDefaultComponent(comp);
       if (item != null) info.add(item);
     }
@@ -182,6 +211,21 @@ public class Model implements CircuitListener, SignalInfo.Listener {
       else info.add(0, info.remove(info.indexOf(clockSource)));
       mode = CLOCK_DUAL;
       curClockVal = clockSource.fetchValue(circuitState);
+    }
+
+    // Collapse equivalent Clock components: keep one representative per hi:lo:phase group.
+    // clockSource (if it's a Clock) is already at position 0, so it wins as representative.
+    final var seenClockKeys = new HashSet<String>();
+    for (final var it = info.iterator(); it.hasNext(); ) {
+      final var item = it.next();
+      if (!(item.getComponent().getFactory() instanceof Clock)) {
+        continue;
+      }
+      final var ci = ClockSource.getCycleInfo(item);
+      final var key = ci.hi + ":" + ci.lo + ":" + ci.phase;
+      if (!seenClockKeys.add(key)) {
+        it.remove();
+      }
     }
 
     // set up initial signal values (after sorting)
@@ -288,6 +332,100 @@ public class Model implements CircuitListener, SignalInfo.Listener {
 
   @Override
   public void signalInfoObsoleted(SignalInfo s) {
+    // If a Clock was deleted, try to substitute an equivalent Clock in-place.
+    if (s.getComponent().getFactory() instanceof Clock) {
+      final var circ = circuitState.getCircuit();
+      final var remaining = ComponentSelector.findClocks(circ);
+      if (remaining != null) {
+        final var ci = ClockSource.getCycleInfo(s);
+        for (final var candidate : remaining) {
+          final var cci = ClockSource.getCycleInfo(candidate);
+          if (cci.hi == ci.hi && cci.lo == ci.lo && cci.phase == ci.phase) {
+            if (info.contains(candidate)) {
+              continue;
+            }
+            final var idx = info.indexOf(s);
+            if (idx >= 0) {
+              s.setListener(null);
+              info.set(idx, candidate);
+              signals.set(
+                  idx,
+                  new Signal(
+                      idx,
+                      candidate,
+                      candidate.fetchValue(circuitState),
+                      1,
+                      timeEnd - 1,
+                      historyLimit));
+              candidate.setListener(this);
+              if (s == clockSource) {
+                clockSource = candidate;
+              }
+              fireSelectionChanged(null);
+              return;
+            } else if (s == clockSource) {
+              s.setListener(null);
+              clockSource = candidate;
+              candidate.setListener(this);
+              fireSelectionChanged(null);
+              return;
+            }
+          }
+        }
+      }
+    }
+
+    // If a Tunnel was deleted, try to substitute an equivalent Tunnel in-place
+    // (same label, same circuit within the hierarchy).
+    if (s.getComponent().getFactory() instanceof Tunnel) {
+      final var label = s.getComponent().getAttributeSet().getValue(StdAttr.LABEL);
+      final var n = s.getPathLength();
+      if (label != null && !label.isEmpty() && n > 0) {
+        final var tunnelCirc = s.getPathCircuit(n - 1);
+        if (tunnelCirc != null) {
+          for (final var c : tunnelCirc.getNonWires()) {
+            if (!(c.getFactory() instanceof Tunnel)) {
+              continue;
+            }
+            if (c == s.getComponent()) {
+              continue;
+            }
+            if (!label.equals(c.getAttributeSet().getValue(StdAttr.LABEL))) {
+              continue;
+            }
+            // Found a surviving tunnel with the same label - build replacement path.
+            final var newPath = new Component[n];
+            for (var i = 0; i < n - 1; i++) {
+              newPath[i] = s.getPathComponent(i);
+            }
+            newPath[n - 1] = c;
+            final var candidate = new SignalInfo(s.getTopLevelCircuit(), newPath, null);
+            if (info.contains(candidate)) {
+              continue;
+            }
+            final var idx = info.indexOf(s);
+            if (idx >= 0) {
+              s.setListener(null);
+              info.set(idx, candidate);
+              signals.set(
+                  idx,
+                  new Signal(
+                      idx,
+                      candidate,
+                      candidate.fetchValue(circuitState),
+                      1,
+                      timeEnd - 1,
+                      historyLimit));
+              candidate.setListener(this);
+              fireSelectionChanged(null);
+              return;
+            }
+            break;
+          }
+        }
+      }
+    }
+
     if (s == clockSource) {
       clockSource.setListener(null); // redundant if info contains s
       clockSource = null;
@@ -452,8 +590,11 @@ public class Model implements CircuitListener, SignalInfo.Listener {
         // If one clock is present, just use that.
         clockSource = clocks.get(0);
       } else if (clocks != null && clocks.size() > 1) {
-        // If multiple are present, ask user to select
-        clockSource = ClockSource.doClockMultipleObserverDialog(circ);
+        if (ClockSource.allEquivalent(clocks)) {
+          clockSource = clocks.get(0);
+        } else {
+          clockSource = ClockSource.doClockMultipleObserverDialog(circ);
+        }
       } else if (tmpClk != null) {
         // No clocks, but user already chose a temporary clock.
         clockSource = new SignalInfo(circ, new Component[] {tmpClk}, null);
@@ -507,11 +648,30 @@ public class Model implements CircuitListener, SignalInfo.Listener {
       if (repl == null || repl.isEmpty()) return;
       for (final var comp : repl.getAdditions()) {
         if (!repl.getReplacedBy(comp).isEmpty()) continue;
+        if (comp.getFactory() instanceof Tunnel) {
+          final var label = comp.getAttributeSet().getValue(StdAttr.LABEL);
+          if (label != null && !label.isEmpty() && hasTunnelLabel(circ, label)) {
+            continue; // equivalent tunnel already tracked
+          }
+        }
         final var item = makeIfDefaultComponent(comp);
         if (item == null) continue;
         addAndInitialize(item, true);
       }
     }
+  }
+
+  private boolean hasTunnelLabel(Circuit circ, String label) {
+    for (final var si : info) {
+      if (si.getPathLength() == 1 && si.getTopLevelCircuit() == circ) {
+        final var c = si.getComponent();
+        if (c.getFactory() instanceof Tunnel
+            && label.equals(c.getAttributeSet().getValue(StdAttr.LABEL))) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   private SignalInfo makeIfDefaultComponent(Component comp) {
@@ -567,6 +727,10 @@ public class Model implements CircuitListener, SignalInfo.Listener {
 
   void fireSelectionChanged(Event e) {
     for (final var l : listeners) l.selectionChanged(e);
+  }
+
+  public WatchpointSet getWatchpoints() {
+    return watchpoints;
   }
 
   public CircuitState getCircuitState() {
