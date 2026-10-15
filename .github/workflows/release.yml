@@ -45,7 +45,6 @@ jobs:
           - runner: ubuntu-24.04
             arch: x86_64
             name: linux-amd64
-            # Tests run once, here and in CI; the ARM64 job only packages.
             tasks: build sourcesJar createAll
             files: |
               build/libs/*-all.jar
@@ -55,7 +54,7 @@ jobs:
           - runner: ubuntu-24.04-arm
             arch: aarch64
             name: linux-arm64
-            tasks: createAll
+            tasks: build createAll
             files: |
               build/dist/*_arm64.deb
               build/dist/*.aarch64.rpm
@@ -72,7 +71,7 @@ jobs:
           test "$(uname -m)" = ${{ matrix.arch }}
           sudo apt-get update
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends fakeroot rpm binutils
-      - name: Build packages
+      - name: Test and build packages
         run: ./gradlew clean ${{ matrix.tasks }} "-Pversion=${{ needs.version.outputs.version }}" --no-daemon --console=plain
       - uses: actions/upload-artifact@v4
         with:
