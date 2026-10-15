@@ -93,16 +93,6 @@ class InstallerTest(unittest.TestCase):
             with self.subTest(field=field, value=value), self.assertRaises(ValueError):
                 installer.select_asset(candidate, "x86_64")
 
-    def test_canonical_attachment_url_matches_asset_uuid(self):
-        candidate = release()
-        asset = candidate["assets"][0]
-        asset["uuid"] = "15a5d6e8-29f4-4b7c-9cd7-31d7bf730aa7"
-        asset["browser_download_url"] = f"https://git.briggen.dev/attachments/{asset['uuid']}"
-        self.assertEqual(installer.select_asset(candidate, "x86_64")[0], asset)
-        asset["uuid"] = "00cda4fa-eadd-4774-acce-d32dba6c25b4"
-        with self.assertRaisesRegex(ValueError, "unexpected download URL"):
-            installer.select_asset(candidate, "x86_64")
-
     @unittest.skipUnless(shutil.which("vercmp"), "pacman vercmp is needed")
     def test_versions_upgrade_numerically(self):
         pairs = [("5.1.0dev", "build-9-attempt-1", "5.1.0dev", "build-10-attempt-1"),

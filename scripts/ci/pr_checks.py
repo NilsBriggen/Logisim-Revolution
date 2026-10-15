@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Gitea pull-request policy checks for Logisim Revolution."""
+"""Pull-request policy checks for Logisim Revolution."""
 
 import json
 import os
@@ -18,7 +18,7 @@ CODE_PATHS = (
     "support/",
     "snap/",
     "scripts/",
-    ".gitea/",
+    ".github/",
 )
 CODE_FILES = {"build.gradle.kts", "settings.gradle.kts", "gradle.properties", "gradlew", "gradlew.bat"}
 DOC_ONLY_PATHS = ("src/main/resources/doc/", "src/main/resources/resources/logisim/strings/")
@@ -90,8 +90,8 @@ def ticket_numbers(body, server, repo):
 
 
 def api_request(path, *, method="GET", data=None):
-    token = os.environ["GITEA_TOKEN"]
-    base = os.environ["GITEA_API_URL"].rstrip("/")
+    token = os.environ["GITHUB_TOKEN"]
+    base = os.environ["GITHUB_API_URL"].rstrip("/")
     request = urllib.request.Request(
         f"{base}/{path.lstrip('/')}",
         data=json.dumps(data).encode() if data is not None else None,
@@ -125,13 +125,13 @@ def check_tickets(body, author, server, repo):
 
 
 def main():
-    event = json.loads(Path(os.environ["GITEA_EVENT_PATH"]).read_text(encoding="utf-8"))
+    event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text(encoding="utf-8"))
     request = event["pull_request"]
     base = request["base"]["sha"]
     author = request["user"]["login"]
     body = request.get("body") or ""
     check_changelog(base, author, body)
-    check_tickets(body, author, os.environ["GITEA_SERVER_URL"], os.environ["GITEA_REPOSITORY"])
+    check_tickets(body, author, os.environ["GITHUB_SERVER_URL"], os.environ["GITHUB_REPOSITORY"])
 
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Lint Markdown changed by the current Gitea push or pull request."""
+"""Lint Markdown changed by the current push or pull request."""
 
 import json
 import os
@@ -8,8 +8,8 @@ from pathlib import Path
 
 
 def main():
-    event = json.loads(Path(os.environ["GITEA_EVENT_PATH"]).read_text(encoding="utf-8"))
-    if os.environ["GITEA_EVENT_NAME"] == "pull_request":
+    event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text(encoding="utf-8"))
+    if os.environ["GITHUB_EVENT_NAME"] == "pull_request":
         base = event["pull_request"]["base"]["sha"]
         revision_range = f"{base}...HEAD"
     else:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Lock a merged PR and any issues it closed in this Gitea repository."""
+"""Lock a merged PR and any issues it closed in this repository."""
 
 import json
 import os
@@ -10,7 +10,7 @@ from pr_checks import api_request, ticket_numbers
 
 
 def lock_if_closed(number):
-    repo = os.environ["GITEA_REPOSITORY"]
+    repo = os.environ["GITHUB_REPOSITORY"]
     for attempt in range(3):
         issue = api_request(f"repos/{repo}/issues/{number}")
         if issue["state"] == "closed":
@@ -20,7 +20,7 @@ def lock_if_closed(number):
     if issue["state"] != "closed":
         print(f"#{number} is still open; leaving it unlocked.")
         return
-    if issue["is_locked"]:
+    if issue["locked"]:
         print(f"#{number} is already locked.")
         return
     api_request(
@@ -32,14 +32,14 @@ def lock_if_closed(number):
 
 
 def main():
-    event = json.loads(Path(os.environ["GITEA_EVENT_PATH"]).read_text(encoding="utf-8"))
+    event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text(encoding="utf-8"))
     request = event["pull_request"]
     if not request.get("merged"):
         print("PR was closed without merging; nothing to lock.")
         return
     lock_if_closed(request["number"])
     body = request.get("body") or ""
-    for number in ticket_numbers(body, os.environ["GITEA_SERVER_URL"], os.environ["GITEA_REPOSITORY"]):
+    for number in ticket_numbers(body, os.environ["GITHUB_SERVER_URL"], os.environ["GITHUB_REPOSITORY"]):
         lock_if_closed(number)
 
 

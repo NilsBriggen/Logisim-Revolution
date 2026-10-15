@@ -1,8 +1,11 @@
-[![Logisim Revolution](artwork/logisim-revolution-wordmark.svg)](https://git.briggen.dev/NilsBriggen/Logisim-Revolution)
+[![Logisim Revolution](artwork/logisim-revolution-wordmark.svg)](https://github.com/NilsBriggen/Logisim-Revolution)
 
 # Changes #
 
 * @dev (????-??-??)
+  * Moved the source, CI and releases from Gitea to GitHub: GitHub Actions now runs CI and builds
+    and publishes all-platform releases directly, and the Arch installer reads GitHub releases
+    (@NilsBriggen).
   * Made the appearance editor's drawing tools snap to the grid when the pointer is close to a grid
     point, so straight lines and aligned shapes are easy to draw; Ctrl still forces snapping
     (@NilsBriggen).

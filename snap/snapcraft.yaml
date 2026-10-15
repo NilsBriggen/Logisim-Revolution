@@ -1,6 +1,6 @@
 #
 # Control file to build the Logisim Revolution Snap package
-# https://git.briggen.dev/NilsBriggen/Logisim-Revolution
+# https://github.com/NilsBriggen/Logisim-Revolution
 # https://snapcraft.io/
 #
 # Marcin Orlowski
@@ -23,10 +23,10 @@ description: |
   * huge library of components (LEDs, TTLs, switches, SoCs),
   * supports multiple languages,
   * and more!
-website: https://git.briggen.dev/NilsBriggen/Logisim-Revolution
-contact: https://git.briggen.dev/NilsBriggen/Logisim-Revolution/issues
-issues: https://git.briggen.dev/NilsBriggen/Logisim-Revolution/issues
-source-code: https://git.briggen.dev/NilsBriggen/Logisim-Revolution
+website: https://github.com/NilsBriggen/Logisim-Revolution
+contact: https://github.com/NilsBriggen/Logisim-Revolution/issues
+issues: https://github.com/NilsBriggen/Logisim-Revolution/issues
+source-code: https://github.com/NilsBriggen/Logisim-Revolution
 license: GPL-3.0
 adopt-info: logisim-revolution
 icon: snap/gui/logisim-revolution-icon-128.png

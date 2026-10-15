@@ -26,11 +26,10 @@ and `.pkg.tar.zst`; remove that directory when finished. Rerun the installer to 
 `pacman -Syu` alone does not update this local package. `logisim-revolution-bin` provides and
 conflicts with `logisim-revolution`.
 
-The installer reads all pages of Gitea's `/releases` API and chooses by publication time,
+The installer reads all pages of GitHub's `/releases` API and chooses by publication time,
 including prereleases. `--tag` uses the same published-only filter. The build tag and the
 exact `logisim-revolution_<version>_<amd64|arm64>.deb` filename must match strict patterns;
-the download URL must point to that tag and filename in the canonical repository, or to
-`https://git.briggen.dev/attachments/<uuid>` matching that release asset's UUID. It fails
+the download URL must point to that tag and filename in the canonical repository. It fails
 on missing or ambiguous DEBs. Each private `/tmp` directory holds its own download, so
 releases with identical DEB filenames never share stale sources.
 

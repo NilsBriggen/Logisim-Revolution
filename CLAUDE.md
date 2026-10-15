@@ -17,10 +17,11 @@ Logisim-evolution is a Java 21 / Swing digital logic designer and simulator, bui
 ./gradlew genFiles            # run code generation only (needed before importing into Eclipse)
 ```
 
-Gitea CI (`.gitea/workflows/ci.yml`) runs `./gradlew build` on JDK 21, including tests and
-Checkstyle. A manual Gitea workflow builds Linux packages and dispatches Windows and macOS
-packages on the public GitHub mirror; it publishes a Gitea release only after all targets
-succeed. See `.gitea/README.md`.
+The code lives on GitHub (`NilsBriggen/Logisim-Revolution`). GitHub Actions CI
+(`.github/workflows/ci.yml`) runs `./gradlew build` on JDK 21, including tests and Checkstyle.
+The manual **Build all platforms and publish release** workflow (`release.yml`) builds Linux
+x86_64/ARM64, Windows and macOS packages and publishes a `build-<run>-attempt-<n>` prerelease
+only after every target succeeds.
 
 ## Build-time code generation
 
@@ -78,7 +79,7 @@ prefixed `# ==> key =` mark untranslated keys.
 
 - Code style is **Google Java Style** via Checkstyle (`google_checks.xml` shipped with the tool),
   relaxed by `checkstyle-suppressions.xml` in the repo root — 2-space indent, and the codebase widely
-  uses the `final var` idiom. The full Checkstyle task runs as part of Gitea CI.
+  uses the `final var` idiom. The full Checkstyle task runs as part of CI.
 - Every source file carries the project's GPLv3 header comment block.
 - Files are UTF-8, LF line endings, no trailing whitespace, and end with a newline
   (`.pre-commit-config.yaml.dist` enforces this; copy it to `.pre-commit-config.yaml` to use).

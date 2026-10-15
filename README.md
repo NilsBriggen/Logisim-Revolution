@@ -17,7 +17,7 @@ and application identity.
 ## Install
 
 Completed manual builds are published on the
-[Gitea Releases page](https://git.briggen.dev/NilsBriggen/Logisim-Revolution/releases).
+[GitHub Releases page](https://github.com/NilsBriggen/Logisim-Revolution/releases).
 Choose the file for your operating system and CPU. A release appears only after all supported
 native targets have built successfully; there may be no Revolution release yet.
 
@@ -39,7 +39,7 @@ published for Revolution.
 Download the standalone installer and run it as your normal user:
 
 ```bash
-curl -fLO https://git.briggen.dev/NilsBriggen/Logisim-Revolution/raw/branch/main/scripts/install-arch.py
+curl -fLO https://raw.githubusercontent.com/NilsBriggen/Logisim-Revolution/main/scripts/install-arch.py
 python3 install-arch.py
 ```
 
@@ -74,7 +74,7 @@ The `-src.jar` file contains source code; it is not the application launcher.
 Install JDK 21 or newer, then use the included Gradle wrapper:
 
 ```bash
-git clone https://git.briggen.dev/NilsBriggen/Logisim-Revolution.git
+git clone https://github.com/NilsBriggen/Logisim-Revolution.git
 cd Logisim-Revolution
 ./gradlew run
 ```
@@ -82,7 +82,7 @@ cd Logisim-Revolution
 On Windows, use `gradlew.bat run`. To build a portable JAR locally, run
 `./gradlew shadowJar`; to build native packages for your current operating system, run
 `./gradlew createAll` after installing its platform packaging tools. See the
-[developer guide](docs/developers.md) and [Gitea runner setup](.gitea/README.md) for details.
+[developer guide](docs/developers.md) for details.
 
 ## Make a first circuit
 
@@ -117,7 +117,7 @@ settings.
 
 ## Project and contributions
 
-- [Source repository and bug reporting](https://git.briggen.dev/NilsBriggen/Logisim-Revolution)
+- [Source repository and bug reporting](https://github.com/NilsBriggen/Logisim-Revolution)
 - [Developer build and contribution notes](docs/developers.md)
 - [Localization guide](docs/localization.md)
 - [Full project credits](docs/credits.md)

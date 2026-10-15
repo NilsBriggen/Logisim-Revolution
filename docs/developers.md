@@ -49,4 +49,4 @@ Before proposing a change, run tests and style checks relevant to it and inspect
 
 ## Reporting and attribution
 
-Use the [Logisim Revolution repository](https://git.briggen.dev/NilsBriggen/Logisim-Revolution) for this fork's source and issue reporting. For the history and people behind the original Logisim and Logisim-evolution projects, see the [credits](credits.md).
+Use the [Logisim Revolution repository](https://github.com/NilsBriggen/Logisim-Revolution) for this fork's source and issue reporting. For the history and people behind the original Logisim and Logisim-evolution projects, see the [credits](credits.md).

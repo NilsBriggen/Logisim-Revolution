@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+  issues: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Check release completeness rules
+        run: python3 -m unittest discover -s scripts/ci -p 'test_*.py'
+      - name: Check Arch installer release selection and packaging rules
+        run: python3 -B -m unittest discover -s support/arch -p 'test_*.py'
+      - name: Build, test and check Java style
+        run: ./gradlew build --no-daemon --console=plain
+
+  pull_request_policy:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check changelog and linked issue
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NO_CHANGELOG_AUTHOR_CREDIT: ${{ vars.NO_CHANGELOG_AUTHOR_CREDIT }}
+        run: python3 scripts/ci/pr_checks.py
+
+  markdown:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Lint changed Markdown files
+        run: python3 scripts/ci/lint_changed_markdown.py

@@ -19,8 +19,8 @@ import urllib.request
 from datetime import datetime
 from pathlib import Path
 
-PROJECT_URL = "https://git.briggen.dev/NilsBriggen/Logisim-Revolution"
-RELEASES_API = "https://git.briggen.dev/api/v1/repos/NilsBriggen/Logisim-Revolution/releases"
+PROJECT_URL = "https://github.com/NilsBriggen/Logisim-Revolution"
+RELEASES_API = "https://api.github.com/repos/NilsBriggen/Logisim-Revolution/releases"
 ARCHITECTURES = {"x86_64": "amd64", "aarch64": "arm64"}
 VERSION_PATTERN = r"[0-9]+\.[0-9]+\.[0-9]+(?:[a-zA-Z][a-zA-Z0-9.]*)?"
 # DEB dependencies plus libraries used by the bundled JVM and desktop cache hooks.
@@ -42,7 +42,7 @@ pkgver=@PKGVER@
 pkgrel=1
 pkgdesc='Digital logic designer and simulator, with bundled Java runtime'
 arch=('@ARCH@')
-url='https://git.briggen.dev/NilsBriggen/Logisim-Revolution'
+url='https://github.com/NilsBriggen/Logisim-Revolution'
 license=('GPL-3.0-only')
 depends=(@DEPENDS@)
 makedepends=('libarchive')
@@ -85,8 +85,8 @@ package() {
 
 def fetch_page(page):
     request = urllib.request.Request(
-        f"{RELEASES_API}?limit=50&page={page}",
-        headers={"Accept": "application/json", "User-Agent": "logisim-revolution-arch"},
+        f"{RELEASES_API}?per_page=50&page={page}",
+        headers={"Accept": "application/vnd.github+json", "User-Agent": "logisim-revolution-arch"},
     )
     with urllib.request.urlopen(request, timeout=60) as response:
         return json.load(response)
@@ -99,7 +99,7 @@ def select_release(tag=None):
     while True:
         releases = fetch_page(page)
         if not isinstance(releases, list):
-            raise ValueError("Gitea did not return a release list.")
+            raise ValueError("GitHub did not return a release list.")
         if not releases:
             break
         for release in releases:
@@ -135,11 +135,7 @@ def select_asset(release, arch):
     version = re.fullmatch(pattern, asset["name"])[1]
     pkgver = package_version(version, release["tag_name"])
     expected_url = f"{PROJECT_URL}/releases/download/{release['tag_name']}/{asset['name']}"
-    allowed_urls = {expected_url}
-    uuid = asset.get("uuid", "")
-    if re.fullmatch(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}", uuid):
-        allowed_urls.add(f"https://git.briggen.dev/attachments/{uuid}")
-    if asset.get("browser_download_url") not in allowed_urls or asset.get("size", 0) <= 0:
+    if asset.get("browser_download_url") != expected_url or asset.get("size", 0) <= 0:
         raise ValueError("DEB has an unexpected download URL or empty size.")
     return asset, pkgver
 
