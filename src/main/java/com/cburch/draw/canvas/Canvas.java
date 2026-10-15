@@ -185,6 +185,21 @@ public class Canvas extends JComponent {
     return y; // subclass will have to override this
   }
 
+  /** How close, in drawing units, a point must be to a grid point to be pulled onto it. */
+  private static final int SNAP_RADIUS = 3;
+
+  /** Snaps {@code x} to the grid when forced (Ctrl held) or when it is already close to it. */
+  public int snapX(int x, boolean force) {
+    final var snapped = snapX(x);
+    return force || Math.abs(snapped - x) <= SNAP_RADIUS ? snapped : x;
+  }
+
+  /** The vertical counterpart of {@link #snapX(int, boolean)}. */
+  public int snapY(int y, boolean force) {
+    final var snapped = snapY(y);
+    return force || Math.abs(snapped - y) <= SNAP_RADIUS ? snapped : y;
+  }
+
   public void toolGestureComplete(CanvasTool tool, CanvasObject created) {
     // nothing to do - subclass may override
   }

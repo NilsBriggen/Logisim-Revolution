@@ -139,10 +139,9 @@ public class PolyTool extends AbstractTool {
     var my = e.getY();
     lastMouseX = mx;
     lastMouseY = my;
-    if ((e.getModifiersEx() & InputEvent.CTRL_DOWN_MASK) != 0) {
-      mx = canvas.snapX(mx);
-      my = canvas.snapY(my);
-    }
+    final var forceSnap = (e.getModifiersEx() & InputEvent.CTRL_DOWN_MASK) != 0;
+    mx = canvas.snapX(mx, forceSnap);
+    my = canvas.snapY(my, forceSnap);
 
     if (active && e.getClickCount() > 1) {
       final var add = commit(canvas);
@@ -205,13 +204,10 @@ public class PolyTool extends AbstractTool {
       } else {
         newLast = Location.create(mx, my, false);
       }
-      if ((mods & MouseEvent.CTRL_DOWN_MASK) != 0) {
-        var lastX = newLast.getX();
-        var lastY = newLast.getY();
-        lastX = canvas.snapX(lastX);
-        lastY = canvas.snapY(lastY);
-        newLast = Location.create(lastX, lastY, false);
-      }
+      final var forceSnap = (mods & MouseEvent.CTRL_DOWN_MASK) != 0;
+      newLast =
+          Location.create(
+              canvas.snapX(newLast.getX(), forceSnap), canvas.snapY(newLast.getY(), forceSnap), false);
 
       if (!newLast.equals(last)) {
         locations.set(index, newLast);

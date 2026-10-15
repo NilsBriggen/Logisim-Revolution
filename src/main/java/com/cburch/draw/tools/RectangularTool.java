@@ -48,12 +48,10 @@ abstract class RectangularTool extends AbstractTool {
     }
 
     final var ctrlDown = (mods & MouseEvent.CTRL_DOWN_MASK) != 0;
-    if (ctrlDown) {
-      x0 = canvas.snapX(x0);
-      y0 = canvas.snapY(y0);
-      x1 = canvas.snapX(x1);
-      y1 = canvas.snapY(y1);
-    }
+    x0 = canvas.snapX(x0, ctrlDown);
+    y0 = canvas.snapY(y0, ctrlDown);
+    x1 = canvas.snapX(x1, ctrlDown);
+    y1 = canvas.snapY(y1, ctrlDown);
 
     final var altDown = (mods & MouseEvent.ALT_DOWN_MASK) != 0;
     final var shiftDown = (mods & MouseEvent.SHIFT_DOWN_MASK) != 0;

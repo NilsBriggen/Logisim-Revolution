@@ -113,10 +113,9 @@ public class CurveTool extends AbstractTool {
     lastMouseY = my;
     mouseDown = true;
     int mods = e.getModifiersEx();
-    if ((mods & InputEvent.CTRL_DOWN_MASK) != 0) {
-      mx = canvas.snapX(mx);
-      my = canvas.snapY(my);
-    }
+    final var forceSnap = (mods & InputEvent.CTRL_DOWN_MASK) != 0;
+    mx = canvas.snapX(mx, forceSnap);
+    my = canvas.snapY(my, forceSnap);
 
     switch (state) {
       case BEFORE_CREATION, CONTROL_DRAG -> {
@@ -176,10 +175,8 @@ public class CurveTool extends AbstractTool {
             mx = p.getX();
             my = p.getY();
           }
-          if (ctrlDown) {
-            mx = canvas.snapX(mx);
-            my = canvas.snapY(my);
-          }
+          mx = canvas.snapX(mx, ctrlDown);
+          my = canvas.snapY(my, ctrlDown);
           end1 = Location.create(mx, my, false);
         }
         break;
@@ -187,10 +184,8 @@ public class CurveTool extends AbstractTool {
         if (mouseDown) {
           int cx = mx;
           int cy = my;
-          if (ctrlDown) {
-            cx = canvas.snapX(cx);
-            cy = canvas.snapY(cy);
-          }
+          cx = canvas.snapX(cx, ctrlDown);
+          cy = canvas.snapY(cy, ctrlDown);
           if (shiftDown) {
             double x0 = end0.getX();
             double y0 = end0.getY();

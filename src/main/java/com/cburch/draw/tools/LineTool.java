@@ -100,10 +100,9 @@ public class LineTool extends AbstractTool {
     var x = e.getX();
     var y = e.getY();
     final var mods = e.getModifiersEx();
-    if ((mods & InputEvent.CTRL_DOWN_MASK) != 0) {
-      x = canvas.snapX(x);
-      y = canvas.snapY(y);
-    }
+    final var forceSnap = (mods & InputEvent.CTRL_DOWN_MASK) != 0;
+    x = canvas.snapX(x, forceSnap);
+    y = canvas.snapY(y, forceSnap);
     final var loc = Location.create(x, y, false);
     mouseStart = loc;
     mouseEnd = loc;
@@ -150,13 +149,10 @@ public class LineTool extends AbstractTool {
       var newEnd =
           (shift) ? LineUtil.snapTo8Cardinals(mouseStart, mx, my) : Location.create(mx, my, false);
 
-      if ((mods & InputEvent.CTRL_DOWN_MASK) != 0) {
-        var x = newEnd.getX();
-        var y = newEnd.getY();
-        x = canvas.snapX(x);
-        y = canvas.snapY(y);
-        newEnd = Location.create(x, y, false);
-      }
+      final var forceSnap = (mods & InputEvent.CTRL_DOWN_MASK) != 0;
+      newEnd =
+          Location.create(
+              canvas.snapX(newEnd.getX(), forceSnap), canvas.snapY(newEnd.getY(), forceSnap), false);
 
       if (!newEnd.equals(mouseEnd)) {
         mouseEnd = newEnd;

@@ -3,6 +3,9 @@
 # Changes #
 
 * @dev (????-??-??)
+  * Made the appearance editor's drawing tools snap to the grid when the pointer is close to a grid
+    point, so straight lines and aligned shapes are easy to draw; Ctrl still forces snapping
+    (@NilsBriggen).
   * Made the canvas grid clearly visible: it is drawn at the display's own pixel density, so dots
     stay sharp under fractional desktop scaling, and its dots have more contrast (@NilsBriggen).
   * Fixed newly opened circuits showing unpropagated values until the first edit or reset
