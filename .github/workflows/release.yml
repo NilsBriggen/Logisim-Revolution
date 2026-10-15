@@ -2,6 +2,12 @@ name: Build all platforms and publish release
 
 on:
   workflow_dispatch:
+    inputs:
+      bump:
+        description: Which part of vX.Y.Z to raise (auto reads the commits since the last release)
+        type: choice
+        options: [auto, patch, minor, major]
+        default: auto
 
 permissions:
   contents: read
@@ -11,8 +17,28 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  linux:
+  version:
     if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.next.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Work out the release version
+        id: next
+        run: |
+          version=$(python3 scripts/ci/version.py "${{ inputs.bump }}")
+          if git rev-parse -q --verify "refs/tags/v$version" >/dev/null; then
+            echo "v$version already exists." >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Releasing v$version" >> "$GITHUB_STEP_SUMMARY"
+
+  linux:
+    needs: version
     strategy:
       matrix:
         include:
@@ -44,7 +70,7 @@ jobs:
           sudo apt-get update
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends fakeroot rpm binutils
       - name: Test and build packages
-        run: ./gradlew clean build sourcesJar createAll --no-daemon --console=plain
+        run: ./gradlew clean build sourcesJar createAll "-Pversion=${{ needs.version.outputs.version }}" --no-daemon --console=plain
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.name }}
@@ -53,7 +79,7 @@ jobs:
           compression-level: 0
 
   windows:
-    if: github.ref == 'refs/heads/main'
+    needs: version
     runs-on: windows-2022
     timeout-minutes: 120
     steps:
@@ -71,7 +97,7 @@ jobs:
             throw 'WiX Toolset 3 is unavailable.'
           }
           $env:PATH = "$wix;$env:PATH"
-          .\gradlew.bat clean createAll --no-daemon --console=plain
+          .\gradlew.bat clean createAll "-Pversion=${{ needs.version.outputs.version }}" --no-daemon --console=plain
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v4
         with:
@@ -83,7 +109,7 @@ jobs:
           compression-level: 0
 
   macos:
-    if: github.ref == 'refs/heads/main'
+    needs: version
     strategy:
       matrix:
         include:
@@ -107,7 +133,7 @@ jobs:
       - name: Build DMG
         run: |
           test "$(uname -m)" = ${{ matrix.arch }}
-          ./gradlew clean createDmg --no-daemon --console=plain
+          ./gradlew clean createDmg "-Pversion=${{ needs.version.outputs.version }}" --no-daemon --console=plain
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.name }}
@@ -116,7 +142,7 @@ jobs:
           compression-level: 0
 
   publish:
-    needs: [linux, windows, macos]
+    needs: [version, linux, windows, macos]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -130,14 +156,13 @@ jobs:
         run: |
           mkdir dist
           find artifacts -type f -exec mv -t dist {} +
-          python3 scripts/ci/release.py verify dist
+          python3 scripts/ci/release.py verify dist "${{ needs.version.outputs.version }}"
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: build-${{ github.run_id }}-attempt-${{ github.run_attempt }}
+          TAG: v${{ needs.version.outputs.version }}
         run: |
           gh release create "$TAG" dist/* \
             --target "$GITHUB_SHA" \
-            --prerelease \
-            --title "Logisim Revolution build ${GITHUB_SHA::8}" \
-            --notes "Build of \`$GITHUB_SHA\`. Native packages: Linux x86_64 and ARM64, Windows x86_64, macOS Intel and Apple Silicon. The portable JAR needs Java 21+."
+            --title "Logisim Revolution $TAG" \
+            --generate-notes

@@ -23,11 +23,11 @@ installer = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(installer)
 
 
-def release(tag="build-83-attempt-1", published="2026-09-28T12:00:00Z", **fields):
+def release(tag="v5.1.0", published="2026-09-28T12:00:00Z", **fields):
     result = {"id": 83, "tag_name": tag, "published_at": published,
               "draft": False, "prerelease": True, "assets": []}
     for architecture in ("amd64", "arm64"):
-        name = f"logisim-revolution_5.1.0dev_{architecture}.deb"
+        name = f"logisim-revolution_{tag[1:]}_{architecture}.deb"
         result["assets"].append({"name": name, "size": 123,
                                  "browser_download_url": f"{installer.PROJECT_URL}/releases/download/{tag}/{name}"})
     result.update(fields)
@@ -36,7 +36,7 @@ def release(tag="build-83-attempt-1", published="2026-09-28T12:00:00Z", **fields
 
 class InstallerTest(unittest.TestCase):
     def test_paginated_publication_order_includes_prereleases(self):
-        stable = release("build-81-attempt-1", "2026-09-26T12:00:00Z", prerelease=False)
+        stable = release("v5.0.1", "2026-09-26T12:00:00Z", prerelease=False)
         newest = release()
         # API order and draft timestamps must not determine the result. Even short
         # pages may be server-capped, so continue to the actual end of the list.
@@ -50,8 +50,8 @@ class InstallerTest(unittest.TestCase):
             with self.subTest(fields=fields), patch.object(
                     installer, "fetch_page", side_effect=[[release(**fields)], []]):
                 with self.assertRaisesRegex(ValueError, "No published release"):
-                    installer.select_release("build-83-attempt-1")
-        old = release("build-78-attempt-1", "2026-09-24T12:00:00Z")
+                    installer.select_release("v5.1.0")
+        old = release("v5.0.0", "2026-09-24T12:00:00Z")
         with patch.object(installer, "fetch_page", side_effect=[[release(), old], []]):
             self.assertEqual(installer.select_release(old["tag_name"]), old)
 
@@ -63,24 +63,25 @@ class InstallerTest(unittest.TestCase):
     def test_exact_asset_for_each_architecture(self):
         for arch, deb_arch in installer.ARCHITECTURES.items():
             asset, version = installer.select_asset(release(), arch)
-            self.assertEqual(asset["name"], f"logisim-revolution_5.1.0dev_{deb_arch}.deb")
-            self.assertEqual(version, "5.1.0dev.r83.a1")
+            self.assertEqual(asset["name"], f"logisim-revolution_5.1.0_{deb_arch}.deb")
+            self.assertEqual(version, "5.1.0")
         with self.assertRaisesRegex(ValueError, "Unsupported architecture"):
             installer.select_asset(release(), "i686")
 
     def test_missing_or_ambiguous_deb_is_rejected(self):
         asset = release()["assets"][0]
         for assets in ([], [release()["assets"][1]], [asset, asset],
-                       [{**asset, "name": "other_5.1.0dev_amd64.deb"}],
-                       [{**asset, "name": "logisim-revolution_5.1.0dev_amd64.deb.sig"}]):
+                       [{**asset, "name": "other_5.1.0_amd64.deb"}],
+                       [{**asset, "name": "logisim-revolution_5.1.0_amd64.deb.sig"}]):
             with self.subTest(assets=assets), self.assertRaisesRegex(ValueError, "exactly one"):
                 installer.select_asset(release(assets=assets), "x86_64")
 
     def test_remote_fields_must_be_safe_and_canonical(self):
         original = release()
         changes = [
-            ("tag_name", "build-83-attempt-1;echo bad"),
-            ("name", "../logisim-revolution_5.1.0dev_amd64.deb"),
+            ("tag_name", "v5.1.0;echo bad"),
+            ("tag_name", "v5.0.9"),
+            ("name", "../logisim-revolution_5.1.0_amd64.deb"),
             ("name", "logisim-revolution_5.1.0$(echo bad)_amd64.deb"),
             ("browser_download_url", "https://example.com/other.deb"),
             ("browser_download_url", original["assets"][0]["browser_download_url"].replace("https:", "http:")),
@@ -95,15 +96,11 @@ class InstallerTest(unittest.TestCase):
 
     @unittest.skipUnless(shutil.which("vercmp"), "pacman vercmp is needed")
     def test_versions_upgrade_numerically(self):
-        pairs = [("5.1.0dev", "build-9-attempt-1", "5.1.0dev", "build-10-attempt-1"),
-                 ("5.1.0dev", "build-83-attempt-9", "5.1.0dev", "build-83-attempt-10"),
-                 ("5.1.0dev", "build-83-attempt-10", "5.1.0dev", "build-84-attempt-1"),
-                 ("5.1.0dev", "build-83-attempt-1", "5.1.0", "build-84-attempt-1"),
-                 ("5.1.0", "build-84-attempt-1", "5.2.0dev", "build-85-attempt-1")]
-        for old, old_tag, new, new_tag in pairs:
+        pairs = [("5.1.0", "5.1.1"), ("5.1.9", "5.1.10"), ("5.9.3", "5.10.0"), ("5.10.0", "6.0.0")]
+        for old, new in pairs:
             comparison = subprocess.check_output([
-                "vercmp", installer.package_version(new, new_tag),
-                installer.package_version(old, old_tag),
+                "vercmp", installer.package_version(new, f"v{new}"),
+                installer.package_version(old, f"v{old}"),
             ], text=True).strip()
             self.assertEqual(comparison, "1")
 

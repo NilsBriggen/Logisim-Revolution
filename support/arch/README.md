@@ -16,7 +16,7 @@ or choose a specific published release, with:
 
 ```bash
 python3 install-arch.py --build-only
-python3 install-arch.py --tag build-83-attempt-1
+python3 install-arch.py --tag v5.1.0
 ```
 
 Use `scripts/install-arch.py` for these options in a checkout. Options can be combined.
@@ -27,16 +27,15 @@ and `.pkg.tar.zst`; remove that directory when finished. Rerun the installer to 
 conflicts with `logisim-revolution`.
 
 The installer reads all pages of GitHub's `/releases` API and chooses by publication time,
-including prereleases. `--tag` uses the same published-only filter. The build tag and the
+including prereleases. `--tag` uses the same published-only filter. The `vX.Y.Z` tag and the
 exact `logisim-revolution_<version>_<amd64|arm64>.deb` filename must match strict patterns;
 the download URL must point to that tag and filename in the canonical repository. It fails
 on missing or ambiguous DEBs. Each private `/tmp` directory holds its own download, so
 releases with identical DEB filenames never share stale sources.
 
-`5.1.0dev` from `build-83-attempt-1` becomes `5.1.0dev.r83.a1-1`. Numeric build and attempt
-segments preserve pacman's version ordering for successive builds of the same application
-version. SHA256 is calculated from the HTTPS download and pinned in the generated recipe;
-this detects changes between download and packaging, not an independent upstream signature.
+Release `v5.1.0` must contain `logisim-revolution_5.1.0_<arch>.deb` and becomes package
+version `5.1.0-1`, so pacman orders releases by their version numbers. SHA256 is calculated
+from the HTTPS download and pinned in the generated recipe; this detects changes between download and packaging, not an independent upstream signature.
 
 The recipe extracts only the DEB's data archive, retaining `/opt/logisim-revolution` and its
 bundled JVM. It adds a launcher symlink and installs the native desktop entry, icons, and MIME
@@ -65,8 +64,8 @@ preferences are isolated under `/tmp`; nothing is installed globally. Supply the
 tag and SHA256 so the local fixture cannot silently change:
 
 ```bash
-LOGISIM_ARCH_TEST_DEB=/absolute/path/logisim-revolution_5.1.0dev_amd64.deb \
-LOGISIM_ARCH_TEST_TAG=build-83-attempt-1 \
+LOGISIM_ARCH_TEST_DEB=/absolute/path/logisim-revolution_5.1.0_amd64.deb \
+LOGISIM_ARCH_TEST_TAG=v5.1.0 \
 LOGISIM_ARCH_TEST_SHA256=a149006a647bdf03da2c604c10e14401ad955aa1f4a70178d5326c25e76309e8 \
 python3 -B -m unittest discover -s support/arch -p 'test_*.py' -v
 ```

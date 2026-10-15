@@ -20,8 +20,12 @@ Logisim-evolution is a Java 21 / Swing digital logic designer and simulator, bui
 The code lives on GitHub (`NilsBriggen/Logisim-Revolution`). GitHub Actions CI
 (`.github/workflows/ci.yml`) runs `./gradlew build` on JDK 21, including tests and Checkstyle.
 The manual **Build all platforms and publish release** workflow (`release.yml`) builds Linux
-x86_64/ARM64, Windows and macOS packages and publishes a `build-<run>-attempt-<n>` prerelease
-only after every target succeeds.
+x86_64/ARM64, Windows and macOS packages and publishes release `vX.Y.Z` only after every target
+succeeds. `scripts/ci/version.py` picks the version from the first-parent commits since the last
+`vX.Y.Z` tag: X (major) if a message contains `BREAKING CHANGE`, Z (patch) if every subject
+starts with a fix verb (`Fix …`, `Correct …`, `Revert …`), Y (minor) otherwise. The workflow's
+`bump` input overrides it, and the `version` in `gradle.properties` is a floor and the label of
+local development builds. Start a release with `gh workflow run release.yml`.
 
 ## Build-time code generation
 

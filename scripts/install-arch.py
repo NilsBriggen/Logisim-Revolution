@@ -117,10 +117,9 @@ def select_release(tag=None):
 
 
 def package_version(version, tag):
-    build = re.fullmatch(r"build-([1-9][0-9]*)-attempt-([1-9][0-9]*)", tag)
-    if not build or not re.fullmatch(VERSION_PATTERN, version):
-        raise ValueError(f"Unsupported application version or numeric build tag: {version}, {tag}")
-    return f"{version}.r{build[1]}.a{build[2]}"
+    if tag != f"v{version}" or not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version):
+        raise ValueError(f"Release tag {tag} does not match its package version {version}.")
+    return version
 
 
 def select_asset(release, arch):

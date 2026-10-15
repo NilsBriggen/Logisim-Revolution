@@ -3,6 +3,8 @@
 # Changes #
 
 * @dev (????-??-??)
+  * Releases are now versioned vX.Y.Z: the release workflow works out a major, minor or patch
+    step from the commits since the last release (@NilsBriggen).
   * Moved the source, CI and releases from Gitea to GitHub: GitHub Actions now runs CI and builds
     and publishes all-platform releases directly, and the Arch installer reads GitHub releases
     (@NilsBriggen).
