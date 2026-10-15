@@ -10,6 +10,10 @@ It is a fork of [Logisim-evolution](https://github.com/logisim-evolution/logisim
 It keeps the familiar circuit file format and component IDs while developing its own interface
 and application identity.
 
+This repository carries Logisim-evolution's full history, so GitHub's contributor list counts
+everyone who worked on Logisim and Logisim-evolution. Revolution itself is a small, independent
+project maintained by [@NilsBriggen](https://github.com/NilsBriggen).
+
 ![Dark-theme editor showing the circuit canvas, parts picker, and inspector](docs/img/logisim-revolution-main-dark.png)
 
 ![Light-theme editor showing a selected gate and its settings beside the parts picker](docs/img/logisim-revolution-main-light.png)
