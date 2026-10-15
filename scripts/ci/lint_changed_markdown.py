@@ -14,7 +14,11 @@ def main():
         revision_range = f"{base}...HEAD"
     else:
         base = event.get("before", "")
-        revision_range = f"{base}..HEAD" if base and set(base) != {"0"} else "HEAD^..HEAD"
+        # A force push leaves "before" pointing at a commit this checkout does not have.
+        known = base and set(base) != {"0"} and subprocess.run(
+            ["git", "cat-file", "-e", f"{base}^{{commit}}"], capture_output=True
+        ).returncode == 0
+        revision_range = f"{base}..HEAD" if known else "HEAD^..HEAD"
     files = subprocess.check_output(
         ["git", "diff", "--name-only", revision_range], text=True
     ).splitlines()
