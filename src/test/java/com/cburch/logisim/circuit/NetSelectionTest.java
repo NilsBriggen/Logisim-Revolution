@@ -39,8 +39,6 @@ class NetSelectionTest {
     final var project = new Project(file);
     final var circuit = file.getMainCircuit();
     circuit.setProject(project);
-    // Keep the simulator from rebuilding connectivity while the net is read.
-    project.getSimulator().setAutoPropagation(false);
     try {
       final var ab = Wire.create(at(100, 100), at(200, 100));
       final var bc = Wire.create(at(200, 100), at(200, 200));

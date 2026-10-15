@@ -531,6 +531,8 @@ public class CircuitWires {
   private Bounds bounds = Bounds.EMPTY_BOUNDS;
 
   private volatile Connectivity masterConnectivity = null;
+  // Bumped by every void, so a map computed across a change is never published.
+  private int connectivityVersion = 0;
 
   private TunnelListener tunnelListener = new TunnelListener();
 
@@ -1106,9 +1108,16 @@ public class CircuitWires {
     if (SwingUtilities.isEventDispatchThread()) {
       // AWT event thread.
       final var ret = new Connectivity();
+      final int version;
+      synchronized (this) {
+        version = connectivityVersion;
+      }
       try {
         computeConnectivity(ret);
-        masterConnectivity = ret; // volatile write by AWT thread
+        synchronized (this) {
+          // Components may be changed off the AWT thread (startup, tests); keep their void.
+          if (version == connectivityVersion) masterConnectivity = ret;
+        }
       } catch (Exception t) {
         ret.invalidate();
         logger.error(t.getLocalizedMessage());
@@ -1326,10 +1335,11 @@ public class CircuitWires {
     voidConnectivity();
   }
 
-  private void voidConnectivity() {
+  private synchronized void voidConnectivity() {
     // This should really only be called by AWT thread, but main() also
     // calls it during startup. It should not be called by the simulation
     // thread.
+    connectivityVersion++;
     masterConnectivity = null; // volatile write by AWT thread (and sometimes main/startup)
   }
 }
