@@ -35,7 +35,8 @@ releases with identical DEB filenames never share stale sources.
 
 Release `v5.1.0` must contain `logisim-revolution_5.1.0_<arch>.deb` and becomes package
 version `5.1.0-1`, so pacman orders releases by their version numbers. SHA256 is calculated
-from the HTTPS download and pinned in the generated recipe; this detects changes between download and packaging, not an independent upstream signature.
+from the HTTPS download and pinned in the generated recipe; this detects changes between
+download and packaging, not an independent upstream signature.
 
 The recipe extracts only the DEB's data archive, retaining `/opt/logisim-revolution` and its
 bundled JVM. It adds a launcher symlink and installs the native desktop entry, icons, and MIME
