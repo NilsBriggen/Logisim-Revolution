@@ -20,7 +20,7 @@ class PrefMonitorDouble extends AbstractPrefMonitor<Double> {
   private final double dflt;
 
   /** Current double value of this preference monitor. */
-  private double value;
+  private volatile double value;
 
   /**
    * Constructs a new preference monitor for double values.
@@ -57,12 +57,17 @@ class PrefMonitorDouble extends AbstractPrefMonitor<Double> {
     final var prop = event.getKey();
     final var name = getIdentifier();
     if (prop.equals(name)) {
-      final var oldValue = value;
-      final var newValue = prefs.getDouble(name, dflt);
-      if (newValue != oldValue) {
+      final double oldValue;
+      final double newValue;
+      // Under the lock set() holds while writing cache and store, so a late event for an earlier
+      // put cannot copy that earlier value back over the cache.
+      synchronized (this) {
+        oldValue = value;
+        newValue = prefs.getDouble(name, dflt);
+        if (newValue == oldValue) return;
         value = newValue;
-        AppPreferences.firePropertyChange(name, oldValue, newValue);
       }
+      AppPreferences.firePropertyChange(name, oldValue, newValue);
     }
   }
 
@@ -73,9 +78,11 @@ class PrefMonitorDouble extends AbstractPrefMonitor<Double> {
    * @param newValue The new double value to set.
    */
   public void set(Double newValue) {
-    final var oldValue = value;
-    final var newVal = newValue;
-    if (oldValue != newVal) {
+    final double newVal = newValue;
+    final double oldValue;
+    synchronized (this) {
+      oldValue = value;
+      if (oldValue == newVal) return;
       // The cached value is updated here rather than being left to the preference-change
       // listener, which runs on another thread. Without this the monitor kept answering with the
       // value it was constructed with until that listener happened to fire -- and, worse, the
@@ -83,7 +90,7 @@ class PrefMonitorDouble extends AbstractPrefMonitor<Double> {
       // the default, so the interface scale reported one number and the store held another.
       value = newVal;
       AppPreferences.getPrefs().putDouble(getIdentifier(), newVal);
-      AppPreferences.firePropertyChange(getIdentifier(), oldValue, newVal);
     }
+    AppPreferences.firePropertyChange(getIdentifier(), oldValue, newVal);
   }
 }

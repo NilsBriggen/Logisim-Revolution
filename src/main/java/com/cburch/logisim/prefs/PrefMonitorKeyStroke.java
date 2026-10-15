@@ -22,7 +22,7 @@ import javax.swing.KeyStroke;
  */
 public class PrefMonitorKeyStroke extends AbstractPrefMonitor<KeyStroke> {
   private final byte[] defaultData;
-  private byte[] value;
+  private volatile byte[] value;
   private String prefName;
   private boolean canModify = true;
   private boolean metaRequired = false;
@@ -281,22 +281,31 @@ public class PrefMonitorKeyStroke extends AbstractPrefMonitor<KeyStroke> {
     final var prop = event.getKey();
     final var name = getIdentifier();
     if (prop.equals(name)) {
-      final var oldValue = value;
-      final var newValue = prefs.getByteArray(name, defaultData);
-      if (!Arrays.equals(newValue, oldValue)) {
+      final byte[] oldValue;
+      final byte[] newValue;
+      // Under the lock set() holds while writing cache and store, so a late event for an earlier
+      // put cannot copy that earlier value back over the cache.
+      synchronized (this) {
+        oldValue = value;
+        newValue = prefs.getByteArray(name, defaultData);
+        if (Arrays.equals(newValue, oldValue)) return;
         value = Arrays.copyOf(newValue, newValue.length);
-        AppPreferences.firePropertyChange(name, oldValue, newValue);
       }
+      AppPreferences.firePropertyChange(name, oldValue, newValue);
     }
   }
 
   private void setAndStore(byte[] newValue) {
-    if (!Arrays.equals(value, newValue)) {
-      final var oldValue = value;
-      value = Arrays.copyOf(newValue, newValue.length);
-      AppPreferences.getPrefs().putByteArray(getIdentifier(), value);
-      AppPreferences.firePropertyChange(getIdentifier(), oldValue, value);
+    final byte[] oldValue;
+    final byte[] stored;
+    synchronized (this) {
+      oldValue = value;
+      if (Arrays.equals(oldValue, newValue)) return;
+      stored = Arrays.copyOf(newValue, newValue.length);
+      value = stored;
+      AppPreferences.getPrefs().putByteArray(getIdentifier(), stored);
     }
+    AppPreferences.firePropertyChange(getIdentifier(), oldValue, stored);
   }
 
   /**

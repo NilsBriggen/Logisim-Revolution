@@ -19,7 +19,7 @@ class PrefMonitorString extends AbstractPrefMonitor<String> {
 
   private final String dflt;
 
-  private String value;
+  private volatile String value;
 
   /**
    * Constructor for the PrefMonitorString.
@@ -55,12 +55,17 @@ class PrefMonitorString extends AbstractPrefMonitor<String> {
     final var prop = event.getKey();
     final var name = getIdentifier();
     if (prop.equals(name)) {
-      final var oldValue = value;
-      final var newValue = prefs.get(name, dflt);
-      if (!isSame(oldValue, newValue)) {
+      final String oldValue;
+      final String newValue;
+      // Under the lock set() holds while writing cache and store, so a late event for an earlier
+      // put cannot copy that earlier value back over the cache.
+      synchronized (this) {
+        oldValue = value;
+        newValue = prefs.get(name, dflt);
+        if (isSame(oldValue, newValue)) return;
         value = newValue;
-        AppPreferences.firePropertyChange(name, oldValue, newValue);
       }
+      AppPreferences.firePropertyChange(name, oldValue, newValue);
     }
   }
 
@@ -71,11 +76,13 @@ class PrefMonitorString extends AbstractPrefMonitor<String> {
    * @param newValue The new value for the preference.
    */
   public void set(String newValue) {
-    final var oldValue = value;
-    if (!isSame(oldValue, newValue)) {
+    final String oldValue;
+    synchronized (this) {
+      oldValue = value;
+      if (isSame(oldValue, newValue)) return;
       value = newValue;
       AppPreferences.getPrefs().put(getIdentifier(), newValue);
-      AppPreferences.firePropertyChange(getIdentifier(), oldValue, newValue);
     }
+    AppPreferences.firePropertyChange(getIdentifier(), oldValue, newValue);
   }
 }

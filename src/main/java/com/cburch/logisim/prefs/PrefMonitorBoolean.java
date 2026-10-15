@@ -27,7 +27,7 @@ public class PrefMonitorBoolean extends AbstractPrefMonitor<Boolean> implements 
   /**
    * The current value of the boolean preference.
    */
-  protected boolean value;
+  protected volatile boolean value;
   /**
    * GUI representation of the preference using a checkbox.
    */
@@ -75,12 +75,17 @@ public class PrefMonitorBoolean extends AbstractPrefMonitor<Boolean> implements 
     final var prop = event.getKey();
     final var name = getIdentifier();
     if (prop.equals(name)) {
-      final var oldValue = value;
-      final var newValue = prefs.getBoolean(name, dflt);
-      if (newValue != oldValue) {
+      final boolean oldValue;
+      final boolean newValue;
+      // Under the lock set() holds while writing cache and store, so a late event for an earlier
+      // put cannot copy that earlier value back over the cache.
+      synchronized (this) {
+        oldValue = value;
+        newValue = prefs.getBoolean(name, dflt);
+        if (newValue == oldValue) return;
         value = newValue;
-        AppPreferences.firePropertyChange(name, oldValue, newValue);
       }
+      AppPreferences.firePropertyChange(name, oldValue, newValue);
     }
   }
 
@@ -91,15 +96,17 @@ public class PrefMonitorBoolean extends AbstractPrefMonitor<Boolean> implements 
    * @param newValue The new value to set.
    */
   public void set(Boolean newValue) {
-    final boolean oldValue = value;
     final boolean newVal = newValue;
-    if (oldValue != newVal) {
+    final boolean oldValue;
+    synchronized (this) {
+      oldValue = value;
+      if (oldValue == newVal) return;
       // Updated here, not left to the preference-change listener on another thread: a caller that
       // sets a preference and reads it straight back would otherwise get the previous answer.
       value = newVal;
       AppPreferences.getPrefs().putBoolean(getIdentifier(), newVal);
-      AppPreferences.firePropertyChange(getIdentifier(), oldValue, newVal);
     }
+    AppPreferences.firePropertyChange(getIdentifier(), oldValue, newVal);
   }
 
   /**

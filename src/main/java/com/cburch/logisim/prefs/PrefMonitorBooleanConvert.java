@@ -68,10 +68,15 @@ public class PrefMonitorBooleanConvert extends PrefMonitorBoolean {
     final var prop = event.getKey();
     final var name = getIdentifier();
     if (prop.equals(name)) {
-      final var oldValue = value;
-      final var newValue = prefs.getBoolean(name, dflt);
+      final boolean oldValue;
+      final boolean newValue;
+      // Under the lock set() holds, as in PrefMonitorBoolean.
+      synchronized (this) {
+        oldValue = value;
+        newValue = prefs.getBoolean(name, dflt);
+        if (newValue != oldValue) value = newValue;
+      }
       if (newValue != oldValue) {
-        value = newValue;
         AppPreferences.firePropertyChange(name, oldValue, newValue);
         if (!myListeners.isEmpty()) {
           final var e =
