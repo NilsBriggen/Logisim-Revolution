@@ -31,6 +31,7 @@ class MemPaintStateTest {
   void paintingCreatesMissingMemoryState(String kind) {
     final var file = LogisimFile.createNew(new Loader(null), null);
     final var project = new Project(file);
+    project.getSimulator().setAutoPropagation(false);
     final var circuit = file.getMainCircuit();
     circuit.setProject(project);
     project.setCurrentCircuit(circuit);
