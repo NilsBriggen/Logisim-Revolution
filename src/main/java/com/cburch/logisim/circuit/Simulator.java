@@ -20,6 +20,7 @@ import com.cburch.logisim.prefs.AppPreferences;
 import com.cburch.logisim.util.CollectionUtil;
 import com.cburch.logisim.util.UniquelyNamedThread;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -623,19 +624,22 @@ public class Simulator {
 
       osc = prop != null && prop.isOscillating();
 
+      final var faults = prop != null ? prop.drainFaults() : List.<PauseReason>of();
       PauseReason pause = null;
-      if (prop != null) {
-        for (final var fault : prop.drainFaults()) {
-          sim.fireFaultReported(fault);
-          if (pause == null && fault.pausesSimulation()) pause = fault;
+      for (final var fault : faults) {
+        if (fault.pausesSimulation()) {
+          pause = fault;
+          break;
         }
       }
 
+      // Pause before telling listeners, so a listener asking why the simulation stopped is told.
       var stateChanged = false;
       if (pause != null) {
         requestPause(pause);
         stateChanged = true;
       }
+      for (final var fault : faults) sim.fireFaultReported(fault);
       exceptionEncountered = oops;
       oscillating = osc;
       simStateLock.lock();

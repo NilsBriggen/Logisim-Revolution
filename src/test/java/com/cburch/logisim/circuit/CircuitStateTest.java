@@ -38,6 +38,8 @@ class CircuitStateTest {
     private Fixture() {
       file = LogisimFile.createNew(new Loader(null), null);
       project = new Project(file);
+      // The tests inspect component state directly; keep the simulation thread from creating more.
+      project.getSimulator().setAutoPropagation(false);
       circuit = file.getMainCircuit();
       circuit.setProject(project);
       project.setCurrentCircuit(circuit);
